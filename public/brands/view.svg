@@ -1,0 +1,5 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 48" role="img" aria-label="View">
+  <circle cx="18" cy="24" r="10" fill="none" stroke="#125E6A" stroke-width="2.5"/>
+  <circle cx="18" cy="24" r="4" fill="#125E6A"/>
+  <text x="36" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#0E1A24">View</text>
+</svg>

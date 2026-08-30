@@ -1,0 +1,5 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 48" role="img" aria-label="Frame">
+  <rect x="8" y="12" width="22" height="24" fill="none" stroke="#125E6A" stroke-width="2.5"/>
+  <rect x="13" y="17" width="12" height="14" fill="#125E6A" opacity="0.25"/>
+  <text x="38" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#0E1A24">Frame</text>
+</svg>

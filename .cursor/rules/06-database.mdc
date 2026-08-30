@@ -1,0 +1,22 @@
+---
+description: PostgreSQL and database rules
+globs:
+  - "prisma/**"
+  - "db/**"
+  - "database/**"
+  - "lib/db/**"
+alwaysApply: false
+---
+
+# Database Rules
+
+- PostgreSQL is the production database.
+- Use migrations as the schema history.
+- Never reset/drop production data automatically.
+- Add appropriate indexes for high-frequency queries.
+- Avoid N+1 queries.
+- Use transactions for multi-step atomic operations.
+- Enforce important uniqueness/integrity constraints at database level.
+- Keep database access out of UI components.
+- Use seed data only for development/staging as appropriate.
+- Document schema decisions in `docs/DATABASE.md`.

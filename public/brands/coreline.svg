@@ -1,0 +1,5 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" role="img" aria-label="CoreLine">
+  <rect x="8" y="14" width="20" height="20" rx="3" fill="none" stroke="#125E6A" stroke-width="2.5"/>
+  <rect x="13" y="19" width="10" height="10" fill="#125E6A"/>
+  <text x="36" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#0E1A24">CoreLine</text>
+</svg>

@@ -1,0 +1,22 @@
+---
+description: Core project rules and permanent agent behavior
+alwaysApply: true
+---
+
+# Techno House Core Rules
+
+1. Work phase-by-phase and task-by-task.
+2. Never depend on previous chat history.
+3. Project Markdown files are the persistent source of truth.
+4. Read only the relevant documentation and source files for the current task.
+5. Never scan the entire repository unnecessarily.
+6. Never make unrelated refactors.
+7. Never install dependencies without a justified need.
+8. Never perform destructive database or production actions without explicit approval.
+9. Never expose secrets, credentials, tokens, payment secrets, or private customer data.
+10. Server-side validation and authorization are mandatory.
+11. After every task: validate, update state, update task tracker, and stop.
+12. If requirements are unclear, do not invent major behavior; document or ask.
+13. If a critical security issue is found, prioritize it before normal feature work.
+14. The reference website is UX/IA inspiration only; do not copy code, assets, content, branding, or exact visual implementation.
+15. Prefer small, reversible, reviewable changes.

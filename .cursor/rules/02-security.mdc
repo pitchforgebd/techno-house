@@ -1,0 +1,26 @@
+---
+description: General application security rules
+globs:
+  - "app/**"
+  - "src/**"
+  - "lib/**"
+  - "server/**"
+  - "middleware.*"
+alwaysApply: false
+---
+
+# Security Rules
+
+- Validate all external input server-side.
+- Enforce authorization server-side; UI hiding is not authorization.
+- Use secure authentication/session handling.
+- Protect against injection, XSS, CSRF where applicable, broken access control, and unsafe redirects.
+- Rate-limit authentication, OTP, password reset, sensitive forms, and abuse-prone endpoints.
+- Never expose stack traces or internal errors to users.
+- Never log passwords, tokens, card data, CVV, secrets, or unnecessary sensitive customer data.
+- Keep secrets server-side and out of source control.
+- Validate file uploads by type, size, extension, and storage policy.
+- Use secure cookies where applicable.
+- Add and test appropriate security headers in production.
+- Maintain audit logs for sensitive administrative actions.
+- Treat security findings as higher priority than cosmetic improvements.

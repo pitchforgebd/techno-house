@@ -1,0 +1,5 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 48" role="img" aria-label="Lumen">
+  <circle cx="18" cy="24" r="10" fill="#125E6A"/>
+  <circle cx="18" cy="24" r="4" fill="#F4F6F8"/>
+  <text x="36" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#0E1A24">Lumen</text>
+</svg>
