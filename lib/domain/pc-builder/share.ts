@@ -8,19 +8,25 @@ import type { BuildSelection } from "@/lib/domain/pc-builder/types";
 const MAX_SHARE_JSON_CHARS = 1800;
 const MAX_SHARE_ID_CHARS = 2400;
 
-function toBase64Url(value: string): string {
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let base64: string;
   if (typeof Buffer !== "undefined") {
-    return Buffer.from(value, "utf8").toString("base64url");
+    base64 = Buffer.from(bytes).toString("base64");
+  } else {
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    base64 = btoa(binary);
   }
-  const bytes = new TextEncoder().encode(value);
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary)
+  return base64
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
+}
+
+function toBase64Url(value: string): string {
+  return bytesToBase64Url(new TextEncoder().encode(value));
 }
 
 function fromBase64Url(id: string): string {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { ShoppingCart } from "lucide-react";
 import { buttonClassName } from "@/components/ui/button";
 import {
   notifyBuildAddedToCart,
@@ -12,6 +13,7 @@ import { useCartStore } from "@/features/cart/use-cart-store";
 import type { ProductSummary } from "@/lib/data";
 import { MAX_CART_LINES } from "@/lib/cart/cart";
 import {
+  countFilledSlots,
   planBuildToCart,
   type BuildSelection,
   type CompatibilityResult,
@@ -20,16 +22,19 @@ import {
 export function PcBuilderAddToCart({
   selection,
   products,
+  productsPending,
   compatibility,
 }: {
   selection: BuildSelection;
   products: ProductSummary[];
+  productsPending: boolean;
   compatibility: CompatibilityResult | null;
 }) {
   const router = useRouter();
   const { state, addItems } = useCartStore();
   const [message, setMessage] = useState<string | null>(null);
   const [addedKey, setAddedKey] = useState<string | null>(null);
+  const filled = countFilledSlots(selection).filled;
 
   const plan = useMemo(
     () =>
@@ -48,23 +53,42 @@ export function PcBuilderAddToCart({
 
   const planKey = plan.ok ? plan.slugs.join("|") : "";
   const added = Boolean(planKey && addedKey === planKey);
-  const disabled = !plan.ok;
+  const waitingForProducts = productsPending && filled > 0;
+  const disabled = waitingForProducts || !plan.ok;
+
+  const helperText = waitingForProducts
+    ? "Updating build details…"
+    : !plan.ok
+      ? plan.reason
+      : plan.hasUnknownCompatibility
+        ? "Some compatibility checks are unverified. You can still add the build."
+        : null;
 
   return (
     <div className="space-y-2">
       <button
         type="button"
         disabled={disabled}
-        className={buttonClassName({ className: "w-full" })}
-        title={plan.ok ? "Add all selected parts to the cart" : plan.reason}
+        className={buttonClassName({
+          className: "inline-flex w-full gap-2",
+        })}
+        title={
+          waitingForProducts
+            ? "Loading selected parts"
+            : plan.ok
+              ? "Add all selected parts to the cart"
+              : plan.reason
+        }
         onClick={() => {
-          if (!plan.ok) {
-            setMessage(plan.reason);
-            setAddedKey(null);
-            notifyError({
-              title: "Cannot add build",
-              description: plan.reason,
-            });
+          if (waitingForProducts || !plan.ok) {
+            if (!waitingForProducts && !plan.ok) {
+              setMessage(plan.reason);
+              setAddedKey(null);
+              notifyError({
+                title: "Cannot add build",
+                description: plan.reason,
+              });
+            }
             return;
           }
           addItems(plan.slugs);
@@ -76,15 +100,19 @@ export function PcBuilderAddToCart({
           notifyBuildAddedToCart(text, () => router.push("/cart"));
         }}
       >
+        <ShoppingCart className="size-4" aria-hidden />
         {added ? "Build added" : "Add build to cart"}
       </button>
-      {!plan.ok ? (
-        <p className="text-caption text-text-muted">{plan.reason}</p>
-      ) : null}
-      {plan.ok && plan.hasUnknownCompatibility && !added ? (
-        <p className="text-caption text-text-muted">
-          Some compatibility checks are unverified. You can still add the build;
-          server validation arrives later.
+      {helperText ? (
+        <p
+          className={
+            waitingForProducts
+              ? "text-caption text-text-muted"
+              : "text-caption text-text-muted"
+          }
+          role={waitingForProducts ? "status" : undefined}
+        >
+          {helperText}
         </p>
       ) : null}
       {message ? (

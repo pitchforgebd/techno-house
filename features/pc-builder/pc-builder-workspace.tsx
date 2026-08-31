@@ -11,6 +11,7 @@ import { useBuilderStore } from "@/features/pc-builder/use-builder-store";
 import type { ProductSummary } from "@/lib/data";
 import {
   BUILDER_SLOTS,
+  countFilledSlots,
   estimateBuildPower,
   evaluateCompatibility,
   summarizeBuildPricing,
@@ -21,23 +22,34 @@ import {
 } from "@/lib/domain/pc-builder";
 
 export function PcBuilderWorkspace() {
-  const { selection, selectPart, clearPart, clearBuild, loadSelection } =
+  const { selection, clearPart, clearBuild, loadSelection } =
     useBuilderStore();
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [parts, setParts] = useState<CompatibilityPart[]>([]);
   const [pending, startTransition] = useTransition();
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    startTransition(async () => {
-      const [nextProducts, nextParts] = await Promise.all([
+    startTransition(() => {
+      void Promise.all([
         loadBuildProducts(selection),
         loadCompatibilityParts(selection),
-      ]);
-      if (!cancelled) {
-        setProducts(nextProducts);
-        setParts(nextParts);
-      }
+      ])
+        .then(([nextProducts, nextParts]) => {
+          if (!cancelled) {
+            setProducts(nextProducts);
+            setParts(nextParts);
+            setLoadError(null);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setLoadError(
+              "Could not refresh build details. Your selections are still saved.",
+            );
+          }
+        });
     });
     return () => {
       cancelled = true;
@@ -53,11 +65,15 @@ export function PcBuilderWorkspace() {
   }, [products]);
 
   const compatibility: CompatibilityResult | null = useMemo(() => {
+    const filled = countFilledSlots(selection).filled;
+    if (filled === 0) {
+      return null;
+    }
     if (pending && parts.length === 0) {
       return null;
     }
     return evaluateCompatibility(parts);
-  }, [parts, pending]);
+  }, [parts, pending, selection]);
 
   const priceLines: BuildPriceLine[] = useMemo(() => {
     const lines: BuildPriceLine[] = [];
@@ -83,21 +99,22 @@ export function PcBuilderWorkspace() {
   const power = useMemo(() => estimateBuildPower(parts), [parts]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <PcBuilderSlotList
         selection={selection}
         productsBySlug={productsBySlug}
         productsPending={pending}
-        onSelectPart={selectPart}
         onClearPart={clearPart}
       />
       <PcBuilderSummary
         selection={selection}
         products={products}
+        productsPending={pending}
         compatibility={compatibility}
         pricing={pricing}
         stock={stock}
         power={power}
+        loadError={loadError}
         onClearBuild={clearBuild}
         onLoadSelection={loadSelection}
       />

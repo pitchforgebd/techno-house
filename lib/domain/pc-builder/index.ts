@@ -16,6 +16,7 @@ export {
   clearSlotSelection,
   countFilledSlots,
   isBuilderSlotId,
+  builderSelectPath,
   normalizeBuildSelection,
   selectedSlugs,
   setSlotSelection,

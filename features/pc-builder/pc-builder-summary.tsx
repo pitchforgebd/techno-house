@@ -19,19 +19,23 @@ import {
 export function PcBuilderSummary({
   selection,
   products,
+  productsPending,
   compatibility,
   pricing,
   stock,
   power,
+  loadError,
   onClearBuild,
   onLoadSelection,
 }: {
   selection: BuildSelection;
   products: ProductSummary[];
+  productsPending: boolean;
   compatibility: CompatibilityResult | null;
   pricing: BuildPricingSummary;
   stock: BuildStockSummary;
   power: BuildPowerSummary;
+  loadError: string | null;
   onClearBuild: () => void;
   onLoadSelection: (selection: BuildSelection) => void;
 }) {
@@ -88,10 +92,17 @@ export function PcBuilderSummary({
         </p>
       </Alert>
 
+      {loadError ? (
+        <Alert tone="warning" title="Refresh issue">
+          <p className="text-caption">{loadError}</p>
+        </Alert>
+      ) : null}
+
       <div className="space-y-2">
         <PcBuilderAddToCart
           selection={selection}
           products={products}
+          productsPending={productsPending}
           compatibility={compatibility}
         />
         <PcBuilderSaveShare

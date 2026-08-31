@@ -33,6 +33,7 @@ export function AccountQuestionsView() {
       id: createMockQuestionId(),
       productSlug,
       productName: productName || productSlug,
+      askerName: "Customer",
       question: question.trim(),
       createdAt: new Date().toISOString(),
       status: "pending",

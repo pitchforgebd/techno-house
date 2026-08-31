@@ -1,89 +1,117 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useMemo } from "react";
+import { CheckCircle2, Circle, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
+import { BuilderSlotIcon } from "@/features/pc-builder/builder-slot-icons";
 import { PcBuilderSelectedPart } from "@/features/pc-builder/pc-builder-selected-part";
-import { PcBuilderSelector } from "@/features/pc-builder/pc-builder-selector";
 import type { BuilderSlot, ProductSummary } from "@/lib/data";
 import {
   BUILDER_SLOTS,
+  builderSelectPath,
+  countFilledSlots,
   isSlotFilled,
   type BuildSelection,
-  type BuilderSlotMeta,
 } from "@/lib/domain/pc-builder";
+import { cn } from "@/lib/cn";
 
 export function PcBuilderSlotList({
   selection,
   productsBySlug,
   productsPending,
-  onSelectPart,
   onClearPart,
 }: {
   selection: BuildSelection;
   productsBySlug: Map<string, ProductSummary>;
   productsPending: boolean;
-  onSelectPart: (slotId: BuilderSlot, slug: string) => void;
   onClearPart: (slotId: BuilderSlot) => void;
 }) {
-  const [activeSlot, setActiveSlot] = useState<BuilderSlotMeta | null>(null);
+  const counts = useMemo(() => countFilledSlots(selection), [selection]);
+  const progress =
+    counts.total > 0 ? Math.round((counts.filled / counts.total) * 100) : 0;
 
   return (
-    <>
-      <section
-        className="rounded-md border border-border bg-surface"
-        aria-labelledby="pc-builder-slots-heading"
-      >
-        <div className="border-b border-border px-4 py-3">
-          <h2
-            id="pc-builder-slots-heading"
-            className="text-label font-semibold text-text"
-          >
-            Components
-          </h2>
-          <p className="mt-1 text-caption text-text-muted">
-            Selected parts show image, stock, and price. Replace or remove
-            anytime.
-          </p>
+    <section
+      className="overflow-hidden rounded-md border border-border bg-surface"
+      aria-labelledby="pc-builder-slots-heading"
+    >
+      <div className="border-b border-border bg-surface-muted/40 px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2
+              id="pc-builder-slots-heading"
+              className="text-lg font-semibold tracking-tight text-text"
+            >
+              Choose your components
+            </h2>
+            <p className="mt-1 max-w-prose text-caption text-text-muted">
+              Pick one part per slot. Each slot opens a dedicated selection
+              page. Compatibility checks run as you build.
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-caption font-medium text-text-muted">Progress</p>
+            <p className="tabular-nums text-label font-semibold text-text">
+              {counts.filled} / {counts.total} slots
+            </p>
+          </div>
         </div>
-        <ul className="divide-y divide-border">
-          {BUILDER_SLOTS.map((slot, index) => {
-            const filled = isSlotFilled(selection, slot.id);
-            const slug = selection[slot.id] ?? null;
-            const product =
-              typeof slug === "string" ? productsBySlug.get(slug) : undefined;
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-border">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${progress}%` }}
+            role="progressbar"
+            aria-valuenow={progress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Build progress"
+          />
+        </div>
+      </div>
 
-            if (filled) {
-              return (
-                <PcBuilderSelectedPart
-                  key={slot.id}
-                  slot={slot}
-                  index={index}
-                  product={product}
-                  missingSlug={
-                    !product && typeof slug === "string" ? slug : null
-                  }
-                  isResolving={!product && productsPending}
-                  onChange={() => setActiveSlot(slot)}
-                  onRemove={() => onClearPart(slot.id)}
-                />
-              );
-            }
+      <ul className="divide-y divide-border">
+        {BUILDER_SLOTS.map((slot) => {
+          const filled = isSlotFilled(selection, slot.id);
+          const slug = selection[slot.id] ?? null;
+          const product =
+            typeof slug === "string" ? productsBySlug.get(slug) : undefined;
 
+          if (filled) {
             return (
-              <li
+              <PcBuilderSelectedPart
                 key={slot.id}
-                className="flex flex-wrap items-center gap-3 px-4 py-3 sm:flex-nowrap"
+                slot={slot}
+                product={product}
+                missingSlug={
+                  !product && typeof slug === "string" ? slug : null
+                }
+                isResolving={!product && productsPending}
+                onRemove={() => onClearPart(slot.id)}
+              />
+            );
+          }
+
+          return (
+            <li key={slot.id}>
+              <Link
+                href={builderSelectPath(slot.id)}
+                className="flex w-full flex-wrap items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-surface-muted/50 sm:flex-nowrap sm:px-5"
               >
                 <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-muted text-caption font-semibold tabular-nums text-text-muted"
-                  aria-hidden="true"
+                  className={cn(
+                    "inline-flex size-10 shrink-0 items-center justify-center rounded-md border",
+                    slot.required
+                      ? "border-primary/20 bg-primary/10 text-primary"
+                      : "border-border bg-surface-muted text-text-muted",
+                  )}
                 >
-                  {index + 1}
+                  <BuilderSlotIcon slotId={slot.id} className="size-5" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-label font-medium text-text">
+                    <p className="text-label font-semibold text-text">
                       {slot.label}
                     </p>
                     {slot.required ? (
@@ -92,38 +120,33 @@ export function PcBuilderSlotList({
                       <Badge tone="neutral">Optional</Badge>
                     )}
                   </div>
-                  <p className="mt-0.5 text-caption text-text-muted">
-                    {slot.description} · Not selected
+                  <p className="mt-0.5 flex items-center gap-1.5 text-caption text-text-muted">
+                    <Circle className="size-3.5 shrink-0" aria-hidden />
+                    {slot.description}
                   </p>
                 </div>
-                <button
-                  type="button"
+                <span
                   className={buttonClassName({
                     size: "sm",
                     variant: "primary",
-                    className: "shrink-0",
+                    className: "inline-flex shrink-0 gap-1.5",
                   })}
-                  onClick={() => setActiveSlot(slot)}
                 >
+                  <Plus className="size-4" aria-hidden />
                   Select
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
 
-      <PcBuilderSelector
-        slot={activeSlot}
-        open={activeSlot !== null}
-        onClose={() => setActiveSlot(null)}
-        onSelect={onSelectPart}
-        selectedSlug={
-          activeSlot
-            ? ((selection[activeSlot.id] as string | null | undefined) ?? null)
-            : null
-        }
-      />
-    </>
+      {counts.filled === counts.total ? (
+        <div className="flex items-center gap-2 border-t border-border bg-success/5 px-4 py-3 text-caption text-success sm:px-5">
+          <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+          All slots filled. Review compatibility and add the build to cart.
+        </div>
+      ) : null}
+    </section>
   );
 }

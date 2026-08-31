@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { CategoryNav } from "@/components/layout/category-nav";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { TopBar } from "@/components/layout/top-bar";
@@ -22,10 +23,11 @@ export default function StorefrontLayout({
         <SiteHeader />
         <CategoryNav />
       </div>
-      <main id="main-content" className="flex-1">
+      <main id="main-content" className="flex-1 pb-16 md:pb-0">
         {children}
       </main>
       <SiteFooter />
+      <MobileBottomNav />
     </div>
   );
 }

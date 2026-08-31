@@ -4,16 +4,16 @@
 UI correction (before Phase 09)
 
 ## Current Task
-Category listing polish. Next approved task: UI-T03 — Product detail
+Holding for next UI instruction. Next approved task: UI-T04 — Cart / checkout / account chrome
 
 ## Status
-Holding for next UI instruction. Category chrome refined (pills, toolbar, filters, SEO). Do not start P9-T01.
+UI-T03 complete. PC Builder selection error fixed and UI polished (slot icons, progress, loading states). Do not start P9-T01.
 
 ## Last Completed Task
-AD-082 polish — Category listing professionalism pass
+PC Builder fix — selection race error, component icons, UX polish (2026-08-31)
 
 ## Currently Working On
-Holding for next UI instruction. PC Builder header CTA restored to always-on copper (secondary) fill + hover; ring on `/pc-builder`. Footer CTAs keep accent fill on hover/active.
+Holding for next UI instruction.
 
 ## Pending Decisions
 - Exact production deployment topology.
@@ -24,9 +24,9 @@ Holding for next UI instruction. PC Builder header CTA restored to always-on cop
 - Whether to restore a non-floating support entry later (support routes remain).
 
 ## Next Approved Task
-UI-T03 — Product detail
+UI-T04 — Cart / checkout / account chrome
 
 Do **not** start Phase 09 until explicitly instructed.
 
 ## Last Updated
-2026-08-30
+2026-08-31

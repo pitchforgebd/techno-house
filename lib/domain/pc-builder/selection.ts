@@ -17,6 +17,10 @@ export function isBuilderSlotId(value: string): value is BuilderSlot {
   return SLOT_ID_SET.has(value as BuilderSlot);
 }
 
+export function builderSelectPath(slotId: BuilderSlot): string {
+  return `/pc-builder/select/${slotId}`;
+}
+
 export function normalizeBuildSelection(raw: unknown): BuildSelection {
   if (!raw || typeof raw !== "object") {
     return emptyBuildSelection();

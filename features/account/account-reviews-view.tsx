@@ -45,6 +45,7 @@ export function AccountReviewsView() {
       id: createMockReviewId(),
       productSlug,
       productName: productName || productSlug,
+      authorName: "Customer",
       rating: clampRating(Number(rating)),
       title: title.trim(),
       body: body.trim(),

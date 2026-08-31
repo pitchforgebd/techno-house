@@ -1,55 +1,11 @@
-import type { SVGProps } from "react";
+import { Headphones, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import Link from "next/link";
+import { createLucideIcon } from "@/components/icons/create-lucide-icon";
 
-const iconBase = {
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.75,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-  "aria-hidden": true as const,
-  className: "size-7",
-};
-
-function IconWarranty(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...iconBase} {...props}>
-      <path d="M12 3 5 6v5c0 4.5 2.8 7.4 7 9 4.2-1.6 7-4.5 7-9V6l-7-3Z" />
-      <path d="m9.5 12 1.8 1.8 3.7-3.8" />
-    </svg>
-  );
-}
-
-function IconDelivery(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...iconBase} {...props}>
-      <path d="M3 7h11v10H3V7Z" />
-      <path d="M14 10h4l3 3v4h-7v-7Z" />
-      <circle cx="7" cy="18.5" r="1.5" />
-      <circle cx="17.5" cy="18.5" r="1.5" />
-    </svg>
-  );
-}
-
-function IconSupport(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...iconBase} {...props}>
-      <path d="M5 12a7 7 0 0 1 14 0" />
-      <path d="M4 12v3a2 2 0 0 0 2 2h1v-5H6a2 2 0 0 0-2 2Zm16 0v3a2 2 0 0 1-2 2h-1v-5h1a2 2 0 0 1 2 2Z" />
-      <path d="M12 19v2M9 21h6" />
-    </svg>
-  );
-}
-
-function IconReturns(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...iconBase} {...props}>
-      <path d="M4 12a8 8 0 0 1 13.5-5.8L20 4v5h-5" />
-      <path d="M20 12a8 8 0 0 1-13.5 5.8L4 20v-5h5" />
-    </svg>
-  );
-}
+const IconWarranty = createLucideIcon(ShieldCheck, "size-7");
+const IconDelivery = createLucideIcon(Truck, "size-7");
+const IconSupport = createLucideIcon(Headphones, "size-7");
+const IconReturns = createLucideIcon(RotateCcw, "size-7");
 
 const TRUST_POINTS = [
   {

@@ -109,7 +109,7 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
 - [x] UI-T02 Catalog listing / product card
 - [x] UI-T02b Category page SEO (bottom: title, description, tables, video)
 - [x] UI-T02c Category listing toolbar (brand pills, price bar, Filter By)
-- [ ] UI-T03 Product detail
+- [x] UI-T03 Product detail
 - [ ] UI-T04 Cart / checkout / account chrome
 
 # PHASE 09 — Admin Frontend

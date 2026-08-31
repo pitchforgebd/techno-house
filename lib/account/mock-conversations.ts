@@ -8,12 +8,59 @@ export const REVIEW_BODY_MIN = 12;
 export const QUESTION_MAX = 400;
 export const QUESTION_MIN = 12;
 
+/** PDP question guard — no links or special symbols (display-only moderation). */
+export const QUESTION_FORBIDDEN_PATTERN = /[&,()/+$#]|https?:\/\//i;
+
+export function validatePdpQuestionInput(input: {
+  question: string;
+}): Record<string, string> {
+  const errors: Record<string, string> = {};
+  const question = input.question.trim();
+  if (question.length < QUESTION_MIN) {
+    errors.question = `Write at least ${QUESTION_MIN} characters.`;
+  } else if (question.length > QUESTION_MAX) {
+    errors.question = `Use at most ${QUESTION_MAX} characters.`;
+  } else if (QUESTION_FORBIDDEN_PATTERN.test(question)) {
+    errors.question =
+      "Do not use links or these symbols: & ( ) / + $ #";
+  }
+  return errors;
+}
+
+export function validatePdpReviewInput(input: {
+  rating: number;
+  body: string;
+}): Record<string, string> {
+  const errors: Record<string, string> = {};
+  const rating = clampRating(input.rating);
+  if (rating < 1) {
+    errors.rating = "Choose a rating from 1 to 5 stars.";
+  }
+  const body = input.body.trim();
+  if (body.length < REVIEW_BODY_MIN) {
+    errors.body = `Write at least ${REVIEW_BODY_MIN} characters.`;
+  } else if (body.length > REVIEW_BODY_MAX) {
+    errors.body = `Use at most ${REVIEW_BODY_MAX} characters.`;
+  }
+  return errors;
+}
+
+export function reviewTitleFromBody(body: string): string {
+  const trimmed = body.trim();
+  if (!trimmed) {
+    return "Customer review";
+  }
+  const firstLine = trimmed.split("\n")[0]?.trim() ?? trimmed;
+  return firstLine.slice(0, REVIEW_TITLE_MAX);
+}
+
 export type MockModerationStatus = "pending";
 
 export type MockAccountReview = {
   id: string;
   productSlug: string;
   productName: string;
+  authorName: string;
   rating: number;
   title: string;
   body: string;
@@ -25,6 +72,7 @@ export type MockAccountQuestion = {
   id: string;
   productSlug: string;
   productName: string;
+  askerName: string;
   question: string;
   createdAt: string;
   status: MockModerationStatus;
@@ -130,6 +178,10 @@ function parseReview(raw: unknown): MockAccountReview | null {
       typeof data.productName === "string"
         ? data.productName.trim().slice(0, 120)
         : data.productSlug,
+    authorName:
+      typeof data.authorName === "string"
+        ? data.authorName.trim().slice(0, 80)
+        : "Customer",
     rating,
     title: data.title.trim().slice(0, REVIEW_TITLE_MAX),
     body: data.body.trim().slice(0, REVIEW_BODY_MAX),
@@ -156,6 +208,10 @@ function parseQuestion(raw: unknown): MockAccountQuestion | null {
       typeof data.productName === "string"
         ? data.productName.trim().slice(0, 120)
         : data.productSlug,
+    askerName:
+      typeof data.askerName === "string"
+        ? data.askerName.trim().slice(0, 80)
+        : "Customer",
     question: data.question.trim().slice(0, QUESTION_MAX),
     createdAt: data.createdAt,
     status: "pending",

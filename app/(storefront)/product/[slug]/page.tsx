@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { AddToCartButton } from "@/features/cart/add-to-cart-button";
-import { ProductListActions } from "@/features/lists/product-list-actions";
 import { ProductDetailTabs } from "@/features/product/product-detail-tabs";
+import { ProductDetailsPanel } from "@/features/product/product-details-panel";
 import { ProductGallery } from "@/features/product/product-gallery";
-import { ProductOverview } from "@/features/product/product-overview";
-import { ProductPricing } from "@/features/product/product-pricing";
 import { ProductQuestions } from "@/features/product/product-questions";
 import { ProductRelated } from "@/features/product/product-related";
 import { ProductReviews } from "@/features/product/product-reviews";
+import { ProductSimilarSidebar } from "@/features/product/product-similar-sidebar";
 import { ProductSpecifications } from "@/features/product/product-specifications";
-import { ProductWarranty } from "@/features/product/product-warranty";
+import { ProductSummary } from "@/features/product/product-summary";
 import { productRepository, reviewRepository } from "@/lib/data";
+import { buildProductGalleryImages } from "@/lib/product/gallery-images";
+import { averageProductRating } from "@/lib/product/rating";
 
 export const dynamicParams = false;
 
@@ -55,60 +55,70 @@ export default async function ProductPage({
     productRepository.listBySlugs(product.relatedSlugs),
   ]);
 
-  const galleryImages =
-    product.images.length > 0 ? product.images : [product.image];
+  const galleryImages = buildProductGalleryImages(
+    product.images,
+    product.image,
+    product.name,
+  );
+  const averageRating = averageProductRating(reviews);
 
   return (
     <div className="mx-auto max-w-content px-4 py-8">
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
         <ProductGallery images={galleryImages} productName={product.name} />
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {product.name}
-          </h1>
-          <p className="mt-2 text-body text-text-muted">
-            {product.brandName} · SKU {product.sku}
-          </p>
-          <div className="mt-4">
-            <ProductPricing
-              price={product.price}
-              compareAtPrice={product.compareAtPrice}
-              stockStatus={product.stockStatus}
-              isNew={product.isNew}
-              isSale={product.isSale}
+        <ProductSummary
+          slug={product.slug}
+          categorySlug={product.categorySlug}
+          brandName={product.brandName}
+          sku={product.sku}
+          name={product.name}
+          price={product.price}
+          compareAtPrice={product.compareAtPrice}
+          stockStatus={product.stockStatus}
+          isNew={product.isNew}
+          isSale={product.isSale}
+          warrantyLabel={product.warrantyLabel}
+          overview={product.overview}
+          specs={product.specs}
+          averageRating={averageRating}
+        />
+      </div>
+
+      <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <ProductDetailTabs
+          specifications={
+            <ProductSpecifications
+              groups={product.specGroups}
+              productName={product.name}
             />
-          </div>
-          <div className="mt-4">
-            <ProductWarranty warrantyLabel={product.warrantyLabel} />
-          </div>
-          <div className="mt-4 max-w-sm space-y-3">
-            <AddToCartButton
-              slug={product.slug}
-              stockStatus={product.stockStatus}
-            />
-            <ProductListActions
-              slug={product.slug}
-              categorySlug={product.categorySlug}
-            />
-          </div>
-          <div className="mt-6">
-            <ProductOverview
+          }
+          details={
+            <ProductDetailsPanel
+              productName={product.name}
+              brandName={product.brandName}
+              warrantyLabel={product.warrantyLabel}
               overview={product.overview}
               specs={product.specs}
             />
-          </div>
-        </div>
+          }
+          reviews={
+            <ProductReviews
+              catalogReviews={reviews}
+              productSlug={product.slug}
+              productName={product.name}
+            />
+          }
+          questions={
+            <ProductQuestions
+              catalogQuestions={questions}
+              productSlug={product.slug}
+              productName={product.name}
+            />
+          }
+        />
+        <ProductSimilarSidebar products={relatedProducts} />
       </div>
-      <ProductDetailTabs
-        specifications={
-          <ProductSpecifications
-            groups={product.specGroups}
-            productName={product.name}
-          />
-        }
-        reviews={<ProductReviews reviews={reviews} />}
-        questions={<ProductQuestions questions={questions} />}
-      />
+
       <ProductRelated products={relatedProducts} productName={product.name} />
     </div>
   );

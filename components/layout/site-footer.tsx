@@ -1,22 +1,24 @@
 import Link from "next/link";
 import { FooterCtaButtons } from "@/components/layout/footer-cta-buttons";
+import { IconMapPin, IconPhone } from "@/components/layout/footer-icons";
 import {
-  FOOTER_SOCIAL_ICONS,
-  IconMapPin,
-  IconPhone,
-} from "@/components/layout/footer-icons";
+  FOOTER_SOCIAL_BRAND_COLORS,
+  FOOTER_SOCIAL_BRAND_ICONS,
+  type FooterSocialBrand,
+} from "@/components/icons/social-brand-icons";
 import {
   FOOTER_COMPANY_LINKS,
   FOOTER_POLICY_LINKS,
   FOOTER_SOCIAL,
 } from "@/lib/catalog/footer-nav";
+import { cn } from "@/lib/cn";
 
 const linkClassName =
   "inline-flex min-h-9 items-center text-label text-primary-foreground/75 transition-colors hover:text-primary-foreground";
 
 export function SiteFooter() {
   return (
-    <footer className="bg-text text-primary-foreground">
+    <footer className="bg-text pb-16 text-primary-foreground md:pb-0">
       <div className="mx-auto grid max-w-catalog gap-10 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0">
         <div className="lg:pr-8">
           <Link
@@ -31,18 +33,20 @@ export function SiteFooter() {
           </p>
           <ul className="mt-5 flex flex-wrap gap-2" aria-label="Social">
             {FOOTER_SOCIAL.map((item) => {
-              const Icon =
-                FOOTER_SOCIAL_ICONS[
-                  item.label as keyof typeof FOOTER_SOCIAL_ICONS
-                ];
+              const label = item.label as FooterSocialBrand;
+              const Icon = FOOTER_SOCIAL_BRAND_ICONS[label];
+              const hoverClass = FOOTER_SOCIAL_BRAND_COLORS[label];
               return (
                 <li key={item.label}>
                   <Link
                     href={item.href}
-                    aria-label={`${item.label} (contact)`}
-                    className="inline-flex size-10 items-center justify-center rounded-full border border-primary-foreground/25 text-primary-foreground/80 transition-colors hover:border-primary hover:text-primary"
+                    aria-label={item.label}
+                    className={cn(
+                      "inline-flex size-10 items-center justify-center rounded-full border border-primary-foreground/25 text-primary-foreground/80 transition-colors",
+                      hoverClass,
+                    )}
                   >
-                    {Icon ? <Icon /> : item.label.slice(0, 1)}
+                    {Icon ? <Icon className="size-[1.125rem]" /> : item.label.slice(0, 1)}
                   </Link>
                 </li>
               );

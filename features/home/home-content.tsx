@@ -1,44 +1,10 @@
-import type { SVGProps } from "react";
+import { ArrowRight, Cpu, LayoutGrid, MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { createLucideIcon } from "@/components/icons/create-lucide-icon";
 
-const iconBase = {
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.75,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-  "aria-hidden": true as const,
-  className: "size-7",
-};
-
-function IconBrowse(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...iconBase} {...props}>
-      <path d="M4 5h7v7H4V5Zm9 0h7v4h-7V5ZM4 14h7v5H4v-5Zm9-3h7v8h-7v-8Z" />
-    </svg>
-  );
-}
-
-function IconBuild(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...iconBase} {...props}>
-      <rect x="4" y="4" width="7" height="7" rx="1" />
-      <rect x="13" y="4" width="7" height="7" rx="1" />
-      <rect x="4" y="13" width="7" height="7" rx="1" />
-      <path d="M16.5 13.5v6M13.5 16.5h6" />
-    </svg>
-  );
-}
-
-function IconRequest(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...iconBase} {...props}>
-      <path d="M5 5h14v11H9l-4 3V5Z" />
-      <path d="M8 10h8M8 13h5" />
-    </svg>
-  );
-}
+const IconBrowse = createLucideIcon(LayoutGrid, "size-7");
+const IconBuild = createLucideIcon(Cpu, "size-7");
+const IconRequest = createLucideIcon(MessageSquare, "size-7");
 
 const NOTES = [
   {
@@ -104,14 +70,13 @@ export function HomeContent() {
                 <span className="text-caption leading-relaxed text-text-muted">
                   {description}
                 </span>
-                <span className="mt-auto pt-1 text-caption font-medium text-primary">
+                <span className="mt-auto inline-flex items-center gap-1 pt-1 text-caption font-medium text-primary">
                   {cta}
-                  <span
+                  <ArrowRight
                     aria-hidden
-                    className="ml-1 inline-block transition-transform group-hover:translate-x-0.5"
-                  >
-                    →
-                  </span>
+                    className="size-3.5 transition-transform group-hover:translate-x-0.5"
+                    strokeWidth={1.75}
+                  />
                 </span>
               </Link>
             </li>

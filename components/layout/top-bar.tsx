@@ -10,19 +10,24 @@ const linkClassName =
 export function TopBar() {
   return (
     <div className="bg-primary text-primary-foreground">
-      <div className="mx-auto flex max-w-catalog items-center justify-between gap-4 px-4 py-1.5">
+      <div className="mx-auto flex max-w-catalog items-center justify-between gap-3 px-4 py-1.5">
         <ul
           aria-label="Contact"
-          className="flex flex-wrap items-center gap-x-4 gap-y-1"
+          className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-4"
         >
-          {UTILITY_BAR_CONTACT.map((item) => (
-            <li key={item.href}>
-              <Link href={item.href} className={linkClassName}>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-          <li className="hidden text-caption font-medium lg:block">
+          {UTILITY_BAR_CONTACT.map((item) => {
+            const shortLabel =
+              item.label === "Support 9:00–22:00" ? "Support" : item.label;
+            return (
+              <li key={item.href}>
+                <Link href={item.href} className={linkClassName}>
+                  <span className="sm:hidden">{shortLabel}</span>
+                  <span className="hidden sm:inline">{item.label}</span>
+                </Link>
+              </li>
+            );
+          })}
+          <li className="hidden text-caption font-medium lg:list-item">
             Nationwide delivery
           </li>
         </ul>

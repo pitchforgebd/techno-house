@@ -369,3 +369,7 @@ Category buying-guide / SEO content sits **below** the product grid (not above):
 ## AD-082 Category listing toolbar (brand pills + price bar)
 
 Category pages add reference-style listing chrome (IA only): brand quick-filter pills, a bordered toolbar H1 (`… Price in Bangladesh` + product count + Sort By), and a teal **Filter By** sidebar header with Reset. Bottom SEO band (AD-081) unchanged. Techno House tokens — not a visual clone of any reference brand.
+
+## AD-083 Product detail hero + mock B2B wholesale (UI-T03)
+
+PDP hero keeps the two-column layout (`max-w-content`, gallery + summary). `ProductSummary` drives the buy column: title, five-star rating, product ID, special/wholesale price box, savings + regular price + EMI, **For B2B** (`B2BAuthDialog`), **Check availability**, quick overview, qty + add to cart + compare + wishlist (heart icon), EMI offer row, payment/shipping/order links, and social share bar (WhatsApp, email, Facebook, Messenger, X, print, copy link). B2B wholesale mock unchanged (12% off, browser `localStorage`). Specifications / Reviews / Q&A tabs unchanged.
