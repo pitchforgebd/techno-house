@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useSyncExternalStore } from "react";
 import type { BuilderSlot } from "@/lib/data";

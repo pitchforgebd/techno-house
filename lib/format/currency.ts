@@ -1,4 +1,4 @@
-/** Storefront display currency. Authoritative amounts will be BDT on the server. */
+﻿/** Storefront display currency. Authoritative amounts will be BDT on the server. */
 export const CURRENCY_CODE = "BDT";
 
 /** UI symbol for Bangladeshi Taka. Do not use "Tk" in new UI. */

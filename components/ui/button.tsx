@@ -1,14 +1,33 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "danger"
+  | "ink"
+  | "soft"
+  | "light";
 export type ButtonSize = "sm" | "md";
 
+/** Solid variants carry a real shadow so they read as raised, not painted on. */
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-primary-foreground hover:bg-primary-hover",
-  secondary: "bg-secondary text-white hover:bg-secondary/90",
+  primary:
+    "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover hover:shadow-md",
+  secondary:
+    "bg-secondary text-white shadow-sm hover:bg-secondary/90 hover:shadow-md",
   ghost: "bg-transparent text-text hover:bg-surface-muted",
-  danger: "bg-danger text-white hover:bg-danger/90",
+  danger: "bg-danger text-white shadow-sm hover:bg-danger/90 hover:shadow-md",
+  ink: "bg-text text-primary-foreground shadow-sm hover:bg-text/90 hover:shadow-md",
+  soft: "bg-secondary/20 text-text hover:bg-secondary/30",
+  /* For CTAs sitting on a dark image or panel. Exists as a real variant
+     because `cn()` is a plain join with no tailwind-merge: passing
+     `bg-surface` alongside `variant: "ghost"` left `bg-transparent` in the
+     class list too, and that won in the compiled CSS — the hero slider's
+     button was invisible until hover, when the `:hover` rule finally
+     out-specified it. A variant has no competing background to lose to. */
+  light: "bg-surface text-text shadow-sm hover:bg-surface-muted hover:shadow-md",
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -26,8 +45,10 @@ export function buttonClassName({
   className?: string;
 } = {}): string {
   return cn(
-    "inline-flex items-center justify-center rounded-md font-medium transition-colors",
-    "disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex items-center justify-center rounded-md font-medium",
+    "transition-[background-color,box-shadow,transform,color] duration-200 ease-out",
+    "active:translate-y-px",
+    "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
     variants[variant],
     sizes[size],
     className,

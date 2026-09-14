@@ -1,7 +1,7 @@
 # Techno House — Performance
 
-Updated: 2026-08-29  
-Task: P0-T07
+Updated: 2026-09-05  
+Task: P17-T04 (was P17-T03 / P0-T07)
 
 ## Goals
 
@@ -12,6 +12,13 @@ Task: P0-T07
 - efficient queries (from Phase 10)
 - stable layout
 - scalable catalog browsing
+
+## Phase 17 audits
+
+- **P17-T03** query/N+1 — `docs/QUERY_PERFORMANCE_AUDIT_P17.md` /
+  `npm run test:queries`
+- **P17-T04** bundle/image — `docs/BUNDLE_IMAGE_AUDIT_P17.md` /
+  `npm run test:bundle` (gallery padding no longer cache-busts)
 
 ## Baseline rules
 

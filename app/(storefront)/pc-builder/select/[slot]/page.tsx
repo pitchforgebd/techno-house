@@ -7,6 +7,7 @@ import {
   getBuilderSlotMeta,
   isBuilderSlotId,
 } from "@/lib/domain/pc-builder";
+import { getEffectiveBuilderSlots, isPcBuilderEnabled } from "@/lib/pc-builder/settings";
 
 export function generateStaticParams() {
   return BUILDER_SLOTS.map((slot) => ({ slot: slot.id }));
@@ -39,7 +40,12 @@ export default async function PcBuilderSelectPage({
   if (!isBuilderSlotId(slotParam)) {
     notFound();
   }
-  const slot = getBuilderSlotMeta(slotParam);
+  const enabled = await isPcBuilderEnabled();
+  if (!enabled) {
+    notFound();
+  }
+  const effectiveSlots = await getEffectiveBuilderSlots();
+  const slot = effectiveSlots.find((item) => item.id === slotParam);
   if (!slot) {
     notFound();
   }

@@ -46,10 +46,14 @@ export function Sheet({
         side === "left" && "th-sheet-left ml-0 mr-auto border-r border-border",
       )}
       onClose={onClose}
+      aria-labelledby="th-sheet-title"
     >
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-muted/50 px-4 py-3">
-          <h2 className="text-label font-semibold tracking-tight text-text">
+          <h2
+            id="th-sheet-title"
+            className="text-label font-semibold tracking-tight text-text"
+          >
             {title}
           </h2>
           <Button

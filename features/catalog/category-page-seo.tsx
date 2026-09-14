@@ -1,11 +1,34 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import type { CategoryPageContent } from "@/lib/catalog/category-page-content";
 
 const BRAND_NAME = "Techno House";
 
-export function CategoryPageSeo({ content }: { content: CategoryPageContent }) {
+export function CategoryPageSeo({
+  content,
+  html,
+}: {
+  content: CategoryPageContent;
+  /** Admin-managed copy (already sanitized). Replaces the built-in block. */
+  html?: string;
+}) {
   const hasPriceTable = Boolean(content.priceRows?.length);
   const hasBrands = Boolean(content.brandRows?.length);
+
+  if (html && html.trim().length > 0) {
+    return (
+      <section
+        aria-labelledby="category-seo-heading"
+        className="mt-12 border-t border-border pt-10 md:mt-14 md:pt-12"
+      >
+        <h2 id="category-seo-heading" className="sr-only">
+          About {content.listingTitle}
+        </h2>
+        <article className="th-rich-text border border-border bg-surface px-6 py-8 sm:px-9 sm:py-9">
+          <div dangerouslySetInnerHTML={{ __html: html }} />
+        </article>
+      </section>
+    );
+  }
 
   return (
     <section

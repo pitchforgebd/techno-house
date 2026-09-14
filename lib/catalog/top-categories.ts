@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+﻿import type { ComponentType } from "react";
 import {
   IconTopAc,
   IconTopCamera,
@@ -15,7 +15,7 @@ import {
 export type TopCategoryItem = {
   href: string;
   label: string;
-  Icon: ComponentType;
+  Icon: ComponentType<{ className?: string }>;
 };
 
 /** Homepage “Top Categories” shortcuts — layout from UI reference, Techno House links. */

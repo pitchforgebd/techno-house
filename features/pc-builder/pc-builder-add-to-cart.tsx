@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,8 +14,9 @@ import type { ProductSummary } from "@/lib/data";
 import { MAX_CART_LINES } from "@/lib/cart/cart";
 import {
   countFilledSlots,
-  planBuildToCart,
+  planValidatedBuildToCart,
   type BuildSelection,
+  type BuildValidationIssue,
   type CompatibilityResult,
 } from "@/lib/domain/pc-builder";
 
@@ -24,45 +25,53 @@ export function PcBuilderAddToCart({
   products,
   productsPending,
   compatibility,
+  issues,
 }: {
   selection: BuildSelection;
   products: ProductSummary[];
   productsPending: boolean;
   compatibility: CompatibilityResult | null;
+  issues: BuildValidationIssue[];
 }) {
   const router = useRouter();
-  const { state, addItems } = useCartStore();
+  const { state, persist, addBuild } = useCartStore();
   const [message, setMessage] = useState<string | null>(null);
   const [addedKey, setAddedKey] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const filled = countFilledSlots(selection).filled;
 
   const plan = useMemo(
     () =>
-      planBuildToCart({
+      planValidatedBuildToCart({
         selection,
         products: products.map((product) => ({
           slug: product.slug,
           stockStatus: product.stockStatus,
         })),
         compatibility,
+        issues,
         existingCartSlugs: state.lines.map((line) => line.slug),
         maxCartLines: MAX_CART_LINES,
       }),
-    [selection, products, compatibility, state.lines],
+    [selection, products, compatibility, issues, state.lines],
   );
 
   const planKey = plan.ok ? plan.slugs.join("|") : "";
   const added = Boolean(planKey && addedKey === planKey);
   const waitingForProducts = productsPending && filled > 0;
-  const disabled = waitingForProducts || !plan.ok;
+  const disabled = waitingForProducts || pending || !plan.ok;
 
   const helperText = waitingForProducts
     ? "Updating build details…"
-    : !plan.ok
-      ? plan.reason
-      : plan.hasUnknownCompatibility
-        ? "Some compatibility checks are unverified. You can still add the build."
-        : null;
+    : pending
+      ? "Checking this build on the server…"
+      : !plan.ok
+        ? plan.reason
+        : plan.hasUnknownCompatibility
+          ? "Some compatibility checks are unverified. You can still add the build."
+          : persist
+            ? "The server will recheck stock and compatibility, then add the parts."
+            : "Saved on this device. Turn off mock data to persist the cart.";
 
   return (
     <div className="space-y-2">
@@ -75,13 +84,15 @@ export function PcBuilderAddToCart({
         title={
           waitingForProducts
             ? "Loading selected parts"
-            : plan.ok
-              ? "Add all selected parts to the cart"
-              : plan.reason
+            : pending
+              ? "Checking this build on the server"
+              : plan.ok
+                ? "Add all selected parts to the cart"
+                : plan.reason
         }
         onClick={() => {
-          if (waitingForProducts || !plan.ok) {
-            if (!waitingForProducts && !plan.ok) {
+          if (waitingForProducts || pending || !plan.ok) {
+            if (!waitingForProducts && !pending && !plan.ok) {
               setMessage(plan.reason);
               setAddedKey(null);
               notifyError({
@@ -91,27 +102,37 @@ export function PcBuilderAddToCart({
             }
             return;
           }
-          addItems(plan.slugs);
-          setAddedKey(plan.slugs.join("|"));
-          const text = plan.hasUnknownCompatibility
-            ? "Build added. Some compatibility checks still need more data — totals remain display-only."
-            : "Build added to cart (display only).";
-          setMessage(text);
-          notifyBuildAddedToCart(text, () => router.push("/cart"));
+          setPending(true);
+          void addBuild(selection)
+            .then((result) => {
+              if (!result.ok) {
+                setMessage(result.reason);
+                setAddedKey(null);
+                notifyError({
+                  title: "Cannot add build",
+                  description: result.reason,
+                });
+                return;
+              }
+              setAddedKey(plan.slugs.join("|"));
+              const text = plan.hasUnknownCompatibility
+                ? "Build added. Some compatibility checks still need more data."
+                : persist
+                  ? "Build added to cart."
+                  : "Build added on this device.";
+              setMessage(text);
+              notifyBuildAddedToCart(text, () => router.push("/cart"));
+            })
+            .finally(() => {
+              setPending(false);
+            });
         }}
       >
         <ShoppingCart className="size-4" aria-hidden />
-        {added ? "Build added" : "Add build to cart"}
+        {pending ? "Adding…" : added ? "Build added" : "Add build to cart"}
       </button>
       {helperText ? (
-        <p
-          className={
-            waitingForProducts
-              ? "text-caption text-text-muted"
-              : "text-caption text-text-muted"
-          }
-          role={waitingForProducts ? "status" : undefined}
-        >
+        <p className="text-caption text-text-muted" role="status">
           {helperText}
         </p>
       ) : null}

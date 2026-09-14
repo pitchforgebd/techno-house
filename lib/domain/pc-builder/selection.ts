@@ -1,4 +1,4 @@
-import type { BuilderSlot } from "@/lib/data/types/catalog";
+﻿import type { BuilderSlot } from "@/lib/data/types/catalog";
 import {
   BUILDER_SLOTS,
   type BuilderSlotMeta,
@@ -50,7 +50,10 @@ export function selectedSlugs(selection: BuildSelection): string[] {
   return [...new Set(slugs)];
 }
 
-export function countFilledSlots(selection: BuildSelection): {
+export function countFilledSlots(
+  selection: BuildSelection,
+  slots: readonly BuilderSlotMeta[] = BUILDER_SLOTS,
+): {
   filled: number;
   requiredFilled: number;
   requiredTotal: number;
@@ -59,7 +62,7 @@ export function countFilledSlots(selection: BuildSelection): {
   let filled = 0;
   let requiredFilled = 0;
   let requiredTotal = 0;
-  for (const slot of BUILDER_SLOTS) {
+  for (const slot of slots) {
     if (slot.required) {
       requiredTotal += 1;
     }
@@ -74,7 +77,7 @@ export function countFilledSlots(selection: BuildSelection): {
     filled,
     requiredFilled,
     requiredTotal,
-    total: BUILDER_SLOTS.length,
+    total: slots.length,
   };
 }
 

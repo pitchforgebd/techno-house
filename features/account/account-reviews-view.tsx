@@ -1,33 +1,48 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import { AccountShell } from "@/features/account/account-shell";
-import { ProductPickerField } from "@/features/account/product-picker-field";
-import { useMockConversations } from "@/features/account/use-mock-conversations";
-import { RatingStars } from "@/features/product/rating-stars";
 import {
-  REVIEW_BODY_MAX,
-  REVIEW_TITLE_MAX,
-  clampRating,
-  createMockReviewId,
-  validateMockReviewInput,
-} from "@/lib/account/mock-conversations";
+  createCustomerReviewAction,
+  deleteCustomerReviewAction,
+} from "@/features/account/conversation-actions";
+import { ProductPickerField } from "@/features/account/product-picker-field";
+import { RatingStars } from "@/features/product/rating-stars";
+import { validateMockReviewInput } from "@/lib/account/mock-conversations";
+import type { CustomerReviewView } from "@/lib/catalog/review-input";
+import { REVIEW_BODY_MAX, REVIEW_TITLE_MAX } from "@/lib/catalog/review-input";
 
-export function AccountReviewsView() {
-  const { reviews, addReview, deleteReview } = useMockConversations();
+function statusLabel(status: CustomerReviewView["status"]): string {
+  if (status === "published") {
+    return "Published";
+  }
+  if (status === "rejected") {
+    return "Rejected";
+  }
+  return "Pending";
+}
+
+export function AccountReviewsView({
+  reviews,
+}: {
+  reviews: CustomerReviewView[];
+}) {
+  const router = useRouter();
   const [productSlug, setProductSlug] = useState("");
-  const [productName, setProductName] = useState("");
   const [rating, setRating] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,28 +56,42 @@ export function AccountReviewsView() {
     if (Object.keys(nextErrors).length > 0) {
       return;
     }
-    addReview({
-      id: createMockReviewId(),
-      productSlug,
-      productName: productName || productSlug,
-      authorName: "Customer",
-      rating: clampRating(Number(rating)),
-      title: title.trim(),
-      body: body.trim(),
-      createdAt: new Date().toISOString(),
-      status: "pending",
+    startTransition(async () => {
+      const result = await createCustomerReviewAction({
+        productSlug,
+        rating: Number(rating),
+        title,
+        body,
+      });
+      if (!result.ok) {
+        notifyError(result.formError ?? "Could not save the review.");
+        return;
+      }
+      setRating("");
+      setTitle("");
+      setBody("");
+      notifySuccess("Review submitted for moderation");
+      router.refresh();
     });
-    setRating("");
-    setTitle("");
-    setBody("");
+  }
+
+  function handleDelete(id: string) {
+    startTransition(async () => {
+      const result = await deleteCustomerReviewAction(id);
+      if (!result.ok) {
+        notifyError(result.formError ?? "Could not remove the review.");
+        return;
+      }
+      notifySuccess("Review removed");
+      router.refresh();
+    });
   }
 
   return (
     <AccountShell title="Reviews">
       <div className="space-y-8">
         <p className="text-caption text-text-muted">
-          Mock reviews stay on this device. They are not published on product
-          pages and are not moderated.
+          New reviews stay pending until staff publish them on the product page.
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit} noValidate>
@@ -71,9 +100,8 @@ export function AccountReviewsView() {
             label="Product"
             value={productSlug}
             error={errors.productSlug}
-            onChange={(slug, name) => {
+            onChange={(slug) => {
               setProductSlug(slug);
-              setProductName(name);
             }}
           />
           <Field label="Rating" htmlFor="review-rating" error={errors.rating}>
@@ -102,7 +130,7 @@ export function AccountReviewsView() {
             label="Review"
             htmlFor="review-body"
             error={errors.body}
-            hint="Verified purchase is not checked in this preview."
+            hint="Verified purchase is not checked here."
           >
             <Textarea
               id="review-body"
@@ -111,15 +139,13 @@ export function AccountReviewsView() {
               onChange={(event) => setBody(event.target.value)}
             />
           </Field>
-          <Button type="submit" size="sm">
-            Save mock review
+          <Button type="submit" size="sm" disabled={pending}>
+            {pending ? "Saving…" : "Submit review"}
           </Button>
         </form>
 
         {reviews.length === 0 ? (
-          <p className="text-body text-text-muted">
-            No mock reviews on this device yet.
-          </p>
+          <p className="text-body text-text-muted">No reviews yet.</p>
         ) : (
           <ul className="space-y-3">
             {reviews.map((review) => {
@@ -134,7 +160,7 @@ export function AccountReviewsView() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <RatingStars rating={review.rating} />
-                    <Badge tone="neutral">Pending</Badge>
+                    <Badge tone="neutral">{statusLabel(review.status)}</Badge>
                   </div>
                   <h2 className="mt-2 text-label font-semibold text-text">
                     {review.title}
@@ -152,17 +178,20 @@ export function AccountReviewsView() {
                     {" · "}
                     {placedAt}
                   </p>
-                  <button
-                    type="button"
-                    className={buttonClassName({
-                      variant: "ghost",
-                      size: "sm",
-                      className: "mt-2 self-start px-0",
-                    })}
-                    onClick={() => deleteReview(review.id)}
-                  >
-                    Remove from this device
-                  </button>
+                  {review.status === "pending" ? (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      className={buttonClassName({
+                        variant: "ghost",
+                        size: "sm",
+                        className: "mt-2 self-start px-0",
+                      })}
+                      onClick={() => handleDelete(review.id)}
+                    >
+                      Remove
+                    </button>
+                  ) : null}
                 </li>
               );
             })}

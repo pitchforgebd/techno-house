@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   ArrowLeftRight,
+  Check,
   ClipboardList,
   CreditCard,
   Heart,
@@ -20,15 +21,19 @@ import {
   notifyToast,
 } from "@/components/ui/feedback-provider";
 import { Input } from "@/components/ui/input";
-import { B2BAuthDialog } from "@/features/b2b/b2b-auth-dialog";
-import { useB2BSession } from "@/features/b2b/use-b2b-session";
+import { B2BApplyDialog } from "@/features/b2b/b2b-apply-dialog";
 import { useCartStore } from "@/features/cart/use-cart-store";
 import { useListsStore } from "@/features/lists/use-lists-store";
 import { ProductShareBar } from "@/features/product/product-share-bar";
 import { RatingStars } from "@/features/product/rating-stars";
-import { wholesalePriceFromRetail } from "@/lib/b2b/wholesale-price";
-import { cartItemCount } from "@/lib/cart/cart";
-import type { Money, SpecChip, StockStatus } from "@/lib/data";
+import {
+  resolveB2BPricing,
+  type B2BProductTerms,
+} from "@/lib/b2b/pricing";
+import type { B2BStatus } from "@/lib/generated/prisma/enums";
+import type { Money, ProductColorOption, SpecChip, StockStatus } from "@/lib/data";
+import type { AdminEmiConfig } from "@/lib/payments/emi-shared";
+import { cartItemCount, cartLineKey } from "@/lib/cart/cart";
 import { formatMoney } from "@/lib/format/currency";
 import { cn } from "@/lib/cn";
 
@@ -53,6 +58,21 @@ type ProductSummaryProps = {
   overview: string[];
   specs: SpecChip[];
   averageRating: number;
+  colors: ProductColorOption[];
+  selectedColorId?: string | null;
+  onSelectedColorIdChange?: (colorId: string | null) => void;
+  discountStartsAt?: string | null;
+  discountEndsAt?: string | null;
+  emiConfig?: AdminEmiConfig;
+  isSignedIn?: boolean;
+  b2bAccount?: {
+    status: B2BStatus;
+    company: string;
+    discountPercent: number;
+  } | null;
+  /** Per-product wholesale terms — only passed for a verified account. */
+  b2bTerms?: B2BProductTerms | null;
+  viewerCount?: number | null;
 };
 
 function WishlistHeartIcon({ filled }: { filled: boolean }) {
@@ -83,32 +103,92 @@ export function ProductSummary({
   overview,
   specs,
   averageRating,
+  colors,
+  selectedColorId: selectedColorIdProp,
+  onSelectedColorIdChange,
+  discountStartsAt = null,
+  discountEndsAt = null,
+  emiConfig = {
+    enabled: false,
+    tenureMonths: [],
+    partnerName: "",
+    interestNote: "",
+    minOrderAmount: 0,
+    updatedAt: null,
+  },
+  isSignedIn = false,
+  b2bAccount = null,
+  b2bTerms = null,
+  viewerCount = null,
 }: ProductSummaryProps) {
   const router = useRouter();
-  const { session: b2bSession, signOut } = useB2BSession();
   const { state: cartState, addItem } = useCartStore();
   const { state: listState, toggleWishlist, toggleCompare } = useListsStore();
 
   const [quantity, setQuantity] = useState(1);
+  // Wholesale minimums arrive with the product, so the box starts at the
+  // smallest orderable quantity rather than making the buyer discover it.
+  const [minApplied, setMinApplied] = useState(1);
+  const [internalColorId, setInternalColorId] = useState<string | null>(
+    colors.length >= 1 ? (colors[0]?.id ?? null) : null,
+  );
+  const selectedColorId =
+    onSelectedColorIdChange != null
+      ? (selectedColorIdProp ?? null)
+      : internalColorId;
+  function setSelectedColorId(next: string | null) {
+    if (onSelectedColorIdChange) {
+      onSelectedColorIdChange(next);
+    } else {
+      setInternalColorId(next);
+    }
+  }
   const [b2bOpen, setB2bOpen] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const [compareMessage, setCompareMessage] = useState<string | null>(null);
 
   const unavailable = stockStatus === "out_of_stock";
-  const inCart = cartState.lines.some((line) => line.slug === slug);
+  const selectedColor =
+    colors.find((color) => color.id === selectedColorId) ?? null;
+  const inCart = cartState.lines.some(
+    (line) =>
+      cartLineKey(line) ===
+      cartLineKey({ slug, colorId: selectedColorId }),
+  );
   const cartCount = cartItemCount(cartState);
   const onWishlist = listState.wishlist.includes(slug);
   const onCompare = listState.compare.some((entry) => entry.slug === slug);
 
-  const wholesale = wholesalePriceFromRetail(price);
-  const displayPrice = b2bSession ? wholesale : price;
-  const retailReference = b2bSession ? price : compareAtPrice;
+  const b2bActive = b2bAccount?.status === "ACTIVE";
+  // A per-product wholesale row wins over the account's flat discount; only a
+  // verified account sees either.
+  const b2bPricing = b2bActive
+    ? resolveB2BPricing({
+        retail: price,
+        discountPercent: b2bAccount?.discountPercent ?? 0,
+        terms: b2bTerms,
+      })
+    : null;
+  const minQuantity = b2bPricing?.minQuantity ?? 1;
+  const displayPrice = b2bPricing ? b2bPricing.price : price;
+  const retailReference = b2bActive ? price : compareAtPrice;
   const savings =
     retailReference && retailReference.amount > displayPrice.amount
       ? retailReference.amount - displayPrice.amount
       : null;
   const emiAmount = Math.max(1, Math.round(displayPrice.amount / 12));
   const emiOfferAmount = Math.max(1, Math.round(displayPrice.amount / 11));
+  const emiVisible =
+    emiConfig.enabled &&
+    emiConfig.tenureMonths.length > 0 &&
+    displayPrice.amount >= emiConfig.minOrderAmount;
+
+  if (minApplied !== minQuantity) {
+    setMinApplied(minQuantity);
+    if (quantity < minQuantity) {
+      setQuantity(minQuantity);
+    }
+  }
 
   const quickSpecs = specs.slice(0, 6);
   const quickLines = [
@@ -124,10 +204,37 @@ export function ProductSummary({
       });
       return;
     }
-    const qty = Math.min(99, Math.max(1, quantity));
-    addItem(slug, qty);
-    setJustAdded(true);
-    notifyAddedToCart(() => router.push("/cart"));
+    if (colors.length > 0 && !selectedColor) {
+      notifyError({
+        title: "Choose a colour",
+        description: "Select a colour before adding this product to cart.",
+      });
+      return;
+    }
+    if (quantity < minQuantity) {
+      notifyError({
+        title: "Below the wholesale minimum",
+        description: `This product ships in wholesale lots of ${minQuantity} or more.`,
+      });
+      setQuantity(minQuantity);
+      return;
+    }
+    const qty = Math.min(99, Math.max(minQuantity, quantity));
+    void addItem(slug, qty, {
+      colorId: selectedColor?.id ?? null,
+      colorName: selectedColor?.name ?? null,
+      colorHex: selectedColor?.hex ?? null,
+    }).then((result) => {
+      if (!result.ok) {
+        notifyError({
+          title: "Could not add to cart",
+          description: result.reason,
+        });
+        return;
+      }
+      setJustAdded(true);
+      notifyAddedToCart(() => router.push("/cart"));
+    });
   }
 
   return (
@@ -147,63 +254,95 @@ export function ProductSummary({
           </p>
         </div>
 
-        <div className="space-y-2 border-y border-border py-5">
-          <div className="inline-flex min-w-[11rem] flex-col border border-border bg-surface-muted/80 px-4 py-3">
-            <span className="text-caption font-medium uppercase tracking-wide text-text-muted">
-              {b2bSession ? "Wholesale price" : "Special price"}
-            </span>
-            <span className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-text">
+        <div className="space-y-2 rounded-lg border border-border bg-surface-muted/50 p-5">
+          <span className="text-[0.7rem] font-bold tracking-[0.14em] text-text-muted uppercase">
+            {b2bActive ? "Wholesale price" : "Special price"}
+          </span>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-[2rem] leading-none font-bold tabular-nums tracking-tight text-text">
               {formatMoney(displayPrice)}
             </span>
-          </div>
-
-          {savings !== null ? (
-            <p className="text-label font-semibold text-info">
-              Save extra {formatMoney({ amount: savings })}
-              {b2bSession ? " with B2B pricing" : " on various offers"}
-            </p>
-          ) : null}
-
-          {retailReference && retailReference.amount > displayPrice.amount ? (
-            <p className="text-label text-text-muted">
-              Regular price{" "}
-              <span className="tabular-nums line-through">
+            {retailReference && retailReference.amount > displayPrice.amount ? (
+              <span className="text-body tabular-nums text-text-muted line-through">
                 {formatMoney(retailReference)}
               </span>
+            ) : null}
+            {savings !== null ? (
+              <span className="inline-flex items-center rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
+                Save {formatMoney({ amount: savings })}
+                {b2bActive ? " (B2B)" : ""}
+              </span>
+            ) : null}
+          </div>
+
+          {discountEndsAt ? (
+            <p className="text-caption text-text-muted">
+              Offer until{" "}
+              {new Date(discountEndsAt).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                timeZone: "UTC",
+              })}
+            </p>
+          ) : discountStartsAt ? (
+            <p className="text-caption text-text-muted">
+              Offer from{" "}
+              {new Date(discountStartsAt).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                timeZone: "UTC",
+              })}
             </p>
           ) : null}
 
-          <p className="text-caption tabular-nums text-text-muted">
-            EMI {formatMoney({ amount: emiAmount })}/month · display only
-          </p>
+          {emiVisible ? (
+            <p className="text-caption tabular-nums text-text-muted">
+              EMI {formatMoney({ amount: emiAmount })}/month
+              {emiConfig.tenureMonths.length > 0
+                ? ` for ${Math.min(...emiConfig.tenureMonths)}–${Math.max(...emiConfig.tenureMonths)} months`
+                : ""}
+              {emiConfig.partnerName ? ` via ${emiConfig.partnerName}` : ""}
+            </p>
+          ) : null}
 
           <div className="pt-1">
-            {b2bSession ? (
-              <div className="flex flex-wrap items-center gap-2 text-caption">
-                <span className="font-medium text-primary">
-                  B2B: {b2bSession.shopName}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    signOut();
-                    notifySuccess({
-                      title: "Signed out of B2B",
-                      description: "Retail prices are shown again.",
-                    });
-                  }}
-                  className="text-text-muted underline-offset-2 hover:text-primary hover:underline"
+            {b2bActive ? (
+              <span className="text-caption font-medium text-primary">
+                Wholesale pricing active — {b2bAccount?.company}
+              </span>
+            ) : b2bAccount?.status === "PENDING" ? (
+              <span className="text-caption text-text-muted">
+                Your wholesale application is under review.
+              </span>
+            ) : !isSignedIn ? (
+              // Wholesale has its own entry point — the customer login sent
+              // B2B buyers to a retail form with no way to register a business.
+              <span className="text-label text-text-muted">
+                <Link
+                  href="/b2b/register"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
                 >
-                  Sign out
-                </button>
-              </div>
+                  For B2B — register for wholesale price
+                </Link>
+                {" · "}
+                <Link
+                  href="/b2b/login"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Sign in
+                </Link>
+              </span>
             ) : (
               <button
                 type="button"
                 onClick={() => setB2bOpen(true)}
                 className="text-label font-medium text-primary underline-offset-2 hover:underline"
               >
-                For B2B — register or sign in for wholesale price
+                {b2bAccount?.status === "SUSPENDED"
+                  ? "Wholesale account suspended — re-apply"
+                  : "For B2B — apply for wholesale price"}
               </button>
             )}
           </div>
@@ -212,11 +351,76 @@ export function ProductSummary({
         <div className="flex flex-wrap gap-1.5">
           {isNew ? <Badge tone="new">New</Badge> : null}
           {isSale || savings !== null ? <Badge tone="sale">Sale</Badge> : null}
-          {b2bSession ? <Badge tone="neutral">Wholesale</Badge> : null}
+          {b2bActive ? <Badge tone="neutral">Wholesale</Badge> : null}
           <Badge tone={stockStatus === "in_stock" ? "stock" : "neutral"}>
             {STOCK_LABEL[stockStatus]}
           </Badge>
         </div>
+
+        {viewerCount != null ? (
+          <p className="flex items-center gap-1.5 text-caption text-text-muted">
+            <span className="size-2 animate-pulse rounded-full bg-danger" aria-hidden />
+            {viewerCount} {viewerCount === 1 ? "person is" : "people are"} viewing this right now
+          </p>
+        ) : null}
+
+        {colors.length > 0 ? (
+          <div className="space-y-2">
+            <h2 className="text-label font-semibold text-text">
+              Color variations
+            </h2>
+            <div
+              className="space-y-2"
+              role="listbox"
+              aria-label="Product colour"
+            >
+              {colors.map((color) => {
+                const selected = color.id === selectedColorId;
+                const swatch = color.hex ?? "#d4d4d4";
+                return (
+                  <button
+                    key={color.id}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    title={color.name}
+                    className={cn(
+                      "flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors",
+                      selected
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-surface hover:border-primary/40",
+                    )}
+                    onClick={() => {
+                      setSelectedColorId(color.id);
+                      setJustAdded(false);
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      className="size-8 shrink-0 rounded-full border border-black/10"
+                      style={{ backgroundColor: swatch }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-label font-medium text-text">
+                        {color.name}
+                      </span>
+                      <span className="block text-caption tabular-nums text-text-muted">
+                        {formatMoney(displayPrice)}
+                      </span>
+                    </span>
+                    {selected ? (
+                      <Check
+                        aria-hidden
+                        className="size-4 shrink-0 text-primary"
+                        strokeWidth={2.5}
+                      />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <Button
           type="button"
@@ -251,15 +455,25 @@ export function ProductSummary({
           </div>
         ) : null}
 
+        {minQuantity > 1 ? (
+          <p className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-caption font-medium text-text">
+            Wholesale minimum order:{" "}
+            <span className="tabular-nums">{minQuantity}</span> pieces
+          </p>
+        ) : null}
+
         <div className="flex flex-wrap items-end gap-3 border-t border-border pt-5">
           <div className="w-20">
-            <label htmlFor="product-qty" className="text-caption text-text-muted">
+            <label
+              htmlFor="product-qty"
+              className="text-caption text-text-muted"
+            >
               Qty
             </label>
             <Input
               id="product-qty"
               type="number"
-              min={1}
+              min={minQuantity}
               max={99}
               value={quantity}
               onChange={(event) =>
@@ -301,9 +515,7 @@ export function ProductSummary({
               }
               setCompareMessage(null);
               const nextOn = !onCompare;
-              notifyToast(
-                nextOn ? "Added to compare" : "Removed from compare",
-              );
+              notifyToast(nextOn ? "Added to compare" : "Removed from compare");
             }}
           >
             <ArrowLeftRight aria-hidden className="size-4" strokeWidth={1.75} />
@@ -321,7 +533,9 @@ export function ProductSummary({
             onClick={() => {
               const nextOn = !onWishlist;
               toggleWishlist(slug);
-              notifyToast(nextOn ? "Added to wishlist" : "Removed from wishlist");
+              notifyToast(
+                nextOn ? "Added to wishlist" : "Removed from wishlist",
+              );
             }}
           >
             <WishlistHeartIcon filled={onWishlist} />
@@ -343,41 +557,38 @@ export function ProductSummary({
               View cart
             </Link>
             {cartCount > 0 ? (
-              <span className="tabular-nums"> · {cartCount} items (display only)</span>
+              <span className="tabular-nums">
+                {" "}
+                · {cartCount} items (display only)
+              </span>
             ) : null}
           </p>
         ) : null}
 
-        <div className="rounded-md border border-border bg-surface-muted/50 px-3 py-3">
-          <label className="flex cursor-pointer items-start gap-2 text-label text-text">
-            <input type="checkbox" className="mt-0.5 accent-primary" />
-            <span>
-              Avail EMI offer{" "}
-              <button
-                type="button"
-                className="font-medium text-primary underline-offset-2 hover:underline"
-                onClick={() =>
-                  notifySuccess({
-                    title: "EMI plans",
-                    description: "EMI plans are display-only in this build.",
-                  })
-                }
-              >
-                View plans
-              </button>
-            </span>
-          </label>
-          <p className="mt-2 text-caption tabular-nums text-text-muted">
-            EMI starts from {formatMoney({ amount: emiOfferAmount })}/month
-          </p>
-        </div>
+        {emiVisible ? (
+          <div className="rounded-md border border-border bg-surface-muted/50 px-3 py-3">
+            <p className="text-label font-medium text-text">
+              EMI available
+              {emiConfig.partnerName ? ` — ${emiConfig.partnerName}` : ""}
+            </p>
+            <p className="mt-1 text-caption tabular-nums text-text-muted">
+              Starting from {formatMoney({ amount: emiOfferAmount })}/month ·{" "}
+              {emiConfig.tenureMonths.map((m) => `${m} mo`).join(", ")}
+            </p>
+            {emiConfig.interestNote ? (
+              <p className="mt-1 text-caption text-text-muted">
+                {emiConfig.interestNote}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="grid gap-2 sm:grid-cols-3">
           {[
             {
               label: "Payment method",
               href: "/checkout",
-              note: "SSLCommerz, bKash, and cash on delivery (mock).",
+              note: "SSLCommerz, bKash, Nagad, and cash on delivery.",
               Icon: CreditCard,
             },
             {
@@ -396,11 +607,25 @@ export function ProductSummary({
             <Link
               key={item.label}
               href={item.href}
-              className="flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface-muted/60 px-3 text-center text-caption font-medium text-text transition-colors hover:border-primary/40 hover:bg-surface"
-              title={item.note}
+              className="group/info flex gap-2.5 rounded-lg border border-border bg-surface p-3 transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-sm"
             >
-              <item.Icon aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
-              {item.label}
+              <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary transition-colors group-hover/info:bg-primary group-hover/info:text-primary-foreground">
+                <item.Icon
+                  aria-hidden
+                  className="size-4"
+                  strokeWidth={1.75}
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-caption font-bold text-text">
+                  {item.label}
+                </span>
+                {/* The note used to live in a `title` tooltip — invisible on
+                    touch and to most people. */}
+                <span className="mt-0.5 block text-[0.7rem] leading-snug text-text-muted">
+                  {item.note}
+                </span>
+              </span>
             </Link>
           ))}
         </div>
@@ -412,7 +637,7 @@ export function ProductSummary({
         </p>
       </div>
 
-      <B2BAuthDialog open={b2bOpen} onClose={() => setB2bOpen(false)} />
+      <B2BApplyDialog open={b2bOpen} onClose={() => setB2bOpen(false)} />
     </>
   );
 }

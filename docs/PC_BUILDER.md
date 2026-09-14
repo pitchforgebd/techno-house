@@ -1,7 +1,7 @@
 # Techno House — PC Builder
 
-Updated: 2026-08-29  
-Phase 00 architecture notes added.
+Updated: 2026-09-05  
+P14-T07 adds a build to the cart after a second server check.
 
 ## Priority
 
@@ -57,6 +57,11 @@ Only implement rules for which reliable product data exists.
 
 Unknown data → `unknown` warning, never a false “compatible” claim.
 
+The engine is a pure `evaluateCompatibility(parts, enabledTypes?)` that
+walks `PC_RULE_TYPES`. Run `npm run test:pc-builder` after changing an
+evaluator. `storageInterface` is a domain field only until product rows
+store it.
+
 ## Architecture
 
 ```text
@@ -78,8 +83,13 @@ Frontend phases (07):
 
 Backend phases (14):
 
-- Persist builds, share tokens, server-side revalidation
-- Recalculate price and compatibility on add-to-cart
+- T01: persist/read slot candidates and builder attributes from `Product`
+- T02: persist/read compatibility rules; storefront honors enable/disable
+- T03: table-driven engine (`RULE_EVALUATORS`); storage unknown without data
+- T04: signed-in builds persist; guests stay on-device
+- T05: opaque `thb_` share slugs; guests keep encoded slug maps
+- T06: server snapshot of price, stock, and compatibility
+- T07: revalidate again, then write through the existing cart path
 
 ## Security
 

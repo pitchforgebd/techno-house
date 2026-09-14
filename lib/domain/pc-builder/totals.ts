@@ -1,4 +1,4 @@
-import type { StockStatus } from "@/lib/data/types/common";
+﻿import type { StockStatus } from "@/lib/data/types/common";
 import type { CompatibilityPart } from "@/lib/domain/pc-builder/compatibility";
 
 export type BuildPriceLine = {

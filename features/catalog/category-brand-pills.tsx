@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { listingHref } from "@/lib/catalog/listing-params";
 import type { ParsedListingQuery } from "@/lib/catalog/listing-params";
 import { cn } from "@/lib/cn";

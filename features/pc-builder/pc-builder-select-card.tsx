@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -14,23 +14,48 @@ const STOCK_LABEL: Record<StockStatus, string> = {
   out_of_stock: "Out of stock",
 };
 
+export type PcBuilderCardCompatibility = {
+  status: "ok" | "unknown" | "incompatible";
+  reason?: string;
+};
+
 export function PcBuilderSelectCard({
   product,
   slotId,
   selectedSlug,
   onAdd,
+  compatibility,
 }: {
   product: ProductSummary;
   slotId: BuilderSlot;
   selectedSlug: string | null;
   onAdd: (slotId: BuilderSlot, slug: string) => void;
+  compatibility?: PcBuilderCardCompatibility;
 }) {
   const isSelected = product.slug === selectedSlug;
   const disabled = product.stockStatus === "out_of_stock";
   const specs = product.specs.slice(0, 6);
+  const incompatible = compatibility?.status === "incompatible";
 
   return (
-    <article className="flex h-full flex-col border border-border bg-surface p-4 transition-colors hover:border-primary/40">
+    <article
+      className={`flex h-full flex-col border p-4 transition-colors ${
+        incompatible
+          ? "border-danger/40 bg-danger/5"
+          : "border-border bg-surface hover:border-primary/40"
+      }`}
+    >
+      {compatibility && compatibility.status !== "ok" ? (
+        <p
+          className={`mb-2 text-caption font-medium ${
+            incompatible ? "text-danger" : "text-text-muted"
+          }`}
+        >
+          {incompatible
+            ? (compatibility.reason ?? "May not fit your current build.")
+            : "Fit not confirmed — missing spec data."}
+        </p>
+      ) : null}
       <Link href={`/product/${product.slug}`} className="block">
         <div className="relative aspect-square overflow-hidden rounded-md bg-surface-muted">
           <Image
@@ -88,11 +113,16 @@ export function PcBuilderSelectCard({
           <Badge tone={product.stockStatus === "in_stock" ? "stock" : "neutral"}>
             {STOCK_LABEL[product.stockStatus]}
           </Badge>
+          {compatibility?.status === "unknown" ? (
+            <Badge tone="neutral">Unconfirmed fit</Badge>
+          ) : null}
+          {incompatible ? <Badge tone="sale">May not fit</Badge> : null}
         </div>
         <button
           type="button"
           disabled={disabled}
           className={buttonClassName({
+            variant: incompatible ? "secondary" : "primary",
             className: "inline-flex w-full gap-2 disabled:opacity-50",
           })}
           onClick={() => onAdd(slotId, product.slug)}
@@ -105,7 +135,7 @@ export function PcBuilderSelectCard({
           ) : (
             <>
               <Plus className="size-4" aria-hidden />
-              Add to PC Builder
+              {incompatible ? "Add anyway" : "Add to PC Builder"}
             </>
           )}
         </button>

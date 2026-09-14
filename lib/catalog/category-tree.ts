@@ -1,4 +1,4 @@
-import type { Category } from "@/lib/data/types";
+﻿import type { Category } from "@/lib/data/types";
 
 export type CategoryNode = Category & { children: Category[] };
 

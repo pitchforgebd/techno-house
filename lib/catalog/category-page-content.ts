@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Bottom-of-page category SEO / buying-guide copy (demo).
  * Reference sites are IA inspiration only — original Techno House wording.
  */

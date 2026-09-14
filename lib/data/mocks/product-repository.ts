@@ -1,4 +1,4 @@
-import type { ProductRepository } from "@/lib/data/repositories/product-repository";
+﻿import type { ProductRepository } from "@/lib/data/repositories/product-repository";
 import {
   BRAND_FACET_KEY,
   CATALOG_ATTRIBUTE_KEYS,
@@ -11,6 +11,7 @@ import {
   normalizePage,
   paginate,
   sortProducts,
+  toCandidate,
   toSummary,
 } from "@/lib/data/mocks/query";
 import type { BuilderSlot, ProductDetail } from "@/lib/data/types/catalog";
@@ -54,7 +55,21 @@ export const mockProductRepository: ProductRepository = {
     return mockProducts
       .filter((product) => product.builderSlot === slot)
       .slice(0, MAX_SLOT_CANDIDATES)
-      .map(toSummary);
+      .map(toCandidate);
+  },
+
+  async listBuilderCandidatesBySlugs(slugs) {
+    if (slugs.length === 0) {
+      return [];
+    }
+    const order = new Map(slugs.map((slug, index) => [slug, index]));
+    return mockProducts
+      .filter((product) => order.has(product.slug))
+      .sort(
+        (left, right) =>
+          (order.get(left.slug) ?? 0) - (order.get(right.slug) ?? 0),
+      )
+      .map(toCandidate);
   },
 
   async list(query) {

@@ -157,6 +157,9 @@ Admin:
 - Contrast: body text on background ≥ WCAG AA
 - Do not use color alone for stock or errors
 
+Phase 17 accessibility audit (P17-T05): `docs/ACCESSIBILITY_AUDIT_P17.md`.
+Baseline: `npm run test:a11y`.
+
 ---
 
 ## Copy tone

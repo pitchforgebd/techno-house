@@ -1,78 +1,49 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { buttonClassName } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { loadBuildProducts } from "@/features/pc-builder/actions";
 import { useBuilderStore } from "@/features/pc-builder/use-builder-store";
 import type { ProductSummary } from "@/lib/data";
 import {
   BUILDER_SLOTS,
   countFilledSlots,
-  summarizeBuildPricing,
+  type BuildPricingSummary,
   type BuildSelection,
+  type BuildValidationIssue,
 } from "@/lib/domain/pc-builder";
 import { formatMoney } from "@/lib/format/currency";
 
 export function PcBuilderShareView({
+  name,
   selection,
   valid,
+  products,
+  pricing,
+  issues,
 }: {
+  name?: string | null;
   selection: BuildSelection;
   valid: boolean;
+  products: ProductSummary[];
+  pricing: BuildPricingSummary;
+  issues: BuildValidationIssue[];
 }) {
   const router = useRouter();
   const { loadSelection } = useBuilderStore();
-  const [products, setProducts] = useState<ProductSummary[]>([]);
-  const [pending, startTransition] = useTransition();
   const filled = countFilledSlots(selection).filled;
-
-  useEffect(() => {
-    if (!valid || filled === 0) {
-      return;
-    }
-    let cancelled = false;
-    startTransition(async () => {
-      const items = await loadBuildProducts(selection);
-      if (!cancelled) {
-        setProducts(items);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [selection, valid, filled]);
 
   const productsBySlug = useMemo(() => {
     const map = new Map<string, ProductSummary>();
-    if (!valid || filled === 0) {
-      return map;
-    }
     for (const product of products) {
       map.set(product.slug, product);
     }
     return map;
-  }, [products, valid, filled]);
-
-  const pricing = useMemo(() => {
-    return summarizeBuildPricing(
-      BUILDER_SLOTS.filter((slot) => {
-        const slug = selection[slot.id];
-        return typeof slug === "string" && slug.length > 0;
-      }).map((slot) => {
-        const slug = selection[slot.id] as string;
-        const product = productsBySlug.get(slug);
-        return {
-          priceAmount: product ? product.price.amount : null,
-          stockStatus: product ? product.stockStatus : null,
-        };
-      }),
-    );
-  }, [selection, productsBySlug]);
+  }, [products]);
 
   if (!valid || filled === 0) {
     return (
@@ -90,7 +61,7 @@ export function PcBuilderShareView({
         <EmptyState
           className="mt-6"
           title="Invalid or empty share link"
-          description="This mock share id could not be decoded, or it has no parts. Ask for a new link from PC Builder."
+          description="This share link could not be found, or it has no parts. Ask for a new link from PC Builder."
           action={
             <Link
               href="/pc-builder"
@@ -114,18 +85,33 @@ export function PcBuilderShareView({
         ]}
       />
       <header className="mt-4 max-w-prose">
-        <h1 className="text-3xl font-semibold tracking-tight">Shared build</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {name?.trim() || "Shared build"}
+        </h1>
         <p className="mt-2 text-body text-text-muted">
-          Read-only mock share. Product slugs only — no customer data. Open in
-          the builder to edit on this device.
+          Read-only share. Parts only — no account or personal data. Prices come
+          from the server. Open in the builder to edit on this device.
         </p>
       </header>
 
-      <Alert tone="info" title="Mock share" className="mt-6">
+      <Alert tone="info" title="Public parts list" className="mt-6">
         <p className="text-caption">
-          Server-backed share tokens and privacy controls arrive in Phase 14.
+          This page shows the selected parts only. It does not include the
+          owner’s account.
         </p>
       </Alert>
+
+      {issues.length > 0 ? (
+        <ul className="mt-4 space-y-2">
+          {issues.map((issue) => (
+            <li key={`${issue.code}-${issue.slotId}`}>
+              <Alert tone="warning" title="Build check">
+                <p className="text-caption">{issue.message}</p>
+              </Alert>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
         <section
@@ -141,7 +127,6 @@ export function PcBuilderShareView({
             </h2>
             <p className="mt-1 text-caption text-text-muted">
               {filled} part{filled === 1 ? "" : "s"}
-              {pending ? " · loading…" : ""}
             </p>
           </div>
           <ul className="divide-y divide-border">
@@ -178,10 +163,16 @@ export function PcBuilderShareView({
         </section>
 
         <aside className="h-fit space-y-3 rounded-md border border-border bg-surface p-4">
-          <p className="text-label font-semibold text-text">Display total</p>
+          <p className="text-label font-semibold text-text">Checked total</p>
           <p className="tabular-nums text-xl font-semibold text-text">
             {formatMoney({ amount: pricing.subtotal })}
           </p>
+          {pricing.missingPriceCount > 0 ? (
+            <p className="text-caption text-text-muted">
+              {pricing.missingPriceCount} part
+              {pricing.missingPriceCount === 1 ? "" : "s"} could not be priced.
+            </p>
+          ) : null}
           <button
             type="button"
             className={buttonClassName({ className: "w-full" })}

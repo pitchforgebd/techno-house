@@ -1,4 +1,4 @@
-import type { BuilderSlot } from "@/lib/data/types/catalog";
+﻿import type { BuilderSlot } from "@/lib/data/types/catalog";
 
 export type BuilderSlotMeta = {
   id: BuilderSlot;

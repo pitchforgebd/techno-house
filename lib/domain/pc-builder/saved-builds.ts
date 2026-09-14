@@ -1,4 +1,4 @@
-import { normalizeBuildSelection } from "@/lib/domain/pc-builder/selection";
+﻿import { normalizeBuildSelection } from "@/lib/domain/pc-builder/selection";
 import {
   emptyBuildSelection,
   type BuildSelection,
@@ -13,6 +13,8 @@ export type SavedBuild = {
   name: string;
   createdAt: string;
   selection: BuildSelection;
+  /** Opaque public token when the owner has shared this build. */
+  shareSlug?: string | null;
 };
 
 export function createSavedBuildId(): string {
@@ -49,6 +51,10 @@ export function normalizeSavedBuilds(raw: unknown): SavedBuild[] {
       name,
       createdAt: row.createdAt,
       selection,
+      shareSlug:
+        typeof row.shareSlug === "string" && row.shareSlug
+          ? row.shareSlug.slice(0, 80)
+          : null,
     });
     if (builds.length >= MAX_SAVED_BUILDS) {
       break;

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useMemo } from "react";
@@ -13,6 +13,7 @@ import {
   builderSelectPath,
   countFilledSlots,
   isSlotFilled,
+  type BuilderSlotMeta,
   type BuildSelection,
 } from "@/lib/domain/pc-builder";
 import { cn } from "@/lib/cn";
@@ -22,13 +23,18 @@ export function PcBuilderSlotList({
   productsBySlug,
   productsPending,
   onClearPart,
+  slots = BUILDER_SLOTS,
 }: {
   selection: BuildSelection;
   productsBySlug: Map<string, ProductSummary>;
   productsPending: boolean;
   onClearPart: (slotId: BuilderSlot) => void;
+  slots?: readonly BuilderSlotMeta[];
 }) {
-  const counts = useMemo(() => countFilledSlots(selection), [selection]);
+  const counts = useMemo(
+    () => countFilledSlots(selection, slots),
+    [selection, slots],
+  );
   const progress =
     counts.total > 0 ? Math.round((counts.filled / counts.total) * 100) : 0;
 
@@ -72,7 +78,7 @@ export function PcBuilderSlotList({
       </div>
 
       <ul className="divide-y divide-border">
-        {BUILDER_SLOTS.map((slot) => {
+        {slots.map((slot) => {
           const filled = isSlotFilled(selection, slot.id);
           const slug = selection[slot.id] ?? null;
           const product =

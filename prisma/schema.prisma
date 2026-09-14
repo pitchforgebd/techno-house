@@ -1,0 +1,2490 @@
+// Techno House — Prisma schema (P10-T03: initial schema).
+//
+// Covers the domain entities listed in docs/DATABASE.md and mirrors the shapes
+// the app already uses in `lib/data/types` and the admin mocks, so the P10-T06
+// repository implementations can map onto it without UI changes.
+//
+// Conventions
+//   - Money is an integer amount in ৳ plus a `currency` column, matching the
+//     `Money` type in lib/data/types/common.ts. The server is always the
+//     authority for totals (docs/PAYMENT_SECURITY.md).
+//   - Snapshot columns on orders (names, SKUs, prices) are intentional: an
+//     order must not change when a product is later edited or deleted.
+//   - Card data and plaintext passwords are never modelled. Gateway merchant
+//     secrets may be stored encrypted in PaymentGatewaySetting (AD-207);
+//     GATEWAY_SECRETS_KEY stays in the environment.
+//
+// Migrations are P10-T04; this task only defines the schema.
+
+generator client {
+  // Prisma 7 default generator. `output` is required and writes into the source
+  // tree, so the generated client is gitignored and rebuilt by `db:generate`.
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  // Prisma 7 removed `url` from the schema: the CLI reads it from
+  // prisma.config.ts, and the client connects through a driver adapter
+  // (@prisma/adapter-pg) configured in lib/db/prisma.ts.
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Shared enums
+// ---------------------------------------------------------------------------
+
+enum Currency {
+  BDT
+}
+
+enum StockStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+}
+
+enum BuilderSlot {
+  CPU
+  CPU_COOLER
+  MOTHERBOARD
+  RAM
+  GPU
+  SSD
+  HDD
+  PSU
+  CASE
+  CASE_FANS
+  MONITOR
+}
+
+enum ActorType {
+  CUSTOMER
+  STAFF
+  SYSTEM
+}
+
+// ---------------------------------------------------------------------------
+// Identity: customers, staff, RBAC
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  INVITED
+}
+
+/// Storefront customer. Only a password hash is ever stored — never plaintext.
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  phone           String?    @unique
+  passwordHash    String?
+  fullName        String
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  isSuspicious    Boolean    @default(false)
+  walletAmount    Int        @default(0)
+  currency        Currency   @default(BDT)
+  city            String?
+  notes           String?
+  lastLoginAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  addresses     Address[]
+  orders        Order[]
+  carts         Cart[]
+  wishlist      Wishlist?
+  compareList   CompareList?
+  reviews       ProductReview[]
+  questions     ProductQuestion[]
+  tickets       SupportTicket[]
+  complaints    Complaint[]
+  notifications Notification[]
+  pcBuilds      PCBuild[]
+  refunds       Refund[]
+  b2bAccount    B2BAccount?
+  sessions      CustomerSession[]
+  walletTransactions WalletTransaction[]
+  couponRedemptions  CouponRedemption[]
+  socialLoginAccounts SocialLoginAccount[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Real ledger for every User.walletAmount change (AD-270). There is no
+/// customer-facing wallet top-up flow today — every row here is an
+/// admin-initiated adjustment (see lib/admin/save-customer.ts), not a
+/// customer "recharge" via a payment gateway.
+model WalletTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  amount        Int
+  balanceAfter  Int
+  reason        String?
+  createdById   String?
+  createdByName String?
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+/// Real storefront search queries (AD-270), for the admin User Searches
+/// report. query is stored lowercased/trimmed so grouping by exact text is
+/// correct without a separate normalization step at read time.
+model SearchLog {
+  id          String   @id @default(cuid())
+  query       String
+  resultCount Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([query])
+  @@index([createdAt])
+}
+
+/// Opaque customer session (P11-T01). The cookie holds a random token; only
+/// `tokenHash` (SHA-256) is stored. Staff sessions are a separate model in T02.
+model CustomerSession {
+  id         String    @id @default(cuid())
+  userId     String
+  /// SHA-256 hex of the secret token sent in the cookie.
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  /// Last successful resolve. Touched at most every 10 minutes (P11-T03).
+  lastUsedAt DateTime  @default(now())
+  /// Hashed client IP — never store the raw address.
+  ipHash     String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String
+  label        String?
+  fullName     String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  area         String?
+  city         String
+  postcode     String?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum B2BStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+/// Wholesale account attached to a customer. Uploaded documents are stored as
+/// media references, never as raw file blobs.
+model B2BAccount {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  company           String
+  contactName       String
+  shopAddress       String?
+  /// Collected on the B2B registration form. The scanned document, when one
+  /// is uploaded later, still goes to `nidMedia`.
+  nidNumber         String?
+  tier              String?
+  /// Fallback wholesale discount for products with no `B2BProductPrice` row.
+  discountPercent   Int       @default(0)
+  status            B2BStatus @default(PENDING)
+  tradeLicenceMedia String?
+  nidMedia          String?
+  notes             String?
+  approvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+/// Wholesale price and order minimum for one product, applied to verified
+/// (ACTIVE) B2B accounts only. A product without a row here falls back to the
+/// account's `discountPercent`. Price is stored, never derived at read time,
+/// so a later retail price change cannot silently move wholesale pricing.
+model B2BProductPrice {
+  id          String   @id @default(cuid())
+  productId   String   @unique
+  priceAmount Int
+  /// Smallest quantity a B2B buyer may order of this product.
+  minQuantity Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+}
+
+enum StaffStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+model Staff {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String?
+  fullName     String
+  phone        String?
+  department   String?
+  status       StaffStatus @default(INVITED)
+  roleId       String?
+  lastActiveAt DateTime?
+  /// Consecutive failed sign-ins. Reset to 0 on any successful sign-in.
+  ///
+  /// Separate from the sliding rate-limit window (`AuthRateLimit`), which
+  /// forgets everything after 15 minutes and so only slows an attacker down.
+  /// This persists, so a patient attacker still trips the lock (F-05).
+  failedLoginAttempts Int      @default(0)
+  /// Set when `failedLoginAttempts` crosses the threshold. Sign-in is refused
+  /// until this passes, whatever the rate-limit buckets say.
+  lockedUntil         DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  role          Role?            @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  blogPosts     BlogPost[]
+  mediaUploads  MediaAsset[]
+  refundActions Refund[]
+  ticketReplies SupportMessage[]
+  notifications Notification[]
+  sessions      StaffSession[]
+
+  @@index([roleId])
+  @@index([status])
+}
+
+/// Opaque staff session (P11-T02). Separate table and cookie from customers.
+/// The cookie holds a random token; only `tokenHash` (SHA-256) is stored.
+model StaffSession {
+  id         String    @id @default(cuid())
+  staffId    String
+  /// SHA-256 hex of the secret token sent in the cookie.
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  /// Last successful resolve. Touched at most every 10 minutes (P11-T03).
+  lastUsedAt DateTime  @default(now())
+  /// Hashed client IP — never store the raw address.
+  ipHash     String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([expiresAt])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  /// System roles cannot be deleted from the admin UI.
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  staff       Staff[]
+  permissions RolePermission[]
+}
+
+/// Permission catalogue, e.g. `orders.view_unpaid`. Grouped for the admin UI.
+model Permission {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  groupKey  String
+  label     String
+  createdAt DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@index([groupKey])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  grantedAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  /// Short plain-text summary — meta description and listing subtitles.
+  description String?
+  /// Rich buying-guide copy shown at the bottom of the category page.
+  /// Sanitized HTML (same allowlist as blog bodies), so it can carry
+  /// headings, links, and comparison tables. Empty falls back to the built-in
+  /// per-category copy in `lib/catalog/category-page-content.ts`.
+  seoContentHtml String?
+  parentId    String?
+  /// Attribute keys exposed as filters on this category's listing.
+  filterKeys  String[]
+  iconSrc     String?
+  bannerSrc   String?
+  coverSrc    String?
+  position    Int      @default(0)
+  isActive    Boolean  @default(true)
+  /// Admin merchandising flags (Phase 4). Not yet consumed by any storefront
+  /// section — see TASK_STATE.md.
+  isFeatured  Boolean  @default(false)
+  isHot       Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   Category?         @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[]        @relation("CategoryTree")
+  products Product[]
+  discount CategoryDiscount?
+
+  @@index([parentId])
+  @@index([isActive])
+}
+
+model Brand {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  logoSrc     String?
+  position    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+
+  @@index([isActive])
+}
+
+/// Sellable unit catalogue (`/admin/units`). Was a hardcoded mock array.
+/// Note: `Product` has no unit column yet, so this is a catalogue only — the
+/// product form's unit dropdown is still not persisted (see TASK_STATE.md).
+model ProductUnit {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Preset product notes (`/admin/notes`), referenced by `Product.noteIds`.
+/// Seeded from the previous mock catalogue using the same ids so existing
+/// product associations keep resolving.
+model ProductNotePreset {
+  id          String   @id @default(cuid())
+  type        String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+}
+
+/// Storefront badge presets (`/admin/labels`), referenced by `Product.labelIds`.
+/// Same id-preserving seed rationale as ProductNotePreset.
+model ProductLabelPreset {
+  id              String   @id @default(cuid())
+  text            String
+  backgroundColor String
+  /// "light" | "dark" — controls badge text colour.
+  textTone        String   @default("light")
+  /// System labels cannot be deleted from the admin UI.
+  isSystem        Boolean  @default(false)
+  /// Inactive labels are hidden from the storefront and from product pickers.
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model ProductWarranty {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  label       String
+  months      Int?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id         String  @id @default(cuid())
+  slug       String  @unique
+  sku        String  @unique
+  /// Retailer/manufacturer barcode (EAN/UPC or an internally generated code).
+  /// Nullable + unique: Postgres allows multiple NULLs under a unique index,
+  /// so products without a scanned barcode don't collide with each other.
+  barcode    String? @unique
+  name       String
+  brandId    String
+  categoryId String
+  warrantyId String?
+
+  /// Short paragraphs shown above the specification table.
+  overview        String[]
+  priceAmount     Int
+  compareAtAmount Int?
+  /// Inclusive calendar start for the compare-at / sale offer (UTC date).
+  discountStartsAt DateTime?
+  /// Inclusive calendar end for the compare-at / sale offer (UTC date).
+  discountEndsAt   DateTime?
+  currency        Currency    @default(BDT)
+  /// Denormalised from ProductStock for listing queries; the domain layer keeps
+  /// it in sync.
+  stockStatus     StockStatus @default(IN_STOCK)
+  isNew           Boolean     @default(false)
+  isSale          Boolean     @default(false)
+  isActive        Boolean     @default(true)
+  /// Assigned to the Promotional Products channel (`/admin/promotions/products`).
+  /// Merchandising only, and deliberately separate from `isSale` (Today's Deal)
+  /// so the two channels can hold different products.
+  isPromotional   Boolean     @default(false)
+  /// Storefront featured / catalogue order. Lower number appears first.
+  position        Int         @default(0)
+  /// Shipping weight in grams — feeds the weight-based zone rate (AD-254).
+  weightGrams     Int         @default(500)
+
+  /// PC Builder classification. Null for products that are not build parts.
+  builderSlot             BuilderSlot?
+  builderSocket           String?
+  builderRamType          String?
+  builderFormFactor       String?
+  builderTdpWatts         Int?
+  /// SSD/HDD <-> motherboard interface (AD-276). "NVMe" | "SATA".
+  builderStorageInterface String?
+
+  /// Optional YouTube watch / Shorts / youtu.be URL for the product page.
+  youtubeUrl           String?
+  /// Local public path or https URL to a PDF specification sheet.
+  pdfSpecificationSrc  String?
+
+  /// Admin → Notes presets attached to this product (mock catalogue ids for now).
+  noteIds  String[] @default([])
+  /// Admin → Labels presets attached to this product (mock catalogue ids for now).
+  labelIds String[] @default([])
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  brand    Brand            @relation(fields: [brandId], references: [id])
+  category Category         @relation(fields: [categoryId], references: [id])
+  warranty ProductWarranty? @relation(fields: [warrantyId], references: [id], onDelete: SetNull)
+
+  images          ProductImage[]
+  variants        ProductVariant[]
+  attributeValues ProductAttributeValue[]
+  specChips       ProductSpecChip[]
+  specGroups      ProductSpecGroup[]
+  colors          ProductColor[]
+  stock           ProductStock?
+  reviews         ProductReview[]
+  questions       ProductQuestion[]
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  wishlistItems   WishlistItem[]
+  compareItems    CompareListItem[]
+  flashSaleItems  FlashSaleItem[]
+  promotionItems  PromotionProduct[]
+  buildItems      PCBuildItem[]
+  viewEvents      ProductViewEvent[]
+  b2bPrice        B2BProductPrice?
+
+  relatedTo   Product[] @relation("RelatedProducts")
+  relatedFrom Product[] @relation("RelatedProducts")
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([isActive, publishedAt])
+  @@index([isActive, position])
+  @@index([priceAmount])
+  @@index([builderSlot])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  src       String
+  alt       String
+  position  Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, position])
+}
+
+model ProductVariant {
+  id              String   @id @default(cuid())
+  productId       String
+  sku             String   @unique
+  name            String
+  priceAmount     Int
+  compareAtAmount Int?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  product    Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stock      ProductStock?
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([productId])
+}
+
+/// Attribute definition. Drives listing facets and filtering only — the
+/// machine-comparable value ("512GB"), not the wording shown to a shopper
+/// ("512GB SSD"), which lives in ProductSpecChip / ProductSpecRow.
+model ProductAttribute {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  label         String
+  unit          String?
+  isFilterable  Boolean  @default(false)
+  /// Suggested filter values shown in admin. Facets still come from product values.
+  allowedValues String[] @default([])
+  position      Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  values ProductAttributeValue[]
+}
+
+model ProductAttributeValue {
+  id          String @id @default(cuid())
+  productId   String
+  attributeId String
+  value       String
+  position    Int    @default(0)
+
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, attributeId])
+  @@index([attributeId, value])
+}
+
+/// Selectable product colours (name + optional hex swatch). Stock is shared
+/// at product level for this lighter model; each colour can still be ordered.
+model ProductColor {
+  id        String   @id @default(cuid())
+  productId String
+  name      String
+  /// Optional #RGB or #RRGGBB for storefront swatches.
+  hex       String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  product   Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images    ProductColorImage[]
+  cartItems CartItem[]
+
+  @@unique([productId, name])
+  @@index([productId, position])
+}
+
+/// Gallery images for one product colour. When empty, the storefront falls
+/// back to the product-level ProductImage set.
+model ProductColorImage {
+  id       String @id @default(cuid())
+  colorId  String
+  src      String
+  alt      String
+  position Int    @default(0)
+
+  color ProductColor @relation(fields: [colorId], references: [id], onDelete: Cascade)
+
+  @@index([colorId, position])
+}
+
+/// Summary chips on the product card, in display order.
+///
+/// Stored per product rather than derived from attributes: the chip wording
+/// differs from the filterable value ("512GB SSD" vs "512GB"), and some
+/// products have chips with no corresponding attribute at all.
+model ProductSpecChip {
+  id        String @id @default(cuid())
+  productId String
+  label     String
+  value     String
+  position  Int    @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, position])
+}
+
+/// One section of the specification table on the product page.
+///
+/// The grouping belongs to the product, not to the attribute: `storage` sits
+/// under "Core" on a laptop and under "Phone" on a handset, so it cannot be a
+/// column on ProductAttribute.
+model ProductSpecGroup {
+  id        String @id @default(cuid())
+  productId String
+  title     String
+  position  Int    @default(0)
+
+  product Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rows    ProductSpecRow[]
+
+  @@unique([productId, title])
+  @@index([productId, position])
+}
+
+model ProductSpecRow {
+  id       String @id @default(cuid())
+  groupId  String
+  label    String
+  value    String
+  position Int    @default(0)
+
+  group ProductSpecGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, position])
+}
+
+/// Stock for a product or one of its variants.
+model ProductStock {
+  id                String   @id @default(cuid())
+  productId         String?  @unique
+  variantId         String?  @unique
+  quantity          Int      @default(0)
+  /// Held by pending orders; available = quantity - reserved.
+  reserved          Int      @default(0)
+  lowStockThreshold Int      @default(5)
+  updatedAt         DateTime @updatedAt
+
+  product Product?        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Reviews and questions
+// ---------------------------------------------------------------------------
+
+enum ModerationStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+model ProductReview {
+  id           String           @id @default(cuid())
+  productId    String
+  userId       String?
+  authorName   String
+  rating       Int
+  title        String?
+  body         String
+  status       ModerationStatus @default(PENDING)
+  /// Seeded/editorial reviews entered by staff rather than customers.
+  isStaffEntry Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId, status])
+  @@index([userId])
+}
+
+enum QuestionStatus {
+  PENDING
+  ANSWERED
+}
+
+model ProductQuestion {
+  id         String         @id @default(cuid())
+  productId  String
+  userId     String?
+  askerName  String
+  askerEmail String?
+  question   String
+  answer     String?
+  answeredBy String?
+  answeredAt DateTime?
+  status     QuestionStatus @default(PENDING)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Cart, wishlist, compare
+// ---------------------------------------------------------------------------
+
+model Cart {
+  id               String   @id @default(cuid())
+  userId           String?
+  /// Guest carts are keyed by an opaque cookie token.
+  sessionToken     String?  @unique
+  couponCode       String?
+  shippingMethodId String?
+  shippingAreaId   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user           User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shippingMethod ShippingMethod? @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+  shippingArea   ShippingArea?   @relation(fields: [shippingAreaId], references: [id], onDelete: SetNull)
+  items          CartItem[]
+
+  @@index([userId])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  variantId String?
+  colorId   String?
+  quantity  Int      @default(1)
+  /// Set when this line was added via "Add build to cart" (AD-276) — lets a
+  /// real order later show which items came from the same PC build, without
+  /// a hard FK to PCBuild (a saved build can be pruned independently).
+  buildBatchId String?
+  /// Which PC Builder slot this line filled, when buildBatchId is set.
+  builderSlot  BuilderSlot?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  color   ProductColor?   @relation(fields: [colorId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId, variantId, colorId])
+  @@index([productId])
+  @@index([colorId])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items WishlistItem[]
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  wishlistId String
+  productId  String
+  addedAt    DateTime @default(now())
+
+  wishlist Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([wishlistId, productId])
+  @@index([productId])
+}
+
+model CompareList {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CompareListItem[]
+}
+
+model CompareListItem {
+  id            String   @id @default(cuid())
+  compareListId String
+  productId     String
+  addedAt       DateTime @default(now())
+
+  compareList CompareList @relation(fields: [compareListId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([compareListId, productId])
+  @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// Orders, payments, refunds
+// ---------------------------------------------------------------------------
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+/// Where an order currently stands with respect to the stock it claimed.
+///
+/// Separate from `OrderStatus` on purpose: status is the customer-facing
+/// lifecycle, this is the inventory ledger. It exists so a reservation can be
+/// released exactly once even though release is reachable from two independent
+/// paths (order cancellation and payment failure), and so the release is
+/// reversible when an admin moves a cancelled order back to PENDING.
+enum OrderStockState {
+  /// Units are held against ProductStock.reserved.
+  RESERVED
+  /// Units were returned to available stock (cancelled / failed payment).
+  RELEASED
+  /// Goods were delivered — the reservation became a real quantity decrement.
+  CONVERTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Order {
+  id     String  @id @default(cuid())
+  /// The customer-facing Order ID, and the only identifier that should appear
+  /// outside this table. Digits only for every order created since the
+  /// `order_number_seq` sequence was introduced; orders predating it keep
+  /// their `TH-YYYYMMDD-XXXXXXXX` numbers and are never renumbered, because
+  /// those are already printed on invoices and recorded at the gateways.
+  /// `Order_number_format` enforces both shapes and forbids anything else.
+  number String  @unique
+  userId String?
+
+  /// Contact snapshot: an order stays readable if the account is deleted.
+  customerName  String
+  customerEmail String
+  customerPhone String
+
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  /// Inventory ledger state — see `OrderStockState`. Every order starts holding
+  /// its reservation, which is what `create-order` writes.
+  stockState    OrderStockState @default(RESERVED)
+
+  currency       Currency @default(BDT)
+  subtotalAmount Int
+  discountAmount Int      @default(0)
+  shippingAmount Int      @default(0)
+  taxAmount      Int      @default(0)
+  /// Flat per-order charge from `StoreOperationsSettings.serviceChargeAmount`,
+  /// snapshotted at placement. Its own column rather than being folded into
+  /// `shippingAmount` or `taxAmount`: those have specific meanings on an
+  /// invoice and in any tax return, and a service charge is neither.
+  serviceChargeAmount Int  @default(0)
+  totalAmount    Int
+
+  couponId   String?
+  couponCode String?
+
+  shippingMethodId    String?
+  shippingMethodLabel String?
+  shippingAreaId      String?
+  /// Address snapshot at the time of ordering.
+  shippingAddress     String
+  billingAddress      String?
+
+  notes        String?
+  staffNotes   String?
+  trackingCode String?
+  carrierId    String?
+
+  placedAt    DateTime  @default(now())
+  confirmedAt DateTime?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  cancelledAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  user           User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  coupon         Coupon?          @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  shippingMethod ShippingMethod?  @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+  shippingArea   ShippingArea?    @relation(fields: [shippingAreaId], references: [id], onDelete: SetNull)
+  carrier        ShippingCarrier? @relation(fields: [carrierId], references: [id], onDelete: SetNull)
+
+  items    OrderItem[]
+  payments Payment[]
+  refunds  Refund[]
+  tickets  SupportTicket[]
+
+  couponRedemption CouponRedemption?
+
+  @@index([userId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([placedAt])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String?
+  variantId String?
+
+  /// Snapshots: the line must not change if the product is edited later.
+  productName String
+  sku         String
+  unitAmount  Int
+  quantity    Int
+  totalAmount Int
+  /// Selected colour snapshot (name + optional hex) when ordered.
+  colorName   String?
+  colorHex    String?
+  /// Set when this line came from "Add build to cart" (AD-276) — real PC
+  /// Builder order traceability, carried from the cart line at checkout.
+  buildBatchId String?
+  builderSlot  BuilderSlot?
+
+  product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+/// A payment attempt against an order. Only gateway references are stored —
+/// never card numbers, wallet PINs, or gateway secrets.
+model Payment {
+  id       String  @id @default(cuid())
+  orderId  String
+  provider String
+  method   String?
+
+  status   PaymentStatus @default(PENDING)
+  amount   Int
+  currency Currency      @default(BDT)
+
+  /// Gateway transaction id. Unique per provider so a replayed webhook cannot
+  /// create a second payment (docs/PAYMENT_SECURITY.md).
+  transactionRef String?
+  /// Hosted session id (bKash paymentID / SSLCommerz sessionkey). Kept after
+  /// PAID so a later refund can call the gateway.
+  sessionRef String?
+  /// Caller-supplied key that makes retried requests safe.
+  idempotencyKey String? @unique
+  failureReason  String?
+
+  authorizedAt DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds Refund[]
+
+  @@unique([provider, transactionRef])
+  @@index([orderId])
+  @@index([status])
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum RefundChannel {
+  WALLET
+  OFFLINE
+  GATEWAY
+}
+
+enum RefundPayoutStatus {
+  PENDING
+  /// Claimed by a completion attempt that is calling the gateway right now.
+  /// The claim is what makes the payout single-shot: only one caller can move
+  /// a refund PENDING -> PROCESSING, so only that caller reaches the gateway.
+  PROCESSING
+  PAID
+}
+
+model RefundReason {
+  id        String    @id @default(cuid())
+  /// CUSTOMER reasons are pickable at request time; ADMIN_REJECT reasons are
+  /// used when declining one.
+  type      ActorType @default(CUSTOMER)
+  reason    String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  refunds Refund[]
+}
+
+model Refund {
+  id            String  @id @default(cuid())
+  code          String  @unique
+  orderId       String
+  paymentId     String?
+  requestedById String?
+  approvedById  String?
+  reasonId      String?
+
+  amount   Int
+  currency Currency @default(BDT)
+
+  status       RefundStatus       @default(REQUESTED)
+  channel      RefundChannel      @default(GATEWAY)
+  payoutStatus RefundPayoutStatus @default(PENDING)
+  reasonText   String?
+  isDispute    Boolean            @default(false)
+  /// Gateway refund reference. Unique so a retried complete cannot pay out twice.
+  payoutRef    String?            @unique
+
+  requestedAt DateTime  @default(now())
+  resolvedAt  DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payment     Payment?      @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  requestedBy User?         @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedBy  Staff?        @relation(fields: [approvedById], references: [id], onDelete: SetNull)
+  reason      RefundReason? @relation(fields: [reasonId], references: [id], onDelete: SetNull)
+  events      RefundEvent[]
+
+  @@index([orderId])
+  @@index([status])
+  @@index([isDispute])
+}
+
+model RefundEvent {
+  id        String    @id @default(cuid())
+  refundId  String
+  actorType ActorType
+  actorName String
+  message   String
+  createdAt DateTime  @default(now())
+
+  refund Refund @relation(fields: [refundId], references: [id], onDelete: Cascade)
+
+  @@index([refundId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Marketing: coupons, promotions, flash sales
+// ---------------------------------------------------------------------------
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum DiscountKind {
+  PERCENT
+  FIXED
+}
+
+model Coupon {
+  id             String       @id @default(cuid())
+  code           String       @unique
+  kind           DiscountKind @default(PERCENT)
+  value          Int
+  label          String?
+  minSpendAmount Int?
+  usageLimit     Int?
+  /// How many times ONE customer may redeem this coupon. `null` means no
+  /// per-customer cap, which is the behaviour that existed before this field
+  /// and remains the default — `usageLimit` alone caps the total across
+  /// everyone, so a coupon with no global limit could be reused indefinitely
+  /// by a single account (DSA-14).
+  perUserLimit   Int?
+  /// Maintained transactionally when an order is placed.
+  usageCount     Int          @default(0)
+  isActive       Boolean      @default(true)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  orders      Order[]
+  redemptions CouponRedemption[]
+
+  @@index([isActive, startsAt, endsAt])
+}
+
+/// One customer's use of one coupon on one order.
+///
+/// Written in the same transaction that creates the order and increments
+/// `Coupon.usageCount`, so the ledger cannot drift from the counter. Exists
+/// because `usageCount` alone cannot answer "has THIS customer used it
+/// before?" — which is what a per-customer cap needs (DSA-14).
+model CouponRedemption {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  orderId   String   @unique
+  createdAt DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([couponId, userId])
+  @@index([userId])
+}
+
+enum PromotionKind {
+  PROMOTION
+  DEAL
+}
+
+enum PromotionChannel {
+  HOMEPAGE
+  CATEGORY
+  SITEWIDE
+}
+
+model Promotion {
+  id        String           @id @default(cuid())
+  slug      String           @unique
+  name      String
+  kind      PromotionKind    @default(PROMOTION)
+  channel   PromotionChannel @default(HOMEPAGE)
+  status    CampaignStatus   @default(DRAFT)
+  summary   String?
+  priority  Int              @default(0)
+  /// Offer artwork shown on /offers. The banner carries the whole message.
+  bannerSrc String?
+  /// Short category word for the rotated strip down the banner's left edge
+  /// (e.g. "MONITOR"). Falls back to the channel when unset.
+  bannerLabel String?
+  /// Where the banner links. Local storefront path only.
+  bannerHref  String?
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  products PromotionProduct[]
+
+  @@index([status, startsAt, endsAt])
+}
+
+model PromotionProduct {
+  promotionId String
+  productId   String
+  position    Int    @default(0)
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, productId])
+  @@index([productId])
+}
+
+model FlashSale {
+  id                 String         @id @default(cuid())
+  slug               String         @unique
+  title              String
+  status             CampaignStatus @default(DRAFT)
+  isFeatured         Boolean        @default(false)
+  bannerSrc          String?
+  maxDiscountPercent Int?
+  startsAt           DateTime
+  endsAt             DateTime
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  items FlashSaleItem[]
+
+  @@index([status, startsAt, endsAt])
+}
+
+model FlashSaleItem {
+  flashSaleId     String
+  productId       String
+  discountPercent Int?
+  priceAmount     Int?
+  /// Optional cap on units sold at the campaign price.
+  quantityLimit   Int?
+
+  flashSale FlashSale @relation(fields: [flashSaleId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([flashSaleId, productId])
+  @@index([productId])
+}
+
+/// Percentage discount applied to every product in a category for a window.
+model CategoryDiscount {
+  id              String    @id @default(cuid())
+  categoryId      String    @unique
+  discountPercent Int
+  startsAt        DateTime?
+  endsAt          DateTime?
+  isActive        Boolean   @default(true)
+  updatedAt       DateTime  @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Shipping
+// ---------------------------------------------------------------------------
+
+model ShippingCountry {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  states ShippingState[]
+}
+
+model ShippingState {
+  id        String   @id @default(cuid())
+  countryId String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  country ShippingCountry @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  cities  ShippingCity[]
+
+  @@unique([countryId, name])
+}
+
+model ShippingCity {
+  id        String   @id @default(cuid())
+  stateId   String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  state ShippingState  @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  areas ShippingArea[]
+
+  @@unique([stateId, name])
+}
+
+model ShippingZone {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  /// Weight-based rate (AD-254): baseRateAmount covers the first
+  /// baseWeightGrams; extraRatePerKgAmount applies per additional kg
+  /// beyond that. Replaces ShippingMethod.baseRateAmount as the price
+  /// source for non-pickup methods.
+  baseWeightGrams      Int      @default(1000)
+  baseRateAmount       Int      @default(0)
+  extraRatePerKgAmount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  areas     ShippingArea[]
+  methods   ShippingMethodZone[]
+  districts District[]
+}
+
+/// Bangladesh district (zilla) — Admin/checkout address selection (AD-254).
+/// Maps to a ShippingZone for pricing (Dhaka → dhaka_metro, all others →
+/// outside_dhaka). Seeded with the full official list.
+model District {
+  id       String @id @default(cuid())
+  name     String @unique
+  zoneId   String
+  position Int    @default(0)
+
+  zone     ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  upazilas Upazila[]
+
+  @@index([zoneId])
+}
+
+/// Bangladesh upazila (sub-district) — the fine-grained checkout address
+/// selection under a District (AD-254). Each upazila auto-provisions a
+/// matching ShippingArea in its district's zone so the existing Cart/
+/// Order/pricing pipeline needs no changes.
+model Upazila {
+  id             String  @id @default(cuid())
+  districtId     String
+  name           String
+  /// The ShippingArea this upazila resolves to for cart/order selection.
+  shippingAreaId String? @unique
+
+  district     District      @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  shippingArea ShippingArea? @relation(fields: [shippingAreaId], references: [id], onDelete: SetNull)
+
+  @@unique([districtId, name])
+}
+
+model ShippingArea {
+  id        String   @id @default(cuid())
+  zoneId    String
+  cityId    String?
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  zone    ShippingZone  @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  city    ShippingCity? @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  carts   Cart[]
+  orders  Order[]
+  upazila Upazila?
+
+  @@unique([zoneId, name])
+  @@index([cityId])
+}
+
+model ShippingMethod {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String
+  description    String?
+  baseRateAmount Int?
+  currency       Currency @default(BDT)
+  isPickup       Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  zones  ShippingMethodZone[]
+  carts  Cart[]
+  orders Order[]
+}
+
+model ShippingMethodZone {
+  methodId   String
+  zoneId     String
+  rateAmount Int?
+
+  method ShippingMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+  zone   ShippingZone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@id([methodId, zoneId])
+  @@index([zoneId])
+}
+
+model ShippingCarrier {
+  id                  String   @id @default(cuid())
+  code                String   @unique
+  name                String
+  trackingUrlTemplate String?
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+
+  orders Order[]
+}
+
+// ---------------------------------------------------------------------------
+// Support
+// ---------------------------------------------------------------------------
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  DELIVERY
+  WARRANTY
+  ORDER
+  PRODUCT
+  PAYMENT
+  GENERAL
+}
+
+model SupportTicket {
+  id            String         @id @default(cuid())
+  number        String         @unique
+  userId        String?
+  orderId       String?
+  subject       String
+  customerName  String
+  customerEmail String
+  status        TicketStatus   @default(OPEN)
+  priority      TicketPriority @default(MEDIUM)
+  category      TicketCategory @default(GENERAL)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user     User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order    Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  messages SupportMessage[]
+
+  @@index([status, updatedAt])
+  @@index([userId])
+}
+
+model SupportMessage {
+  id            String    @id @default(cuid())
+  ticketId      String
+  authorType    ActorType
+  authorName    String
+  authorStaffId String?
+  body          String
+  createdAt     DateTime  @default(now())
+
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorStaff Staff?        @relation(fields: [authorStaffId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+}
+
+enum ComplaintStatus {
+  NEW
+  READ
+  REPLIED
+  ARCHIVED
+}
+
+enum ComplaintSource {
+  CONTACT_FORM
+  PRODUCT_REQUEST
+  FOOTER
+  /// The support-hub form at /support.
+  SUPPORT
+}
+
+/// Contact-form messages and product requests: inbound notes that are not
+/// full support tickets.
+model Complaint {
+  id            String          @id @default(cuid())
+  userId        String?
+  name          String
+  email         String
+  phone         String?
+  subject       String?
+  message       String
+  /// Set when the source is a product request.
+  productWanted String?
+  reply         String?
+  staffNotes    String?
+  status        ComplaintStatus @default(NEW)
+  source        ComplaintSource @default(CONTACT_FORM)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([source])
+}
+
+// ---------------------------------------------------------------------------
+// Content, media, messaging
+// ---------------------------------------------------------------------------
+
+enum PublishStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+}
+
+model BlogCategory {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  posts BlogPost[]
+}
+
+model BlogPost {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  title          String
+  excerpt        String?
+  body           String
+  categoryId     String?
+  authorStaffId  String?
+  coverMediaId   String?
+  status         PublishStatus @default(DRAFT)
+  seoTitle       String?
+  seoDescription String?
+  publishedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  category    BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  authorStaff Staff?        @relation(fields: [authorStaffId], references: [id], onDelete: SetNull)
+  coverMedia  MediaAsset?   @relation(fields: [coverMediaId], references: [id], onDelete: SetNull)
+
+  @@index([status, publishedAt])
+  @@index([categoryId])
+}
+
+enum SubscriberStatus {
+  SUBSCRIBED
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+model NewsletterSubscriber {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  name           String?
+  status         SubscriberStatus @default(SUBSCRIBED)
+  source         String?
+  subscribedAt   DateTime         @default(now())
+  unsubscribedAt DateTime?
+
+  @@index([status])
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String?
+  staffId   String?
+  channel   NotificationChannel @default(IN_APP)
+  type      String
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  sentAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user  User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staff Staff? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([staffId, readAt])
+}
+
+enum MediaKind {
+  IMAGE
+  SVG
+  DOCUMENT
+}
+
+model MediaAsset {
+  id                String    @id @default(cuid())
+  path              String    @unique
+  filename          String
+  kind              MediaKind @default(IMAGE)
+  folder            String    @default("general")
+  alt               String?
+  sizeBytes         Int?
+  width             Int?
+  height            Int?
+  uploadedByStaffId String?
+  createdAt         DateTime  @default(now())
+
+  uploadedByStaff Staff?     @relation(fields: [uploadedByStaffId], references: [id], onDelete: SetNull)
+  blogPosts       BlogPost[]
+
+  @@index([folder])
+}
+
+// ---------------------------------------------------------------------------
+// PC Builder
+// ---------------------------------------------------------------------------
+
+enum PcBuildStatus {
+  DRAFT
+  SAVED
+  SHARED
+}
+
+model PCBuild {
+  id          String        @id @default(cuid())
+  userId      String?
+  name        String
+  status      PcBuildStatus @default(DRAFT)
+  /// Public share id; contains no personal data.
+  shareSlug   String?       @unique
+  isFeatured  Boolean       @default(false)
+  totalAmount Int?
+  currency    Currency      @default(BDT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user  User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items PCBuildItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model PCBuildItem {
+  id        String      @id @default(cuid())
+  buildId   String
+  slot      BuilderSlot
+  productId String
+  quantity  Int         @default(1)
+
+  build   PCBuild @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([buildId, slot])
+  @@index([productId])
+}
+
+enum PcRuleType {
+  SOCKET
+  RAM_TYPE
+  PSU_WATTAGE
+  FORM_FACTOR
+  STORAGE_INTERFACE
+}
+
+model PCCompatibilityRule {
+  id          String     @id @default(cuid())
+  key         String     @unique
+  label       String
+  type        PcRuleType
+  description String?
+  isEnabled   Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([type])
+}
+
+/// Real master on/off switch for the storefront PC Builder (AD-275).
+/// Persisted only for now — the live storefront builder does not yet read
+/// this (disclosed in the admin UI); see PcBuilderSlotConfig for the same
+/// caveat on a per-slot basis.
+model PcBuilderSettings {
+  id        String   @id @default("singleton")
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+/// Per-slot enabled/required override (AD-275) — one row per real
+/// BuilderSlot enum value. Applied live via
+/// lib/pc-builder/settings.ts#getEffectiveBuilderSlots (Phase 8): a
+/// disabled slot is dropped from the storefront picker and the required
+/// count; `required` overrides the static default from
+/// lib/domain/pc-builder/slots.ts.
+model PcBuilderSlotConfig {
+  slot      BuilderSlot @id
+  enabled   Boolean     @default(true)
+  required  Boolean     @default(true)
+  updatedAt DateTime    @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Configuration and audit
+// ---------------------------------------------------------------------------
+
+/// Single row of store-wide business settings.
+model SiteSettings {
+  id             String   @id @default("singleton")
+  storeName      String
+  legalName      String?
+  supportEmail   String?
+  phone          String?
+  address        String?
+  city           String?
+  timezone       String   @default("Asia/Dhaka")
+  taxId          String?
+  /// Public path for the store logo (e.g. `/uploads/general/...`). One logo:
+  /// the storefront has no light mode, so there is a single chrome to serve.
+  logoSrc        String?
+  /// Rendered logo height in CSS pixels. Width follows the artwork's own
+  /// aspect ratio, so this is the only dimension an admin needs to set.
+  logoHeightPx   Int      @default(32)
+  faviconSrc     String?
+  currency       Currency @default(BDT)
+  currencySymbol String   @default("৳")
+  /// Display-only formatting (AD-006: BDT is the only enabled currency in v1).
+  currencyDecimalPlaces   Int    @default(0)
+  /// "before" | "after"
+  currencySymbolPosition  String @default("before")
+  updatedAt      DateTime @updatedAt
+}
+
+/// Store operations configuration — the seven "Setup & Configurations"
+/// sub-pages (order config, VAT/tax, pickup points, invoice, order tracking,
+/// shipping label, thermal printer). Kept as one singleton rather than seven
+/// near-empty tables: ~16 fields total, all owned by one admin section and one
+/// permission (`business.manage`). Identity/contact fields stay on
+/// `SiteSettings` — this model deliberately does not duplicate them.
+model StoreOperationsSettings {
+  id String @id @default("singleton")
+
+  // Order configuration
+  orderCodePrefix       String  @default("TH-")
+  minimumOrderAmount    Int     @default(0)
+  autoConfirmPaidOrders Boolean @default(false)
+
+  // VAT, tax & other charges. Rate is stored in basis points (1500 = 15.00%)
+  // so reduced rates such as 7.5% are representable without floating point.
+  vatRateBasisPoints  Int     @default(0)
+  serviceChargeAmount Int     @default(0)
+  taxIncludedInPrice  Boolean @default(true)
+
+  // Pickup points
+  pickupEnabled      Boolean @default(true)
+  defaultPickupPoint String  @default("dhaka-showroom")
+
+  // Invoice
+  invoicePrefix String @default("INV-")
+  invoiceFooter String @default("")
+
+  // Order tracking
+  trackingUrlTemplate  String  @default("")
+  notifyOnStatusChange Boolean @default(true)
+
+  // Shipping label
+  labelSize     String  @default("4x6")
+  labelShowLogo Boolean @default(true)
+
+  // Thermal printer
+  thermalPrinterEnabled Boolean @default(false)
+  thermalPaperWidthMm   Int     @default(80)
+
+  updatedAt DateTime @updatedAt
+}
+
+/// Storefront footer widgets (AD-230). One JSON document drives columns,
+/// social links, about copy, copyright, and display toggles.
+model FooterSettings {
+  id         String   @id @default("singleton")
+  configJson String   @default("{}")
+  updatedAt  DateTime @updatedAt
+}
+
+/// Real static-content pages (AD-273) — About/Contact/FAQ/Support/Warranty/
+/// Shipping/Returns/Terms. `slug` is restricted to a fixed known set (see
+/// CONTENT_PAGE_SLUGS in lib/content/pages.ts) since each maps to an
+/// existing static storefront route, not an arbitrary new one. `body` is
+/// real HTML, sanitized server-side on every save AND again at render time
+/// (same allowlist as the blog post body, AD-264) — never trust stored
+/// HTML as safe on its own.
+model ContentPage {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  body            String   @default("")
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String[] @default([])
+  updatedAt       DateTime @updatedAt
+}
+
+/// Design Studio theme settings (AD-272): real storefront brand colors,
+/// body/heading font choice, auth-page colors, and admin-navbar colors.
+/// Watermark fields are saved for real but automatic watermarking on
+/// upload is not implemented yet — disclosed in the admin UI, same
+/// pattern as this app's other persisted-but-not-yet-enforced settings.
+model DesignThemeSettings {
+  id String @id @default("singleton")
+
+  /// Storefront brand colours. All nullable: null means "use the built-in
+  /// default from app/globals.css", which is how a fresh install and an
+  /// install that has never opened the Appearance page stay identical.
+  ///
+  /// The column name is NOT the CSS variable name, and the mapping is not
+  /// always obvious (`themeAccentColor` drives `--color-secondary`). The
+  /// authoritative map is `THEME_COLOR_TOKENS` in lib/design/theme-settings.ts
+  /// — that table, not these names, decides what any value can affect.
+  themeBaseColor   String?
+  themeAccentColor String?
+  themeHoverColor  String?
+  themeSoftColor   String?
+
+  /// Added for Admin -> Appearance. Each drives a token that already exists in
+  /// app/globals.css and is already consumed by Tailwind utilities across the
+  /// storefront, so setting one retints every component that uses it without
+  /// any component change.
+  themeTextColor       String?
+  themeBackgroundColor String?
+  themeSurfaceColor    String?
+  themeBorderColor     String?
+  /// The logo's glow blue (`--color-primary-bright`) — the accent that stays
+  /// legible on the dark navy panels, where plain primary measures 2.92:1.
+  themeBrightColor     String?
+  /// Foreground on filled primary surfaces (`--color-primary-foreground`),
+  /// i.e. the text colour of a primary button.
+  themeOnPrimaryColor  String?
+
+  /// Site chrome: the dark bands at the top and bottom of every page. Split
+  /// from `themeTextColor` so the chrome can be retinted for a campaign
+  /// without recolouring every paragraph on the site.
+  themeHeaderBgColor   String?
+  themeHeaderTextColor String?
+  themeFooterBgColor   String?
+  themeFooterTextColor String?
+
+  watermarkEnabled  Boolean @default(false)
+  watermarkType     String  @default("image")
+  watermarkImageSrc String?
+  watermarkPosition String?
+
+  /// "inter" | "noto-bengali" | "system-ui" | null (site default)
+  bodyFont    String?
+  headingFont String?
+
+  authBgColor         String?
+  authPanelColor      String?
+  authIllustrationSrc String?
+
+  adminNavBgColor   String?
+  adminNavTextColor String?
+
+  updatedAt DateTime @updatedAt
+}
+
+/// Real homepage promotional banners (AD-272) — replaces the previously
+/// hardcoded demo banners in lib/catalog/promo-banners.ts. `slot` groups
+/// banners by placement: "flash-wide" (single wide strip), "promo-tile"
+/// (paired tiles), "category" (category listing banners).
+model HomeBanner {
+  id       String  @id @default(cuid())
+  slot     String
+  eyebrow  String
+  title    String
+  text     String?
+  cta      String
+  href     String
+  imageSrc String
+  imageAlt String
+  position Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slot, isActive, position])
+}
+
+/// Global refund policy (AD-233). Category-day map is JSON keyed by category slug.
+model RefundSettings {
+  id               String   @id @default("singleton")
+  /// "global" | "category"
+  refundType       String   @default("global")
+  globalRefundDays Int      @default(7)
+  disputeEnabled   Boolean  @default(false)
+  disputeDays      Int      @default(3)
+  /// Public path for PDP refund sticker (e.g. `/uploads/general/...`).
+  stickerSrc       String?
+  /// JSON: { [categorySlug]: days }
+  categoryDaysJson String   @default("{}")
+  updatedAt        DateTime @updatedAt
+}
+
+/// OTP/SMS gateway settings (P16-T03). API keys and secrets belong in
+/// environment variables, never in this table. Sending and verifying OTP
+/// codes is deferred until a dedicated auth flow exists.
+model OtpSmsConfiguration {
+  id              String   @id @default("singleton")
+  provider        String   @default("local-mock")
+  senderId        String?
+  otpLength       Int      @default(6)
+  expiryMinutes   Int      @default(5)
+  otpLogin        Boolean  @default(false)
+  otpRegistration Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}
+
+/// Outbound email settings (P16-T04). SMTP passwords belong in environment
+/// variables, never in this table. Real mail send is deferred.
+model SmtpConfiguration {
+  id           String   @id @default("singleton")
+  mailerType   String   @default("smtp")
+  host         String?
+  port         Int      @default(587)
+  username     String?
+  encryption   String   @default("tls")
+  fromAddress  String?
+  fromName     String?
+  updatedAt    DateTime @updatedAt
+}
+
+/// Merchant gateway credentials for checkout (AD-207).
+/// Secret fields are AES-GCM ciphertext (GATEWAY_SECRETS_KEY). Never expose
+/// decrypted values to Client Components.
+model PaymentGatewaySetting {
+  id                   String   @id @default(cuid())
+  /// sslcommerz | bkash | nagad | cod
+  provider             String   @unique
+  enabled              Boolean  @default(false)
+  /// When true, use provider sandbox hosts (`live: false` in adapters).
+  sandbox              Boolean  @default(true)
+  /// Non-secret public ids (e.g. SSLCommerz store id, bKash username).
+  publicConfigJson     String   @default("{}")
+  /// Encrypted JSON blob of secret fields for this provider.
+  secretsCiphertext    String?
+  secretsUpdatedAt     DateTime?
+  updatedByStaffId     String?
+  updatedAt            DateTime @updatedAt
+  createdAt            DateTime @default(now())
+
+  @@index([enabled])
+}
+
+/// File system / storage driver + cache settings (Admin → Settings →
+/// Filesystem). Persisted config only — uploads always write to local disk
+/// (lib/media/admin-media.ts) and cache/sessions use their existing
+/// backend regardless of these values; no S3/Backblaze/Redis client exists
+/// to actually switch to. Secrets are encrypted with STORAGE_SECRETS_KEY
+/// (env-only, never stored in plaintext) via lib/storage/secret-crypto.ts.
+model FilesystemSettings {
+  id                     String   @id @default("singleton")
+  localActive            Boolean  @default(true)
+  s3Active               Boolean  @default(false)
+  s3Key                  String?
+  s3Region               String?
+  s3Bucket               String?
+  s3SecretCiphertext     String?
+  backblazeActive        Boolean  @default(false)
+  backblazeKeyId         String?
+  backblazeBucket        String?
+  backblazeRegion        String?
+  backblazeKeyCiphertext String?
+  cacheDriver            String   @default("file")
+  sessionDriver          String   @default("file")
+  redisHost              String?
+  redisPort              Int?
+  redisPasswordCiphertext String?
+  updatedAt              DateTime @updatedAt
+}
+
+/// Admin → Settings → Feature Activation toggles. Persisted state only —
+/// none of these flags gate live storefront/checkout behavior yet (no
+/// enforcement code reads them). See lib/admin/feature-flags-shared.ts for
+/// the fixed set of known flag ids and their defaults.
+model FeatureFlagSetting {
+  id        String   @id
+  enabled   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+/// Storefront locale list (Admin → Settings → Languages). No i18n runtime
+/// exists yet (no translation storage, no locale routing) — this persists
+/// which locales are enabled/default/RTL, not live translated content.
+model LanguageSetting {
+  code      String   @id
+  label     String
+  enabled   Boolean  @default(true)
+  isDefault Boolean  @default(false)
+  rtl       Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+/// Courier API credentials (Pathao/Steadfast — Admin → Shipping → Select
+/// Shipping Method). Secrets encrypted via COURIER_SECRETS_KEY, mirrors
+/// PaymentGatewaySetting's shape exactly. Used to actually create parcels
+/// from Admin → Orders ("Send to Pathao/Steadfast", AD-253).
+model CourierSetting {
+  id                String    @id @default(cuid())
+  /// pathao | steadfast
+  provider          String    @unique
+  enabled           Boolean   @default(false)
+  publicConfigJson  String    @default("{}")
+  secretsCiphertext String?
+  secretsUpdatedAt  DateTime?
+  updatedByStaffId  String?
+  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime  @default(now())
+
+  @@index([enabled])
+}
+
+/// Cash-on-delivery display + availability (Admin → Payments → Offline).
+model OfflinePaymentSettings {
+  id           String   @id @default("singleton")
+  codEnabled   Boolean  @default(true)
+  label        String   @default("Cash on delivery")
+  instructions String   @default("Pay in cash when the order arrives.")
+  updatedAt    DateTime @updatedAt
+}
+
+/// EMI teaser display on the PDP (Admin → Payments → EMI). Display-only —
+/// no EMI lender/approval backend exists; this only controls what shows.
+model EmiSettings {
+  id               String  @id @default("singleton")
+  enabled          Boolean @default(false)
+  /// JSON array of enabled tenure months, e.g. [3,6,12].
+  tenureMonthsJson String  @default("[3,6,12]")
+  partnerName      String?
+  interestNote     String?
+  minOrderAmount   Int     @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+enum SocialLoginProvider {
+  GOOGLE
+  FACEBOOK
+  TWITTER
+  APPLE
+}
+
+/// Customer OAuth login providers (P16-T05). Client secrets belong in
+/// environment variables, never in this table. Live OAuth is deferred.
+model SocialLoginConfiguration {
+  id             String              @id @default(cuid())
+  provider       SocialLoginProvider @unique
+  isEnabled      Boolean             @default(false)
+  publicClientId String?
+  updatedAt      DateTime            @updatedAt
+}
+
+/// Real OAuth2 account link (Phase 9, Google + Facebook). One row per
+/// provider identity a customer has signed in with — looked up first on
+/// every social login before falling back to matching/creating by email.
+model SocialLoginAccount {
+  id                String              @id @default(cuid())
+  provider          SocialLoginProvider
+  providerAccountId String
+  userId            String
+  createdAt         DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// Google reCAPTCHA v3 settings (P16-T05). Secret key belongs in environment
+/// variables. Widget/verify wiring is deferred.
+model RecaptchaConfiguration {
+  id                       String   @id @default("singleton")
+  isEnabled                Boolean  @default(false)
+  siteKey                  String?
+  scoreThreshold           Float    @default(0.5)
+  pageAdminLogin           Boolean  @default(false)
+  pageCustomerLogin        Boolean  @default(false)
+  pageCustomerRegistration Boolean  @default(false)
+  pageForgotPassword       Boolean  @default(false)
+  pageContactUs            Boolean  @default(false)
+  updatedAt                DateTime @updatedAt
+}
+
+/// Firebase enable flag (P16-T05). Project credentials stay in env. Push
+/// / analytics wiring is deferred.
+model FirebaseConfiguration {
+  id        String   @id @default("singleton")
+  isEnabled Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+/// Google Maps enable flag (P16-T06). API keys belong in environment
+/// variables. Maps JavaScript / Places wiring is deferred.
+model GoogleMapConfiguration {
+  id        String   @id @default("singleton")
+  isEnabled Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+enum ChatWidgetProvider {
+  WHATSAPP
+  MESSENGER
+  TAWKTO
+}
+
+/// Storefront chat shortcuts (P16-T06). Public handles only (phone / page
+/// id / Tawk.to property+widget id). Raw scripts are never stored. Tawk.to
+/// renders a real live chat widget on the storefront when enabled
+/// (AD-249); WhatsApp/Messenger stay intent-only (no floating buttons yet).
+model ChatWidgetConfiguration {
+  id           String             @id @default(cuid())
+  provider     ChatWidgetProvider @unique
+  isEnabled    Boolean            @default(false)
+  publicHandle String?
+  updatedAt    DateTime           @updatedAt
+}
+
+/// Social comment plugin settings (P16-T06). Public app id only. Plugin
+/// embed wiring is deferred. Raw scripts are never stored.
+model CommentSystemConfiguration {
+  id          String   @id @default("singleton")
+  isEnabled   Boolean  @default(false)
+  provider    String   @default("facebook")
+  publicAppId String?
+  updatedAt   DateTime @updatedAt
+}
+
+/// Per-page or global SEO defaults. `path` is null for the global record.
+model SEOConfiguration {
+  id             String   @id @default(cuid())
+  path           String?  @unique
+  title          String?
+  description    String?
+  keywords       String[]
+  ogImageMediaId String?
+  /// Sanitized long-form SEO copy rendered on the page itself, not in <head>.
+  /// Lives on the per-path row (the homepage block is path "/"); the
+  /// site-wide defaults row (path null) only carries meta fields.
+  contentHtml    String?
+  updatedAt      DateTime @updatedAt
+}
+
+enum AnalyticsProvider {
+  GA4
+  GTM
+  META_PIXEL
+  MERCHANT_CENTER
+}
+
+/// Raw <script> markup injected verbatim into the storefront head/body end.
+/// Not sanitized — sanitizing would defeat the feature's purpose (running
+/// third-party tracking/chat snippets). Access is the real control: gated
+/// on custom_scripts.manage, granted to the Admin role only.
+model CustomScriptSettings {
+  id           String   @id @default("singleton")
+  headerScript String?
+  footerScript String?
+  updatedAt    DateTime @updatedAt
+}
+
+/// Public measurement ids only (tracking id, pixel id). API tokens and secrets
+/// belong in environment variables, never in the database.
+model AnalyticsConfiguration {
+  id        String            @id @default(cuid())
+  provider  AnalyticsProvider @unique
+  isEnabled Boolean           @default(false)
+  publicId  String?
+  notes     String?
+  updatedAt DateTime          @updatedAt
+}
+
+/// Append-only trail for privileged actions. Never store credentials or raw
+/// personal data here; `ipHash` is hashed, not the address itself.
+model AuditLog {
+  id         String    @id @default(cuid())
+  actorType  ActorType
+  actorId    String?
+  actorLabel String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipHash     String?
+  createdAt  DateTime  @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorType, actorId])
+  @@index([createdAt])
+}
+
+/// Auth attempt counters (P11-T06). `bucketKey` is hashed (IP or email), never
+/// the raw value. Rows are a rolling window, not an audit trail.
+model AuthRateLimit {
+  bucketKey   String   @id
+  windowStart DateTime
+  count       Int
+  updatedAt   DateTime @updatedAt
+
+  @@index([windowStart])
+}
+
+enum OtpChallengePurpose {
+  LOGIN
+  REGISTRATION
+}
+
+/// Real OTP 2FA challenge (Phase 9). Login: created after a correct
+/// password when Enable OTP for login is on and the account has a phone
+/// number — the session is only created once the code is verified.
+/// Registration: created after the registration form validates when Enable
+/// OTP for registration is on — the account itself (and its session) is
+/// only created once the code is verified; `pending*` fields hold the
+/// not-yet-created account until then. Both the challenge token and the
+/// code are stored hashed, never in plaintext (matches session token
+/// hashing in lib/auth/session-token.ts).
+model OtpChallenge {
+  id          String              @id @default(cuid())
+  tokenHash   String              @unique
+  purpose     OtpChallengePurpose
+  phone       String
+  codeHash    String
+  attempts    Int                 @default(0)
+  maxAttempts Int                 @default(5)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime            @default(now())
+
+  /// LOGIN only — the already-existing account this challenge is for.
+  userId String?
+
+  /// REGISTRATION only — the not-yet-created account's data.
+  pendingFullName     String?
+  pendingEmail        String?
+  pendingPhone        String?
+  pendingPasswordHash String?
+
+  @@index([phone])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Marketing — Notifications, Popups, Visitor tracking (AD-258)
+// ---------------------------------------------------------------------------
+
+enum NotificationAudience {
+  CUSTOMER
+  ADMIN
+}
+
+/// Admin-configurable catalogue of notification types (Admin → Notifications →
+/// Types). Real CRUD, but not yet wired to automatic order-lifecycle triggers
+/// (no code currently creates a Notification keyed to one of these) — that is
+/// a separate, larger task. `isLocked` types ship as defaults and cannot be
+/// deleted from the admin UI, but their text/enabled state can still change.
+model NotificationTypeSetting {
+  id          String               @id @default(cuid())
+  name        String               @unique
+  defaultText String
+  audience    NotificationAudience @default(CUSTOMER)
+  enabled     Boolean              @default(true)
+  isLocked    Boolean              @default(false)
+  position    Int                  @default(0)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+/// Global messaging-channel defaults (Admin → Notifications → Settings).
+/// Real persistence; does not itself gate whether email/SMS actually send —
+/// "Send custom" only ever creates in-app rows today.
+model NotificationSettings {
+  id           String   @id @default("singleton")
+  emailEnabled Boolean  @default(true)
+  smsEnabled   Boolean  @default(true)
+  pushEnabled  Boolean  @default(false)
+  fromName     String   @default("Techno House")
+  updatedAt    DateTime @updatedAt
+}
+
+/// Admin-authored storefront pop-up (Admin → Marketing → Dynamic Pop-ups).
+/// Rendered for real on the storefront (AD-258) — at most one shown per
+/// visitor per browser session (tracked client-side via localStorage).
+model Popup {
+  id             String   @id @default(cuid())
+  title          String
+  summary        String
+  imagePath      String?
+  buttonText     String?
+  buttonColor    String   @default("#eab308")
+  buttonTextTone String   @default("dark")
+  link           String?
+  /// Seconds after page load before the pop-up appears.
+  delaySeconds   Int      @default(3)
+  enabled        Boolean  @default(false)
+  isLocked       Boolean  @default(false)
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+/// One real page-view event, keyed to an anonymous per-browser id (a random
+/// cookie value — never an IP address or account id) so the "N people
+/// viewing" widget reflects genuine distinct visitors, not fabricated
+/// numbers. Pruned periodically by the recording path; this is a rolling
+/// window table, not an analytics warehouse.
+model ProductViewEvent {
+  id         String   @id @default(cuid())
+  productId  String
+  viewerKey  String
+  viewedAt   DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, viewedAt])
+}
+
+/// Admin config for the real "N people are viewing this" PDP widget
+/// (Admin → Marketing → Custom Visitors).
+model VisitorWidgetSettings {
+  id             String   @id @default("singleton")
+  enabled        Boolean  @default(false)
+  windowMinutes  Int      @default(15)
+  minToShow      Int      @default(2)
+  updatedAt      DateTime @updatedAt
+}
+
+/// Admin-authored storefront corner toast (Admin → Marketing → Custom
+/// Alerts, AD-259). Rendered for real on the storefront — at most one
+/// shown per visitor per browser session (localStorage), separate from
+/// the modal Popup above. `location` is one of bottom-left/bottom-right/
+/// top-left/top-right; `size` is small/large; `textTone` is light/dark.
+model Alert {
+  id               String   @id @default(cuid())
+  text             String
+  linkLabel        String?
+  link             String?
+  imagePath        String?
+  size             String   @default("small")
+  backgroundColor  String   @default("#000000")
+  textTone         String   @default("light")
+  location         String   @default("bottom-left")
+  /// Null = no auto-close; otherwise seconds before it dismisses itself.
+  autoCloseSeconds Int?
+  enabled          Boolean  @default(false)
+  isLocked         Boolean  @default(false)
+  position         Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+/// Admin config for the "Custom Sale Alert" storefront toast (Admin →
+/// Marketing → Custom Sale Alert, AD-260) — a rotating "Someone from
+/// {area} bought {product}" note. Driven by real OrderItem rows, never
+/// fabricated; never shows the customer's name/email/phone, only the
+/// real shipping area, to avoid exposing purchaser identity publicly.
+/// `productScope` is one of featured/sale/manual; `manualProductIds` only
+/// applies when scope is "manual".
+model SaleAlertSettings {
+  id                 String   @id @default("singleton")
+  enabled            Boolean  @default(false)
+  minIntervalSeconds Int      @default(15)
+  maxIntervalSeconds Int      @default(45)
+  productScope       String   @default("featured")
+  manualProductIds   String[] @default([])
+  updatedAt          DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Email Templates + Newsletter Campaigns (AD-261)
+// ---------------------------------------------------------------------------
+
+enum EmailTemplateAudience {
+  ALL
+  ADMIN
+  CUSTOMER
+  COMMON
+}
+
+/// Real, editable content for the fixed catalogue of transactional email
+/// types (Admin → Marketing → Email Templates). Content only — not yet
+/// wired to real order-lifecycle send triggers (no code creates an email
+/// keyed to one of these today, same disclosed gap as
+/// NotificationTypeSetting); "Send test email" on the edit form is real
+/// and uses the same lib/mail/send.ts sender as SMTP/OTP test-sends.
+model EmailTemplate {
+  id        String                @id @default(cuid())
+  key       String                @unique
+  emailType String
+  subject   String
+  body      String
+  audience  EmailTemplateAudience @default(CUSTOMER)
+  enabled   Boolean               @default(true)
+  isLocked  Boolean               @default(false)
+  position  Int                   @default(0)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+}
+
+enum NewsletterCampaignStatus {
+  DRAFT
+  SENDING
+  SENT
+  FAILED
+}
+
+/// A real newsletter blast sent to subscribed NewsletterSubscriber rows via
+/// the existing SMTP sender (lib/mail/send.ts). `sentCount`/`failedCount`
+/// are the real, measured per-recipient outcome — never assumed successful.
+model NewsletterCampaign {
+  id             String                   @id @default(cuid())
+  subject        String
+  body           String
+  status         NewsletterCampaignStatus @default(DRAFT)
+  recipientCount Int                      @default(0)
+  sentCount      Int                      @default(0)
+  failedCount    Int                      @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+}
+
+enum SmsCampaignStatus {
+  DRAFT
+  SENDING
+  SENT
+  FAILED
+}
+
+/// A real bulk SMS blast to real customers with a phone number, sent via
+/// the existing single-SMS sender (lib/sms/send.ts) — one HTTP call per
+/// recipient, sequential, using whatever provider is configured in
+/// Admin → OTP. `sentCount`/`failedCount` are the real, measured
+/// per-recipient outcome — never assumed successful. `audience` is one
+/// of all/verified/recent, matching the Send Custom Notification pattern.
+model SmsCampaign {
+  id             String            @id @default(cuid())
+  message        String
+  audience       String            @default("all")
+  status         SmsCampaignStatus @default(DRAFT)
+  recipientCount Int               @default(0)
+  sentCount      Int               @default(0)
+  failedCount    Int               @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}

@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
-import { ContentStub } from "@/components/layout/content-stub";
+import {
+  StorefrontContentPage,
+  storefrontContentMetadata,
+} from "@/features/content/storefront-content-page";
 
-export const metadata: Metadata = {
-  title: "Terms — Techno House",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return storefrontContentMetadata("terms", "Terms — Techno House");
+}
 
 export default function TermsPage() {
   return (
-    <ContentStub
-      heading="Terms"
-      title="Terms of use"
-      description="The terms of use will appear here."
+    <StorefrontContentPage
+      slug="terms"
+      fallbackHeading="Terms"
+      fallbackTitle="Terms of use"
+      fallbackDescription="The terms of use will appear here."
     />
   );
 }

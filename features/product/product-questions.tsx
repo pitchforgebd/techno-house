@@ -1,26 +1,24 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
-import { notifySuccess } from "@/components/ui/feedback-provider";
-import { useMockConversations } from "@/features/account/use-mock-conversations";
-import { useMockCustomer } from "@/features/account/use-mock-customer";
-import {
-  QUESTION_MAX,
-  createMockQuestionId,
-  validatePdpQuestionInput,
-} from "@/lib/account/mock-conversations";
+import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
+import { createCustomerQuestionAction } from "@/features/account/conversation-actions";
+import { useCustomerSession } from "@/features/account/customer-session-provider";
+import { validatePdpQuestionInput } from "@/lib/account/mock-conversations";
+import { QUESTION_MAX } from "@/lib/catalog/question-input";
+import type { CustomerQuestionView } from "@/lib/catalog/question-input";
 import type { ProductQuestion } from "@/lib/data";
 
 type ProductQuestionsProps = {
   catalogQuestions: ProductQuestion[];
+  ownQuestions: CustomerQuestionView[];
   productSlug: string;
-  productName: string;
 };
 
 function formatWhen(iso: string): string {
@@ -32,27 +30,23 @@ function formatWhen(iso: string): string {
 
 export function ProductQuestions({
   catalogQuestions,
+  ownQuestions,
   productSlug,
-  productName,
 }: ProductQuestionsProps) {
   const pathname = usePathname();
-  const { session } = useMockCustomer();
-  const { questions: storedQuestions, addQuestion } = useMockConversations();
+  const router = useRouter();
+  const session = useCustomerSession();
   const [question, setQuestion] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const customerQuestions = useMemo(
-    () => storedQuestions.filter((item) => item.productSlug === productSlug),
-    [storedQuestions, productSlug],
-  );
+  const [pending, startTransition] = useTransition();
 
   const allQuestions = useMemo(() => {
-    const mapped = customerQuestions.map((item) => ({
+    const mapped = ownQuestions.map((item) => ({
       id: item.id,
       question: item.question,
       askerName: item.askerName,
       createdAt: item.createdAt,
-      answer: null as string | null,
+      answer: item.answer,
       answeredBy: null as string | null,
       pending: true as const,
     }));
@@ -66,7 +60,7 @@ export function ProductQuestions({
       pending: false as const,
     }));
     return [...mapped, ...catalog];
-  }, [catalogQuestions, customerQuestions]);
+  }, [catalogQuestions, ownQuestions]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,20 +72,22 @@ export function ProductQuestions({
     if (Object.keys(nextErrors).length > 0) {
       return;
     }
-    addQuestion({
-      id: createMockQuestionId(),
-      productSlug,
-      productName,
-      askerName: session.fullName,
-      question: question.trim(),
-      createdAt: new Date().toISOString(),
-      status: "pending",
-    });
-    setQuestion("");
-    setErrors({});
-    notifySuccess({
-      title: "Question submitted",
-      description: "Your question is saved on this device and shown below.",
+    startTransition(async () => {
+      const result = await createCustomerQuestionAction({
+        productSlug,
+        question,
+      });
+      if (!result.ok) {
+        notifyError(result.formError ?? "Could not submit the question.");
+        return;
+      }
+      setQuestion("");
+      setErrors({});
+      notifySuccess({
+        title: "Question submitted",
+        description: "It stays private until staff answers it.",
+      });
+      router.refresh();
     });
   }
 
@@ -102,9 +98,9 @@ export function ProductQuestions({
           Customer questions
         </h2>
         <p className="mt-1 text-body text-text-muted">
-          {allQuestions.length === 0
+          {catalogQuestions.length === 0
             ? "No questions asked yet."
-            : `${allQuestions.length} ${allQuestions.length === 1 ? "question" : "questions"}.`}
+            : `${catalogQuestions.length} ${catalogQuestions.length === 1 ? "question" : "questions"}.`}
         </p>
       </div>
 
@@ -119,11 +115,15 @@ export function ProductQuestions({
                 <p className="text-label font-semibold text-text">
                   Q: {item.question}
                 </p>
-                {item.pending ? <Badge tone="neutral">Your question</Badge> : null}
+                {item.pending ? (
+                  <Badge tone="neutral">Your question</Badge>
+                ) : null}
               </div>
               <p className="mt-1 text-caption text-text-muted">
                 Asked by {item.askerName} ·{" "}
-                <time dateTime={item.createdAt}>{formatWhen(item.createdAt)}</time>
+                <time dateTime={item.createdAt}>
+                  {formatWhen(item.createdAt)}
+                </time>
               </p>
               {item.answer ? (
                 <div className="mt-3 rounded-md bg-surface-muted/70 px-3 py-2">
@@ -171,7 +171,11 @@ export function ProductQuestions({
               Signed in as{" "}
               <span className="font-medium text-text">{session.fullName}</span>
             </p>
-            <Field label="Question" htmlFor="pdp-question" error={errors.question}>
+            <Field
+              label="Question"
+              htmlFor="pdp-question"
+              error={errors.question}
+            >
               <Textarea
                 id="pdp-question"
                 value={question}
@@ -181,8 +185,8 @@ export function ProductQuestions({
                 rows={4}
               />
             </Field>
-            <Button type="submit" size="sm">
-              Submit question
+            <Button type="submit" size="sm" disabled={pending}>
+              {pending ? "Submitting…" : "Submit question"}
             </Button>
           </form>
         )}

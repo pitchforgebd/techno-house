@@ -1,17 +1,13 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { IconCompare, IconHeart } from "@/components/layout/chrome-icons";
 import { HeaderCountBadge } from "@/components/layout/header-count-badge";
-import { buttonClassName } from "@/components/ui/button";
+import { HEADER_ACTION_CLASS } from "@/components/layout/header-action-class";
 import { useListsStore } from "@/features/lists/use-lists-store";
 import { HEADER_LIST_LINKS } from "@/lib/catalog/primary-nav";
 
-const actionClassName = buttonClassName({
-  variant: "ghost",
-  size: "sm",
-  className: "relative min-h-11 min-w-11 px-2",
-});
+const actionClassName = HEADER_ACTION_CLASS;
 
 const icons = {
   "/wishlist": IconHeart,

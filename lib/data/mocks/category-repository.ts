@@ -1,4 +1,4 @@
-import type { CategoryRepository } from "@/lib/data/repositories/category-repository";
+﻿import type { CategoryRepository } from "@/lib/data/repositories/category-repository";
 import { mockCategories } from "@/lib/data/mocks/catalog";
 
 export const mockCategoryRepository: CategoryRepository = {

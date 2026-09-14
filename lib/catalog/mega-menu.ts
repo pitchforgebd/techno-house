@@ -1,4 +1,4 @@
-import { categoryAndDescendantSlugs } from "@/lib/catalog/category-tree";
+﻿import { categoryAndDescendantSlugs } from "@/lib/catalog/category-tree";
 import type { CategoryNode } from "@/lib/catalog/category-tree";
 import { BRAND_FACET_KEY } from "@/lib/catalog/listing-params";
 import type { Category } from "@/lib/data/types";

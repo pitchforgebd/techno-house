@@ -1,11 +1,11 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
-import { buttonClassName } from "@/components/ui/button";
 import { ProductCard } from "@/features/catalog/product-card";
+import { PRODUCT_CARD_GRID_CLASS } from "@/features/catalog/product-grid";
 import { HomeSection } from "@/features/home/home-section";
 import { productRepository } from "@/lib/data";
 
-const DEALS_PAGE_SIZE = 8;
+const DEALS_PAGE_SIZE = 10;
 
 export async function HomeDeals() {
   const result = await productRepository.list({
@@ -18,9 +18,16 @@ export async function HomeDeals() {
   return (
     <HomeSection
       id="home-deals"
-      title="Deals"
-      lede="Marked-down items from the catalog. Sale prices in ৳ are not a charge."
+      title="Best deals"
       heading="h2"
+      action={
+        <Link
+          href="/deals"
+          className="text-caption font-semibold tracking-wide text-primary uppercase hover:text-primary-hover"
+        >
+          See all
+        </Link>
+      }
     >
       {result.items.length === 0 ? (
         <EmptyState
@@ -28,22 +35,14 @@ export async function HomeDeals() {
           description="Sale products will appear here when offers are listed."
         />
       ) : (
-        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className={PRODUCT_CARD_GRID_CLASS}>
           {result.items.map((product) => (
-            <li key={product.id}>
+            <li key={product.id} className="min-w-0">
               <ProductCard product={product} />
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-6">
-        <Link
-          href="/deals"
-          className={buttonClassName({ variant: "secondary" })}
-        >
-          All deals
-        </Link>
-      </p>
     </HomeSection>
   );
 }

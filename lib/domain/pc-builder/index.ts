@@ -1,4 +1,4 @@
-export {
+﻿export {
   BUILDER_SLOTS,
   getBuilderSlotMeta,
   requiredBuilderSlots,
@@ -24,9 +24,28 @@ export {
 } from "@/lib/domain/pc-builder/selection";
 export {
   evaluateCompatibility,
+  rankCandidatesForSlot,
+  RULE_EVALUATORS,
+  type CandidateCompatibility,
+  type CandidateCompatibilityStatus,
   type CompatibilityPart,
   type CompatibilityResult,
+  type RuleEvaluation,
+  type RuleEvaluator,
 } from "@/lib/domain/pc-builder/compatibility";
+export {
+  enabledRuleTypeSet,
+  isPcBuilderRuleType,
+  isRuleTypeEnabled,
+  PC_RULE_TYPES,
+  type CompatibilityRule,
+  type PcBuilderRuleType,
+} from "@/lib/domain/pc-builder/rules";
+export {
+  buildCandidateSlugs,
+  candidateToCompatibilityPart,
+  compatibilityPartsFromCandidates,
+} from "@/lib/domain/pc-builder/components";
 export {
   estimateBuildPower,
   summarizeBuildPricing,
@@ -39,7 +58,10 @@ export {
 export {
   decodeShareId,
   encodeShareId,
+  isPersistedShareSlug,
+  SHARE_SLUG_PREFIX,
   sharePathForSelection,
+  sharePathForSlug,
 } from "@/lib/domain/pc-builder/share";
 export {
   BUILDER_SAVED_STORAGE_KEY,
@@ -53,7 +75,14 @@ export {
   type SavedBuild,
 } from "@/lib/domain/pc-builder/saved-builds";
 export {
+  assembleValidatedBuild,
+  type BuildValidateCandidate,
+  type BuildValidationIssue,
+  type ValidatedBuildSnapshot,
+} from "@/lib/domain/pc-builder/validate";
+export {
   planBuildToCart,
+  planValidatedBuildToCart,
   type BuildToCartPlan,
   type BuildToCartProduct,
 } from "@/lib/domain/pc-builder/build-to-cart";

@@ -10,7 +10,7 @@ export async function CategoryNav() {
   return (
     <nav
       aria-label="Product categories"
-      className="relative z-30 hidden border-b border-border bg-surface-muted md:block"
+      className="relative z-30 hidden border-t border-header-text/10 bg-header-background md:block"
     >
       <CategoryMegaNav
         panels={panels}

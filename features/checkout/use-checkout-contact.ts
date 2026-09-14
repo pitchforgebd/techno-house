@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useSyncExternalStore } from "react";
 import {
@@ -24,7 +24,8 @@ function sameContact(a: CheckoutContact, b: CheckoutContact): boolean {
     a.phone === b.phone &&
     a.email === b.email &&
     a.addressLine === b.addressLine &&
-    a.notes === b.notes
+    a.notes === b.notes &&
+    a.billingAddress === b.billingAddress
   );
 }
 
@@ -50,6 +51,10 @@ function readStorage(): CheckoutContact {
           ? parsed.addressLine.slice(0, 240)
           : "",
       notes: typeof parsed.notes === "string" ? parsed.notes.slice(0, 400) : "",
+      billingAddress:
+        typeof parsed.billingAddress === "string"
+          ? parsed.billingAddress.slice(0, 240)
+          : "",
     };
   } catch {
     return EMPTY_CHECKOUT_CONTACT;

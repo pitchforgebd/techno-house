@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useSyncExternalStore } from "react";
 import {
@@ -190,6 +190,25 @@ export function useListsStore() {
     writeStorage({ ...current, compare: [] });
   }, []);
 
+  /** Replaces the compare set outright — used when a shared `?items=` link
+   *  opens the compare page on someone else's device. */
+  const setCompare = useCallback((entries: CompareEntry[]) => {
+    const current = readStorage();
+    const seen = new Set<string>();
+    const next: CompareEntry[] = [];
+    for (const entry of entries) {
+      if (seen.has(entry.slug) || next.length >= MAX_COMPARE) {
+        continue;
+      }
+      if (next[0] && next[0].categorySlug !== entry.categorySlug) {
+        continue;
+      }
+      seen.add(entry.slug);
+      next.push(entry);
+    }
+    writeStorage({ ...current, compare: next });
+  }, []);
+
   return {
     state,
     toggleWishlist,
@@ -198,5 +217,6 @@ export function useListsStore() {
     toggleCompare,
     removeCompare,
     clearCompare,
+    setCompare,
   };
 }

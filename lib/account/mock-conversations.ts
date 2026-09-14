@@ -1,4 +1,4 @@
-export const MOCK_CONVERSATIONS_KEY = "techno-house-mock-conversations-v1";
+﻿export const MOCK_CONVERSATIONS_KEY = "techno-house-mock-conversations-v1";
 export const MAX_MOCK_REVIEWS = 20;
 export const MAX_MOCK_QUESTIONS = 20;
 

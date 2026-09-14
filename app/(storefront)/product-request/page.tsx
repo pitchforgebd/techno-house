@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { getCustomerSession } from "@/lib/auth/customer-session";
+import {
+  PRODUCT_REQUEST_CUSTOMER_NAME_MAX,
+  PRODUCT_REQUEST_EMAIL_MAX,
+  PRODUCT_REQUEST_PHONE_MAX,
+} from "@/lib/support/create-product-request";
 import {
   PRODUCT_REQUEST_DETAILS_MAX,
   PRODUCT_REQUEST_NAME_MAX,
@@ -20,8 +26,12 @@ export default async function ProductRequestPage({
   searchParams: Promise<{ error?: string; status?: string }>;
 }) {
   const params = await searchParams;
+  const session = await getCustomerSession();
   const nameError = params.error === "name";
-  const notSaved = params.status === "not-saved";
+  const emailError = params.error === "email";
+  const productError = params.error === "product";
+  const saveError = params.error === "save";
+  const sent = params.status === "sent";
 
   return (
     <div className="mx-auto max-w-content px-4 py-8">
@@ -29,25 +39,79 @@ export default async function ProductRequestPage({
         Request a product
       </h1>
       <p className="mt-2 max-w-prose text-body text-text-muted">
-        Tell us what you are looking for. Submissions are checked on the server
-        and are not stored yet.
+        Tell us what you are looking for. Your request is saved for the Techno
+        House team to review in Admin → Product requests.
       </p>
       {nameError ? (
+        <Alert className="mt-6" tone="danger" title="Name is required">
+          Enter your name so we can follow up.
+        </Alert>
+      ) : null}
+      {emailError ? (
+        <Alert className="mt-6" tone="danger" title="Email is required">
+          Enter a valid email address.
+        </Alert>
+      ) : null}
+      {productError ? (
         <Alert className="mt-6" tone="danger" title="Product name is required">
           Enter a product name of up to {PRODUCT_REQUEST_NAME_MAX} characters.
         </Alert>
       ) : null}
-      {notSaved ? (
-        <Alert className="mt-6" tone="info" title="Request not saved">
-          The form was accepted for this preview, but nothing was stored or
-          emailed. Product requests will be saved when storage is ready.
+      {saveError ? (
+        <Alert className="mt-6" tone="danger" title="Could not save request">
+          Please try again in a moment.
+        </Alert>
+      ) : null}
+      {sent ? (
+        <Alert className="mt-6" tone="success" title="Request submitted">
+          Thanks — your product request was saved. Our team will review it
+          shortly.
         </Alert>
       ) : null}
       <form action={submitProductRequest} className="mt-6 max-w-md space-y-4">
         <Field
+          label="Your name"
+          htmlFor="customerName"
+          error={nameError ? "Enter your name." : undefined}
+        >
+          <Input
+            id="customerName"
+            name="customerName"
+            required
+            maxLength={PRODUCT_REQUEST_CUSTOMER_NAME_MAX}
+            autoComplete="name"
+            defaultValue={session?.fullName ?? ""}
+          />
+        </Field>
+        <Field
+          label="Email"
+          htmlFor="customerEmail"
+          error={emailError ? "Enter a valid email." : undefined}
+        >
+          <Input
+            id="customerEmail"
+            name="customerEmail"
+            type="email"
+            required
+            maxLength={PRODUCT_REQUEST_EMAIL_MAX}
+            autoComplete="email"
+            defaultValue={session?.email ?? ""}
+          />
+        </Field>
+        <Field label="Phone" htmlFor="customerPhone" hint="Optional">
+          <Input
+            id="customerPhone"
+            name="customerPhone"
+            type="tel"
+            maxLength={PRODUCT_REQUEST_PHONE_MAX}
+            autoComplete="tel"
+            defaultValue={session?.phone ?? ""}
+          />
+        </Field>
+        <Field
           label="Product name"
           htmlFor="productName"
-          error={nameError ? "Enter a product name." : undefined}
+          error={productError ? "Enter a product name." : undefined}
         >
           <Input
             id="productName"

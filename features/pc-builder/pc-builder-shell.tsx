@@ -1,4 +1,4 @@
-import { Cpu } from "lucide-react";
+﻿import { Cpu } from "lucide-react";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { PcBuilderWorkspace } from "@/features/pc-builder/pc-builder-workspace";
 

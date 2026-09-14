@@ -1,9 +1,8 @@
-import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+﻿import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CatalogListingBody } from "@/features/catalog/catalog-listing-body";
+import { listStorefrontFilterKeys } from "@/lib/catalog/filter-keys";
 import {
-  CATALOG_ATTRIBUTE_KEYS,
-  LISTING_PAGE_SIZE,
   listingHasActiveFilters,
   parseListingQuery,
   resetListingHref,
@@ -11,6 +10,7 @@ import {
   type ListingSearchParams,
 } from "@/lib/catalog/listing-params";
 import { brandRepository, productRepository } from "@/lib/data";
+import { recordSearchQuery } from "@/lib/search/log-search";
 
 const PATHNAME = "/search";
 
@@ -35,23 +35,26 @@ export async function SearchListing({
         <EmptyState
           className="mt-6"
           title="Search the catalog"
-          description="Use the search field in the header to look up a product name or SKU."
+          description="Use the search field in the header to look up a product, brand, or SKU."
         />
       </div>
     );
   }
 
-  const parsed = parseListingQuery(searchParams, [...CATALOG_ATTRIBUTE_KEYS]);
-  const [brands, result] = await Promise.all([
+  const [attributeKeys, brands] = await Promise.all([
+    listStorefrontFilterKeys(),
     brandRepository.list(),
-    productRepository.list({
-      q,
-      sort: parsed.sort,
-      page: parsed.page,
-      pageSize: LISTING_PAGE_SIZE,
-      ...toListQueryFilters(parsed, { showBrandFilter: true }),
-    }),
   ]);
+  const parsed = parseListingQuery(searchParams, attributeKeys);
+  const result = await productRepository.list({
+    q,
+    sort: parsed.sort,
+    page: parsed.page,
+    pageSize: parsed.pageSize,
+    ...toListQueryFilters(parsed, { showBrandFilter: true }),
+  });
+
+  await recordSearchQuery({ query: q, resultCount: result.total });
 
   const resetHref = resetListingHref(PATHNAME, { q });
   const filteredEmpty = listingHasActiveFilters(parsed);
@@ -67,7 +70,8 @@ export async function SearchListing({
       />
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Search</h1>
       <p className="mt-2 text-body text-text-muted">
-        Results for “{q}”. Prices in ৳ are for display and are not a charge.
+        Results for “{q}”. Prices in ৳ are for display and are not a
+        charge.
       </p>
       <CatalogListingBody
         pathname={PATHNAME}
@@ -80,8 +84,8 @@ export async function SearchListing({
         emptyTitle="No matching products"
         emptyDescription={
           filteredEmpty
-            ? "Try clearing filters, or search another name or SKU."
-            : "Try another name or SKU, or browse the full shop."
+            ? "Try clearing filters, or search another name, brand, or SKU."
+            : "Try another name, brand, or SKU, or browse the full shop."
         }
       />
     </div>

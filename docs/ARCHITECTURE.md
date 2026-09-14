@@ -56,8 +56,9 @@ lib/
   data/
     types/               # domain-shaped DTOs
     repositories/        # interfaces only
-    mocks/               # in-memory / JSON implementations
-    index.ts             # composition root (mocks now)
+    mocks/               # in-memory implementations
+    prisma/              # PostgreSQL implementations (P10-T06)
+    index.ts             # composition root (database; mocks via DATA_SOURCE)
   domain/
     pc-builder/          # compatibility — no React
     catalog/             # pure helpers if needed
@@ -101,19 +102,22 @@ Frontend consumes **typed domain-shaped data**, never table rows.
 
 Implemented (P1-T05): `lib/data` composition root, repository interfaces, and mock implementations. UI must import from `@/lib/data` only. Internal check: `/dev/data`.
 
+Implemented (P10-T06): PostgreSQL implementations under `lib/data/prisma`, bound by default. Both implementations satisfy the same interfaces and are kept in agreement by `npm run db:parity`. No presentation code changed when the binding switched, which is the payoff of this boundary.
+
 
 ```text
 UI / Server Component
 → repository interface (lib/data/repositories)
-→ mock implementation (frontend phases)
-→ Prisma/PostgreSQL implementation (Phase 10+, same interface)
+→ Prisma/PostgreSQL implementation (default)
+→ mock implementation (DATA_SOURCE=mock, same interface)
 ```
 
 Rules:
 
 - Presentation components import types + repository functions, not `prisma` and not mock file internals.
-- Mocks live only under `lib/data/mocks`.
-- List queries support pagination, filters, sort — even when mocked.
+- Mocks live only under `lib/data/mocks`; ORM access lives only under `lib/data/prisma`.
+- **Client Components may import types from `@/lib/data`, never values.** A value import pulls the database driver into the browser bundle; `next build` catches it, `next dev` does not.
+- List queries support pagination, filters, sort — in both implementations.
 - Never import mock JSON from a card component.
 
 Illustrative contract (implement in Phase 01):
@@ -172,26 +176,35 @@ Middleware (later) must not treat `role=admin` in a client JWT as sufficient wit
 ```text
 PC Builder UI (features/pc-builder)
 → lib/domain/pc-builder (selection + totals + warnings)
-→ Compatibility engine (pure functions + rule data)
+→ Compatibility engine (pure `RULE_EVALUATORS` + persisted enablement)
 → Product repository
-→ PostgreSQL (later)
+→ PostgreSQL (`Product` builder columns; P14-T01)
 ```
 
 Compatibility logic must be testable independently of UI.
 
 Frontend: mock parts + engine that can return `compatible | incompatible | unknown`.
 
-Never load the entire component catalog into the client. Fetch candidates per slot.
+Never load the entire component catalog into the client. Fetch candidates per
+slot. Each candidate includes price, stock, and builder attributes
+(socket / RAM type / form factor / TDP) so later compatibility work does
+not N+1 `getBySlug`. `DATA_SOURCE=mock` still uses the in-memory catalogue.
 
 ---
 
 ## Cart and pricing
 
-Until Phase 13:
+As of P13-T02:
 
-- Cart may be client or mock-server state
-- Display totals are non-authoritative
-- Checkout payment UI is mock
+- Cart lines, coupon, and shipping persist to `Cart` / `CartItem` (guest cookie
+  or signed-in user). `DATA_SOURCE=mock` still uses localStorage.
+- Checkout creates a real `Order` from the user cart. Totals are recalculated
+  on the server. Stock is reserved. Payment stays pending.
+- Checkout payment UI is a method picker. COD stays pending. SSLCommerz and
+  bKash start a hosted session after the order exists when credentials are
+  present. Browser return is not treated as paid. IPN/execute can mark
+  paid only after a server-to-gateway confirmation. Refunds need a
+  customer request, staff approval, and a verified payout.
 
 After Phase 13:
 

@@ -1,4 +1,4 @@
-export const MOCK_NOTIFICATIONS_KEY = "techno-house-mock-notifications-v1";
+﻿export const MOCK_NOTIFICATIONS_KEY = "techno-house-mock-notifications-v1";
 export const MAX_MOCK_NOTIFICATIONS = 20;
 export const MAX_READ_IDS = 80;
 

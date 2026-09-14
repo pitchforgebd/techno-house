@@ -1,19 +1,29 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Search, SlidersHorizontal } from "lucide-react";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select } from "@/components/ui/select";
 import { notifySuccess } from "@/components/ui/feedback-provider";
+import {
+  loadCompatibilityParts,
+  loadEnabledRuleTypes,
+} from "@/features/pc-builder/actions";
 import { BuilderSlotIcon } from "@/features/pc-builder/builder-slot-icons";
-import { PcBuilderSelectCard } from "@/features/pc-builder/pc-builder-select-card";
+import {
+  PcBuilderSelectCard,
+  type PcBuilderCardCompatibility,
+} from "@/features/pc-builder/pc-builder-select-card";
 import { PcBuilderSelectSidebar } from "@/features/pc-builder/pc-builder-select-sidebar";
 import { useBuilderStore } from "@/features/pc-builder/use-builder-store";
-import type { ProductSummary } from "@/lib/data";
-import type { BuilderSlotMeta } from "@/lib/domain/pc-builder";
+import type { BuilderCandidate } from "@/lib/data";
+import {
+  rankCandidatesForSlot,
+  type BuilderSlotMeta,
+} from "@/lib/domain/pc-builder";
 
 type SelectSort = "default" | "price_asc" | "price_desc" | "discount";
 
@@ -25,9 +35,9 @@ const SORT_OPTIONS: { value: SelectSort; label: string }[] = [
 ];
 
 function sortProducts(
-  products: ProductSummary[],
+  products: BuilderCandidate[],
   sort: SelectSort,
-): ProductSummary[] {
+): BuilderCandidate[] {
   const list = [...products];
   switch (sort) {
     case "price_asc":
@@ -56,16 +66,56 @@ export function PcBuilderSelectView({
   products,
 }: {
   slot: BuilderSlotMeta;
-  products: ProductSummary[];
+  products: BuilderCandidate[];
 }) {
   const router = useRouter();
   const { selection, selectPart } = useBuilderStore();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SelectSort>("default");
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [showIncompatible, setShowIncompatible] = useState(false);
+  const [compatByslug, setCompatBySlug] = useState<
+    Map<string, PcBuilderCardCompatibility>
+  >(new Map());
 
   const selectedSlug =
     (selection[slot.id] as string | null | undefined) ?? null;
+
+  // Real "suggest as you pick" (AD-276): score every candidate against
+  // whatever's already selected elsewhere in the build, using the same
+  // compatibility engine the review page and checkout already trust.
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const [selectedParts, enabledTypes] = await Promise.all([
+        loadCompatibilityParts(selection),
+        loadEnabledRuleTypes(),
+      ]);
+      if (cancelled) return;
+      const ranked = rankCandidatesForSlot({
+        slot: slot.id,
+        candidates: products,
+        selectedParts,
+        enabledTypes,
+      });
+      setCompatBySlug(
+        new Map(
+          ranked.map((entry) => [
+            entry.candidate.slug,
+            {
+              status: entry.status,
+              reason: entry.warnings[0]?.message,
+            },
+          ]),
+        ),
+      );
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, slot.id, JSON.stringify(selection)]);
 
   const filtered = useMemo(() => {
     let list = products;
@@ -80,8 +130,21 @@ export function PcBuilderSelectView({
         return haystack.includes(trimmed);
       });
     }
+    if (!showIncompatible) {
+      list = list.filter(
+        (product) => compatByslug.get(product.slug)?.status !== "incompatible",
+      );
+    }
     return sortProducts(list, sort);
-  }, [products, query, sort, inStockOnly]);
+  }, [products, query, sort, inStockOnly, showIncompatible, compatByslug]);
+
+  const hiddenIncompatibleCount = useMemo(
+    () =>
+      products.filter(
+        (product) => compatByslug.get(product.slug)?.status === "incompatible",
+      ).length,
+    [products, compatByslug],
+  );
 
   function handleAdd(slotId: typeof slot.id, slug: string) {
     const product = products.find((item) => item.slug === slug);
@@ -188,6 +251,24 @@ export function PcBuilderSelectView({
             </div>
           </div>
 
+          {hiddenIncompatibleCount > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface-muted/60 px-4 py-2.5 text-caption text-text-muted">
+              <span>
+                {hiddenIncompatibleCount}{" "}
+                {hiddenIncompatibleCount === 1 ? "part doesn't" : "parts don't"}{" "}
+                match what you&apos;ve already picked
+                {showIncompatible ? " (shown below, flagged red)." : "."}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowIncompatible((value) => !value)}
+                className="font-medium text-primary hover:underline"
+              >
+                {showIncompatible ? "Hide them again" : "Show them anyway"}
+              </button>
+            </div>
+          ) : null}
+
           {products.length === 0 ? (
             <EmptyState
               title="No parts for this slot"
@@ -207,6 +288,7 @@ export function PcBuilderSelectView({
                     slotId={slot.id}
                     selectedSlug={selectedSlug}
                     onAdd={handleAdd}
+                    compatibility={compatByslug.get(product.slug)}
                   />
                 </li>
               ))}

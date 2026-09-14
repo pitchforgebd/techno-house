@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { ReactNode } from "react";
 import { useId, useState, type KeyboardEvent } from "react";
@@ -9,24 +9,30 @@ type ProductDetailTabsProps = {
   details: ReactNode;
   reviews: ReactNode;
   questions: ReactNode;
+  /** Product Query Q&A feature flag — hides the tab entirely when off. */
+  showQuestions?: boolean;
 };
 
-const TAB_ITEMS = [
+const ALL_TAB_ITEMS = [
   { id: "specifications", label: "Specifications" },
   { id: "details", label: "Details" },
   { id: "questions", label: "Q&A" },
   { id: "reviews", label: "Review" },
 ] as const;
 
-type TabId = (typeof TAB_ITEMS)[number]["id"];
+type TabId = (typeof ALL_TAB_ITEMS)[number]["id"];
 
 export function ProductDetailTabs({
   specifications,
   details,
   reviews,
   questions,
+  showQuestions = true,
 }: ProductDetailTabsProps) {
-  const [activeId, setActiveId] = useState<TabId>("specifications");
+  const TAB_ITEMS = showQuestions
+    ? ALL_TAB_ITEMS
+    : ALL_TAB_ITEMS.filter((item) => item.id !== "questions");
+  const [activeId, setActiveId] = useState<TabId>(TAB_ITEMS[0].id);
   const baseId = useId();
 
   const panels: Record<TabId, ReactNode> = {

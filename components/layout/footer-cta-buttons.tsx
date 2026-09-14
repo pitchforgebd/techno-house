@@ -12,13 +12,13 @@ const accentClass: Record<
   { idle: string; hover: string; active: string }
 > = {
   danger: {
-    idle: "border-danger/70 text-primary-foreground",
+    idle: "border-danger/50 text-primary-foreground",
     hover:
       "hover:border-danger hover:bg-danger hover:text-primary-foreground",
     active: "border-danger bg-danger text-primary-foreground",
   },
   info: {
-    idle: "border-info/70 text-primary-foreground",
+    idle: "border-info/50 text-primary-foreground",
     hover: "hover:border-info hover:bg-info hover:text-primary-foreground",
     active: "border-info bg-info text-primary-foreground",
   },
@@ -42,9 +42,9 @@ function FooterOutlineCta({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "inline-flex min-h-9 w-full items-center justify-center rounded-md px-3 text-label font-medium transition-colors",
-        "border bg-transparent",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        "inline-flex min-h-11 w-full items-center justify-center rounded-md px-3 text-label font-medium transition-colors",
+        "border bg-primary-foreground/5",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-soft/60",
         styles.idle,
         styles.hover,
         active && styles.active,
@@ -58,8 +58,8 @@ function FooterOutlineCta({
 export function FooterCtaButtons() {
   return (
     <div className="mt-5 flex flex-col gap-2 sm:max-w-xs">
-      <FooterOutlineCta href="/contact" accent="danger">
-        Report a problem
+      <FooterOutlineCta href="/complaint" accent="danger">
+        Complaint Box
       </FooterOutlineCta>
       <FooterOutlineCta href="/product-request" accent="info">
         Didn&apos;t find your product?

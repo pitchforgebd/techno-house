@@ -1,11 +1,12 @@
+﻿import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { buttonClassName } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { HomeSectionHeader } from "@/features/home/home-section-header";
 import { brandRepository } from "@/lib/data";
 
-/** Logos shown on the homepage; the rest are on /brands. */
-const HOME_BRAND_LIMIT = 8;
+/** Logos shown on the homepage; the last grid cell links to /brands. */
+const HOME_BRAND_LIMIT = 9;
 
 export async function HomeBrands() {
   const brands = await brandRepository.list();
@@ -13,37 +14,28 @@ export async function HomeBrands() {
 
   return (
     <section aria-labelledby="home-brands" className="scroll-mt-4">
-      <div className="flex items-stretch">
-        <h2
-          id="home-brands"
-          className="flex shrink-0 items-center bg-text px-4 py-2 pr-7 text-label font-semibold tracking-tight text-primary-foreground [clip-path:polygon(0_0,calc(100%-0.85rem)_0,100%_100%,0_100%)]"
-        >
-          Brands
-        </h2>
-        <div className="flex min-w-0 flex-1 items-end justify-end border-b-2 border-text pb-1.5">
-          <Link
-            href="/brands"
-            className="text-caption font-medium text-primary underline-offset-2 hover:underline"
-          >
-            See more
-          </Link>
-        </div>
-      </div>
+      <HomeSectionHeader
+        id="home-brands"
+        title="Brands"
+        lede="Jump straight to everything listed under a name."
+        actionHref="/brands"
+        actionLabel="All brands"
+      />
 
       {brands.length === 0 ? (
         <EmptyState
-          className="mt-8"
+          className="mt-6"
           title="No brands yet"
           description="Brand shortcuts will appear here when the catalog is available."
         />
       ) : (
-        <>
-          <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4">
+        <div className="mt-6 overflow-hidden rounded-sm border border-border">
+          <ul className="grid grid-cols-2 gap-px bg-border sm:grid-cols-5">
             {shown.map((brand) => (
-              <li key={brand.slug}>
+              <li key={brand.slug} className="bg-surface">
                 <Link
                   href={`/brand/${brand.slug}`}
-                  className="flex h-24 items-center justify-center border border-border bg-surface px-4 transition-colors hover:border-primary"
+                  className="group flex h-24 items-center justify-center px-5 transition-colors hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary sm:h-28"
                 >
                   <Image
                     src={brand.logoSrc}
@@ -51,25 +43,31 @@ export async function HomeBrands() {
                     width={160}
                     height={48}
                     unoptimized
-                    className="h-10 w-auto max-w-full object-contain object-center"
+                    className="h-9 w-auto max-w-full object-contain object-center transition duration-300 ease-out motion-safe:group-hover:scale-105"
                   />
                 </Link>
               </li>
             ))}
+            <li className="bg-surface">
+              <Link
+                href="/brands"
+                className="group flex h-24 flex-col items-center justify-center gap-1 px-5 text-center transition-colors hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary sm:h-28"
+              >
+                <span className="text-label font-semibold tracking-tight text-text transition-colors group-hover:text-primary">
+                  All brands
+                </span>
+                <span className="inline-flex items-center gap-1 text-caption text-text-muted">
+                  {brands.length} listed
+                  <ArrowRight
+                    aria-hidden
+                    strokeWidth={1.75}
+                    className="size-3.5 transition-transform group-hover:translate-x-0.5"
+                  />
+                </span>
+              </Link>
+            </li>
           </ul>
-          <p className="mt-8 flex justify-center">
-            <Link
-              href="/brands"
-              className={buttonClassName({
-                variant: "ghost",
-                className:
-                  "border border-primary text-primary hover:bg-primary hover:text-primary-foreground",
-              })}
-            >
-              Explore all brands
-            </Link>
-          </p>
-        </>
+        </div>
       )}
     </section>
   );

@@ -7,21 +7,68 @@
 */
 
 @theme {
-  --color-background: #f4f6f8;
+  /* Palette is derived from the Techno House logo: an electric blue mark
+     glowing over near-black. Blue carries identity and every interactive
+     surface; the near-black is the ink for type and for the dark panels.
+     Neutrals are cooled towards blue so they sit under it rather than
+     fighting it. Every pair below was measured, not eyeballed — the ratios
+     are in the comments beside the values that needed a decision. */
+  --color-background: #f4f7fb;
   --color-surface: #ffffff;
-  --color-surface-muted: #eef2f5;
-  --color-text: #0e1a24;
-  --color-text-muted: #5b6b78;
-  --color-border: #d7dee5;
-  --color-primary: #125e6a;
-  --color-primary-hover: #0e4b55;
+  --color-surface-muted: #eef2f9;
+  /* The logo's deep navy, used both as body ink and as the dark panel
+     ground. 17.05:1 against white in either direction. */
+  --color-text: #051c39;
+  --color-text-muted: #59637a; /* 6.02:1 on white, 5.6:1 on the page bg */
+  --color-border: #d6deea;
+  /* Not the vivid glow blue from the logo (#0a6cff): that measures 4.56:1 on
+     white, which clears AA by a hair and leaves nothing for hover states or
+     smaller text. This is the same hue held one step deeper — 5.84:1 both as
+     link text on white and as white text on a filled button. */
+  --color-primary: #0b5ed7;
+  --color-primary-hover: #0947a8; /* 8.47:1 with white */
+  /* The logo's glow blue, for accents sitting ON the navy panels. Plain
+     `primary` only manages 2.92:1 against that ground — under the 3:1 floor
+     for graphical elements — because the two blues are too close in value.
+     This is 3.74:1 there. It is NOT for text on white (4.56:1 is too thin a
+     margin for body copy); `primary` stays the one for light surfaces. */
+  --color-primary-bright: #0a6cff;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #b8612c;
+  /* A real tint of --color-primary (was a neutral gray identical to
+     --color-surface-muted, so "soft primary" surfaces read as dead gray).
+     Primary on top of it is 5.1:1, so icon tiles stay legible. */
+  --color-primary-soft: #e8f0fe;
+  /* The logo's deep navy. Superb on light surfaces — 17.05:1 against white,
+     both as text and as a filled chip with white text on it — which is where
+     every one of its uses now lives.
+     It is NOT usable as an accent on the dark panels: it is the same value as
+     --color-text, so it would be invisible there. Accents on dark surfaces
+     use --color-primary-bright instead (3.74:1) — which is also what the logo
+     itself does, bright blue glowing on the dark ground. */
+  --color-secondary: #051c39;
+  /* Site chrome — the dark bands at the top and bottom of every page.
+     Both default to the same navy/white pairing they have always rendered as:
+     the header, top bar, category nav and footer all sat on `--color-text`,
+     which meant the body ink and the panel ground were the same variable and
+     could not be changed apart. Splitting them out is what lets an operator
+     retint the chrome for a campaign without also recolouring every paragraph
+     on the site — and, just as important, the reverse.
+     `--color-text` keeps its other role: it is still the body ink, and still
+     the ground for the dark panels OUTSIDE the chrome (the `ink` button, the
+     auth aside, the checkout summary bands), which deliberately follow the
+     text colour rather than the header. */
+  --color-header-background: #051c39;
+  --color-header-text: #ffffff;
+  --color-footer-background: #051c39;
+  --color-footer-text: #ffffff;
   --color-success: #1f7a45;
   --color-warning: #b45309;
   --color-danger: #b42318;
-  --color-info: #0369a1;
-  --color-focus: #125e6a;
+  /* Was #0369a1 — nearly the same blue as the new primary, so an info alert
+     would have read as brand chrome. Moved to teal, the most separable of
+     the candidates, while keeping 5.47:1 on white. */
+  --color-info: #0f766e;
+  --color-focus: #0b5ed7;
 
   --text-caption: 0.75rem;
   --text-caption--line-height: 1.4;
@@ -34,13 +81,20 @@
   --text-display--letter-spacing: -0.02em;
   --text-display--font-weight: 700;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
   --radius-full: 9999px;
 
-  --shadow-sm: 0 1px 2px rgb(14 26 36 / 0.06);
-  --shadow-md: 0 8px 24px rgb(14 26 36 / 0.08);
+  /* Layered shadows — a tight contact shadow plus a wider ambient one. A
+     single flat shadow is what made surfaces read as pasted-on rather than
+     raised. */
+  --shadow-sm:
+    0 1px 2px rgb(14 26 36 / 0.05), 0 1px 3px -1px rgb(14 26 36 / 0.06);
+  --shadow-md:
+    0 4px 12px -2px rgb(14 26 36 / 0.1), 0 2px 6px -2px rgb(14 26 36 / 0.06);
+  --shadow-lg:
+    0 14px 34px -10px rgb(14 26 36 / 0.2), 0 6px 14px -6px rgb(14 26 36 / 0.1);
 
   --max-width-content: 90rem;
   --max-width-catalog: 100rem;
@@ -51,6 +105,7 @@
 @theme inline {
   --font-sans:
     var(--font-plus-jakarta), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-heading: var(--font-sans);
   --font-mono:
     var(--font-ibm-plex-mono), ui-monospace, "Cascadia Code", "Segoe UI Mono",
     monospace;
@@ -66,6 +121,22 @@ body {
   font-family: var(--font-sans);
   font-size: 1rem;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Real per-storefront-page override target for Admin -> Design Studio ->
+   Typography (AD-272) — the storefront layout sets --font-heading when a
+   real heading font is chosen; falls back to --font-sans otherwise. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  /* Headings at default tracking read loose and generic at these weights. */
+  letter-spacing: -0.015em;
 }
 
 :focus-visible {
@@ -235,6 +306,314 @@ body {
   animation: th-hero-visual 720ms ease-out both;
 }
 
+/* Mega menu. The panel is mounted only while open, so the entrance has to be
+   a keyframe animation — a CSS transition would have nothing to animate from.
+   Columns share it with a small stagger (set inline by index). */
+@keyframes th-mega-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes th-mega-col-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes th-mega-flyout-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.th-mega-panel {
+  animation: th-mega-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* `backwards`, not `both`: a filling `transform` would keep creating a
+   stacking context on every column after the animation ends, trapping the
+   nested flyout's z-index inside its own column so the next column's links
+   painted over it. `backwards` still hides the column during its stagger
+   delay, but drops the transform once the animation is done. */
+.th-mega-col {
+  animation: th-mega-col-in 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.th-mega-flyout {
+  animation: th-mega-flyout-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Sweeping highlight for the emphasised nav CTA (PC Builder). The background
+   colour itself stays on the element as `bg-secondary`, so a custom accent set
+   in Design Studio still drives it — this only layers a moving sheen on top.
+   Written as a real class because Tailwind v4 drops the arbitrary
+   `bg-[length:…]` / `bg-[position:…]` candidates this needs. */
+.th-cta-sheen {
+  /* Pinned here rather than left to the button variant's own hover colour —
+     `cn()` is a plain join with no tailwind-merge, so that hover state can't
+     be overridden from the class list, and it dimmed the CTA on hover
+     (backwards for a highlight sweep). Unlayered CSS beats Tailwind's
+     layered utilities, so this wins. */
+  /* Two layers: the sweeping highlight on top, the brand gradient beneath.
+     The gradient runs the logo's own two colours — electric blue into the
+     near-black — and is built from tokens rather than hexes so a Design
+     Studio base colour still drives it. White text clears AA across the
+     whole run (5.84:1 at the blue end, 19.68:1 at the black end). */
+  background-color: var(--color-primary);
+  background-image:
+    linear-gradient(
+      110deg,
+      transparent 28%,
+      rgb(255 255 255 / 0.32) 46%,
+      transparent 64%
+    ),
+    linear-gradient(
+      120deg,
+      var(--color-primary) 0%,
+      var(--color-primary-hover) 42%,
+      var(--color-text) 100%
+    );
+  background-repeat: no-repeat, no-repeat;
+  background-size: 220% 100%, 100% 100%;
+  /* Both layers are listed so the sweep animation moves only the highlight;
+     a single value would drag the gradient along with it. */
+  background-position:
+    135% 0,
+    0 0;
+  transition:
+    background-position 620ms ease-out,
+    box-shadow 260ms ease-out,
+    transform 260ms ease-out;
+}
+
+/* Idle sweep so the CTA is noticed without being hovered. The long hold at
+   the start keeps it occasional rather than blinking. */
+@keyframes th-cta-sweep {
+  0%,
+  76% {
+    background-position:
+      135% 0,
+      0 0;
+  }
+  100% {
+    background-position:
+      -35% 0,
+      0 0;
+  }
+}
+
+.th-cta-sheen {
+  animation: th-cta-sweep 6s ease-out 1.5s infinite;
+}
+
+/* An animation would otherwise keep overriding the hover transition, so the
+   idle sweep is dropped on hover and the transition takes over from wherever
+   the sweep happened to be. */
+.th-cta-sheen:hover,
+.th-cta-sheen:focus-visible {
+  animation: none;
+  background-color: var(--color-primary);
+  background-position:
+    -35% 0,
+    0 0;
+}
+
+/* Marketing surfaces — the modal Popup and the corner Custom Alert
+   (components/storefront/dynamic-popup.tsx, site-alert.tsx). Both mount only
+   while visible, so an entrance has to be a keyframe animation: a transition
+   would have no previous value to animate from. Exits work the other way —
+   a `data-exiting` flag swaps in the reverse keyframes and the component
+   waits for `animationend` before it unmounts, so the frame is never cut.
+   The global prefers-reduced-motion rule collapses all of these to ~0ms,
+   and `animationend` still fires, so dismissal keeps working. */
+
+@keyframes th-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes th-popup-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes th-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes th-scrim-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* The dialog element is only the positioning box: transparent, stretched over
+   the whole viewport, so every click that lands on it rather than on the card
+   is a backdrop click — which is what dismisses the popup without a scrim div.
+   Centring is done with flex, not the UA's `margin: auto`, because Tailwind's
+   preflight zeroes every margin and would leave the card pinned top-left. The
+   `[open]` guard matters: an unguarded `display: flex` would override
+   `dialog:not([open]) { display: none }` and leave the popup permanently on
+   screen. `max-width`/`max-height` are reset because the UA caps a dialog at
+   roughly the viewport minus 2em, which would fight the inset. */
+.th-popup {
+  position: fixed;
+  inset: 0;
+  /* The UA gives `dialog` `width: fit-content`, which wins over the inset and
+     leaves the box hugging its card in the top-left corner — explicit 100%
+     is what actually makes it span the viewport for the flex centring below. */
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  padding: 1rem;
+  background: transparent;
+}
+
+.th-popup[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.th-popup::backdrop {
+  background-color: color-mix(in srgb, var(--color-text) 52%, transparent);
+  backdrop-filter: blur(2px);
+  animation: th-scrim-in 260ms ease-out both;
+}
+
+.th-popup[data-exiting="true"]::backdrop {
+  animation: th-scrim-out 190ms ease-in both;
+}
+
+.th-popup-card {
+  animation: th-popup-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.th-popup[data-exiting="true"] .th-popup-card {
+  animation: th-popup-out 190ms ease-in both;
+}
+
+/* Corner alert. `--th-alert-from` is set per position by the component so one
+   keyframe pair serves all four corners — top alerts drop in, bottom alerts
+   rise, each moving away from its own screen edge. */
+@keyframes th-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--th-alert-from, 16px)) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes th-alert-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--th-alert-from, 16px) * 0.5)) scale(0.98);
+  }
+}
+
+.th-alert {
+  animation: th-alert-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.th-alert[data-exiting="true"] {
+  animation: th-alert-out 200ms ease-in both;
+}
+
+/* The alert's background is operator-chosen, so its own trim can't come from
+   a fixed token — everything here is mixed from `currentColor`, which the
+   component sets from the configured text tone. That keeps the chrome legible
+   on a light or a dark alert without the admin picking a second colour. */
+.th-alert-card {
+  box-shadow: 0 18px 40px -16px color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.th-alert-tint {
+  border-color: color-mix(in srgb, currentColor 30%, transparent);
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+  transition: background-color 160ms ease-out;
+}
+
+.th-alert-tint:hover {
+  background-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+/* Auto-close countdown. Runs for exactly the configured duration (set inline)
+   and pauses in lockstep with the JS dismiss timer while the alert is hovered
+   or focused, so the bar always tells the truth about the time left. */
+@keyframes th-alert-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.th-alert-timer {
+  transform-origin: left center;
+  background-color: currentColor;
+  animation: th-alert-timer linear both;
+}
+
+.th-alert-timer[data-paused="true"] {
+  animation-play-state: paused;
+}
+
+/* The global reduced-motion rule collapses every animation to ~0ms, which
+   would drain this bar instantly while the dismiss timer still runs its full
+   duration — a progress bar that lies. Drop it instead; the alert still
+   auto-closes on time, just without the visible countdown. */
+@media (prefers-reduced-motion: reduce) {
+  .th-alert-timer {
+    display: none;
+  }
+}
+
 .th-scroll-hide {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -242,6 +621,135 @@ body {
 
 .th-scroll-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Shared styling for blog post body content — used by both the admin
+   rich-text editor (TipTap, AD-264) and the storefront post render, so
+   what the admin sees while writing matches the live page exactly. */
+/* The first block in a rich-text panel sits against the panel's own top
+   padding — its heading margin would double that up. */
+.th-rich-text > *:first-child > *:first-child,
+.th-rich-text > *:first-child {
+  margin-top: 0;
+}
+
+.th-rich-text h2 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.th-rich-text h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.th-rich-text h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.th-rich-text p {
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+/* Cap the reading measure. The homepage block spans the full content width,
+   where an uncapped paragraph runs past 200 characters a line. Tables and
+   other block elements are left alone so they still use the full width. */
+.th-rich-text p,
+.th-rich-text h2,
+.th-rich-text h3,
+.th-rich-text h4,
+.th-rich-text ul,
+.th-rich-text ol,
+.th-rich-text blockquote {
+  max-width: 78ch;
+}
+
+.th-rich-text ul,
+.th-rich-text ol {
+  margin: 0.5rem 0 0.75rem 1.5rem;
+}
+
+.th-rich-text ul {
+  list-style: disc;
+}
+
+.th-rich-text ol {
+  list-style: decimal;
+}
+
+.th-rich-text li {
+  margin-bottom: 0.25rem;
+}
+
+.th-rich-text blockquote {
+  border-left: 3px solid var(--color-border, #e5e7eb);
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  color: var(--color-text-muted, #6b7280);
+  font-style: italic;
+}
+
+.th-rich-text a {
+  color: var(--color-primary, #3897f0);
+  text-decoration: underline;
+}
+
+/* Tables in category buying-guide copy and blog bodies. Wrapped so a wide
+   pasted table scrolls instead of stretching the page. */
+.th-rich-text table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.th-rich-text th,
+.th-rich-text td {
+  border: 1px solid var(--color-border, #e5e7eb);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.th-rich-text th {
+  background: var(--color-surface-muted, #f3f4f6);
+  font-weight: 600;
+  color: var(--color-text, #111827);
+}
+
+.th-rich-text .tableWrapper {
+  overflow-x: auto;
+}
+
+.th-rich-text code {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.875em;
+}
+
+.th-rich-text pre {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.th-rich-text p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

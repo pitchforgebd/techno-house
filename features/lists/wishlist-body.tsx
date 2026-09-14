@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ProductCard } from "@/features/catalog/product-card";
 import { loadListProducts } from "@/features/lists/actions";
 import { useListsStore } from "@/features/lists/use-lists-store";
+import { PRODUCT_CARD_GRID_CLASS } from "@/features/catalog/product-grid";
 import { cn } from "@/lib/cn";
 import type { ProductSummary } from "@/lib/data";
 
@@ -69,7 +70,7 @@ export function WishlistBody({ className }: { className?: string }) {
           }
         />
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <ul className={PRODUCT_CARD_GRID_CLASS}>
           {products.map((product) => (
             <li key={product.id} className="flex flex-col gap-2">
               <ProductCard product={product} />

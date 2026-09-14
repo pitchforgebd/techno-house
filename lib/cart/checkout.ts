@@ -1,4 +1,4 @@
-export const CHECKOUT_CONTACT_KEY = "techno-house-checkout-contact-v1";
+﻿export const CHECKOUT_CONTACT_KEY = "techno-house-checkout-contact-v1";
 export const LAST_ORDER_KEY = "techno-house-last-order-v1";
 
 export type CheckoutContact = {
@@ -7,6 +7,8 @@ export type CheckoutContact = {
   email: string;
   addressLine: string;
   notes: string;
+  /** Optional; only collected when the Billing Address feature flag is on. */
+  billingAddress: string;
 };
 
 export const EMPTY_CHECKOUT_CONTACT: CheckoutContact = {
@@ -15,6 +17,7 @@ export const EMPTY_CHECKOUT_CONTACT: CheckoutContact = {
   email: "",
   addressLine: "",
   notes: "",
+  billingAddress: "",
 };
 
 export type CheckoutStepId = "contact" | "delivery" | "payment" | "review";
@@ -49,6 +52,8 @@ export type MockOrderSnapshot = {
     name: string;
     quantity: number;
     lineTotal: number;
+    colorName: string | null;
+    colorHex: string | null;
   }[];
 };
 
@@ -73,10 +78,6 @@ export function validateCheckoutContact(
     errors.addressLine = "Enter a delivery address or pickup note.";
   }
   return errors;
-}
-
-export function createMockOrderId(): string {
-  return `TH-${Date.now().toString(36).toUpperCase()}`;
 }
 
 export function parseMockOrderSnapshot(raw: unknown): MockOrderSnapshot | null {
@@ -104,6 +105,20 @@ export function parseMockOrderSnapshot(raw: unknown): MockOrderSnapshot | null {
         typeof line.quantity === "number" &&
         typeof line.lineTotal === "number",
     )
+    .map((line) => ({
+      slug: line.slug,
+      name: line.name,
+      quantity: line.quantity,
+      lineTotal: line.lineTotal,
+      colorName:
+        typeof line.colorName === "string" && line.colorName.trim()
+          ? line.colorName.trim()
+          : null,
+      colorHex:
+        typeof line.colorHex === "string" && line.colorHex.trim()
+          ? line.colorHex.trim()
+          : null,
+    }))
     .slice(0, 24);
   if (lineSummaries.length === 0) {
     return null;

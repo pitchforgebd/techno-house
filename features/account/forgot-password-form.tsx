@@ -1,42 +1,61 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useTransition } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  ACCOUNT_EMAIL_MAX,
-  validateForgotInput,
-} from "@/lib/account/mock-session";
+import { requestPasswordResetAction } from "@/features/account/auth-actions";
+import { ACCOUNT_EMAIL_MAX } from "@/lib/account/validation";
 
+/**
+ * Password reset email delivery waits on SMTP (Phase 16). This form records
+ * the request (and is rate-limited) but does not email anyone.
+ */
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextErrors = validateForgotInput({ email });
-    setErrors(nextErrors);
-    setSubmitted(Object.keys(nextErrors).length === 0);
+    setFormError(null);
+    startTransition(async () => {
+      const result = await requestPasswordResetAction({ email });
+      if (!result.ok) {
+        setErrors(result.fieldErrors ?? {});
+        setFormError(result.formError ?? null);
+        setSubmitted(false);
+        return;
+      }
+      setErrors({});
+      setSubmitted(true);
+    });
   }
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-      <Alert tone="warning" title="No email is sent">
+      <Alert tone="info" title="Reset email not sent yet">
         <p className="text-caption">
-          Password reset is UI-only. SMTP, tokens, and rate limits land with
-          real auth.
+          Account sign-in works now. Password-reset email needs SMTP, which
+          arrives in a later phase. Submitting this form does not email anyone.
         </p>
       </Alert>
 
+      {formError ? (
+        <Alert tone="danger" title="Could not continue">
+          <p className="text-caption">{formError}</p>
+        </Alert>
+      ) : null}
+
       {submitted ? (
-        <Alert tone="info" title="Preview complete">
+        <Alert tone="success" title="Request recorded">
           <p className="text-caption">
-            If this were production, a reset link would be emailed when the
-            address exists. Nothing was sent from this form.
+            If an account exists for that address, a reset link would be sent
+            once email delivery is enabled. No message was sent from this form.
           </p>
         </Alert>
       ) : null}
@@ -50,15 +69,13 @@ export function ForgotPasswordForm() {
           inputMode="email"
           value={email}
           maxLength={ACCOUNT_EMAIL_MAX}
-          onChange={(event) => {
-            setEmail(event.target.value);
-            setSubmitted(false);
-          }}
+          onChange={(event) => setEmail(event.target.value)}
+          disabled={pending}
         />
       </Field>
 
-      <Button type="submit" className="w-full">
-        Request reset (mock)
+      <Button type="submit" className="w-full" disabled={pending}>
+        {pending ? "Continuing…" : "Continue"}
       </Button>
 
       <p className="text-caption text-text-muted">

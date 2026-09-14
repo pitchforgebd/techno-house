@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
-import { ContentStub } from "@/components/layout/content-stub";
+import {
+  StorefrontContentPage,
+  storefrontContentMetadata,
+} from "@/features/content/storefront-content-page";
 
-export const metadata: Metadata = {
-  title: "Warranty — Techno House",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return storefrontContentMetadata("warranty", "Warranty — Techno House");
+}
 
 export default function WarrantyPage() {
   return (
-    <ContentStub
-      heading="Warranty"
-      title="Warranty information"
-      description="Warranty terms will appear here."
+    <StorefrontContentPage
+      slug="warranty"
+      fallbackHeading="Warranty"
+      fallbackTitle="Warranty information"
+      fallbackDescription="Warranty terms will appear here."
     />
   );
 }

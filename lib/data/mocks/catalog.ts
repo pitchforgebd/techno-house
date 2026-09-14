@@ -1,6 +1,7 @@
-import { CURRENCY_CODE } from "@/lib/format/currency";
+﻿import { CURRENCY_CODE } from "@/lib/format/currency";
 import type { Brand, Category, ProductDetail } from "@/lib/data/types/catalog";
 import type { Money, ProductImage } from "@/lib/data/types/common";
+import { warrantyBadgeFromLabel } from "@/lib/catalog/warranty-badge";
 
 function productImage(src: string, alt: string): ProductImage {
   return { src, alt };
@@ -271,7 +272,8 @@ function imgs(photoPath: string, alt: string): {
   return { image, images: [image] };
 }
 
-export const mockProducts: ProductDetail[] = [
+export const mockProducts: ProductDetail[] = (
+  [
   {
     id: "p-lumen-14",
     slug: "lumen-14-office-laptop",
@@ -1203,4 +1205,31 @@ export const mockProducts: ProductDetail[] = [
     builderSlot: null,
     builderAttrs: null,
   },
-];
+] as Omit<
+  ProductDetail,
+  | "youtubeUrl"
+  | "pdfSpecificationSrc"
+  | "colors"
+  | "warrantyBadge"
+  | "discountStartsAt"
+  | "discountEndsAt"
+  | "labels"
+  | "notes"
+  | "isNewArrival"
+>[]
+).map((product) => ({
+  ...product,
+  youtubeUrl: null,
+  pdfSpecificationSrc: null,
+  colors: [],
+  discountStartsAt: null,
+  discountEndsAt: null,
+  warrantyBadge: product.warrantyLabel
+    ? warrantyBadgeFromLabel(product.warrantyLabel)
+    : null,
+  labels: [],
+  notes: [],
+  // Mock rows carry no `createdAt`, so the hand-set flag is the only signal
+  // available here. The database path derives this from the real date.
+  isNewArrival: product.isNew,
+}));

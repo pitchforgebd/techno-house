@@ -1,4 +1,4 @@
-export type {
+﻿export type {
   CurrencyCode,
   Money,
   Paged,
@@ -12,10 +12,12 @@ export type {
 export type {
   Brand,
   BuilderAttrs,
+  BuilderCandidate,
   BuilderSlot,
   Category,
   Facet,
   FacetValue,
+  ProductColorOption,
   ProductDetail,
   ProductListQuery,
   ProductListResult,

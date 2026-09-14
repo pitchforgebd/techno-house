@@ -1,30 +1,26 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
-import { notifySuccess } from "@/components/ui/feedback-provider";
-import { useMockConversations } from "@/features/account/use-mock-conversations";
-import { useMockCustomer } from "@/features/account/use-mock-customer";
+import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
+import { createCustomerReviewAction } from "@/features/account/conversation-actions";
+import { useCustomerSession } from "@/features/account/customer-session-provider";
 import { InteractiveRatingPicker } from "@/features/product/interactive-rating-picker";
 import { RatingStars } from "@/features/product/rating-stars";
-import {
-  REVIEW_BODY_MAX,
-  clampRating,
-  createMockReviewId,
-  reviewTitleFromBody,
-  validatePdpReviewInput,
-} from "@/lib/account/mock-conversations";
+import { validatePdpReviewInput } from "@/lib/account/mock-conversations";
+import { REVIEW_BODY_MAX } from "@/lib/catalog/review-input";
+import type { CustomerReviewView } from "@/lib/catalog/review-input";
 import type { ProductReview } from "@/lib/data";
 
 type ProductReviewsProps = {
   catalogReviews: ProductReview[];
+  ownReviews: CustomerReviewView[];
   productSlug: string;
-  productName: string;
 };
 
 function formatWhen(iso: string): string {
@@ -36,23 +32,19 @@ function formatWhen(iso: string): string {
 
 export function ProductReviews({
   catalogReviews,
+  ownReviews,
   productSlug,
-  productName,
 }: ProductReviewsProps) {
   const pathname = usePathname();
-  const { session } = useMockCustomer();
-  const { reviews: storedReviews, addReview } = useMockConversations();
+  const router = useRouter();
+  const session = useCustomerSession();
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const customerReviews = useMemo(
-    () => storedReviews.filter((item) => item.productSlug === productSlug),
-    [storedReviews, productSlug],
-  );
+  const [pending, startTransition] = useTransition();
 
   const allReviews = useMemo(() => {
-    const mapped = customerReviews.map((item) => ({
+    const mapped = ownReviews.map((item) => ({
       id: item.id,
       rating: item.rating,
       title: item.title,
@@ -71,12 +63,13 @@ export function ProductReviews({
       pending: false as const,
     }));
     return [...mapped, ...catalog];
-  }, [catalogReviews, customerReviews]);
+  }, [catalogReviews, ownReviews]);
 
+  const published = catalogReviews;
   const average =
-    allReviews.length > 0
-      ? allReviews.reduce((sum, review) => sum + review.rating, 0) /
-        allReviews.length
+    published.length > 0
+      ? published.reduce((sum, review) => sum + review.rating, 0) /
+        published.length
       : 0;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -89,24 +82,25 @@ export function ProductReviews({
     if (Object.keys(nextErrors).length > 0) {
       return;
     }
-    const trimmed = body.trim();
-    addReview({
-      id: createMockReviewId(),
-      productSlug,
-      productName,
-      authorName: session.fullName,
-      rating: clampRating(rating),
-      title: reviewTitleFromBody(trimmed),
-      body: trimmed,
-      createdAt: new Date().toISOString(),
-      status: "pending",
-    });
-    setBody("");
-    setRating(0);
-    setErrors({});
-    notifySuccess({
-      title: "Review submitted",
-      description: "Your review is saved on this device and shown below.",
+    startTransition(async () => {
+      const result = await createCustomerReviewAction({
+        productSlug,
+        rating,
+        title: "",
+        body,
+      });
+      if (!result.ok) {
+        notifyError(result.formError ?? "Could not submit the review.");
+        return;
+      }
+      setBody("");
+      setRating(0);
+      setErrors({});
+      notifySuccess({
+        title: "Review submitted",
+        description: "Staff will publish it after moderation.",
+      });
+      router.refresh();
     });
   }
 
@@ -117,23 +111,25 @@ export function ProductReviews({
           Customer reviews
         </h2>
         <p className="mt-1 text-body text-text-muted">
-          {allReviews.length === 0
+          {published.length === 0
             ? "No reviews given yet."
-            : `${allReviews.length} ${allReviews.length === 1 ? "review" : "reviews"}.`}
+            : `${published.length} ${published.length === 1 ? "review" : "reviews"}.`}
         </p>
       </div>
 
       {allReviews.length > 0 ? (
         <>
-          <div className="rounded-md border border-border bg-surface-muted/60 px-3 py-2.5">
-            <p className="text-label font-medium text-text">
-              Average rating · {allReviews.length}{" "}
-              {allReviews.length === 1 ? "review" : "reviews"}
-            </p>
-            <div className="mt-1">
-              <RatingStars rating={average} />
+          {published.length > 0 ? (
+            <div className="rounded-md border border-border bg-surface-muted/60 px-3 py-2.5">
+              <p className="text-label font-medium text-text">
+                Average rating · {published.length}{" "}
+                {published.length === 1 ? "review" : "reviews"}
+              </p>
+              <div className="mt-1">
+                <RatingStars rating={average} />
+              </div>
             </div>
-          </div>
+          ) : null}
           <ul className="space-y-3">
             {allReviews.map((review) => (
               <li
@@ -144,7 +140,7 @@ export function ProductReviews({
                   <RatingStars rating={review.rating} />
                   <div className="flex items-center gap-2">
                     {review.pending ? (
-                      <Badge tone="neutral">Your review</Badge>
+                      <Badge tone="neutral">Awaiting review</Badge>
                     ) : null}
                     <time
                       dateTime={review.createdAt}
@@ -206,8 +202,8 @@ export function ProductReviews({
                 rows={5}
               />
             </Field>
-            <Button type="submit" size="sm">
-              Submit review
+            <Button type="submit" size="sm" disabled={pending}>
+              {pending ? "Submitting…" : "Submit review"}
             </Button>
           </form>
         )}

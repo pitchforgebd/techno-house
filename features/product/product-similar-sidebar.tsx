@@ -1,13 +1,10 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeftRight, Eye } from "lucide-react";
 import { buttonClassName } from "@/components/ui/button";
-import {
-  notifyError,
-  notifyToast,
-} from "@/components/ui/feedback-provider";
+import { notifyError, notifyToast } from "@/components/ui/feedback-provider";
 import { useListsStore } from "@/features/lists/use-lists-store";
 import { useCartStore } from "@/features/cart/use-cart-store";
 import type { ProductSummary } from "@/lib/data";
@@ -56,12 +53,21 @@ function SimilarProductCard({ product }: { product: ProductSummary }) {
                 if (unavailable) {
                   notifyError({
                     title: "Out of stock",
-                    description: "This item cannot be added while out of stock.",
+                    description:
+                      "This item cannot be added while out of stock.",
                   });
                   return;
                 }
-                addItem(product.slug, 1);
-                notifyToast("Added to cart");
+                void addItem(product.slug, 1).then((result) => {
+                  if (!result.ok) {
+                    notifyError({
+                      title: "Could not add to cart",
+                      description: result.reason,
+                    });
+                    return;
+                  }
+                  notifyToast("Added to cart");
+                });
               }}
             >
               {unavailable ? "Out of stock" : "Add to cart"}
@@ -75,7 +81,10 @@ function SimilarProductCard({ product }: { product: ProductSummary }) {
                 className: "size-9 min-w-9 border border-border px-0",
               })}
               onClick={() => {
-                const result = toggleCompare(product.slug, product.categorySlug);
+                const result = toggleCompare(
+                  product.slug,
+                  product.categorySlug,
+                );
                 if (!result.ok) {
                   notifyError({ title: "Compare", description: result.reason });
                   return;
@@ -83,7 +92,11 @@ function SimilarProductCard({ product }: { product: ProductSummary }) {
                 notifyToast("Compare list updated");
               }}
             >
-              <ArrowLeftRight aria-hidden className="size-4" strokeWidth={1.75} />
+              <ArrowLeftRight
+                aria-hidden
+                className="size-4"
+                strokeWidth={1.75}
+              />
             </button>
             <Link
               href={`/product/${product.slug}`}
@@ -111,7 +124,10 @@ export function ProductSimilarSidebar({
   className?: string;
 }) {
   return (
-    <aside className={cn("min-w-0", className)} aria-labelledby="similar-products-heading">
+    <aside
+      className={cn("min-w-0", className)}
+      aria-labelledby="similar-products-heading"
+    >
       <div className="flex items-stretch">
         <h2
           id="similar-products-heading"

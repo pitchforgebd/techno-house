@@ -46,8 +46,8 @@ Admin is a separate tree under `/admin/*`.
 | `/pc-builder` | PC Builder | 07 |
 | `/pc-builder/share/[id]` | Shared build (mock id) | 07 |
 | `/offers` | Promotions landing | 03/15 |
-| `/flash-sale` | Flash sale | 03/15 |
-| `/deals` | Deals | 03/15 |
+| `/flash-sale` | Active flash campaigns | 03/15 |
+| `/deals` | Today's deal products (`isSale`) | 03/15 |
 | `/blog` | Blog index | 15 |
 | `/blog/[slug]` | Blog post | 15 |
 | `/about` | About | 02/08 |
@@ -67,6 +67,10 @@ Admin is a separate tree under `/admin/*`.
 | `/track` | Guest order track UI | 08 |
 | `/product-request` | “Didn’t find it” form | 02 |
 | `/brands` | Brand index | 04 |
+| `/sitemap.xml` | Public sitemap | 15 |
+| `/robots.txt` | Robots + sitemap pointer | 15 |
+| `/feeds/google.xml` | Merchant Center product feed (404 until enabled) | 15 |
+| `/feeds/facebook.xml` | Facebook catalog product feed (404 until enabled) | 15 |
 
 ---
 
@@ -102,7 +106,8 @@ Phase 09 ships UI with mock staff. Real RBAC in Phase 11.
 
 | Route | Purpose |
 | --- | --- |
-| `/admin/login` | Staff login (separate) |
+| `/admin/access/{ADMIN_LOGIN_SLUG}` | Staff login gate (obscured; set `ADMIN_LOGIN_SLUG`) |
+| `/admin/login` | Legacy — 404 (not advertised) |
 | `/admin` | Dashboard |
 | `/admin/products` | Product list |
 | `/admin/products/new` | Create |
@@ -123,19 +128,31 @@ Phase 09 ships UI with mock staff. Real RBAC in Phase 11.
 | `/admin/refunds` | Refunds |
 | `/admin/customers` | Customers |
 | `/admin/customers/[id]` | Customer detail |
-| `/admin/promotions` | Promotions |
+| `/admin/promotions` | Promotion & Offers hub |
+| `/admin/promotions/campaigns` | Promotion campaigns |
 | `/admin/flash-sales` | Flash sales |
 | `/admin/deals` | Deals |
 | `/admin/coupons` | Coupons |
 | `/admin/marketing` | Marketing hub |
-| `/admin/blog` | Blog |
-| `/admin/newsletter` | Newsletter |
-| `/admin/notifications` | Notifications |
+| `/admin/blog` | Blog posts |
+| `/admin/blog/new` | New blog post |
+| `/admin/blog/[id]` | Edit blog post |
+| `/admin/blog/categories` | Blog categories |
+| `/admin/newsletter` | Newsletter subscribers |
+| `/admin/marketing/subscribers` | Email subscribers |
+| `/admin/notifications` | Notifications (redirects to types) |
+| `/admin/notifications/types` | Notification types (mock catalogue) |
+| `/admin/notifications/custom` | Send custom in-app notification |
+| `/admin/notifications/history` | Custom notification history |
+| `/admin/notifications/settings` | Channel settings (mock) |
 | `/admin/analytics` | Analytics |
 | `/admin/reports` | Reports |
 | `/admin/integrations/ga4` | GA4 |
 | `/admin/integrations/gtm` | GTM |
-| `/admin/integrations/meta` | Meta Pixel/CAPI/catalogue |
+| `/admin/integrations/meta` | Meta Pixel |
+| `/admin/integrations/meta-capi` | Meta CAPI (token persist deferred) |
+| `/admin/integrations/facebook-catalog` | Facebook catalog ID |
+| `/admin/integrations/merchant-center` | Google Merchant Center |
 | `/admin/seo` | SEO |
 | `/admin/sitemap` | Sitemap controls |
 | `/admin/design-studio` | Design Studio |

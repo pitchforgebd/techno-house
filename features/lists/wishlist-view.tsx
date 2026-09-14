@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { WishlistBody } from "@/features/lists/wishlist-body";

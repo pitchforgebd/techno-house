@@ -1,34 +1,38 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AccountRefundRequest } from "@/features/account/account-refund-request";
 import { AccountShell } from "@/features/account/account-shell";
-import { useMockOrders } from "@/features/account/use-mock-orders";
-import {
-  MOCK_TRACK_STEPS,
-  isMockOrderId,
-  mockOrderStatus,
-  mockOrderStatusLabel,
-  normalizeOrderIdParam,
-} from "@/lib/account/mock-orders";
 import { paymentMethodLabel } from "@/lib/cart/payment";
-import { resolveShippingRate } from "@/lib/cart/shipping";
-import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format/currency";
+import type { CustomerOrderView } from "@/lib/orders/order-view";
+import { orderStatusLabel, paymentPendingNote } from "@/lib/orders/order-view";
+import type {
+  CustomerRefundReasonView,
+  CustomerRefundView,
+} from "@/lib/refunds/workflow";
 
-export function AccountOrderDetailView({ orderId }: { orderId: string }) {
-  const { getById } = useMockOrders();
-  const id = normalizeOrderIdParam(orderId);
-  const order = isMockOrderId(id) ? getById(id) : null;
-
-  if (!order) {
+export function AccountOrderDetailView({
+  serverOrder,
+  refunds = [],
+  refundReasons = [],
+  remainingRefundable = 0,
+}: {
+  orderId: string;
+  serverOrder?: CustomerOrderView | null;
+  refunds?: CustomerRefundView[];
+  refundReasons?: CustomerRefundReasonView[];
+  remainingRefundable?: number;
+}) {
+  if (!serverOrder) {
     return (
       <AccountShell title="Order">
         <EmptyState
           title="Order not found"
-          description="This mock order is not stored on this device. History is local only."
+          description="This order is not on your account."
           action={
             <Link
               href="/account/orders"
@@ -42,65 +46,19 @@ export function AccountOrderDetailView({ orderId }: { orderId: string }) {
     );
   }
 
-  const status = mockOrderStatus();
-  const shipping = resolveShippingRate(
-    order.shippingMethodId,
-    order.shippingAreaId,
-  );
-  const placedAt = new Date(order.createdAt).toLocaleString("en-GB", {
+  const order = serverOrder;
+  const placedAt = new Date(order.placedAt).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
   });
-  const currentIndex = MOCK_TRACK_STEPS.findIndex((step) => step.id === status);
 
   return (
-    <AccountShell title={order.orderId}>
+    <AccountShell title={order.number}>
       <div className="space-y-6">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="neutral">{mockOrderStatusLabel(status)}</Badge>
+          <Badge tone="neutral">{orderStatusLabel(order.status)}</Badge>
           <p className="text-caption text-text-muted">Placed {placedAt}</p>
         </div>
-
-        <section aria-labelledby="order-track-heading">
-          <h2
-            id="order-track-heading"
-            className="text-label font-semibold text-text"
-          >
-            Tracking
-          </h2>
-          <ol className="mt-3 space-y-3">
-            {MOCK_TRACK_STEPS.map((step, index) => {
-              const done = index <= currentIndex;
-              return (
-                <li key={step.id} className="flex gap-3">
-                  <span
-                    className={cn(
-                      "mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full",
-                      done ? "bg-primary" : "bg-border",
-                    )}
-                    aria-hidden="true"
-                  />
-                  <div>
-                    <p
-                      className={cn(
-                        "text-label font-medium",
-                        done ? "text-text" : "text-text-muted",
-                      )}
-                    >
-                      {step.label}
-                      {index === currentIndex ? (
-                        <span className="ml-2 text-caption font-normal text-text-muted">
-                          (current mock state)
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="text-caption text-text-muted">{step.note}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
 
         <section aria-labelledby="order-items-heading">
           <h2
@@ -110,24 +68,42 @@ export function AccountOrderDetailView({ orderId }: { orderId: string }) {
             Items
           </h2>
           <ul className="mt-3 divide-y divide-border rounded-md border border-border bg-surface">
-            {order.lineSummaries.map((line) => (
+            {order.items.map((line, index) => (
               <li
-                key={`${order.orderId}-${line.slug}`}
+                key={`${order.number}-${line.sku}-${index}`}
                 className="flex flex-wrap items-start justify-between gap-3 px-4 py-3"
               >
                 <div>
-                  <Link
-                    href={`/product/${line.slug}`}
-                    className="text-label font-medium text-text hover:text-primary"
-                  >
-                    {line.name}
-                  </Link>
+                  {line.productSlug ? (
+                    <Link
+                      href={`/product/${line.productSlug}`}
+                      className="text-label font-medium text-text hover:text-primary"
+                    >
+                      {line.productName}
+                    </Link>
+                  ) : (
+                    <p className="text-label font-medium text-text">
+                      {line.productName}
+                    </p>
+                  )}
+                  {line.colorName ? (
+                    <p className="mt-0.5 flex items-center gap-1.5 text-caption text-text-muted">
+                      {line.colorHex ? (
+                        <span
+                          aria-hidden
+                          className="inline-block size-2.5 rounded-sm border border-black/10"
+                          style={{ backgroundColor: line.colorHex }}
+                        />
+                      ) : null}
+                      Colour: {line.colorName}
+                    </p>
+                  ) : null}
                   <p className="text-caption text-text-muted">
                     Qty {line.quantity}
                   </p>
                 </div>
                 <p className="tabular-nums text-label font-semibold">
-                  {formatMoney({ amount: line.lineTotal })}
+                  {formatMoney({ amount: line.totalAmount })}
                 </p>
               </li>
             ))}
@@ -148,39 +124,46 @@ export function AccountOrderDetailView({ orderId }: { orderId: string }) {
             <div>
               <dt className="text-caption text-text-muted">Contact</dt>
               <dd>
-                {order.fullName} · {order.phone}
+                {order.customerName} · {order.customerPhone}
               </dd>
-              <dd className="text-text-muted">{order.email}</dd>
+              <dd className="text-text-muted">{order.customerEmail}</dd>
             </div>
             <div>
               <dt className="text-caption text-text-muted">Address</dt>
-              <dd>{order.addressLine}</dd>
+              <dd>{order.shippingAddress}</dd>
             </div>
             <div>
               <dt className="text-caption text-text-muted">Shipping</dt>
-              <dd>
-                {shipping.ok
-                  ? `${shipping.method.name}${
-                      shipping.area ? ` · ${shipping.area.name}` : ""
-                    }`
-                  : "—"}
-              </dd>
+              <dd>{order.shippingMethodLabel ?? "—"}</dd>
             </div>
             <div>
               <dt className="text-caption text-text-muted">Payment</dt>
               <dd>
                 {paymentMethodLabel(order.paymentMethodId)}{" "}
-                <span className="text-text-muted">(not charged)</span>
+                <span className="text-text-muted">
+                  ({paymentPendingNote(order.paymentFlow)})
+                </span>
               </dd>
             </div>
             <div className="flex justify-between border-t border-border pt-2 font-semibold">
-              <dt>Display total</dt>
+              <dt>Total</dt>
               <dd className="tabular-nums">
-                {formatMoney({ amount: order.total })}
+                {formatMoney({ amount: order.totalAmount })}
               </dd>
             </div>
           </dl>
         </section>
+
+        {order.paymentStatus === "paid" ||
+        order.paymentStatus === "partially_refunded" ||
+        refunds.length > 0 ? (
+          <AccountRefundRequest
+            orderNumber={order.number}
+            remainingAmount={remainingRefundable}
+            reasons={refundReasons}
+            refunds={refunds}
+          />
+        ) : null}
 
         <p>
           <Link

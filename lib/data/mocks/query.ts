@@ -1,4 +1,5 @@
-import type {
+﻿import type {
+  BuilderCandidate,
   Category,
   Facet,
   ProductDetail,
@@ -7,6 +8,7 @@ import type {
 } from "@/lib/data/types/catalog";
 import type { StockStatus } from "@/lib/data/types/common";
 import { BRAND_FACET_KEY } from "@/lib/catalog/listing-params";
+import { normalizeSearchNeedle } from "@/lib/search/query";
 
 const IN_STOCK: StockStatus[] = ["in_stock", "low_stock"];
 
@@ -23,10 +25,23 @@ export function toSummary(product: ProductDetail): ProductSummary {
     compareAtPrice: product.compareAtPrice,
     stockStatus: product.stockStatus,
     warrantyLabel: product.warrantyLabel,
+    warrantyBadge: product.warrantyBadge,
     image: product.image,
     specs: product.specs,
     isNew: product.isNew,
+    isNewArrival: product.isNewArrival,
     isSale: product.isSale,
+    discountStartsAt: product.discountStartsAt,
+    discountEndsAt: product.discountEndsAt,
+    labels: product.labels,
+  };
+}
+
+export function toCandidate(product: ProductDetail): BuilderCandidate {
+  return {
+    ...toSummary(product),
+    builderSlot: product.builderSlot,
+    builderAttrs: product.builderAttrs,
   };
 }
 
@@ -90,9 +105,21 @@ export function matchesQuery(
     return false;
   }
 
-  const needle = query.q?.trim().toLowerCase();
+  const needle = normalizeSearchNeedle(query.q).toLowerCase();
   if (needle) {
-    const haystack = `${product.name} ${product.sku}`.toLowerCase();
+    const category = categories.find(
+      (item) => item.slug === product.categorySlug,
+    );
+    const haystack = [
+      product.name,
+      product.sku,
+      product.brandName,
+      product.brandSlug,
+      product.categorySlug,
+      category?.name ?? "",
+    ]
+      .join(" ")
+      .toLowerCase();
     if (!haystack.includes(needle)) {
       return false;
     }

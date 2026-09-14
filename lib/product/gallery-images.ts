@@ -1,42 +1,17 @@
-import type { ProductImage } from "@/lib/data";
+﻿import type { ProductImage } from "@/lib/data";
 
-export const MIN_PRODUCT_GALLERY_IMAGES = 6;
-
-const VIEW_LABELS = [
-  "front view",
-  "angle view",
-  "detail",
-  "ports",
-  "packaging",
-  "in use",
-] as const;
-
+/**
+ * Build the PDP gallery list from stored images.
+ * Shows exactly what was uploaded (plus a single fallback when empty).
+ * Does not pad/duplicate frames to a fake count.
+ */
 export function buildProductGalleryImages(
   images: ProductImage[],
   fallback: ProductImage,
-  productName: string,
-  minimum = MIN_PRODUCT_GALLERY_IMAGES,
+  _productName?: string,
 ): ProductImage[] {
-  const base = images.length > 0 ? [...images] : [fallback];
-  if (base.length >= minimum) {
-    return base;
+  if (images.length > 0) {
+    return images;
   }
-
-  const gallery = [...base];
-  let index = 0;
-  while (gallery.length < minimum) {
-    const source = base[index % base.length];
-    if (!source) {
-      break;
-    }
-    const view = VIEW_LABELS[gallery.length % VIEW_LABELS.length];
-    const separator = source.src.includes("?") ? "&" : "?";
-    gallery.push({
-      src: `${source.src}${separator}th=${gallery.length + 1}`,
-      alt: `${productName} — ${view}`,
-    });
-    index += 1;
-  }
-
-  return gallery;
+  return [fallback];
 }

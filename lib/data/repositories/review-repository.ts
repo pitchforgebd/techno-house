@@ -1,4 +1,4 @@
-import type { ProductQuestion, ProductReview } from "@/lib/data/types/reviews";
+﻿import type { ProductQuestion, ProductReview } from "@/lib/data/types/reviews";
 
 export interface ReviewRepository {
   listReviewsByProductSlug(slug: string): Promise<ProductReview[]>;

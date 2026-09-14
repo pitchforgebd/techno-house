@@ -1,39 +1,45 @@
-/**
- * Display-only mock payment methods.
- * No live gateways. Never collect raw card data, wallet PINs, or secrets in this UI.
+﻿/**
+ * Storefront payment methods shown at checkout.
+ * Online methods redirect to that provider's hosted page (sandbox or live
+ * is controlled by server env flags, never shown in the UI).
+ * Never collect raw card data, wallet PINs, or secrets in this UI.
  */
 
-export type PaymentMethodId = "sslcommerz" | "bkash" | "cod";
+export type PaymentMethodId = "sslcommerz" | "bkash" | "nagad" | "cod";
 
 export type PaymentMethod = {
   id: PaymentMethodId;
   name: string;
   description: string;
-  /** How the mock flow would work later — for UI copy only. */
+  /** How the flow works — for UI copy only. */
   flowNote: string;
 };
 
 export const MOCK_PAYMENT_METHODS: PaymentMethod[] = [
   {
+    id: "cod",
+    name: "Cash on delivery",
+    description: "Pay in cash when the order arrives.",
+    flowNote: "No online payment page.",
+  },
+  {
     id: "sslcommerz",
     name: "SSLCommerz",
     description:
-      "Pay online by card or other SSLCommerz options on a hosted page later.",
-    flowNote:
-      "Hosted redirect only when live payments ship. No card fields on this site.",
+      "Pay online by card, internet banking, or other SSLCommerz options.",
+    flowNote: "You will complete payment on the SSLCommerz page.",
   },
   {
     id: "bkash",
     name: "bKash",
-    description: "Pay with bKash via a provider-hosted checkout later.",
-    flowNote:
-      "Selection only — no bKash PIN, OTP, or wallet number is collected here.",
+    description: "Pay with bKash on the secure bKash checkout page.",
+    flowNote: "You will complete payment on the bKash page.",
   },
   {
-    id: "cod",
-    name: "Cash on delivery",
-    description: "Pay in cash when the order arrives.",
-    flowNote: "No online charge in this mock.",
+    id: "nagad",
+    name: "Nagad",
+    description: "Pay with Nagad on the secure Nagad checkout page.",
+    flowNote: "You will complete payment on the Nagad page.",
   },
 ];
 

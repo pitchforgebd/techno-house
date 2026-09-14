@@ -5,19 +5,20 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { IconCart, IconTrash } from "@/components/layout/chrome-icons";
 import { HeaderCountBadge } from "@/components/layout/header-count-badge";
-import { Button, buttonClassName } from "@/components/ui/button";
+import { HEADER_ACTION_CLASS } from "@/components/layout/header-action-class";
+import { buttonClassName } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Sheet } from "@/components/ui/sheet";
 import { loadCartProducts } from "@/features/cart/actions";
 import { useCartStore } from "@/features/cart/use-cart-store";
-import { useMockCustomer } from "@/features/account/use-mock-customer";
+import { useCustomerSession } from "@/features/account/customer-session-provider";
 import type { ProductSummary } from "@/lib/data";
-import { cartItemCount } from "@/lib/cart/cart";
+import { cartItemCount, cartLineKey } from "@/lib/cart/cart";
 import { loginHref } from "@/lib/account/return-path";
 import { formatMoney } from "@/lib/format/currency";
 
 export function HeaderCart() {
-  const { session } = useMockCustomer();
+  const session = useCustomerSession();
   const checkoutHref = session ? "/checkout" : loginHref("/checkout");
   const { state, removeItem } = useCartStore();
   const [open, setOpen] = useState(false);
@@ -76,10 +77,9 @@ export function HeaderCart() {
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="relative min-h-11 min-w-11 px-2"
+      <button
+        type="button"
+        className={HEADER_ACTION_CLASS}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls="header-cart"
@@ -88,7 +88,7 @@ export function HeaderCart() {
       >
         <IconCart />
         <HeaderCountBadge count={count} />
-      </Button>
+      </button>
       <Sheet open={open} onClose={close} title="Cart" side="right">
         <div id="header-cart" className="space-y-4">
           {state.lines.length === 0 ? (
@@ -116,7 +116,7 @@ export function HeaderCart() {
                 <ul className="space-y-3">
                   {rows.map(({ line, product, lineTotal }) => (
                     <li
-                      key={line.slug}
+                      key={cartLineKey(line)}
                       className="flex gap-3 border-b border-border pb-3 last:border-0"
                     >
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-surface-muted">
@@ -142,11 +142,18 @@ export function HeaderCart() {
                             className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-danger/10 hover:text-danger"
                             aria-label={`Remove ${product.name}`}
                             title="Remove"
-                            onClick={() => removeItem(line.slug)}
+                            onClick={() =>
+                              removeItem(line.slug, line.colorId)
+                            }
                           >
                             <IconTrash className="size-4" />
                           </button>
                         </div>
+                        {line.colorName ? (
+                          <p className="mt-0.5 text-caption text-text-muted">
+                            Colour: {line.colorName}
+                          </p>
+                        ) : null}
                         <p className="mt-1 text-caption tabular-nums text-text-muted">
                           {line.quantity} × {formatMoney(product.price)} ={" "}
                           {formatMoney({ amount: lineTotal })}

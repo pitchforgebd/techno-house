@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Field } from "@/components/ui/field";
@@ -6,33 +6,45 @@ import { Radio, RadioGroup } from "@/components/ui/radio";
 import { Select } from "@/components/ui/select";
 import { useCartStore } from "@/features/cart/use-cart-store";
 import {
+  MOCK_SHIPPING_AREAS,
+  MOCK_SHIPPING_METHODS,
   MOCK_SHIPPING_ZONES,
   areasForZone,
   findShippingArea,
   findShippingMethod,
   methodsForZone,
+  type ShippingArea,
+  type ShippingMethod,
+  type ShippingZone,
   type ShippingZoneId,
 } from "@/lib/cart/shipping";
 import { formatMoney } from "@/lib/format/currency";
 
-export function CartShippingForm() {
+export function CartShippingForm({
+  methods: catalog = MOCK_SHIPPING_METHODS,
+  zones = MOCK_SHIPPING_ZONES,
+  areas: areaCatalog = MOCK_SHIPPING_AREAS,
+}: {
+  methods?: ShippingMethod[];
+  zones?: ShippingZone[];
+  areas?: ShippingArea[];
+}) {
   const { state, setShipping } = useCartStore();
-  const area = findShippingArea(state.shippingAreaId);
+  const area = findShippingArea(state.shippingAreaId, areaCatalog);
   const zoneId = (area?.zoneId ?? null) as ShippingZoneId | null;
-  const methods = methodsForZone(zoneId);
-  const selectedMethod = findShippingMethod(state.shippingMethodId);
+  const methods = methodsForZone(zoneId, catalog);
+  const selectedMethod = findShippingMethod(state.shippingMethodId, catalog);
+  const pickup =
+    catalog.find((method) => method.isPickup) ?? catalog[0] ?? null;
 
-  const areas =
-    zoneId !== null
-      ? areasForZone(zoneId)
-      : // When no area yet, show all areas grouped via zone select first
-        [];
+  const areas = zoneId !== null ? areasForZone(zoneId, areaCatalog) : [];
 
   return (
     <div className="mt-4 border-t border-border pt-4">
       <h3 className="text-label font-semibold text-text">Shipping</h3>
       <p className="mt-1 text-caption text-text-muted">
-        Display preview only — rates are mock samples from zones/areas data. See{" "}
+        Preview uses current shipping methods and areas. Final charge is set at
+        checkout. See{" "}
         <Link
           href="/shipping"
           className="font-medium text-primary underline-offset-2 hover:underline"
@@ -50,13 +62,16 @@ export function CartShippingForm() {
             onChange={(event) => {
               const nextZone = event.target.value as ShippingZoneId | "";
               if (!nextZone) {
-                setShipping({ methodId: "store_pickup", areaId: null });
+                setShipping({
+                  methodId: pickup?.id ?? null,
+                  areaId: null,
+                });
                 return;
               }
-              const firstArea = areasForZone(nextZone)[0];
-              const available = methodsForZone(nextZone);
+              const firstArea = areasForZone(nextZone, areaCatalog)[0];
+              const available = methodsForZone(nextZone, catalog);
               const preferred =
-                available.find((method) => method.id !== "store_pickup") ??
+                available.find((method) => !method.isPickup) ??
                 available[0] ??
                 null;
               setShipping({
@@ -66,7 +81,7 @@ export function CartShippingForm() {
             }}
           >
             <option value="">Select a zone</option>
-            {MOCK_SHIPPING_ZONES.map((zone) => (
+            {zones.map((zone) => (
               <option key={zone.id} value={zone.id}>
                 {zone.name}
               </option>
@@ -81,14 +96,16 @@ export function CartShippingForm() {
               value={state.shippingAreaId ?? ""}
               onChange={(event) => {
                 const nextAreaId = event.target.value || null;
-                const nextArea = findShippingArea(nextAreaId);
-                const available = methodsForZone(nextArea?.zoneId ?? null);
+                const nextArea = findShippingArea(nextAreaId, areaCatalog);
+                const available = methodsForZone(
+                  nextArea?.zoneId ?? null,
+                  catalog,
+                );
                 const keep =
                   selectedMethod &&
                   available.some((method) => method.id === selectedMethod.id)
                     ? selectedMethod.id
-                    : (available.find((method) => method.id !== "store_pickup")
-                        ?.id ??
+                    : (available.find((method) => !method.isPickup)?.id ??
                       available[0]?.id ??
                       null);
                 setShipping({ methodId: keep, areaId: nextAreaId });
@@ -118,7 +135,7 @@ export function CartShippingForm() {
                   label={`${method.name} · ${rateLabel}`}
                   checked={state.shippingMethodId === method.id}
                   disabled={
-                    method.id !== "store_pickup" &&
+                    !method.isPickup &&
                     (!zoneId ||
                       (method.zoneIds.length > 0 &&
                         !method.zoneIds.includes(zoneId)))
@@ -138,7 +155,7 @@ export function CartShippingForm() {
           })}
         </RadioGroup>
 
-        {!zoneId && state.shippingMethodId !== "store_pickup" ? (
+        {!zoneId && !selectedMethod?.isPickup ? (
           <p className="text-caption text-text-muted">
             Choose a zone and area for home delivery or courier, or select store
             pickup.

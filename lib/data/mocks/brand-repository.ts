@@ -1,4 +1,4 @@
-import type { BrandRepository } from "@/lib/data/repositories/brand-repository";
+﻿import type { BrandRepository } from "@/lib/data/repositories/brand-repository";
 import { mockBrands } from "@/lib/data/mocks/catalog";
 
 export const mockBrandRepository: BrandRepository = {

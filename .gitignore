@@ -32,7 +32,6 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
-!.env.example
 
 # vercel
 .vercel
@@ -44,3 +43,15 @@ next-env.d.ts
 # local tooling
 .cursor/
 .env*
+# Negation must follow the broad pattern above, or `.env*` re-ignores it (F-15).
+!.env.example
+
+# prisma generated client (rebuilt by `npm run db:generate`)
+/lib/generated/
+
+# staff media uploads (kept on disk locally; indexed in MediaAsset)
+/public/uploads/**
+!/public/uploads/.gitkeep
+
+# B2B KYC documents (trade licence / NID) — sensitive, never committed
+/private-uploads/

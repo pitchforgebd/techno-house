@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Alert } from "@/components/ui/alert";
 import { buttonClassName } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   type BuildPricingSummary,
   type BuildSelection,
   type BuildStockSummary,
+  type BuildValidationIssue,
   type CompatibilityResult,
 } from "@/lib/domain/pc-builder";
 
@@ -24,6 +25,7 @@ export function PcBuilderSummary({
   pricing,
   stock,
   power,
+  issues,
   loadError,
   onClearBuild,
   onLoadSelection,
@@ -35,6 +37,7 @@ export function PcBuilderSummary({
   pricing: BuildPricingSummary;
   stock: BuildStockSummary;
   power: BuildPowerSummary;
+  issues: BuildValidationIssue[];
   loadError: string | null;
   onClearBuild: () => void;
   onLoadSelection: (selection: BuildSelection) => void;
@@ -54,7 +57,8 @@ export function PcBuilderSummary({
           Build summary
         </h2>
         <p className="mt-1 text-caption text-text-muted">
-          Display-only estimates. Final totals are validated server-side later.
+          Prices, stock, and compatibility are checked on the server. Adding a
+          build writes the cart after a second server check.
         </p>
       </div>
 
@@ -85,10 +89,23 @@ export function PcBuilderSummary({
         filledCount={counts.filled}
       />
 
-      <Alert tone="info" title="Display cart only">
+      {issues.length > 0 ? (
+        <ul className="space-y-2">
+          {issues.map((issue) => (
+            <li key={`${issue.code}-${issue.slotId}`}>
+              <Alert tone="warning" title="Build check">
+                <p className="text-caption">{issue.message}</p>
+              </Alert>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <Alert tone="info" title="Server-checked cart">
         <p className="text-caption">
-          Adding a build updates the local cart preview. Server price and
-          compatibility checks arrive with PC Builder backend.
+          Add build rechecks required slots, stock, and compatibility on the
+          server, then writes each part through the normal cart. Checkout still
+          recalculates prices.
         </p>
       </Alert>
 
@@ -104,6 +121,7 @@ export function PcBuilderSummary({
           products={products}
           productsPending={productsPending}
           compatibility={compatibility}
+          issues={issues}
         />
         <PcBuilderSaveShare
           selection={selection}

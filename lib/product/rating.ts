@@ -1,4 +1,4 @@
-import type { ProductReview } from "@/lib/data";
+﻿import type { ProductReview } from "@/lib/data";
 
 export function averageProductRating(reviews: ProductReview[]): number {
   if (reviews.length === 0) {

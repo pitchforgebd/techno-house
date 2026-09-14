@@ -1,10 +1,36 @@
-import type { ProductListQuery, ProductSort } from "@/lib/data/types/catalog";
+﻿import type { ProductListQuery, ProductSort } from "@/lib/data/types/catalog";
 
 /** Facet / query key reserved for brand multi-select. */
 export const BRAND_FACET_KEY = "brand";
 
-/** Default page size for catalog listings (pagination is URL-driven). */
-export const LISTING_PAGE_SIZE = 8;
+/**
+ * How many products a listing shows per page.
+ *
+ * 20 fills the grid exactly: the layout is five columns at `xl`
+ * (`features/catalog/product-grid.tsx`), so 20 is four complete rows. The old
+ * value of 8 was under two rows, which pushed almost everything into
+ * pagination and made a category of 40 products look like a category of 8.
+ *
+ * The options below are multiples of 5 for the same reason — any other number
+ * leaves a ragged final row on wide screens.
+ */
+export const LISTING_PAGE_SIZE = 20;
+
+export const LISTING_PAGE_SIZE_OPTIONS = [20, 40, 60, 100] as const;
+
+/**
+ * Page size from the URL, or the default.
+ *
+ * Restricted to the options above rather than accepting any number: the value
+ * reaches `take` in a database query, so an open `pageSize` is an invitation to
+ * request 100000 rows per page.
+ */
+export function parsePageSize(raw: string | string[] | undefined): number {
+  const value = Number(Array.isArray(raw) ? raw[0] : raw);
+  return (LISTING_PAGE_SIZE_OPTIONS as readonly number[]).includes(value)
+    ? value
+    : LISTING_PAGE_SIZE;
+}
 
 /** Known product attribute keys used as facets when not on a category page. */
 export const CATALOG_ATTRIBUTE_KEYS = [
@@ -64,6 +90,7 @@ export type ParsedListingFilters = {
 export type ParsedListingQuery = ParsedListingFilters & {
   sort: ProductSort;
   page: number;
+  pageSize: number;
 };
 
 function asStringList(raw: string | string[] | undefined): string[] {
@@ -139,6 +166,7 @@ export function parseListingQuery(
     ...parseListingFilters(searchParams, attributeKeys),
     sort: parseSort(searchParams.sort),
     page: parsePage(searchParams.page),
+    pageSize: parsePageSize(searchParams.pageSize),
   };
 }
 
@@ -192,6 +220,7 @@ export function buildListingSearchParams(
     includeBrand: boolean;
     page?: number;
     sort?: ProductSort;
+    pageSize?: number;
     omitPage?: boolean;
   },
 ): URLSearchParams {
@@ -210,6 +239,12 @@ export function buildListingSearchParams(
     if (page > 1) {
       params.set("page", String(page));
     }
+  }
+
+  // Only when it differs from the default, so the common URL stays clean.
+  const pageSize = options.pageSize ?? parsed.pageSize;
+  if (pageSize !== LISTING_PAGE_SIZE) {
+    params.set("pageSize", String(pageSize));
   }
 
   if (parsed.inStockOnly) {
@@ -242,6 +277,7 @@ export function listingHref(
     includeBrand: boolean;
     page?: number;
     sort?: ProductSort;
+    pageSize?: number;
     omitPage?: boolean;
   },
 ): string {

@@ -1,4 +1,4 @@
-import type { ProductQuestion, ProductReview } from "@/lib/data/types/reviews";
+﻿import type { ProductQuestion, ProductReview } from "@/lib/data/types/reviews";
 
 const mockReviews: ProductReview[] = [
   {
@@ -76,6 +76,8 @@ export const mockReviewRepository = {
   },
 
   async listQuestionsByProductSlug(slug: string): Promise<ProductQuestion[]> {
-    return mockQuestions.filter((item) => item.productSlug === slug);
+    return mockQuestions.filter(
+      (item) => item.productSlug === slug && item.answer,
+    );
   },
 };

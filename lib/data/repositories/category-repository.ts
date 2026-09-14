@@ -1,4 +1,4 @@
-import type { Category } from "@/lib/data/types/catalog";
+﻿import type { Category } from "@/lib/data/types/catalog";
 
 export interface CategoryRepository {
   list(): Promise<Category[]>;

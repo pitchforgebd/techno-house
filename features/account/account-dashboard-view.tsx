@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { buttonClassName } from "@/components/ui/button";
@@ -8,32 +8,33 @@ import { useCartStore } from "@/features/cart/use-cart-store";
 import { useListsStore } from "@/features/lists/use-lists-store";
 import { cartItemCount } from "@/lib/cart/cart";
 import { formatMoney } from "@/lib/format/currency";
+import type { CustomerOrderView } from "@/lib/orders/order-view";
 
 const SHORTCUTS = [
   {
     href: "/account/orders",
     label: "Orders",
-    hint: "Track mock purchases",
+    hint: "Track purchases",
   },
   {
     href: "/account/addresses",
     label: "Addresses",
-    hint: "Delivery details",
+    hint: "Saved delivery details",
   },
   {
     href: "/account/wishlist",
     label: "Wishlist",
-    hint: "Device-local list",
+    hint: "Saved for later",
   },
   {
     href: "/account/compare",
     label: "Compare",
-    hint: "Same-type compare",
+    hint: "Side-by-side specs",
   },
   {
     href: "/account/tickets",
     label: "Support",
-    hint: "Mock tickets",
+    hint: "Tickets and replies",
   },
   {
     href: "/account/profile",
@@ -42,11 +43,32 @@ const SHORTCUTS = [
   },
 ] as const;
 
-export function AccountDashboardView() {
+export function AccountDashboardView({
+  persist = false,
+  latestOrder = null,
+}: {
+  persist?: boolean;
+  latestOrder?: CustomerOrderView | null;
+}) {
   const { state: cart } = useCartStore();
   const { state: lists } = useListsStore();
   const { orders } = useMockOrders();
-  const lastOrder = orders[0] ?? null;
+  const lastMock = orders[0] ?? null;
+  const lastOrder = persist
+    ? latestOrder
+      ? {
+          orderId: latestOrder.number,
+          itemCount: latestOrder.itemCount,
+          total: latestOrder.totalAmount,
+        }
+      : null
+    : lastMock
+      ? {
+          orderId: lastMock.orderId,
+          itemCount: lastMock.itemCount,
+          total: lastMock.total,
+        }
+      : null;
   const cartCount = cartItemCount(cart);
 
   return (
@@ -104,7 +126,7 @@ export function AccountDashboardView() {
             id="account-order-heading"
             className="text-label font-semibold text-text"
           >
-            Latest mock order
+            Latest order
           </h2>
           {lastOrder ? (
             <div className="mt-3 rounded-md border border-border bg-surface px-4 py-3">
@@ -114,7 +136,8 @@ export function AccountDashboardView() {
               <p className="mt-1 text-caption text-text-muted">
                 {lastOrder.itemCount}{" "}
                 {lastOrder.itemCount === 1 ? "item" : "items"} ·{" "}
-                {formatMoney({ amount: lastOrder.total })} display total
+                {formatMoney({ amount: lastOrder.total })}
+                {persist ? "" : " display total"}
               </p>
               <p className="mt-3 flex flex-wrap gap-2">
                 <Link
@@ -140,8 +163,9 @@ export function AccountDashboardView() {
             </div>
           ) : (
             <p className="mt-2 text-body text-text-muted">
-              No mock order on this device yet. Place one from checkout to see
-              it here.
+              {persist
+                ? "No orders yet. Place one from checkout to see it here."
+                : "No mock order on this device yet. Place one from checkout to see it here."}
             </p>
           )}
         </section>

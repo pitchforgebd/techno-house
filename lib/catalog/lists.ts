@@ -1,4 +1,4 @@
-export const LISTS_STORAGE_KEY = "techno-house-lists-v1";
+﻿export const LISTS_STORAGE_KEY = "techno-house-lists-v1";
 export const MAX_COMPARE = 4;
 export const MAX_WISHLIST = 48;
 

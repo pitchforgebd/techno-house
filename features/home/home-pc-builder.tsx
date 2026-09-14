@@ -1,78 +1,140 @@
-import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight, Calculator, ListChecks, ShieldCheck } from "lucide-react";
 import { buttonClassName } from "@/components/ui/button";
+import { HomeSectionHeader } from "@/features/home/home-section-header";
+import { BuilderSlotIcon } from "@/features/pc-builder/builder-slot-icons";
+import { BUILDER_SLOTS } from "@/lib/domain/pc-builder/slots";
+import { cn } from "@/lib/cn";
 
-const HIGHLIGHTS = [
+const FEATURES = [
   {
+    Icon: ListChecks,
     title: "Slot by slot",
-    text: "CPU, board, memory, GPU, storage, and more — fill what you need.",
+    text: "Fill only the slots your build needs — the rest stay optional.",
   },
   {
+    Icon: ShieldCheck,
     title: "Compatibility notes",
-    text: "Socket, RAM type, and power cues show before you add to cart.",
+    text: "Socket, memory type, and power cues appear as you pick parts.",
   },
   {
+    Icon: Calculator,
     title: "Running total in ৳",
-    text: "See the build price update as you pick parts. Display-only.",
+    text: "The build price updates with every part. Display-only figures.",
   },
 ] as const;
 
-const IMAGE =
-  "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?auto=format&fit=crop&w=1200&h=900&q=80";
+const REQUIRED_COUNT = BUILDER_SLOTS.filter((slot) => slot.required).length;
 
+/**
+ * Homepage promo for PC Builder.
+ *
+ * The preview panel is drawn from `BUILDER_SLOTS` — the same list the real
+ * builder renders — rather than a stock photograph, so the section shows
+ * what the tool actually does and cannot drift away from it. No prices or
+ * part names are shown: any figure here would be invented, and the running
+ * total is the one thing this promo should not fake.
+ */
 export function HomePcBuilder() {
   return (
     <section aria-labelledby="home-pc-builder" className="scroll-mt-4">
-      <div className="flex items-stretch">
-        <h2
-          id="home-pc-builder"
-          className="flex shrink-0 items-center bg-text px-4 py-2 pr-7 text-label font-semibold tracking-tight text-primary-foreground [clip-path:polygon(0_0,calc(100%-0.85rem)_0,100%_100%,0_100%)]"
-        >
-          PC Builder
-        </h2>
-        <div className="flex min-w-0 flex-1 items-end justify-end border-b-2 border-text pb-1.5">
-          <Link
-            href="/pc-builder"
-            className="text-caption font-medium text-primary underline-offset-2 hover:underline"
-          >
-            Open builder
-          </Link>
-        </div>
-      </div>
+      <HomeSectionHeader
+        id="home-pc-builder"
+        title="PC Builder"
+        lede="Pick parts slot by slot and check the build before you order."
+        actionHref="/pc-builder"
+        actionLabel="Open builder"
+      />
 
-      <div className="mt-8 grid overflow-hidden border border-border bg-surface lg:grid-cols-2">
-        <div className="relative min-h-56 bg-text sm:min-h-72 lg:min-h-full">
-          <Image
-            src={IMAGE}
-            alt="Open PC case with installed components"
-            fill
-            sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover"
+      <div className="mt-6 grid overflow-hidden rounded-sm border border-border bg-surface lg:grid-cols-[1.05fr_1fr]">
+        <div className="relative isolate overflow-hidden bg-text px-5 py-7 sm:px-7 sm:py-8">
+          {/* Soft corner wash so the flat ink panel has some depth. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-20 -right-12 -z-10 size-72 rounded-full bg-primary-bright/30 blur-3xl"
           />
           <div
             aria-hidden
-            className="absolute inset-0 bg-gradient-to-r from-text/50 to-transparent lg:bg-gradient-to-t lg:from-text/40 lg:via-transparent"
+            className="pointer-events-none absolute -bottom-24 -left-16 -z-10 size-72 rounded-full bg-primary/40 blur-3xl"
           />
-        </div>
 
-        <div className="flex flex-col justify-center gap-6 px-5 py-7 sm:px-8 sm:py-10">
-          <div>
-            <p className="text-2xl font-semibold tracking-tight text-text">
-              Spec the build before you buy
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-caption font-semibold tracking-[0.16em] text-surface/60 uppercase">
+              Your build
             </p>
-            <p className="mt-2 max-w-prose text-body text-text-muted">
-              Choose parts slot by slot, watch the running total, and read
-              compatibility notes — then move the whole build into the cart.
+            <p className="rounded-full border border-surface/15 bg-surface/10 px-2.5 py-1 text-[0.68rem] font-semibold tabular-nums text-surface/80">
+              {REQUIRED_COUNT} required slots
             </p>
           </div>
 
-          <ul className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-            {HIGHLIGHTS.map((item) => (
-              <li key={item.title} className="border-t border-border pt-3">
-                <p className="text-label font-semibold text-text">{item.title}</p>
-                <p className="mt-1 text-caption leading-relaxed text-text-muted">
-                  {item.text}
-                </p>
+          <ul className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {BUILDER_SLOTS.map((slot) => (
+              <li
+                key={slot.id}
+                className={cn(
+                  "flex min-w-0 items-center gap-2.5 rounded-sm border border-surface/10 bg-surface/[0.06] px-2.5 py-2.5",
+                  // 11 slots leave one trailing cell empty at both two and
+                  // three columns; the single optional slot takes it so the
+                  // grid closes square at every width.
+                  !slot.required && "col-span-2",
+                )}
+              >
+                <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-surface/10 text-surface/85">
+                  <BuilderSlotIcon slotId={slot.id} className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[0.78rem] font-semibold text-surface">
+                    {slot.label}
+                  </span>
+                  {!slot.required ? (
+                    <span className="block text-[0.65rem] leading-tight text-surface/50">
+                      Optional
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-5 flex items-center gap-2 border-t border-surface/10 pt-4 text-caption text-surface/65">
+            <ShieldCheck
+              aria-hidden
+              strokeWidth={1.75}
+              className="size-4 shrink-0 text-primary-soft"
+            />
+            Compatibility is checked as you pick, before anything reaches your
+            cart.
+          </p>
+        </div>
+
+        <div className="flex flex-col justify-center gap-6 px-5 py-7 sm:px-8 sm:py-9">
+          <div>
+            <p className="text-caption font-semibold tracking-[0.16em] text-secondary uppercase">
+              Build your own PC
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-text md:text-[1.7rem]">
+              Spec the build before you buy
+            </h3>
+            <p className="mt-2.5 max-w-prose text-body leading-relaxed text-text-muted">
+              Choose each part in order, read the compatibility notes as you go,
+              and move the finished build straight into your cart.
+            </p>
+          </div>
+
+          <ul className="grid gap-3.5">
+            {FEATURES.map(({ Icon, title, text }) => (
+              <li key={title} className="flex gap-3">
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-sm bg-primary-soft text-primary">
+                  <Icon aria-hidden strokeWidth={1.75} className="size-4.5" />
+                </span>
+                <span>
+                  <span className="block text-label font-semibold text-text">
+                    {title}
+                  </span>
+                  <span className="mt-0.5 block text-caption leading-relaxed text-text-muted">
+                    {text}
+                  </span>
+                </span>
               </li>
             ))}
           </ul>
@@ -81,10 +143,15 @@ export function HomePcBuilder() {
             <Link
               href="/pc-builder"
               className={buttonClassName({
-                className: "min-w-44",
+                className: "group min-w-48 gap-2",
               })}
             >
               Open PC Builder
+              <ArrowRight
+                aria-hidden
+                strokeWidth={2}
+                className="size-4 transition-transform group-hover:translate-x-0.5"
+              />
             </Link>
           </p>
         </div>

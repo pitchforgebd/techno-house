@@ -38,9 +38,12 @@ export function Dialog({
         "text-text",
       )}
       onClose={onClose}
+      aria-labelledby="th-dialog-title"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <h2 id="th-dialog-title" className="text-lg font-semibold tracking-tight">
+          {title}
+        </h2>
         <Button variant="ghost" size="sm" onClick={onClose}>
           Close
         </Button>

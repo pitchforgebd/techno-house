@@ -1,4 +1,4 @@
-export const PRODUCT_REQUEST_NAME_MAX = 120;
+﻿export const PRODUCT_REQUEST_NAME_MAX = 120;
 export const PRODUCT_REQUEST_DETAILS_MAX = 500;
 
 export function parseProductRequestName(

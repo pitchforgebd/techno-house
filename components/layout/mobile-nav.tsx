@@ -18,9 +18,9 @@ import {
   User,
 } from "lucide-react";
 import { HeaderBuilderLink } from "@/components/layout/header-builder-link";
-import { Button } from "@/components/ui/button";
+import { HEADER_ACTION_CLASS } from "@/components/layout/header-action-class";
 import { Sheet } from "@/components/ui/sheet";
-import { useMockCustomer } from "@/features/account/use-mock-customer";
+import { useCustomerSession } from "@/features/account/customer-session-provider";
 import {
   HEADER_LIST_LINKS,
   UTILITY_BAR_CONTACT,
@@ -92,7 +92,7 @@ export function MobileNav({
   brandsByCategory: Record<string, MegaBrand[]>;
 }) {
   const [open, setOpen] = useState(false);
-  const { session } = useMockCustomer();
+  const session = useCustomerSession();
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 768px)");
@@ -111,10 +111,9 @@ export function MobileNav({
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="min-h-11 min-w-11 shrink-0 px-2 md:hidden"
+      <button
+        type="button"
+        className={cn(HEADER_ACTION_CLASS, "shrink-0 md:hidden")}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls="mobile-nav"
@@ -123,7 +122,7 @@ export function MobileNav({
       >
         <Menu className="size-5" aria-hidden />
         <span className="sr-only">Menu</span>
-      </Button>
+      </button>
 
       <Sheet
         open={open}

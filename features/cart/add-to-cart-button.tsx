@@ -1,9 +1,13 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { buttonClassName } from "@/components/ui/button";
+import {
+  buttonClassName,
+  type ButtonSize,
+  type ButtonVariant,
+} from "@/components/ui/button";
 import {
   notifyAddedToCart,
   notifyError,
@@ -15,15 +19,19 @@ import { cartItemCount } from "@/lib/cart/cart";
 type AddToCartButtonProps = {
   slug: string;
   stockStatus: StockStatus;
-  size?: "sm" | "md";
+  size?: ButtonSize;
+  variant?: ButtonVariant;
   className?: string;
+  showHint?: boolean;
 };
 
 export function AddToCartButton({
   slug,
   stockStatus,
   size = "md",
+  variant = "primary",
   className,
+  showHint = true,
 }: AddToCartButtonProps) {
   const router = useRouter();
   const { state, addItem } = useCartStore();
@@ -32,35 +40,51 @@ export function AddToCartButton({
   const inCart = state.lines.some((line) => line.slug === slug);
   const count = cartItemCount(state);
 
-  return (
-    <div className="space-y-2">
-      <button
-        type="button"
-        disabled={unavailable}
-        className={buttonClassName({
-          size,
-          className: className ?? "w-full",
-        })}
-        onClick={() => {
-          if (unavailable) {
+  const button = (
+    <button
+      type="button"
+      disabled={unavailable}
+      className={buttonClassName({
+        variant,
+        size,
+        className: className ?? "w-full",
+      })}
+      onClick={() => {
+        if (unavailable) {
+          notifyError({
+            title: "Out of stock",
+            description: "This item cannot be added while it is out of stock.",
+          });
+          return;
+        }
+        void addItem(slug, 1).then((result) => {
+          if (!result.ok) {
             notifyError({
-              title: "Out of stock",
-              description:
-                "This item cannot be added while it is out of stock.",
+              title: "Could not add to cart",
+              description: result.reason,
             });
             return;
           }
-          addItem(slug, 1);
           setJustAdded(true);
           notifyAddedToCart(() => router.push("/cart"));
-        }}
-      >
-        {unavailable
-          ? "Out of stock"
-          : justAdded || inCart
-            ? "Added to cart"
-            : "Add to cart"}
-      </button>
+        });
+      }}
+    >
+      {unavailable
+        ? "Out of stock"
+        : justAdded || inCart
+          ? "Added to cart"
+          : "Add to cart"}
+    </button>
+  );
+
+  if (!showHint) {
+    return button;
+  }
+
+  return (
+    <div className="space-y-2">
+      {button}
       {justAdded || inCart ? (
         <p className="text-caption text-text-muted">
           <Link

@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+﻿import { Badge } from "@/components/ui/badge";
 import type { Money, StockStatus } from "@/lib/data";
 import { formatMoney } from "@/lib/format/currency";
 

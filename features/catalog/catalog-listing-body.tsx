@@ -1,10 +1,11 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { CatalogFiltersForm } from "@/features/catalog/catalog-filters-form";
 import { CatalogFiltersMobile } from "@/features/catalog/catalog-filters-mobile";
 import { CatalogSortControl } from "@/features/catalog/catalog-sort-control";
 import { ProductGrid } from "@/features/catalog/product-grid";
+import { CatalogPageSizeControl } from "@/features/catalog/catalog-page-size-control";
 import {
   listingHref,
   type ParsedListingQuery,
@@ -109,9 +110,22 @@ export function CatalogListingBody({
           <EmptyState title={emptyTitle} description={emptyDescription} />
         ) : (
           <>
-            <ProductGrid products={result.items} density="comfortable" />
-            {pageCount > 1 ? (
-              <div className="mt-8 flex justify-center border-t border-border pt-6">
+            <ProductGrid
+              products={result.items}
+              density="comfortable"
+              card="detailed"
+            />
+            {/* The page-size control stays visible even when everything fits on
+                one page — that is exactly when a shopper wants to go the other
+                way and see fewer. Pagination is the part that disappears. */}
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
+              <CatalogPageSizeControl
+                pathname={pathname}
+                parsed={parsed}
+                preserved={preserved}
+                includeBrand={includeBrandFilter}
+              />
+              {pageCount > 1 ? (
                 <Pagination
                   page={result.page}
                   pageCount={pageCount}
@@ -123,8 +137,8 @@ export function CatalogListingBody({
                     })
                   }
                 />
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </>
         )}
       </div>

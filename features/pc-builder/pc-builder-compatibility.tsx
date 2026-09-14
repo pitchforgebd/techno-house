@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Alert } from "@/components/ui/alert";
 import type {
@@ -40,8 +40,8 @@ export function PcBuilderCompatibility({
       <div className="rounded-md border border-border bg-surface-muted/60 px-3 py-2">
         <p className="text-caption font-medium text-text">Compatibility</p>
         <p className="mt-0.5 text-caption text-text-muted">
-          Select parts to run socket, memory, form-factor, and PSU checks.
-          Missing data never shows as compatible.
+          Select parts to run socket, memory, form-factor, PSU, and storage
+          checks. Missing data never shows as compatible.
         </p>
       </div>
     );

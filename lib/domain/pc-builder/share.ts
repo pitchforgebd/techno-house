@@ -1,4 +1,4 @@
-import { BUILDER_SLOTS } from "@/lib/domain/pc-builder/slots";
+﻿import { BUILDER_SLOTS } from "@/lib/domain/pc-builder/slots";
 import {
   countFilledSlots,
   normalizeBuildSelection,
@@ -19,10 +19,7 @@ function bytesToBase64Url(bytes: Uint8Array): string {
     }
     base64 = btoa(binary);
   }
-  return base64
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function toBase64Url(value: string): string {
@@ -42,7 +39,7 @@ function fromBase64Url(id: string): string {
 }
 
 /**
- * Encodes selection as a mock share id (public product slugs only — no PII).
+ * Encodes selection as a guest share id (public product slugs only — no PII).
  */
 export function encodeShareId(selection: BuildSelection): string | null {
   if (countFilledSlots(selection).filled === 0) {
@@ -83,6 +80,17 @@ export function decodeShareId(id: string): BuildSelection | null {
   }
 }
 
+export const SHARE_SLUG_PREFIX = "thb_";
+const SHARE_SLUG_PATTERN = /^thb_[A-Za-z0-9_-]{43}$/;
+
+export function isPersistedShareSlug(value: string): boolean {
+  return SHARE_SLUG_PATTERN.test(value.trim());
+}
+
+export function sharePathForSlug(slug: string): string {
+  return `/pc-builder/share/${slug}`;
+}
+
 export function sharePathForSelection(
   selection: BuildSelection,
 ): string | null {
@@ -90,5 +98,5 @@ export function sharePathForSelection(
   if (!id) {
     return null;
   }
-  return `/pc-builder/share/${id}`;
+  return sharePathForSlug(id);
 }

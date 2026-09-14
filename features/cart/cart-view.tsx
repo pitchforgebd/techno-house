@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
+import { Headset, Minus, Plus } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { IconTrash } from "@/components/layout/chrome-icons";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
@@ -11,22 +12,22 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { notifySuccess } from "@/components/ui/feedback-provider";
 import { loadCartProducts } from "@/features/cart/actions";
 import { CartCouponForm } from "@/features/cart/cart-coupon-form";
-import { CartPaymentForm } from "@/features/cart/cart-payment-form";
-import { CartShippingForm } from "@/features/cart/cart-shipping-form";
 import { useCartStore } from "@/features/cart/use-cart-store";
-import { useMockCustomer } from "@/features/account/use-mock-customer";
+import { useCustomerSession } from "@/features/account/customer-session-provider";
 import type { ProductSummary } from "@/lib/data";
-import { cartItemCount, MAX_LINE_QTY } from "@/lib/cart/cart";
+import { cartItemCount, cartLineKey, MAX_LINE_QTY } from "@/lib/cart/cart";
 import { loginHref } from "@/lib/account/return-path";
 import { applyCouponToSubtotal } from "@/lib/cart/coupons";
-import { findPaymentMethod } from "@/lib/cart/payment";
-import { resolveShippingRate } from "@/lib/cart/shipping";
 import { formatMoney } from "@/lib/format/currency";
 import { cn } from "@/lib/cn";
 
-export function CartView() {
+export function CartView({
+  couponsEnabled = true,
+}: {
+  couponsEnabled?: boolean;
+}) {
   const confirm = useConfirm();
-  const { session } = useMockCustomer();
+  const session = useCustomerSession();
   const checkoutHref = session ? "/checkout" : loginHref("/checkout");
   const { state, setQuantity, removeItem, clearCart } = useCartStore();
   const [products, setProducts] = useState<ProductSummary[]>([]);
@@ -35,7 +36,7 @@ export function CartView() {
   async function handleClearCart() {
     const ok = await confirm({
       title: "Clear cart?",
-      description: "All items on this device cart will be removed.",
+      description: "All items will be removed from your cart.",
       confirmLabel: "Clear cart",
       cancelLabel: "Keep items",
       tone: "danger",
@@ -44,12 +45,16 @@ export function CartView() {
       clearCart();
       notifySuccess({
         title: "Cart cleared",
-        description: "Your device cart is empty.",
+        description: "Your cart is empty.",
       });
     }
   }
 
-  async function handleRemove(slug: string, name: string) {
+  async function handleRemove(
+    slug: string,
+    name: string,
+    colorId: string | null,
+  ) {
     const ok = await confirm({
       title: "Remove item?",
       description: name,
@@ -58,10 +63,10 @@ export function CartView() {
       tone: "danger",
     });
     if (ok) {
-      removeItem(slug);
+      removeItem(slug, colorId);
       notifySuccess({
         title: "Removed",
-        description: "Item removed from this device cart.",
+        description: "Item removed from your cart.",
       });
     }
   }
@@ -108,62 +113,28 @@ export function CartView() {
 
   const subtotal = rows.reduce((sum, row) => sum + row.lineTotal, 0);
   const itemCount = cartItemCount(state);
-  const couponResult = state.couponCode
-    ? applyCouponToSubtotal(state.couponCode, subtotal)
-    : null;
+  const couponResult =
+    couponsEnabled && state.couponCode
+      ? applyCouponToSubtotal(state.couponCode, subtotal, state.appliedCoupon)
+      : null;
   const discountAmount =
     couponResult?.ok === true ? couponResult.discountAmount : 0;
-  const shippingResult = resolveShippingRate(
-    state.shippingMethodId,
-    state.shippingAreaId,
-  );
-  const shippingAmount = shippingResult.ok ? shippingResult.amount : 0;
-  const displayTotal = Math.max(0, subtotal - discountAmount + shippingAmount);
-  const paymentMethod = findPaymentMethod(state.paymentMethodId);
+  const displayTotal = Math.max(0, subtotal - discountAmount);
 
   return (
     <div className="mx-auto max-w-content px-4 py-8 md:py-10">
       <Breadcrumbs
         items={[
           { href: "/", label: "Home" },
-          { href: "/shop", label: "Shop" },
           { label: "Cart" },
         ]}
       />
-
-      <header className="mt-5 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-text">
-            Shopping cart
-          </h1>
-          <p className="mt-2 text-body text-text-muted">
-            {itemCount > 0
-              ? `${itemCount} ${itemCount === 1 ? "item" : "items"} · display-only totals`
-              : "Saved on this device · totals are display-only"}
-          </p>
-        </div>
-        {state.lines.length > 0 ? (
-          <button
-            type="button"
-            className={buttonClassName({
-              variant: "ghost",
-              size: "sm",
-              className: "text-danger hover:bg-danger/10",
-            })}
-            onClick={() => {
-              void handleClearCart();
-            }}
-          >
-            Clear all
-          </button>
-        ) : null}
-      </header>
 
       {state.lines.length === 0 ? (
         <EmptyState
           className="mt-10"
           title="Your cart is empty"
-          description="Add products from the shop. Prices shown are not charged yet."
+          description="Add products from the shop to continue."
           action={
             <Link href="/shop" className={buttonClassName({ size: "sm" })}>
               Browse shop
@@ -190,180 +161,194 @@ export function CartView() {
           }
         />
       ) : (
-        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-          <ul className="divide-y divide-border border border-border bg-surface">
-            {rows.map(({ line, product, lineTotal }) => (
-              <li
-                key={line.slug}
-                className="relative grid gap-4 p-4 sm:grid-cols-[7.5rem_minmax(0,1fr)_auto] sm:items-center sm:gap-5 sm:p-5"
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+          <section className="overflow-hidden border border-border bg-surface">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-success/15 px-4 py-3">
+              <p className="text-label font-semibold text-text">
+                You have ({itemCount}){" "}
+                {itemCount === 1 ? "item" : "items"} in your cart
+              </p>
+              <Link
+                href="/support"
+                className="inline-flex items-center gap-1.5 text-caption font-medium text-primary hover:underline"
               >
-                <Link
-                  href={`/product/${product.slug}`}
-                  className="relative mx-auto aspect-square w-28 overflow-hidden bg-surface-muted sm:mx-0 sm:w-full"
-                >
-                  <Image
-                    src={product.image.src}
-                    alt={product.image.alt}
-                    fill
-                    sizes="120px"
-                    className="object-contain p-2"
-                  />
-                </Link>
+                <Headset className="size-3.5" aria-hidden />
+                Need Help?
+              </Link>
+            </div>
 
-                <div className="min-w-0 pr-10 sm:pr-0">
+            <div className="flex items-center justify-end border-b border-border px-4 py-2">
+              <button
+                type="button"
+                className={buttonClassName({
+                  variant: "secondary",
+                  size: "sm",
+                })}
+                onClick={() => {
+                  void handleClearCart();
+                }}
+              >
+                Delete all
+              </button>
+            </div>
+
+            <ul className="divide-y divide-border">
+              {rows.map(({ line, product, lineTotal }) => (
+                <li
+                  key={cartLineKey(line)}
+                  className="flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap"
+                >
                   <Link
                     href={`/product/${product.slug}`}
-                    className="text-label font-semibold tracking-tight text-text hover:text-primary"
+                    className="relative size-16 shrink-0 overflow-hidden border border-border bg-surface-muted sm:size-20"
                   >
-                    {product.name}
+                    <Image
+                      src={product.image.src}
+                      alt={product.image.alt}
+                      fill
+                      sizes="80px"
+                      className="object-contain p-1.5"
+                    />
                   </Link>
-                  <p className="mt-1 text-caption text-text-muted">
-                    {product.brandName} · {product.sku}
-                  </p>
-                  <p className="mt-2 text-caption tabular-nums text-text-muted">
-                    {formatMoney(product.price)} each
-                  </p>
-                  <label className="mt-3 inline-flex items-center gap-2 text-caption text-text-muted">
-                    Qty
-                    <select
-                      className="min-h-9 rounded-md border border-border bg-surface px-2.5 text-label text-text"
-                      value={line.quantity}
-                      onChange={(event) =>
-                        setQuantity(line.slug, Number(event.target.value))
-                      }
-                      aria-label={`Quantity for ${product.name}`}
-                    >
-                      {Array.from({ length: MAX_LINE_QTY }, (_, index) => {
-                        const value = index + 1;
-                        return (
-                          <option key={value} value={value}>
-                            {value}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </label>
-                </div>
 
-                <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-center">
-                  <p className="text-label font-semibold tabular-nums text-text">
-                    {formatMoney({ amount: lineTotal })}
-                  </p>
-                  <button
-                    type="button"
-                    className={cn(
-                      "absolute top-3 right-3 inline-flex size-10 items-center justify-center rounded-md text-text-muted transition-colors",
-                      "hover:bg-danger/10 hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger",
-                      "sm:static sm:mt-2",
-                    )}
-                    aria-label={`Remove ${product.name}`}
-                    title="Remove"
-                    onClick={() => {
-                      void handleRemove(line.slug, product.name);
-                    }}
-                  >
-                    <IconTrash className="size-5" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/product/${product.slug}`}
+                      className="text-label font-semibold tracking-tight text-text hover:text-primary"
+                    >
+                      {product.name}
+                    </Link>
+                    {line.colorName ? (
+                      <p className="mt-0.5 flex items-center gap-1.5 text-caption text-text-muted">
+                        {line.colorHex ? (
+                          <span
+                            aria-hidden
+                            className="inline-block size-3 rounded-sm border border-black/10"
+                            style={{ backgroundColor: line.colorHex }}
+                          />
+                        ) : null}
+                        Colour: {line.colorName}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-caption tabular-nums text-text-muted">
+                      {formatMoney(product.price)}
+                    </p>
+                  </div>
+
+                  <div className="ml-auto flex flex-wrap items-center gap-3 sm:ml-0">
+                    <div className="inline-flex h-9 items-center border border-border">
+                      <button
+                        type="button"
+                        className="inline-flex size-9 items-center justify-center text-text-muted hover:bg-surface-muted hover:text-text disabled:opacity-40"
+                        aria-label={`Decrease quantity for ${product.name}`}
+                        disabled={line.quantity <= 1}
+                        onClick={() =>
+                          setQuantity(
+                            line.slug,
+                            line.quantity - 1,
+                            line.colorId,
+                          )
+                        }
+                      >
+                        <Minus className="size-3.5" aria-hidden />
+                      </button>
+                      <span className="min-w-8 text-center text-label tabular-nums text-text">
+                        {line.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        className="inline-flex size-9 items-center justify-center text-text-muted hover:bg-surface-muted hover:text-text disabled:opacity-40"
+                        aria-label={`Increase quantity for ${product.name}`}
+                        disabled={line.quantity >= MAX_LINE_QTY}
+                        onClick={() =>
+                          setQuantity(
+                            line.slug,
+                            line.quantity + 1,
+                            line.colorId,
+                          )
+                        }
+                      >
+                        <Plus className="size-3.5" aria-hidden />
+                      </button>
+                    </div>
+
+                    <p className="min-w-[5.5rem] text-right text-label font-semibold tabular-nums text-text">
+                      {formatMoney({ amount: lineTotal })}
+                    </p>
+
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex size-9 items-center justify-center rounded-md text-text-muted transition-colors",
+                        "hover:bg-danger/10 hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger",
+                      )}
+                      aria-label={`Remove ${product.name}`}
+                      title="Remove"
+                      onClick={() => {
+                        void handleRemove(
+                          line.slug,
+                          product.name,
+                          line.colorId,
+                        );
+                      }}
+                    >
+                      <IconTrash className="size-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
 
           <aside className="overflow-hidden border border-border bg-surface lg:sticky lg:top-24">
-            <div className="border-b border-border bg-text px-5 py-3">
-              <h2 className="text-label font-semibold tracking-tight text-primary-foreground">
-                Order summary
+            <div className="border-b border-border bg-surface-muted px-5 py-3">
+              <h2 className="text-label font-semibold tracking-tight text-text">
+                Price Details
               </h2>
             </div>
             <div className="space-y-3 px-5 py-4">
               <p className="flex justify-between text-body text-text">
-                <span>
-                  Subtotal
-                  <span className="ml-1 text-caption text-text-muted">
-                    ({itemCount})
-                  </span>
-                </span>
-                <span className="font-semibold tabular-nums">
+                <span>Sub Total</span>
+                <span className="tabular-nums">
                   {formatMoney({ amount: subtotal })}
                 </span>
               </p>
-              {discountAmount > 0 ? (
-                <p className="flex justify-between text-body text-success">
-                  <span>
-                    Coupon
-                    {state.couponCode ? (
-                      <span className="ml-1 font-mono text-caption">
-                        ({state.couponCode})
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="tabular-nums">
-                    −{formatMoney({ amount: discountAmount })}
-                  </span>
-                </p>
-              ) : null}
-              {shippingResult.ok ? (
-                <p className="flex justify-between text-body text-text">
-                  <span className="pr-2">
-                    Shipping
-                    <span className="mt-0.5 block text-caption text-text-muted">
-                      {shippingResult.method.name}
-                      {shippingResult.area
-                        ? ` · ${shippingResult.area.name}`
-                        : ""}
-                    </span>
-                  </span>
-                  <span className="shrink-0 tabular-nums">
-                    {shippingAmount === 0
-                      ? "Free"
-                      : formatMoney({ amount: shippingAmount })}
-                  </span>
-                </p>
-              ) : (
-                <p className="text-caption text-text-muted">
-                  Choose shipping below to preview delivery cost.
-                </p>
-              )}
+              <p className="flex justify-between text-body text-text">
+                <span>Discount</span>
+                <span className="tabular-nums">
+                  {discountAmount > 0
+                    ? `−${formatMoney({ amount: discountAmount })}`
+                    : formatMoney({ amount: 0 })}
+                </span>
+              </p>
               <p className="flex justify-between border-t border-border pt-3 text-label font-semibold text-text">
-                <span>Estimated total</span>
+                <span>Total</span>
                 <span className="tabular-nums">
                   {formatMoney({ amount: displayTotal })}
                 </span>
               </p>
-              {paymentMethod ? (
-                <p className="text-caption text-text-muted">
-                  Payment:{" "}
-                  <span className="font-medium text-text">
-                    {paymentMethod.name}
-                  </span>
-                </p>
+              {couponsEnabled ? (
+                <CartCouponForm subtotal={subtotal} />
               ) : null}
             </div>
 
-            <div className="space-y-4 border-t border-border px-5 py-4">
-              <CartShippingForm />
-              <CartCouponForm subtotal={subtotal} />
-              <CartPaymentForm />
-            </div>
-
-            <div className="space-y-2 border-t border-border bg-surface-muted/50 px-5 py-4">
-              <p className="text-caption text-text-muted">
-                Display only — this total is not charged.
-              </p>
-              <Link
-                href={checkoutHref}
-                className={buttonClassName({ className: "w-full" })}
-              >
-                {session ? "Proceed to checkout" : "Sign in to checkout"}
-              </Link>
+            <div className="space-y-2 border-t border-border px-5 py-4">
               <Link
                 href="/shop"
                 className={buttonClassName({
-                  variant: "ghost",
-                  className: "w-full border border-border",
+                  variant: "secondary",
+                  className: "w-full bg-text text-primary-foreground hover:bg-text/90",
                 })}
               >
-                Continue shopping
+                Continue Shopping
+              </Link>
+              <Link
+                href={checkoutHref}
+                className={buttonClassName({
+                  className: "w-full bg-success text-primary-foreground hover:bg-success/90",
+                })}
+              >
+                {session ? "Checkout" : "Sign in to checkout"}
               </Link>
             </div>
           </aside>

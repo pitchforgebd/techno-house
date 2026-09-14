@@ -1,6 +1,14 @@
-"use client";
+﻿"use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCustomerSession } from "@/features/account/customer-session-provider";
+import {
+  createShareLinkAction,
+  deleteSavedBuildAction,
+  listSavedBuildsAction,
+  saveSavedBuildAction,
+  shareSavedBuildAction,
+} from "@/features/pc-builder/build-actions";
 import {
   BUILDER_SAVED_STORAGE_KEY,
   addSavedBuild,
@@ -11,6 +19,12 @@ import {
 } from "@/lib/domain/pc-builder";
 
 type Listener = () => void;
+
+type AccountCache = {
+  userId: string;
+  builds: SavedBuild[];
+  persisted: boolean;
+};
 
 const EMPTY_SAVED: SavedBuild[] = [];
 const listeners = new Set<Listener>();
@@ -80,19 +94,170 @@ function subscribe(listener: Listener) {
 }
 
 export function useSavedBuilds() {
-  const builds = useSyncExternalStore(
+  const session = useCustomerSession();
+  const userId = session?.userId ?? null;
+  const localBuilds = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot,
   );
+  const [account, setAccount] = useState<AccountCache | null>(null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const saveBuild = useCallback((name: string, selection: BuildSelection) => {
-    writeStorage(addSavedBuild(getSnapshot(), name, selection));
-  }, []);
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+    let cancelled = false;
+    void listSavedBuildsAction().then((result) => {
+      if (cancelled) {
+        return;
+      }
+      if (result.ok && result.persisted) {
+        setAccount({
+          userId,
+          builds: result.builds,
+          persisted: true,
+        });
+        return;
+      }
+      setAccount({ userId, builds: [], persisted: false });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
-  const deleteBuild = useCallback((id: string) => {
-    writeStorage(removeSavedBuild(getSnapshot(), id));
-  }, []);
+  const accountReady = !userId || account?.userId === userId;
+  const useAccount = Boolean(
+    userId && accountReady && account?.persisted && account.userId === userId,
+  );
+  const builds = !userId
+    ? localBuilds
+    : !accountReady
+      ? EMPTY_SAVED
+      : useAccount
+        ? (account?.builds ?? EMPTY_SAVED)
+        : localBuilds;
 
-  return { builds, saveBuild, deleteBuild };
+  const saveBuild = useCallback(
+    async (name: string, selection: BuildSelection) => {
+      setError(null);
+      if (!userId) {
+        writeStorage(addSavedBuild(getSnapshot(), name, selection));
+        return { ok: true as const };
+      }
+      setPending(true);
+      const result = await saveSavedBuildAction({ name, selection });
+      setPending(false);
+      if (result.ok && result.persisted) {
+        setAccount({ userId, builds: result.builds, persisted: true });
+        return { ok: true as const };
+      }
+      if (!result.ok && !result.persisted) {
+        writeStorage(addSavedBuild(getSnapshot(), name, selection));
+        return { ok: true as const };
+      }
+      if (!result.ok) {
+        setError(result.formError);
+        return { ok: false as const, formError: result.formError };
+      }
+      return { ok: true as const };
+    },
+    [userId],
+  );
+
+  const shareCurrent = useCallback(
+    async (selection: BuildSelection) => {
+      setError(null);
+      if (!useAccount || !userId) {
+        return { ok: false as const, persisted: false };
+      }
+      setPending(true);
+      const result = await createShareLinkAction({ selection });
+      setPending(false);
+      if (result.ok && result.persisted) {
+        setAccount({ userId, builds: result.builds, persisted: true });
+        return {
+          ok: true as const,
+          sharePath: result.sharePath,
+          persisted: true,
+        };
+      }
+      if (!result.ok) {
+        setError(result.formError);
+        return {
+          ok: false as const,
+          formError: result.formError,
+          persisted: result.persisted,
+        };
+      }
+      return { ok: false as const, persisted: result.persisted };
+    },
+    [useAccount, userId],
+  );
+
+  const shareSaved = useCallback(
+    async (id: string) => {
+      setError(null);
+      if (!useAccount || !userId) {
+        return { ok: false as const, persisted: false };
+      }
+      setPending(true);
+      const result = await shareSavedBuildAction(id);
+      setPending(false);
+      if (result.ok && result.persisted) {
+        setAccount({ userId, builds: result.builds, persisted: true });
+        return {
+          ok: true as const,
+          sharePath: result.sharePath,
+          persisted: true,
+        };
+      }
+      if (!result.ok) {
+        setError(result.formError);
+        return {
+          ok: false as const,
+          formError: result.formError,
+          persisted: result.persisted,
+        };
+      }
+      return { ok: false as const, persisted: result.persisted };
+    },
+    [useAccount, userId],
+  );
+
+  const deleteBuild = useCallback(
+    async (id: string) => {
+      setError(null);
+      if (!useAccount) {
+        writeStorage(removeSavedBuild(getSnapshot(), id));
+        return;
+      }
+      setPending(true);
+      const result = await deleteSavedBuildAction(id);
+      setPending(false);
+      if (result.ok && result.persisted && userId) {
+        setAccount({ userId, builds: result.builds, persisted: true });
+        return;
+      }
+      if (!result.ok) {
+        setError(result.formError);
+      }
+    },
+    [useAccount, userId],
+  );
+
+  return {
+    builds,
+    saveBuild,
+    shareCurrent,
+    shareSaved,
+    deleteBuild,
+    pending,
+    ready: accountReady,
+    persisted: useAccount,
+    error,
+  };
 }

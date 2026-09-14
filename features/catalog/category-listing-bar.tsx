@@ -1,4 +1,4 @@
-import { CatalogSortControl } from "@/features/catalog/catalog-sort-control";
+﻿import { CatalogSortControl } from "@/features/catalog/catalog-sort-control";
 import type { ParsedListingQuery } from "@/lib/catalog/listing-params";
 
 export function CategoryListingBar({

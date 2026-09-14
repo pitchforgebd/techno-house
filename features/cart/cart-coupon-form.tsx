@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useId, useState, type FormEvent } from "react";
 import { buttonClassName } from "@/components/ui/button";
@@ -22,13 +22,13 @@ export function CartCouponForm({ subtotal }: CartCouponFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const applied = state.couponCode
-    ? applyCouponToSubtotal(state.couponCode, subtotal)
+    ? applyCouponToSubtotal(state.couponCode, subtotal, state.appliedCoupon)
     : null;
   const appliedOk = applied?.ok === true ? applied : null;
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = applyCoupon(draft);
+    const result = await applyCoupon(draft);
     if (!result.ok) {
       setError(result.reason);
       return;
@@ -38,14 +38,8 @@ export function CartCouponForm({ subtotal }: CartCouponFormProps) {
   }
 
   return (
-    <div className="mt-4 border-t border-border pt-4">
-      <h3 className="text-label font-semibold text-text">Coupon</h3>
-      <p className="mt-1 text-caption text-text-muted">
-        Display preview only. Try{" "}
-        <span className="font-mono text-text">SAVE10</span> or{" "}
-        <span className="font-mono text-text">WELCOME500</span>. Not a real
-        discount at checkout.
-      </p>
+    <div className="border-t border-border pt-3">
+      <h3 className="text-caption font-semibold text-text">Coupon</h3>
 
       {appliedOk ? (
         <div className="mt-3 rounded-md border border-border bg-surface-muted/60 px-3 py-2.5">
@@ -64,7 +58,7 @@ export function CartCouponForm({ subtotal }: CartCouponFormProps) {
               className: "mt-2",
             })}
             onClick={() => {
-              removeCoupon();
+              void removeCoupon();
               setError(null);
             }}
           >
@@ -77,11 +71,6 @@ export function CartCouponForm({ subtotal }: CartCouponFormProps) {
             label="Coupon code"
             htmlFor={inputId}
             error={error ?? undefined}
-            hint={
-              !error
-                ? "Codes are checked against mock samples only."
-                : undefined
-            }
           >
             <div className="flex gap-2">
               <Input

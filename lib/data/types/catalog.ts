@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   Money,
   ProductImage,
   SpecChip,
@@ -24,6 +24,8 @@ export type BuilderAttrs = {
   ramType?: string;
   formFactor?: string;
   tdpWatts?: number;
+  /** Drive / motherboard interface (NVMe, SATA). Optional — missing → unknown. */
+  storageInterface?: string;
 };
 
 export type Category = {
@@ -40,6 +42,19 @@ export type Brand = {
   logoSrc: string;
 };
 
+export type ProductLabelBadge = {
+  id: string;
+  text: string;
+  backgroundColor: string;
+  textTone: "light" | "dark";
+};
+
+export type ProductNoteItem = {
+  id: string;
+  type: string;
+  description: string;
+};
+
 export type ProductSummary = {
   id: string;
   slug: string;
@@ -52,10 +67,32 @@ export type ProductSummary = {
   compareAtPrice: Money | null;
   stockStatus: StockStatus;
   warrantyLabel: string;
+  /** Short mark for the circular warranty logo (e.g. 1Y). */
+  warrantyBadge: string | null;
   image: ProductImage;
   specs: SpecChip[];
+  /** Manual admin flag. */
   isNew: boolean;
+  /**
+   * Derived from `createdAt` (see `lib/catalog/new-arrival.ts`), not set by
+   * hand — this is what a new-arrivals listing should badge.
+   */
+  isNewArrival: boolean;
   isSale: boolean;
+  /** Inclusive offer start (ISO date) when a timed discount is set. */
+  discountStartsAt: string | null;
+  /** Inclusive offer end (ISO date) when a timed discount is set. */
+  discountEndsAt: string | null;
+  /** Custom labels attached in admin (Flash Sale, Free Shipping, …). */
+  labels: ProductLabelBadge[];
+};
+
+export type ProductColorOption = {
+  id: string;
+  name: string;
+  hex: string | null;
+  /** Colour-specific gallery; empty → use product-level images. */
+  images: ProductImage[];
 };
 
 export type ProductDetail = ProductSummary & {
@@ -64,6 +101,17 @@ export type ProductDetail = ProductSummary & {
   images: ProductImage[];
   relatedSlugs: string[];
   attributes: Record<string, string>;
+  colors: ProductColorOption[];
+  builderSlot: BuilderSlot | null;
+  builderAttrs: BuilderAttrs | null;
+  youtubeUrl: string | null;
+  pdfSpecificationSrc: string | null;
+  /** Preset notes attached in admin (shipping, warranty, COD, …). */
+  notes: ProductNoteItem[];
+};
+
+/** One slot candidate — catalogue card plus builder fields. Never a full catalog. */
+export type BuilderCandidate = ProductSummary & {
   builderSlot: BuilderSlot | null;
   builderAttrs: BuilderAttrs | null;
 };

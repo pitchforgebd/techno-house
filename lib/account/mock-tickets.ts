@@ -1,4 +1,4 @@
-export const MOCK_TICKETS_KEY = "techno-house-mock-tickets-v1";
+﻿export const MOCK_TICKETS_KEY = "techno-house-mock-tickets-v1";
 export const MAX_MOCK_TICKETS = 20;
 export const MAX_TICKET_MESSAGES = 20;
 

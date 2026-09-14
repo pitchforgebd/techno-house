@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { AccountShell } from "@/features/account/account-shell";
 import { CompareBody } from "@/features/lists/compare-body";

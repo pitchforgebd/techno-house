@@ -21,7 +21,10 @@ export async function generateMetadata({
   if (!brand) {
     return { title: "Brand — Techno House" };
   }
-  return { title: `${brand.name} — Techno House` };
+  return {
+    title: `${brand.name} — Techno House`,
+    description: `Browse ${brand.name} products at Techno House.`,
+  };
 }
 
 export default async function BrandPage({

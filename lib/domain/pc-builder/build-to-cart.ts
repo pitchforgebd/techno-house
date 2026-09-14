@@ -1,8 +1,9 @@
-import type { StockStatus } from "@/lib/data/types/common";
+﻿import type { StockStatus } from "@/lib/data/types/common";
 import type { CompatibilityResult } from "@/lib/domain/pc-builder/compatibility";
 import { countFilledSlots } from "@/lib/domain/pc-builder/selection";
-import { BUILDER_SLOTS } from "@/lib/domain/pc-builder/slots";
+import { BUILDER_SLOTS, type BuilderSlotMeta } from "@/lib/domain/pc-builder/slots";
 import type { BuildSelection } from "@/lib/domain/pc-builder/types";
+import type { BuildValidationIssue } from "@/lib/domain/pc-builder/validate";
 
 export type BuildToCartProduct = {
   slug: string;
@@ -21,6 +22,7 @@ export type BuildToCartPlan =
         | "empty"
         | "incomplete"
         | "missing_product"
+        | "slot_mismatch"
         | "out_of_stock"
         | "incompatible"
         | "cart_full";
@@ -28,8 +30,8 @@ export type BuildToCartPlan =
     };
 
 /**
- * Pure plan for adding a build to the cart (display/local cart only).
- * Server revalidation lands in Phase 14.
+ * Pure plan for adding a build to the cart.
+ * Callers must pass a server snapshot (T06). The write is T07.
  */
 export function planBuildToCart({
   selection,
@@ -37,14 +39,16 @@ export function planBuildToCart({
   compatibility,
   existingCartSlugs,
   maxCartLines,
+  slots = BUILDER_SLOTS,
 }: {
   selection: BuildSelection;
   products: BuildToCartProduct[];
   compatibility: CompatibilityResult | null;
   existingCartSlugs: string[];
   maxCartLines: number;
+  slots?: readonly BuilderSlotMeta[];
 }): BuildToCartPlan {
-  const counts = countFilledSlots(selection);
+  const counts = countFilledSlots(selection, slots);
   if (counts.filled === 0) {
     return {
       ok: false,
@@ -73,7 +77,7 @@ export function planBuildToCart({
   );
   const slugs: string[] = [];
 
-  for (const slot of BUILDER_SLOTS) {
+  for (const slot of slots) {
     const slug = selection[slot.id];
     if (typeof slug !== "string" || !slug) {
       continue;
@@ -122,4 +126,45 @@ export function planBuildToCart({
     slugs,
     hasUnknownCompatibility: compatibility?.hasUnknown ?? false,
   };
+}
+
+/**
+ * Plans a T06 snapshot for cart. Validation issues block the write.
+ */
+export function planValidatedBuildToCart({
+  selection,
+  products,
+  compatibility,
+  issues,
+  existingCartSlugs,
+  maxCartLines,
+  slots = BUILDER_SLOTS,
+}: {
+  selection: BuildSelection;
+  products: BuildToCartProduct[];
+  compatibility: CompatibilityResult | null;
+  issues: BuildValidationIssue[];
+  existingCartSlugs: string[];
+  maxCartLines: number;
+  slots?: readonly BuilderSlotMeta[];
+}): BuildToCartPlan {
+  const firstIssue = issues[0];
+  if (firstIssue) {
+    return {
+      ok: false,
+      code:
+        firstIssue.code === "slot_mismatch"
+          ? "slot_mismatch"
+          : "missing_product",
+      reason: firstIssue.message,
+    };
+  }
+  return planBuildToCart({
+    selection,
+    products,
+    compatibility,
+    existingCartSlugs,
+    maxCartLines,
+    slots,
+  });
 }

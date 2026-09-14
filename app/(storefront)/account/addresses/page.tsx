@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
-import { AccountComingSoon } from "@/features/account/account-coming-soon";
+import { AccountAddressesView } from "@/features/account/account-addresses-view";
+import { listCustomerAddresses } from "@/lib/account/addresses";
 
 export const metadata: Metadata = {
   title: "Addresses — Techno House",
 };
 
-export default function AccountAddressesPage() {
-  return (
-    <AccountComingSoon
-      title="Addresses"
-      description="Saved delivery addresses wait for customer accounts on the server. Checkout still collects an address per mock order."
-    />
-  );
+export default async function AccountAddressesPage() {
+  const addresses = await listCustomerAddresses();
+  return <AccountAddressesView addresses={addresses} />;
 }

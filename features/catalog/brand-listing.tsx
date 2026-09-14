@@ -1,8 +1,7 @@
-import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+﻿import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { CatalogListingBody } from "@/features/catalog/catalog-listing-body";
+import { listStorefrontFilterKeys } from "@/lib/catalog/filter-keys";
 import {
-  CATALOG_ATTRIBUTE_KEYS,
-  LISTING_PAGE_SIZE,
   listingHasActiveFilters,
   parseListingQuery,
   resetListingHref,
@@ -21,7 +20,8 @@ export async function BrandListing({
   searchParams: ListingSearchParams;
 }) {
   const pathname = `/brand/${brand.slug}`;
-  const parsed = parseListingQuery(searchParams, [...CATALOG_ATTRIBUTE_KEYS]);
+  const attributeKeys = await listStorefrontFilterKeys();
+  const parsed = parseListingQuery(searchParams, attributeKeys);
   const listingParsed: ParsedListingQuery = {
     ...parsed,
     brandSlugs: [],
@@ -32,7 +32,7 @@ export async function BrandListing({
       brandSlug: brand.slug,
       sort: parsed.sort,
       page: parsed.page,
-      pageSize: LISTING_PAGE_SIZE,
+      pageSize: parsed.pageSize,
       ...toListQueryFilters(parsed, { showBrandFilter: false }),
     }),
   ]);

@@ -9,7 +9,7 @@ import {
   PackageOpen,
   ShoppingCart,
 } from "lucide-react";
-import { useMockCustomer } from "@/features/account/use-mock-customer";
+import { useCustomerSession } from "@/features/account/customer-session-provider";
 import { useCartStore } from "@/features/cart/use-cart-store";
 import { useListsStore } from "@/features/lists/use-lists-store";
 import { cartItemCount } from "@/lib/cart/cart";
@@ -36,7 +36,7 @@ function CountBadge({ count }: { count: number }) {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const { session } = useMockCustomer();
+  const session = useCustomerSession();
   const { state: cart } = useCartStore();
   const { state: lists } = useListsStore();
   const cartCount = cartItemCount(cart);
@@ -106,7 +106,12 @@ export function MobileBottomNav() {
                     : "text-white/75 hover:text-white",
                 )}
               >
-                <span className="relative inline-flex">
+                <span
+                  className={cn(
+                    "relative inline-flex size-9 items-center justify-center rounded-full transition-colors",
+                    active && "bg-primary text-primary-foreground shadow-sm shadow-black/25",
+                  )}
+                >
                   <Icon
                     className="size-5"
                     strokeWidth={active ? 2.25 : 1.75}

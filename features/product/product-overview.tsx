@@ -1,4 +1,4 @@
-import type { SpecChip } from "@/lib/data";
+﻿import type { SpecChip } from "@/lib/data";
 
 type ProductOverviewProps = {
   overview: string[];

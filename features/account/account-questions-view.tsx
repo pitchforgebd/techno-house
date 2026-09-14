@@ -1,26 +1,33 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
+import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import { AccountShell } from "@/features/account/account-shell";
-import { ProductPickerField } from "@/features/account/product-picker-field";
-import { useMockConversations } from "@/features/account/use-mock-conversations";
 import {
-  QUESTION_MAX,
-  createMockQuestionId,
-  validateMockQuestionInput,
-} from "@/lib/account/mock-conversations";
+  createCustomerQuestionAction,
+  deleteCustomerQuestionAction,
+} from "@/features/account/conversation-actions";
+import { ProductPickerField } from "@/features/account/product-picker-field";
+import { validateMockQuestionInput } from "@/lib/account/mock-conversations";
+import { QUESTION_MAX } from "@/lib/catalog/question-input";
+import type { CustomerQuestionView } from "@/lib/catalog/question-input";
 
-export function AccountQuestionsView() {
-  const { questions, addQuestion, deleteQuestion } = useMockConversations();
+export function AccountQuestionsView({
+  questions,
+}: {
+  questions: CustomerQuestionView[];
+}) {
+  const router = useRouter();
   const [productSlug, setProductSlug] = useState("");
-  const [productName, setProductName] = useState("");
   const [question, setQuestion] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,24 +36,39 @@ export function AccountQuestionsView() {
     if (Object.keys(nextErrors).length > 0) {
       return;
     }
-    addQuestion({
-      id: createMockQuestionId(),
-      productSlug,
-      productName: productName || productSlug,
-      askerName: "Customer",
-      question: question.trim(),
-      createdAt: new Date().toISOString(),
-      status: "pending",
+    startTransition(async () => {
+      const result = await createCustomerQuestionAction({
+        productSlug,
+        question,
+      });
+      if (!result.ok) {
+        notifyError(result.formError ?? "Could not save the question.");
+        return;
+      }
+      setQuestion("");
+      notifySuccess("Question submitted");
+      router.refresh();
     });
-    setQuestion("");
+  }
+
+  function handleDelete(id: string) {
+    startTransition(async () => {
+      const result = await deleteCustomerQuestionAction(id);
+      if (!result.ok) {
+        notifyError(result.formError ?? "Could not remove the question.");
+        return;
+      }
+      notifySuccess("Question removed");
+      router.refresh();
+    });
   }
 
   return (
     <AccountShell title="Questions">
       <div className="space-y-8">
         <p className="text-caption text-text-muted">
-          Mock product questions stay on this device. Staff answers and PDP Q&A
-          publishing are not live.
+          Questions stay private until staff publish an answer on the product
+          page.
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit} noValidate>
@@ -55,9 +77,8 @@ export function AccountQuestionsView() {
             label="Product"
             value={productSlug}
             error={errors.productSlug}
-            onChange={(slug, name) => {
+            onChange={(slug) => {
               setProductSlug(slug);
-              setProductName(name);
             }}
           />
           <Field
@@ -72,15 +93,13 @@ export function AccountQuestionsView() {
               onChange={(event) => setQuestion(event.target.value)}
             />
           </Field>
-          <Button type="submit" size="sm">
-            Save mock question
+          <Button type="submit" size="sm" disabled={pending}>
+            {pending ? "Saving…" : "Submit question"}
           </Button>
         </form>
 
         {questions.length === 0 ? (
-          <p className="text-body text-text-muted">
-            No mock questions on this device yet.
-          </p>
+          <p className="text-body text-text-muted">No questions yet.</p>
         ) : (
           <ul className="space-y-3">
             {questions.map((item) => {
@@ -97,11 +116,19 @@ export function AccountQuestionsView() {
                     <p className="text-label font-semibold text-text">
                       Q: {item.question}
                     </p>
-                    <Badge tone="neutral">Pending</Badge>
+                    <Badge tone="neutral">
+                      {item.status === "answered" ? "Answered" : "Pending"}
+                    </Badge>
                   </div>
-                  <p className="mt-2 text-caption text-text-muted">
-                    Awaiting an answer — not sent to staff.
-                  </p>
+                  {item.answer ? (
+                    <p className="mt-2 text-caption text-text-muted">
+                      A: {item.answer}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-caption text-text-muted">
+                      Awaiting an answer.
+                    </p>
+                  )}
                   <p className="mt-2 text-caption text-text-muted">
                     <Link
                       href={`/product/${item.productSlug}`}
@@ -112,17 +139,20 @@ export function AccountQuestionsView() {
                     {" · "}
                     {placedAt}
                   </p>
-                  <button
-                    type="button"
-                    className={buttonClassName({
-                      variant: "ghost",
-                      size: "sm",
-                      className: "mt-2 self-start px-0",
-                    })}
-                    onClick={() => deleteQuestion(item.id)}
-                  >
-                    Remove from this device
-                  </button>
+                  {item.status === "pending" ? (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      className={buttonClassName({
+                        variant: "ghost",
+                        size: "sm",
+                        className: "mt-2 self-start px-0",
+                      })}
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      Remove
+                    </button>
+                  ) : null}
                 </li>
               );
             })}

@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+﻿import { Star } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 function clampRating(rating: number): number {

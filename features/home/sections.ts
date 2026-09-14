@@ -1,4 +1,4 @@
-export const HOME_SECTIONS = [
+﻿export const HOME_SECTIONS = [
   {
     id: "home-hero",
     title: "Techno House",
@@ -12,6 +12,12 @@ export const HOME_SECTIONS = [
     heading: "h2",
   },
   {
+    id: "home-flash-banner",
+    title: "Flash deal banner",
+    description: "Wide promotional strip — Design Studio flash deal slot.",
+    heading: "h2",
+  },
+  {
     id: "home-featured",
     title: "Featured",
     description: "A short list from the current catalog.",
@@ -19,8 +25,14 @@ export const HOME_SECTIONS = [
   },
   {
     id: "home-deals",
-    title: "Deals",
+    title: "Best deals",
     description: "Marked-down items from the catalog.",
+    heading: "h2",
+  },
+  {
+    id: "home-promo-banners",
+    title: "Promotional banners",
+    description: "Paired promo strips — Design Studio Today's Deal slot.",
     heading: "h2",
   },
   {
@@ -45,6 +57,13 @@ export const HOME_SECTIONS = [
     id: "home-content",
     title: "Guides",
     description: "Shop, PC Builder, and product-request cues — ribbon + guide grid.",
+    heading: "h2",
+  },
+  {
+    id: "home-store-info",
+    title: "About Techno House",
+    description:
+      "Store information and internal links above the footer — expandable long copy.",
     heading: "h2",
   },
 ] as const;

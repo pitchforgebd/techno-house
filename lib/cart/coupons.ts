@@ -1,4 +1,4 @@
-/** Display-only mock coupons. Not authoritative for charges. */
+﻿/** Display-only mock coupons. Not authoritative for charges. */
 
 export type CouponKind = "percent" | "fixed";
 
@@ -43,15 +43,16 @@ export type CouponApplyResult =
   | { ok: true; coupon: CouponDefinition; discountAmount: number }
   | { ok: false; reason: string };
 
-/** Display-only discount against a subtotal in integer taka. */
+/** Discount against a subtotal in integer taka. Pass a definition from persist. */
 export function applyCouponToSubtotal(
   code: string | null,
   subtotal: number,
+  definition?: CouponDefinition | null,
 ): CouponApplyResult {
   if (!code) {
     return { ok: false, reason: "Enter a coupon code." };
   }
-  const coupon = findMockCoupon(code);
+  const coupon = definition ?? findMockCoupon(code);
   if (!coupon) {
     return { ok: false, reason: "That coupon code is not recognized." };
   }

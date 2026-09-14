@@ -1,20 +1,21 @@
-"use server";
+﻿"use server";
 
 import { productRepository } from "@/lib/data";
-import type { ProductSummary } from "@/lib/data";
+import type { BuilderCandidate, ProductSummary } from "@/lib/data";
 import {
-  BUILDER_SLOTS,
+  buildCandidateSlugs,
+  compatibilityPartsFromCandidates,
   isBuilderSlotId,
-  selectedSlugs,
   type BuildSelection,
   type CompatibilityPart,
+  type PcBuilderRuleType,
 } from "@/lib/domain/pc-builder";
-
-const MAX_BUILD_PRODUCTS = 24;
+import { listEnabledRuleTypes } from "@/lib/pc-builder/rules";
+import { validateBuild } from "@/lib/pc-builder/validate-build";
 
 export async function loadSlotCandidates(
   slotId: string,
-): Promise<ProductSummary[]> {
+): Promise<BuilderCandidate[]> {
   if (!isBuilderSlotId(slotId)) {
     return [];
   }
@@ -24,8 +25,7 @@ export async function loadSlotCandidates(
 export async function loadBuildProducts(
   selection: BuildSelection,
 ): Promise<ProductSummary[]> {
-  const slugs = selectedSlugs(selection).slice(0, MAX_BUILD_PRODUCTS);
-  return productRepository.listBySlugs(slugs);
+  return productRepository.listBySlugs(buildCandidateSlugs(selection));
 }
 
 /**
@@ -34,27 +34,16 @@ export async function loadBuildProducts(
 export async function loadCompatibilityParts(
   selection: BuildSelection,
 ): Promise<CompatibilityPart[]> {
-  const parts: CompatibilityPart[] = [];
+  const slugs = buildCandidateSlugs(selection);
+  const candidates =
+    await productRepository.listBuilderCandidatesBySlugs(slugs);
+  return compatibilityPartsFromCandidates(selection, candidates);
+}
 
-  for (const slot of BUILDER_SLOTS) {
-    const slug = selection[slot.id];
-    if (typeof slug !== "string" || !slug) {
-      continue;
-    }
-    const product = await productRepository.getBySlug(slug);
-    if (!product) {
-      continue;
-    }
-    parts.push({
-      slotId: slot.id,
-      slug: product.slug,
-      name: product.name,
-      attrs: product.builderAttrs,
-    });
-    if (parts.length >= MAX_BUILD_PRODUCTS) {
-      break;
-    }
-  }
+export async function loadEnabledRuleTypes(): Promise<PcBuilderRuleType[]> {
+  return listEnabledRuleTypes();
+}
 
-  return parts;
+export async function validateBuildAction(selection: BuildSelection) {
+  return validateBuild(selection);
 }

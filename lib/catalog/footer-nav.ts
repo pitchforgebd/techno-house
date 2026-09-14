@@ -1,5 +1,6 @@
-export const FOOTER_COMPANY_LINKS = [
+﻿export const FOOTER_COMPANY_LINKS = [
   { href: "/about", label: "About us" },
+  { href: "/blog", label: "Blog" },
   { href: "/brands", label: "Brands" },
   { href: "/warranty", label: "Warranty" },
   { href: "/support", label: "Support" },
@@ -11,12 +12,17 @@ export const FOOTER_COMPANY_LINKS = [
 
 export const FOOTER_POLICY_LINKS = [
   { href: "/shipping", label: "Order & shipping" },
+  { href: "/track", label: "Track order" },
   { href: "/returns", label: "Return & refund" },
   { href: "/checkout", label: "Payment methods" },
   { href: "/terms", label: "Terms & conditions" },
   { href: "/privacy", label: "Privacy policy" },
   { href: "/product-request", label: "Request a product" },
-  { href: "/contact", label: "Report a problem" },
+  { href: "/complaint", label: "Complaint Box" },
+  {
+    href: "/digital-commerce-guideline",
+    label: "ডিজিটাল কমার্স নির্দেশিকা ২০২১",
+  },
 ] as const;
 
 /** Placeholder destinations — real social embeds wait for later phases. */

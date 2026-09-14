@@ -1,14 +1,14 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { CatalogListingBody } from "@/features/catalog/catalog-listing-body";
 import { CategoryBrandPills } from "@/features/catalog/category-brand-pills";
 import { CategoryListingBar } from "@/features/catalog/category-listing-bar";
 import { CategoryPageSeo } from "@/features/catalog/category-page-seo";
 import { getCategoryPageContent } from "@/lib/catalog/category-page-content";
+import { getCategorySeoHtml } from "@/lib/catalog/category-seo-content";
+import { listStorefrontFilterKeys } from "@/lib/catalog/filter-keys";
 import {
   BRAND_FACET_KEY,
-  CATALOG_ATTRIBUTE_KEYS,
-  LISTING_PAGE_SIZE,
   listingHasActiveFilters,
   parseListingQuery,
   resetListingHref,
@@ -47,12 +47,12 @@ export async function CategoryListing({
   searchParams: ListingSearchParams;
 }) {
   const pathname = `/category/${category.slug}`;
+  const fallbackKeys = await listStorefrontFilterKeys();
   const attributeKeys =
-    category.filterKeys.length > 0
-      ? category.filterKeys
-      : [...CATALOG_ATTRIBUTE_KEYS];
+    category.filterKeys.length > 0 ? category.filterKeys : fallbackKeys;
   const parsed = parseListingQuery(searchParams, attributeKeys);
   const content = getCategoryPageContent(category.slug, category.name);
+  const seoHtml = await getCategorySeoHtml(category.slug);
   const listFilters = toListQueryFilters(parsed, { showBrandFilter: true });
 
   const [allCategories, brands, result, brandScope] = await Promise.all([
@@ -62,7 +62,7 @@ export async function CategoryListing({
       categorySlug: category.slug,
       sort: parsed.sort,
       page: parsed.page,
-      pageSize: LISTING_PAGE_SIZE,
+      pageSize: parsed.pageSize,
       ...listFilters,
     }),
     productRepository.list({
@@ -160,7 +160,7 @@ export async function CategoryListing({
         }
       />
 
-      <CategoryPageSeo content={content} />
+      <CategoryPageSeo content={content} html={seoHtml} />
     </div>
   );
 }

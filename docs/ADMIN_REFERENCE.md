@@ -124,20 +124,23 @@ Group settings so the sidebar stays short:
 
 ## Sidebar organization (original Techno House)
 
-Default expanded groups:
+Sidebar parent groups (labels + icons in the admin chrome; AD-125):
 
-1. **Overview** — Dashboard
-2. **Catalog** — Products, Categories, Brands, Attributes, Units, Warranty, Notes, Bulk import/export, Reviews, Questions
+1. **Home** — Dashboard
+2. **Catalog** — Products, Categories, Brands, Attributes, Units, Warranty, Notes, Bulk import/export, Reviews, Questions, PC Builder
 3. **Sales** — Orders, Unpaid orders, Refunds
-4. **Customers** — Customers
-5. **Merchandising** — Promotions, Flash sales, Deals, Coupons
-6. **Content** — Blog, Newsletter, Media
-7. **Insights** — Analytics, Reports, GA4/GTM/Meta, Sitemap/SEO
-8. **Experience** — Design Studio, Notifications
-9. **Support** — Tickets, Contacts, Product conversations
-10. **Operations** — Shipping, Payments, OTP/SMS, SMTP
-11. **System** — Business settings, Features, Languages, Currency, Social logins, Integrations
-12. **Staff** — Staff, Permissions, Profile
+4. **Customers** — Customers, B2B
+5. **Promotions** — Promotion & Offers, Coupons
+6. **Marketing** — Campaigns, Blog, Newsletter, Notifications
+7. **Media** — Media library
+8. **Analytics** — Marketing analytics, GA4/GTM/Meta, SEO
+9. **Reports** — Report Center, Compare
+10. **Appearance** — Design Studio
+11. **Support** — Tickets, Conversations, Contacts
+12. **Messaging** — OTP/SMS
+13. **Payments** — Gateways, Offline, EMI
+14. **Settings** — Setup & Configurations
+15. **Staff** — Staff, Roles, Profile
 
 PC Builder admin (compatibility rules, featured builds) belongs under **Catalog** or a dedicated **PC Builder** group when Phase 14 is in scope. Frontend admin (Phase 09) should reserve the nav item.
 
