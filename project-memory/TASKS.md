@@ -5525,3 +5525,55 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
 
       `test:listing` 34 -> 45. Reverting the corner flag or the savings wording
       each fails 1. All suites green (723), `tsc` 0, `lint` 0, `build` 0.
+
+- [x] AD-344 Dev-database test fixture cleanup — six approved rows, by primary
+      key.
+
+      Data operation only. No source file, schema, or migration touched.
+
+      All six identified precisely before anything was deleted: full relation
+      graph checked per row, `onDelete` behavior verified against the schema
+      for every FK involved, zero references to real business data. Two
+      findings worth recording:
+
+      **Order `100187` was a test fixture, not a real order.** It had been
+      counted among the "9 real orders" throughout the whole Order-ID
+      engagement (AD-338) — it was the one numeric-format order in that
+      count. It was in fact a `check-stale-orders.ts` fixture (customerEmail
+      `stale-contact-…@techno-house.invalid`, customerName "Stale Test")
+      whose `finally` cleanup never ran, and it happened to draw a real
+      sequence number. Deleting it is correct; it was never a customer order.
+
+      **The two `@techno-house.invalid` users were from two different,
+      unrelated test runs** — `stale-abandoned-…` (same run as the order/
+      product/shipping-method, same timestamp suffix) and
+      `fresh-…@techno-house.invalid` / "Fresh Social User" (a `GOOGLE`
+      `SocialLoginAccount`, from `check-social-linking.ts`, hours earlier).
+      Both matched the approved "@techno-house.invalid" criterion exactly —
+      2 found, 2 approved — so both were removed, but they are not part of
+      the same fixture set and that is worth knowing.
+
+      **The staff row was the bigger relation graph than expected**: 194
+      AuditLog rows as actor, 732 Notification rows, 1 StaffSession, 0
+      refunds actually approved (`approvedById`) despite many
+      `refund.approve`/`refund.complete` audit entries, 0 blog posts, 0
+      media uploads, 0 ticket replies. `AuditLog.actorId` has NO foreign key
+      to Staff (`prisma/schema.prisma` — deliberate, so audit history
+      survives the actor being deleted) — confirmed those 307 rows are
+      untouched (307 before, 307 after) and still readable via the
+      `actorLabel` snapshot. `Notification.staffId` IS `onDelete: Cascade`,
+      so those 732 rows are gone with the staff record — required for
+      referential integrity, not scope creep.
+
+      Deleted in one transaction, by primary key, in dependency order (Order
+      -> ShippingMethod -> Product -> both Users -> Staff), each preceded by
+      an existence check that would abort the whole run rather than partially
+      delete. All six confirmed gone afterward; nothing else in the six
+      `findUnique`/`count` before/after pairs changed.
+
+      `db:preflight` 11/11 before and after. Live verified post-delete: `/`,
+      `/shop`, `/cart`, `/api/health` all 200, 0 errors in the server log, and
+      the deleted product's URL now shows the same "Page not found" content a
+      slug that never existed shows (confirmed against a control) — not a new
+      404 status on this route, which is a pre-existing app behavior unrelated
+      to this cleanup.
