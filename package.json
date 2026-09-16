@@ -40,6 +40,7 @@
     "test:theme": "tsx scripts/security/check-theme-css.ts",
     "test:tax": "tsx scripts/security/check-order-tax.ts",
     "test:listing": "tsx scripts/catalog/check-listing.ts",
+    "test:dashboard": "tsx scripts/admin/check-dashboard.ts",
     "test:inventory": "tsx scripts/inventory/check-stock-integrity.ts",
     "test:staleorders": "tsx scripts/orders/check-stale-orders.ts",
     "test:orderid": "tsx scripts/orders/check-order-identity.ts",

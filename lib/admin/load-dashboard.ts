@@ -3,7 +3,6 @@
  */
 import type { Money } from "@/lib/data/types/common";
 import type { DashboardSnapshot } from "@/lib/admin/dashboard-types";
-import { fillBuckets, planCustomRangeBuckets } from "@/lib/admin/report-time-buckets";
 import { getPrisma } from "@/lib/db/prisma";
 import { usesDatabase } from "@/lib/runtime/data-source";
 
@@ -39,7 +38,7 @@ function emptySnapshot(): DashboardSnapshot {
   return {
     customers: { total: 0, newThisMonth: 0, top: [] },
     products: { total: 0, published: 0, draft: 0, lowStock: 0 },
-    sales: { allTime: money(0), thisMonth: money(0), growthPercent: null, trend: [] },
+    sales: { allTime: money(0), thisMonth: money(0), growthPercent: null },
     orders: {
       total: 0,
       thisMonth: 0,
@@ -73,10 +72,6 @@ export async function loadAdminDashboard(): Promise<DashboardSnapshot> {
   const lastMonthStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
   );
-  const trendPlan = planCustomRangeBuckets(
-    new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000),
-    now,
-  );
 
   const [
     customerTotal,
@@ -94,7 +89,6 @@ export async function loadAdminDashboard(): Promise<DashboardSnapshot> {
     paidSum,
     monthPaidSum,
     lastMonthPaidSum,
-    trendRows,
     recentRows,
     topProductRows,
     categorySalesRows,
@@ -131,14 +125,6 @@ export async function loadAdminDashboard(): Promise<DashboardSnapshot> {
       },
       _sum: { totalAmount: true },
     }),
-    prisma.$queryRaw<{ bucket: Date; total: number }[]>`
-      SELECT date_trunc('day', "placedAt") AS bucket,
-             COALESCE(SUM("totalAmount"), 0)::float8 AS total
-      FROM "Order"
-      WHERE "paymentStatus" = 'PAID'
-        AND "placedAt" >= ${trendPlan.start} AND "placedAt" < ${trendPlan.end}
-      GROUP BY bucket
-    `,
     prisma.order.findMany({
       orderBy: { placedAt: "desc" },
       take: 8,
@@ -304,7 +290,6 @@ export async function loadAdminDashboard(): Promise<DashboardSnapshot> {
       allTime: money(allTimeSales),
       thisMonth: money(monthSales),
       growthPercent,
-      trend: fillBuckets(trendPlan, trendRows),
     },
     orders: {
       total: orderTotal,

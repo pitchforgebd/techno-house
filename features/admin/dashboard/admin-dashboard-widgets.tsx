@@ -129,14 +129,21 @@ export function AdminStatIcon({
 export function AdminDeltaBadge({
   percent,
   suffix = "vs last month",
+  nullLabel = "New this month",
 }: {
   percent: number | null;
   suffix?: string;
+  /** Shown instead of the delta when there is nothing to compare against —
+   *  e.g. the previous window had no paid sales. Defaults to the original
+   *  "New this month" wording for the existing month-over-month callers;
+   *  a period-relative caller (today/week/15 days) should pass something
+   *  that names its own window instead. */
+  nullLabel?: string;
 }) {
   if (percent === null) {
     return (
       <span className="inline-flex items-center rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-medium text-text-muted">
-        New this month
+        {nullLabel}
       </span>
     );
   }

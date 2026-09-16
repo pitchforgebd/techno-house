@@ -57,8 +57,6 @@ export type DashboardSnapshot = {
     thisMonth: Money;
     /** Percent change of this month's paid sales vs last month's. Null when last month had no paid sales (nothing to compare against). */
     growthPercent: number | null;
-    /** Real day-by-day paid sales for the last 14 days, oldest first. */
-    trend: { label: string; value: number }[];
   };
   orders: {
     total: number;

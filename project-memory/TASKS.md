@@ -5577,3 +5577,66 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       slug that never existed shows (confirmed against a control) — not a new
       404 status on this route, which is a pre-existing app behavior unrelated
       to this cleanup.
+
+- [x] AD-345 Admin dashboard — quick-action shortcuts, calculator, filterable
+      revenue trend, best-sellers/top-searches panels.
+
+      **Shortcuts are permission-filtered before rendering, not after.**
+      `canAccessAdminPath` (already used to gate the whole admin nav) filters
+      the shortcut row server-side — a staff member never sees a tile that
+      would bounce them to Forbidden. Verified against the REAL route rules
+      (not guessed permission strings): a `product.view`-only staff member
+      sees exactly "Add product" and "All orders"; nothing else.
+
+      **Revenue trend now defaults to Today, not a fixed 14 days.** Extracted
+      into its own loader (`lib/admin/dashboard-trend.ts`) rather than folding
+      into `loadAdminDashboard`, reusing the SAME bucket-plan machinery Report
+      Center already has (`planReportBuckets`/`planCustomRangeBuckets`) —
+      no new bucketing logic written. Four quick-picks (Today/Last week/
+      15 days/This month) plus a custom date range, URL-driven
+      (`?range=`/`?from=&to=`) exactly like Report Center's own period tabs,
+      so the choice survives a refresh and is shareable.
+
+      "15 days" is deliberately NOT added to the shared `ReportPeriod` type —
+      that would widen a type six existing report pages depend on for one
+      dashboard card. Kept as this module's own `DashboardTrendRange`.
+
+      The growth badge compares against the immediately preceding window of
+      EQUAL LENGTH (today vs yesterday, this 15 days vs the previous 15) via
+      one generic function — not "vs last month", which would be nonsense
+      while looking at a single day. Range value is a closed set of 4; proven
+      that removing the validation lets anything reach the bucket-plan query.
+
+      **Best-sellers (units) + top search terms reuse Report Center's own
+      loaders** (`loadProductSaleRows`, `loadUserSearches`) rather than a
+      second query for the same numbers — top-5 with a link to the full
+      report. Gated behind the SAME permission as their full report pages,
+      and — the part that actually matters — NEVER FETCHED for a staff member
+      without it, checked at the `Promise.all` call site, not just hidden at
+      render. Proved: removing that gate makes the query run unconditionally,
+      caught by the suite.
+
+      "Top search terms," not "most-searched products" — `SearchLog` records
+      free-text query strings, not a product id. Labelled for what the data
+      actually is rather than implying more precision than it has.
+
+      **Calculator is a plain state-machine, deliberately not a formula
+      engine** — no `eval`/`Function` construction anywhere, asserted by the
+      suite. Percent follows the "percent OF the accumulator" convention
+      (500 + 10% = 550) since that is what a discount/service-charge
+      calculation needs, not a bare ÷100. Divide-by-zero returns null → shows
+      "Error", proven load-bearing by reverting it (would otherwise leak
+      Infinity onto the display). Keyboard input works while open.
+
+      **One shared-widget fix along the way:** `AdminDeltaBadge`'s null-state
+      was hardcoded to "New this month" — fine for the original month-over-
+      month KPI, wrong once reused for a period-relative comparison ("Today"
+      showing "New this month" when yesterday had no sales). Added an
+      optional `nullLabel` override; the original caller is unchanged.
+
+      New suite `test:dashboard` (48). Reverting range validation fails 8;
+      reverting the report-fetch gate fails 1; reverting divide-by-zero fails
+      1 — all proven, not assumed. All 21 suites green (809 total), `tsc` 0,
+      `lint` 0 errors, `build` 0. Verified live with a real staff session:
+      every range, custom range, invalid-range fallback, and permission tier
+      render correctly.

@@ -14,13 +14,24 @@ import {
   AdminDeltaBadge,
   AdminOrderStatusPanel,
   AdminStatIcon,
-  AdminTrendChart,
 } from "@/features/admin/dashboard/admin-dashboard-widgets";
+import { AdminDashboardTrendCard } from "@/features/admin/dashboard/admin-dashboard-trend-card";
+import {
+  AdminDashboardShortcuts,
+  type DashboardShortcut,
+} from "@/features/admin/dashboard/admin-dashboard-shortcuts";
+import {
+  AdminBestSellersPanel,
+  AdminTopSearchesPanel,
+} from "@/features/admin/dashboard/admin-dashboard-insights";
 import type {
   DashboardRankedItem,
   DashboardRecentOrder,
   DashboardSnapshot,
 } from "@/lib/admin/dashboard-types";
+import type { DashboardTrendResult } from "@/lib/admin/dashboard-trend";
+import type { ReportNamedCount } from "@/lib/admin/load-report-center";
+import type { UserSearchRow } from "@/lib/admin/report-center-mock";
 import { formatMoney } from "@/lib/format/currency";
 
 const PAYMENT_BADGE: Record<DashboardRecentOrder["paymentStatus"], string> = {
@@ -69,7 +80,23 @@ function RankedRevenueList({ items }: { items: DashboardRankedItem[] }) {
   );
 }
 
-export function AdminDashboard({ data }: { data: DashboardSnapshot }) {
+export function AdminDashboard({
+  data,
+  trend,
+  shortcuts,
+  bestSellers,
+  topSearches,
+  trendFormValues,
+}: {
+  data: DashboardSnapshot;
+  trend: DashboardTrendResult;
+  shortcuts: DashboardShortcut[];
+  /** Null when the signed-in staff member lacks reports.product_sale — the panel is hidden, not shown empty. */
+  bestSellers: ReportNamedCount[] | null;
+  /** Null when the signed-in staff member lacks reports.searches — the panel is hidden, not shown empty. */
+  topSearches: UserSearchRow[] | null;
+  trendFormValues: { from: string; to: string };
+}) {
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 pb-8">
       <div>
@@ -77,6 +104,9 @@ export function AdminDashboard({ data }: { data: DashboardSnapshot }) {
           Dashboard
         </h1>
       </div>
+
+      {/* Row 0 — quick actions + calculator */}
+      <AdminDashboardShortcuts shortcuts={shortcuts} />
 
       {/* Row 1 — KPI summary */}
       <div className="grid gap-4 xl:grid-cols-4">
@@ -203,17 +233,18 @@ export function AdminDashboard({ data }: { data: DashboardSnapshot }) {
         </AdminDashboardCard>
       </div>
 
-      {/* Row 2 — revenue trend */}
-      <AdminDashboardCard>
-        <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-label font-semibold text-text">Revenue trend</h2>
-            <p className="text-caption text-text-muted">Last 14 days · paid orders</p>
-          </div>
-          <AdminDeltaBadge percent={data.sales.growthPercent} />
-        </div>
-        <AdminTrendChart data={data.sales.trend} className="mt-4" />
-      </AdminDashboardCard>
+      {/* Row 2 — revenue trend, period-filterable (defaults to Today) */}
+      <AdminDashboardTrendCard
+        range={trend.range}
+        rangeLabel={trend.rangeLabel}
+        customRangeInvalid={trend.customRangeInvalid}
+        trend={trend.trend}
+        totalAmount={trend.totalAmount}
+        orderCount={trend.orderCount}
+        growthPercent={trend.growthPercent}
+        initialFrom={trendFormValues.from}
+        initialTo={trendFormValues.to}
+      />
 
       {/* Row 3 — order status & recent orders */}
       <div className="grid gap-4 xl:grid-cols-3">
@@ -390,6 +421,20 @@ export function AdminDashboard({ data }: { data: DashboardSnapshot }) {
           <p className="text-caption text-text-muted">No paid orders yet.</p>
         )}
       </AdminDashboardCard>
+
+      {/* Row 6 — what is selling, what is being searched for. Hidden (not
+          shown empty) for a staff member without the matching report
+          permission — never fetched for them either, see the page loader. */}
+      {bestSellers && topSearches ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AdminBestSellersPanel rows={bestSellers} />
+          <AdminTopSearchesPanel rows={topSearches} />
+        </div>
+      ) : bestSellers ? (
+        <AdminBestSellersPanel rows={bestSellers} />
+      ) : topSearches ? (
+        <AdminTopSearchesPanel rows={topSearches} />
+      ) : null}
     </div>
   );
 }
