@@ -16,6 +16,13 @@
  * vars — never a hardcoded credential. It touches no catalogue, order, or
  * customer data.
  */
+import { config as loadEnvFiles } from "dotenv";
+
+// Standalone scripts, unlike `next dev`/`next build`, do not auto-load .env
+// files — every other script here that touches getPrisma() does this same
+// load first (see scripts/db/preflight.ts).
+loadEnvFiles({ path: [".env.local", ".env"], quiet: true });
+
 import { hashPassword } from "../../lib/auth/password";
 import { getPrisma } from "../../lib/db/prisma";
 import {
