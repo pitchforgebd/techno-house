@@ -447,6 +447,9 @@ model ProductWarranty {
   label       String
   months      Int?
   description String?
+  /// Uploaded 40x40 mark shown instead of the auto-generated text badge
+  /// (warrantyBadgeFromLabel) when set. Admin -> Warranty -> Edit.
+  logoSrc     String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

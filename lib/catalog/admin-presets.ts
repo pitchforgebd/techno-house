@@ -536,6 +536,7 @@ export type AdminWarrantyRow = {
   id: string;
   text: string;
   badge: string;
+  logoSrc: string | null;
 };
 
 /**
@@ -550,12 +551,13 @@ export async function listAdminWarranties(): Promise<AdminWarrantyRow[]> {
   const rows = await getPrisma().productWarranty.findMany({
     where: { isActive: true },
     orderBy: { label: "asc" },
-    select: { id: true, label: true },
+    select: { id: true, label: true, logoSrc: true },
   });
   return rows.map((row) => ({
     id: row.id,
     text: row.label,
     badge: warrantyBadgeFromLabel(row.label),
+    logoSrc: row.logoSrc,
   }));
 }
 
@@ -572,6 +574,8 @@ function warrantyCodeFromLabel(label: string): string {
 export async function saveWarranty(input: {
   id?: string;
   text: string;
+  /** Path from uploadWarrantyLogoAction, or undefined to leave unchanged. */
+  logoSrc?: string | null;
   actor?: PresetActor;
 }): Promise<PresetMutationResult> {
   if (!usesDatabase()) {
@@ -596,7 +600,10 @@ export async function saveWarranty(input: {
     }
     const row = await getPrisma().productWarranty.update({
       where: { id: input.id },
-      data: { label },
+      data: {
+        label,
+        ...(input.logoSrc !== undefined ? { logoSrc: input.logoSrc } : {}),
+      },
       select: { id: true },
     });
     await audit(
@@ -620,7 +627,12 @@ export async function saveWarranty(input: {
   }
 
   const row = await getPrisma().productWarranty.create({
-    data: { code, label, isActive: true },
+    data: {
+      code,
+      label,
+      isActive: true,
+      logoSrc: input.logoSrc ?? null,
+    },
     select: { id: true },
   });
   await audit(

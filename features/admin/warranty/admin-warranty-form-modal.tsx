@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,10 @@ import {
   notifyError,
   notifySuccess,
 } from "@/components/ui/feedback-provider";
-import { saveWarrantyAction } from "@/features/admin/catalog/preset-actions";
+import {
+  saveWarrantyAction,
+  uploadWarrantyLogoAction,
+} from "@/features/admin/catalog/preset-actions";
 import {
   AdminFormLabel,
   adminFormControlClass,
@@ -47,10 +50,35 @@ function WarrantyFormFields({
   onClose: () => void;
 }) {
   const [text, setText] = useState(warranty?.text ?? "");
+  const [logoSrc, setLogoSrc] = useState<string | null>(
+    warranty?.logoSrc ?? null,
+  );
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const previewBadge = warranty?.badge ?? badgeFromText(text || "W");
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    setUploading(true);
+    const formData = new FormData();
+    formData.set("file", file);
+    startTransition(async () => {
+      const result = await uploadWarrantyLogoAction(formData);
+      setUploading(false);
+      if (!result.ok) {
+        notifyError(result.formError);
+        return;
+      }
+      setLogoSrc(result.path);
+    });
+  }
 
   function handleConfirm() {
     setError(null);
@@ -62,6 +90,7 @@ function WarrantyFormFields({
       const result = await saveWarrantyAction({
         id: warranty?.id,
         text: text.trim(),
+        logoSrc,
       });
       if (!result.ok) {
         setError(result.formError);
@@ -102,18 +131,41 @@ function WarrantyFormFields({
 
         <div className="space-y-1.5">
           <AdminFormLabel>Logo (40×40)</AdminFormLabel>
-          {mode === "edit" ? (
-            <div className="mb-2">
-              <AdminWarrantyBadge badge={previewBadge} label={text || "Warranty"} />
-            </div>
-          ) : null}
+          <div className="mb-2 flex items-center gap-3">
+            <AdminWarrantyBadge
+              badge={previewBadge}
+              label={text || "Warranty"}
+              logoSrc={logoSrc}
+            />
+            {logoSrc ? (
+              <button
+                type="button"
+                onClick={() => setLogoSrc(null)}
+                className="text-xs font-medium text-red-600 hover:underline"
+              >
+                Remove logo
+              </button>
+            ) : null}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={handleFileChange}
+          />
           <div className="flex gap-0">
-            <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-600">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-600 hover:bg-neutral-100 disabled:cursor-not-allowed"
+            >
               Browse
-            </span>
+            </button>
             <Input
               readOnly
-              placeholder="Choose file"
+              placeholder={uploading ? "Uploading…" : "Choose file"}
               className={cn(adminFormControlClass, "rounded-l-none")}
             />
           </div>

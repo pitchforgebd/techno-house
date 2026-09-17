@@ -270,6 +270,7 @@ export function AdminWarrantyList({
                       <AdminWarrantyBadge
                         badge={warranty.badge}
                         label={warranty.text}
+                        logoSrc={warranty.logoSrc}
                       />
                     </TableCell>
                     <TableCell>

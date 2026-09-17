@@ -21,6 +21,7 @@ import {
   type PresetMutationResult,
 } from "@/lib/catalog/admin-presets";
 import { runBulkAction, type BulkActionResult } from "@/lib/admin/bulk-actions";
+import { uploadAdminMediaFiles } from "@/lib/media/admin-media";
 
 type GuardResult =
   | { ok: true; actor: PresetActor }
@@ -181,12 +182,38 @@ export async function bulkDeleteLabelsAction(
 export async function saveWarrantyAction(input: {
   id?: string;
   text: string;
+  logoSrc?: string | null;
 }): Promise<PresetMutationResult> {
   const gate = await guard();
   if (!gate.ok) return gate;
   const result = await saveWarranty({ ...input, actor: gate.actor });
   if (result.ok) revalidatePresets("/admin/warranty");
   return result;
+}
+
+export async function uploadWarrantyLogoAction(
+  formData: FormData,
+): Promise<{ ok: true; path: string } | { ok: false; formError: string }> {
+  const gate = await guard();
+  if (!gate.ok) return gate;
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size <= 0) {
+    return { ok: false, formError: "Choose a logo image file." };
+  }
+  const uploaded = await uploadAdminMediaFiles({
+    files: [file],
+    // Same folder the refund sticker upload uses for this size of badge image
+    // — no dedicated "warranty" folder in MediaFolder for one small logo.
+    folder: "general",
+    actor: gate.actor,
+  });
+  if (!uploaded.ok) {
+    return uploaded;
+  }
+  if (!uploaded.path) {
+    return { ok: false, formError: "Upload saved but path could not be read." };
+  }
+  return { ok: true, path: uploaded.path };
 }
 
 export async function deleteWarrantyAction(
