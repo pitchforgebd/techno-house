@@ -1211,6 +1211,7 @@ export const mockProducts: ProductDetail[] = (
   | "pdfSpecificationSrc"
   | "colors"
   | "warrantyBadge"
+  | "warrantyLogoSrc"
   | "discountStartsAt"
   | "discountEndsAt"
   | "labels"
@@ -1227,6 +1228,9 @@ export const mockProducts: ProductDetail[] = (
   warrantyBadge: product.warrantyLabel
     ? warrantyBadgeFromLabel(product.warrantyLabel)
     : null,
+  // Mock catalogue products aren't tied to a real ProductWarranty row, so
+  // there is never an uploaded logo to show — always the text badge.
+  warrantyLogoSrc: null,
   labels: [],
   notes: [],
   // Mock rows carry no `createdAt`, so the hand-set flag is the only signal

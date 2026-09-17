@@ -38,7 +38,7 @@ const SUMMARY_SELECT = {
   isSale: true,
   brand: { select: { slug: true, name: true } },
   category: { select: { slug: true } },
-  warranty: { select: { label: true } },
+  warranty: { select: { label: true, logoSrc: true } },
   labelIds: true,
   images: {
     select: { src: true, alt: true },

@@ -87,6 +87,7 @@ function candidate(
     stockStatus: "in_stock",
     warrantyLabel: "",
     warrantyBadge: null,
+    warrantyLogoSrc: null,
     image: { src: "/products/placeholder.svg", alt: name },
     specs: [],
     isNew: false,

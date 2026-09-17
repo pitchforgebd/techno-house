@@ -5,11 +5,13 @@ import { warrantyBadgeFromLabel } from "@/lib/catalog/warranty-badge";
 type ProductWarrantyProps = {
   warrantyLabel: string;
   warrantyBadge?: string | null;
+  warrantyLogoSrc?: string | null;
 };
 
 export function ProductWarranty({
   warrantyLabel,
   warrantyBadge,
+  warrantyLogoSrc,
 }: ProductWarrantyProps) {
   if (!warrantyLabel.trim()) {
     return null;
@@ -23,7 +25,11 @@ export function ProductWarranty({
       aria-labelledby="product-warranty-heading"
     >
       <div className="flex flex-wrap items-center gap-3">
-        <AdminWarrantyBadge badge={badge} label={warrantyLabel} />
+        <AdminWarrantyBadge
+          badge={badge}
+          label={warrantyLabel}
+          logoSrc={warrantyLogoSrc}
+        />
         <div className="min-w-0">
           <h2
             id="product-warranty-heading"

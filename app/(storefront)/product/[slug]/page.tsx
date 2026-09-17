@@ -200,6 +200,7 @@ export default async function ProductPage({
               <ProductWarranty
                 warrantyLabel={product.warrantyLabel}
                 warrantyBadge={product.warrantyBadge}
+                warrantyLogoSrc={product.warrantyLogoSrc}
               />
             ) : null}
             <ProductNotesPanel notes={product.notes} />
@@ -222,6 +223,7 @@ export default async function ProductPage({
                 brandName={product.brandName}
                 warrantyLabel={product.warrantyLabel}
                 warrantyBadge={product.warrantyBadge}
+                warrantyLogoSrc={product.warrantyLogoSrc}
                 overview={product.overview}
                 specs={product.specs}
               />

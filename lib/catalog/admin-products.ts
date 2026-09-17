@@ -105,7 +105,7 @@ const SUMMARY_SELECT = {
   position: true,
   brand: { select: { slug: true, name: true } },
   category: { select: { slug: true } },
-  warranty: { select: { label: true } },
+  warranty: { select: { label: true, logoSrc: true } },
   noteIds: true,
   labelIds: true,
   images: {
@@ -1184,7 +1184,7 @@ const CLONE_SELECT = {
   overview: true,
   isNew: true,
   isSale: true,
-  warranty: { select: { label: true } },
+  warranty: { select: { label: true, logoSrc: true } },
   noteIds: true,
   labelIds: true,
   builderSlot: true,

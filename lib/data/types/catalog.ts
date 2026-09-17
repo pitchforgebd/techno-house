@@ -69,6 +69,8 @@ export type ProductSummary = {
   warrantyLabel: string;
   /** Short mark for the circular warranty logo (e.g. 1Y). */
   warrantyBadge: string | null;
+  /** Uploaded warranty logo image, shown instead of `warrantyBadge` when set. */
+  warrantyLogoSrc: string | null;
   image: ProductImage;
   specs: SpecChip[];
   /** Manual admin flag. */

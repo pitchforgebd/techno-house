@@ -150,7 +150,7 @@ export type ProductSummaryRow = {
   isSale: boolean;
   brand: { slug: string; name: string };
   category: { slug: string };
-  warranty: { label: string } | null;
+  warranty: { label: string; logoSrc: string | null } | null;
   labelIds?: string[];
   images: { src: string; alt: string }[];
   specChips: { label: string; value: string }[];
@@ -183,6 +183,7 @@ export function toProductSummary(
     warrantyBadge: row.warranty?.label
       ? warrantyBadgeFromLabel(row.warranty.label)
       : null,
+    warrantyLogoSrc: row.warranty?.logoSrc ?? null,
     image: primaryImage(row.images, row.name),
     specs: toSpecChips(row.specChips),
     isNew: row.isNew,

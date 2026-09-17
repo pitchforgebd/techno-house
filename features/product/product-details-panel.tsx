@@ -7,6 +7,7 @@ type ProductDetailsPanelProps = {
   brandName: string;
   warrantyLabel: string;
   warrantyBadge?: string | null;
+  warrantyLogoSrc?: string | null;
   overview: string[];
   specs: SpecChip[];
 };
@@ -16,6 +17,7 @@ export function ProductDetailsPanel({
   brandName,
   warrantyLabel,
   warrantyBadge,
+  warrantyLogoSrc,
   overview,
   specs,
 }: ProductDetailsPanelProps) {
@@ -40,7 +42,11 @@ export function ProductDetailsPanel({
           <dt className="text-label font-semibold text-text">Warranty</dt>
           <dd className="flex flex-wrap items-center gap-2 text-body text-text-muted">
             {badge ? (
-              <AdminWarrantyBadge badge={badge} label={warrantyLabel} />
+              <AdminWarrantyBadge
+                badge={badge}
+                label={warrantyLabel}
+                logoSrc={warrantyLogoSrc}
+              />
             ) : null}
             <span>{warrantyLabel || "—"}</span>
           </dd>

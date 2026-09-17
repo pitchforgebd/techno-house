@@ -26,6 +26,7 @@ export function toSummary(product: ProductDetail): ProductSummary {
     stockStatus: product.stockStatus,
     warrantyLabel: product.warrantyLabel,
     warrantyBadge: product.warrantyBadge,
+    warrantyLogoSrc: product.warrantyLogoSrc,
     image: product.image,
     specs: product.specs,
     isNew: product.isNew,
