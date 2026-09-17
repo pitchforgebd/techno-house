@@ -24,6 +24,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
     "staff:bootstrap-owner": "tsx scripts/deploy/create-first-admin.ts",
+    "catalog:bootstrap-categories": "tsx scripts/deploy/create-catalog-categories.ts",
     "db:drift": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
     "payments:security": "tsx scripts/payments/check-security.ts",
     "test:payments": "tsx scripts/payments/check-security.ts",
