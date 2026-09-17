@@ -18,7 +18,68 @@ export type DistrictSeed = {
 
 export const BD_DISTRICTS_SEED: DistrictSeed[] = [
   // Dhaka Division
-  { name: "Dhaka", upazilas: ["Dhamrai", "Dohar", "Keraniganj", "Nawabganj", "Savar"] },
+  //
+  // "Dhaka" is the one district where the formal upazila list
+  // (Dhamrai/Dohar/Keraniganj/Nawabganj/Savar — the areas OUTSIDE Dhaka City
+  // Corporation) is nearly useless for checkout on its own: Dhaka City
+  // Corporation itself isn't subdivided into upazilas at all, so a customer
+  // in Mohakhali, Gulshan, Dhanmondi, Mirpur, etc. — most of this store's
+  // actual order volume — had no matching entry to pick. The DMP thana names
+  // below fill that in, the same way courier services (Pathao, Steadfast)
+  // use thana-level granularity inside Dhaka. Best-effort, not the full
+  // 50-thana list — add/correct via Admin -> Shipping -> Districts.
+  {
+    name: "Dhaka",
+    upazilas: [
+      "Dhamrai",
+      "Dohar",
+      "Keraniganj",
+      "Nawabganj",
+      "Savar",
+      "Adabor",
+      "Badda",
+      "Banani",
+      "Bimanbandar (Airport)",
+      "Cantonment",
+      "Chawkbazar",
+      "Dhanmondi",
+      "Demra",
+      "Gendaria",
+      "Gulshan",
+      "Hazaribagh",
+      "Jatrabari",
+      "Kadamtali",
+      "Kafrul",
+      "Kamrangirchar",
+      "Khilgaon",
+      "Khilkhet",
+      "Kotwali",
+      "Lalbagh",
+      "Mirpur",
+      "Mohammadpur",
+      "Mohakhali",
+      "Motijheel",
+      "Mugda",
+      "New Market",
+      "Pallabi",
+      "Paltan",
+      "Ramna",
+      "Rampura",
+      "Sabujbagh",
+      "Shah Ali",
+      "Shahbagh",
+      "Shampur",
+      "Shyampur",
+      "Sutrapur",
+      "Tejgaon",
+      "Turag",
+      "Uttara",
+      "Uttara East",
+      "Uttara West",
+      "Vatara",
+      "Wari",
+    ],
+  },
   { name: "Faridpur", upazilas: ["Alfadanga", "Bhanga", "Boalmari", "Charbhadrasan", "Faridpur Sadar", "Madhukhali", "Nagarkanda", "Sadarpur", "Saltha"] },
   { name: "Gazipur", upazilas: ["Gazipur Sadar", "Kaliakair", "Kaliganj", "Kapasia", "Sreepur"] },
   { name: "Gopalganj", upazilas: ["Gopalganj Sadar", "Kashiani", "Kotalipara", "Muksudpur", "Tungipara"] },
