@@ -4,7 +4,8 @@ import { BrandListing } from "@/features/catalog/brand-listing";
 import type { ListingSearchParams } from "@/lib/catalog/listing-params";
 import { brandRepository } from "@/lib/data";
 
-export const dynamicParams = false;
+// See the matching comment in category/[slug]/page.tsx — same reasoning.
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   const brands = await brandRepository.list();

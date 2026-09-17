@@ -5,7 +5,12 @@ import { getCategoryPageContent } from "@/lib/catalog/category-page-content";
 import type { ListingSearchParams } from "@/lib/catalog/listing-params";
 import { categoryRepository } from "@/lib/data";
 
-export const dynamicParams = false;
+// `generateStaticParams` below still pre-renders every known category at
+// build time for a fast first hit; leaving `dynamicParams` at its default
+// (true) means a category added or renamed after that build is rendered
+// on-demand on its first visit and cached from then on, instead of 404ing
+// until the next manual rebuild.
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   const categories = await categoryRepository.list();

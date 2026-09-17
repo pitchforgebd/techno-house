@@ -30,7 +30,11 @@ import { getRefundPolicySettings } from "@/lib/refunds/settings";
 import { getEmiConfig } from "@/lib/payments/emi-config";
 import { isFeatureFlagEnabled } from "@/lib/admin/feature-flags-config";
 
-export const dynamicParams = false;
+// See the matching comment in category/[slug]/page.tsx — same reasoning.
+// (This page also reads the customer session, which already opts individual
+// requests into dynamic rendering when signed in; this setting only governs
+// which slugs are servable at all.)
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   const result = await productRepository.list({
