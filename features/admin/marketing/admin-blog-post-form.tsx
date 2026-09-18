@@ -286,6 +286,9 @@ export function AdminBlogPostForm({
             disabled={uploadingCover || pending}
             className="block text-sm text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
           />
+          <p className="text-xs text-neutral-500">
+            Recommended 1200px × 630px — also used as the social share image.
+          </p>
           {uploadingCover ? (
             <p className="text-xs text-neutral-400">Uploading…</p>
           ) : null}

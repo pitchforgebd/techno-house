@@ -380,6 +380,9 @@ export function AdminRefundSettings({
         onSave={() => persistPolicy(settings, "Refund sticker saved")}
       >
         <p className="text-sm font-medium text-neutral-700">Add sticker</p>
+        <p className="text-xs text-neutral-500">
+          Recommended 72px × 72px, square, transparent PNG.
+        </p>
         <input
           ref={stickerInputRef}
           type="file"

@@ -144,7 +144,10 @@ function AdminStudioWatermarkCard({
           <option value="text">Text</option>
         </select>
       </Field>
-      <Field label="Watermark Image" hint={`Do not use "svg" image.`}>
+      <Field
+        label="Watermark Image"
+        hint={`Recommended 300px × 300px, square, transparent PNG. Scales to fit each product image. Do not use "svg" image.`}
+      >
         <DashedUpload
           previewSrc={imageSrc || null}
           disabled={pending}
@@ -296,7 +299,7 @@ export function AdminStudioLogoPage({
       >
         <Field
           label="Store logo"
-          hint="Shown in the storefront header and footer. Upload saves immediately."
+          hint="Displayed height is adjustable from 16px-96px with Logo size below (default 32px), width auto — transparent PNG or SVG recommended. Shown in the storefront header and footer. Upload saves immediately."
         >
           <DashedUpload
             previewSrc={logoSrc || null}

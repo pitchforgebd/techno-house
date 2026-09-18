@@ -92,9 +92,17 @@ function BannerForm({
     });
   }
 
+  const sizeHint: Record<typeof slot, string> = {
+    hero: "Recommended 1200px × 580px (roughly 2:1). Uploads immediately.",
+    "hero-side": "Recommended 600px × 290px (roughly 2:1). Uploads immediately.",
+    "flash-wide":
+      "Recommended 1370px × 242px on desktop (crops to 400×184 on mobile). Uploads immediately.",
+    "promo-tile": "Recommended 800px × 230px, wide tile. Uploads immediately.",
+  };
+
   return (
     <div className="space-y-4 rounded-lg border border-neutral-200 p-4">
-      <Field label="Image" required hint="Uploads immediately.">
+      <Field label="Image" required hint={sizeHint[slot]}>
         <DashedUpload
           previewSrc={draft.imageSrc || null}
           disabled={pending}

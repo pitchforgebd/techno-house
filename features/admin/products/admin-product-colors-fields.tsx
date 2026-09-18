@@ -148,7 +148,7 @@ export function AdminProductColorsFields({
                 <div key={`${row.id}-img-${imageIndex}`} className="relative">
                   <AdminFormUploadBox
                     label={`Image ${imageIndex + 1}`}
-                    sizeHint="Optional"
+                    sizeHint="Optional — 800px × 800px, same as gallery images"
                     previewSrc={src || null}
                     previewAlt={row.name || "Colour"}
                     value={src}

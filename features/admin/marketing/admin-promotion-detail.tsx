@@ -217,7 +217,7 @@ export function AdminPromotionDetail({
             disabled={pending}
             folder="promotions"
             pickerTitle="Offer banner"
-            hint="Wide artwork, roughly 2:1. Without one this campaign does not appear on /offers."
+            hint="Recommended 800px × 400px, wide artwork (roughly 2:1). Without one this campaign does not appear on /offers."
           />
 
           <label className="block space-y-1">

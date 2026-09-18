@@ -183,13 +183,13 @@ export function AdminBrandForm({
         </label>
 
         <AdminMediaImageField
-          label="Logo (120×80)"
+          label="Logo (160×48)"
           value={logoSrc}
           onChange={setLogoSrc}
           disabled={pending || !canSave}
           folder="brands"
           pickerTitle="Brand logo"
-          hint="Upload from your PC or choose a file already in the media library, then Save."
+          hint="Shown at 160px × 48px on the storefront. Upload from your PC or choose a file already in the media library, then Save."
         />
 
         <div className="space-y-1.5">

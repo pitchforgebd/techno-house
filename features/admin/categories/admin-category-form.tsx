@@ -255,31 +255,31 @@ export function AdminCategoryForm({
         </label>
 
         <AdminMediaImageField
-          label="Banner"
+          label="Banner (1200×400)"
           value={bannerSrc}
           onChange={setBannerSrc}
           disabled={pending || !canSave}
           folder="categories"
           pickerTitle="Category banner"
-          hint="Opens the media library — upload from your PC or choose an existing file."
+          hint="Recommended 1200px × 400px, wide format. Opens the media library — upload from your PC or choose an existing file."
         />
         <AdminMediaImageField
-          label="Icon"
+          label="Icon (128×128)"
           value={iconSrc}
           onChange={setIconSrc}
           disabled={pending || !canSave}
           folder="categories"
           pickerTitle="Category icon"
-          hint="Used in admin lists and navigation where category icons appear."
+          hint="Recommended 128px × 128px, square. Used in admin lists and navigation where category icons appear."
         />
         <AdminMediaImageField
-          label="Cover image"
+          label="Cover image (1600×500)"
           value={coverSrc}
           onChange={setCoverSrc}
           disabled={pending || !canSave}
           folder="categories"
           pickerTitle="Category cover"
-          hint="Optional wide cover for category landing layouts."
+          hint="Recommended 1600px × 500px, wide format. Optional wide cover for category landing layouts."
         />
 
         <div className="space-y-1.5">
