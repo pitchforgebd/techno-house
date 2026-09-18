@@ -311,7 +311,13 @@ export function RichTextEditor({
       {sourceMode ? (
         <textarea
           value={sourceDraft}
-          onChange={(event) => setSourceDraft(event.target.value)}
+          onChange={(event) => {
+            // Keep the parent's value live while typing, not just on switching
+            // back to Visual — saving directly from Source mode (without ever
+            // toggling back) must not submit a stale/empty value.
+            setSourceDraft(event.target.value);
+            onChange(event.target.value);
+          }}
           disabled={disabled}
           spellCheck={false}
           className="th-rich-text min-h-60 w-full resize-y px-3 py-2 font-mono text-sm focus:outline-none"
