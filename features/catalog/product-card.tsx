@@ -96,7 +96,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
   const href = `/product/${product.slug}`;
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-sm border border-border bg-surface shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:border-primary/30 hover:shadow-xl motion-safe:hover:-translate-y-1">
+    <article className="group flex h-full flex-col overflow-hidden rounded-sm border border-border bg-surface shadow-sm transition-[box-shadow,border-color] duration-300 ease-out hover:border-primary/30 hover:shadow-xl">
       {/*
         4:3, not square. Product photography is landscape far more often
         than not, and `object-contain` in a square box letterboxed a 3:2
@@ -248,7 +248,7 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
   return (
     // `group` drives the hover actions below. Without it they would never
     // appear, since their reveal is `group-hover` on this element.
-    <article className="group flex h-full flex-col border border-border bg-surface p-3 transition-colors hover:border-primary/40">
+    <article className="group flex h-full flex-col border border-border bg-surface p-3 transition-[box-shadow,border-color] duration-300 ease-out hover:border-primary/40 hover:shadow-xl">
       {/*
         The image sits in its own positioned wrapper rather than inside the
         link. The corner flag, badges and hover buttons are absolutely
@@ -264,7 +264,7 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
               alt={product.image.alt}
               fill
               sizes="(min-width: 1280px) 20vw, (min-width: 768px) 33vw, 50vw"
-              className="object-contain p-3"
+              className="object-contain p-3 transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.06]"
             />
           </div>
         </Link>

@@ -16,7 +16,7 @@ export function HomeCategories() {
           <li key={href}>
             <Link
               href={href}
-              className="group flex h-full flex-col items-center justify-start gap-2.5 rounded-lg border border-border/70 bg-surface px-2 py-5 text-center shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:border-primary/40 hover:shadow-lg motion-safe:hover:-translate-y-1"
+              className="group flex h-full flex-col items-center justify-start gap-2.5 rounded-lg border border-border/70 bg-surface px-2 py-5 text-center shadow-sm transition-[box-shadow,border-color] duration-300 ease-out hover:border-primary/40 hover:shadow-lg"
             >
               <Icon className="size-11 transition-transform duration-300 ease-out motion-safe:group-hover:scale-110" />
               <span className="text-label font-bold tracking-tight text-text transition-colors duration-300 group-hover:text-primary">
