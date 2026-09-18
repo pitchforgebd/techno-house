@@ -1,5 +1,6 @@
 import Script from "next/script";
 import { getStorefrontChatWidgetTag } from "@/lib/chat/config";
+import { cn } from "@/lib/cn";
 
 function WhatsAppButton({ number }: { number: string }) {
   return (
@@ -46,10 +47,11 @@ function MessengerButton({ pageId }: { pageId: string }) {
 export async function StorefrontChatWidget() {
   const { tawkPropertyId, tawkWidgetId, whatsappNumber, messengerPageId } =
     await getStorefrontChatWidgetTag();
+  const hasTawk = Boolean(tawkPropertyId && tawkWidgetId);
 
   return (
     <>
-      {tawkPropertyId && tawkWidgetId ? (
+      {hasTawk ? (
         <Script id="th-tawkto" strategy="afterInteractive">
           {`var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
 (function(){
@@ -63,7 +65,15 @@ s0.parentNode.insertBefore(s1,s0);
         </Script>
       ) : null}
       {whatsappNumber || messengerPageId ? (
-        <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center gap-3">
+        // Tawk.to renders its own launcher bubble fixed at bottom-right with
+        // no DOM we control (it's their iframe) — when it's also on, our
+        // stack is pushed up clear of it instead of sitting underneath.
+        <div
+          className={cn(
+            "fixed right-5 z-50 flex flex-col items-center gap-3",
+            hasTawk ? "bottom-24" : "bottom-5",
+          )}
+        >
           {messengerPageId ? <MessengerButton pageId={messengerPageId} /> : null}
           {whatsappNumber ? <WhatsAppButton number={whatsappNumber} /> : null}
         </div>
