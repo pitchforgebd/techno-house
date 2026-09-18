@@ -14,6 +14,15 @@ export async function sendMail(input: {
   to: string;
   subject: string;
   text: string;
+  /**
+   * Overrides the Admin-configured from address for this message only — the
+   * SMTP connection still authenticates as the one configured account
+   * (Postfix doesn't restrict which mailbox an authenticated sender may
+   * claim in the From header, and DKIM signs by domain, not mailbox, so
+   * this is a display-only identity change, not a second set of
+   * credentials). Falls back to the configured from address when omitted.
+   */
+  from?: { address: string; name?: string };
 }): Promise<SendMailResult> {
   const config = await getAdminSmtpConfig();
 
@@ -36,13 +45,12 @@ export async function sendMail(input: {
     auth: config.username ? { user: config.username, pass: password } : undefined,
   });
 
-  const fromAddress = config.fromAddress || config.username;
+  const fromAddress = input.from?.address || config.fromAddress || config.username;
   if (!fromAddress) {
     return { ok: false, formError: "SMTP from address is not configured." };
   }
-  const from = config.fromName
-    ? `"${config.fromName}" <${fromAddress}>`
-    : fromAddress;
+  const fromName = input.from?.name ?? config.fromName;
+  const from = fromName ? `"${fromName}" <${fromAddress}>` : fromAddress;
 
   try {
     await transporter.sendMail({
