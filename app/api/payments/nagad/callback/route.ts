@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getPaymentGatewayConfig } from "@/lib/payments/config";
 import {
   parsePaymentBrowserReturn,
   paymentReturnUrl,
@@ -34,8 +35,12 @@ export async function GET(request: Request) {
   } catch {
     // Shopper still returns home. Payment stays unpaid until a later verify.
   }
+  // A trusted config value, not request.url — see paymentReturnUrl's doc
+  // comment for why (Nginx-proxied request.url quietly resolves to
+  // localhost here in production).
+  const config = await getPaymentGatewayConfig();
   return NextResponse.redirect(
-    paymentReturnUrl(request.url, order, status),
+    paymentReturnUrl(config.publicBaseUrl ?? request.url, order, status),
     303,
   );
 }

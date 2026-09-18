@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getPaymentGatewayConfig } from "@/lib/payments/config";
 import { parsePaymentBrowserReturn, paymentReturnUrl } from "@/lib/payments/return";
 
 /**
@@ -16,11 +17,15 @@ import { parsePaymentBrowserReturn, paymentReturnUrl } from "@/lib/payments/retu
  * No payment verification happens here — that is the IPN endpoint's job
  * (processSslcommerzIpn), same as every other browser return in this app.
  */
-function handle(request: Request): NextResponse {
+async function handle(request: Request): Promise<NextResponse> {
   const url = new URL(request.url);
   const order = url.searchParams.get("order") ?? "";
   const status = parsePaymentBrowserReturn(url.searchParams.get("status"));
-  return NextResponse.redirect(paymentReturnUrl(request.url, order, status), 303);
+  const config = await getPaymentGatewayConfig();
+  return NextResponse.redirect(
+    paymentReturnUrl(config.publicBaseUrl ?? request.url, order, status),
+    303,
+  );
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
