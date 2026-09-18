@@ -44,9 +44,13 @@ export async function startSslcommerzHostedSession(
     total_amount: takaAmount(input.amount),
     currency: "BDT",
     tran_id: input.orderNumber,
-    success_url: `${config.publicBaseUrl}/checkout/payment/return?order=${encodeURIComponent(input.orderNumber)}&status=success`,
-    fail_url: `${config.publicBaseUrl}/checkout/payment/return?order=${encodeURIComponent(input.orderNumber)}&status=fail`,
-    cancel_url: `${config.publicBaseUrl}/checkout/payment/return?order=${encodeURIComponent(input.orderNumber)}&status=cancel`,
+    // Routed through our own browser-return endpoint first (not the
+    // /checkout/payment/return page directly) — see its doc comment for why:
+    // SSLCommerz posts back cross-site, which withholds the SameSite=Lax
+    // session cookie until one same-origin redirect hop puts it back.
+    success_url: `${config.publicBaseUrl}/api/payments/sslcommerz/return?order=${encodeURIComponent(input.orderNumber)}&status=success`,
+    fail_url: `${config.publicBaseUrl}/api/payments/sslcommerz/return?order=${encodeURIComponent(input.orderNumber)}&status=fail`,
+    cancel_url: `${config.publicBaseUrl}/api/payments/sslcommerz/return?order=${encodeURIComponent(input.orderNumber)}&status=cancel`,
     ipn_url: `${config.publicBaseUrl}/api/payments/sslcommerz/ipn`,
     cus_name: input.customerName.slice(0, 50),
     cus_email: input.customerEmail,
