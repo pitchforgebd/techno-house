@@ -53,7 +53,13 @@ export type CustomerOrderView = {
 
 export function paymentPendingNote(
   flow: CustomerOrderView["paymentFlow"],
+  paymentStatus?: CustomerPaymentStatus,
 ): string {
+  // A verified server-to-server confirmation already landed — say so,
+  // regardless of which flow got it there.
+  if (paymentStatus === "paid") {
+    return "Payment received.";
+  }
   if (flow === "offline") {
     return "Cash on delivery — not marked paid.";
   }

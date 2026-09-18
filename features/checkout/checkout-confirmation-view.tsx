@@ -247,7 +247,7 @@ function ServerOrderReceipt({ order }: { order: CustomerOrderView }) {
                   · {placedAt}
                 </p>
                 <p className="mt-2 text-caption text-text-muted">
-                  {paymentPendingNote(order.paymentFlow)}
+                  {paymentPendingNote(order.paymentFlow, order.paymentStatus)}
                 </p>
               </div>
               <Badge tone="neutral">{orderStatusLabel(order.status)}</Badge>

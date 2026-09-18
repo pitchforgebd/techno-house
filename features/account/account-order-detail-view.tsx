@@ -141,7 +141,7 @@ export function AccountOrderDetailView({
               <dd>
                 {paymentMethodLabel(order.paymentMethodId)}{" "}
                 <span className="text-text-muted">
-                  ({paymentPendingNote(order.paymentFlow)})
+                  ({paymentPendingNote(order.paymentFlow, order.paymentStatus)})
                 </span>
               </dd>
             </div>
