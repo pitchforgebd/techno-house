@@ -158,10 +158,11 @@ export async function saveChatWidgetConfig(input: {
   }
   const publicHandle = normalizeChatHandle(provider, input.publicHandle);
   if (publicHandle == null) {
+    const meta = CHAT_WIDGET_PROVIDERS.find((p) => p.id === provider);
     return fail(
-      provider === "WHATSAPP"
-        ? `Enter a valid phone (${CHAT_HANDLE_MAX} chars max), or leave blank.`
-        : `Enter a valid page id (${CHAT_HANDLE_MAX} chars max), or leave blank.`,
+      `Enter a valid ${meta?.handleLabel ?? "value"} (${CHAT_HANDLE_MAX} chars max)` +
+        (meta ? ` — ${meta.handleHint}` : "") +
+        ", or leave blank.",
     );
   }
 
