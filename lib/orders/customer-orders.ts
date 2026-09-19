@@ -153,6 +153,21 @@ export async function listCustomerOrders(): Promise<CustomerOrderView[]> {
   return rows.map(toCustomerOrderView);
 }
 
+/** No session/ownership check — for server-side jobs (order-confirmation
+ * notifications) that already know the id is the right one to act on. */
+export async function getOrderViewById(
+  id: string,
+): Promise<CustomerOrderView | null> {
+  if (!usesOrderDatabase()) {
+    return null;
+  }
+  const row = await getPrisma().order.findUnique({
+    where: { id },
+    include: orderInclude,
+  });
+  return row ? toCustomerOrderView(row) : null;
+}
+
 export async function getCustomerOrderByNumber(
   rawNumber: string,
 ): Promise<CustomerOrderView | null> {

@@ -17,6 +17,11 @@
  * their public docs and are not verified against a live account here —
  * check the provider's current API reference before relying on this in
  * production. Twilio and MessageBird follow their stable public REST APIs.
+ *
+ * Bengali (or any non-ASCII) message text needs BulkSMSBD's `type=unicode`
+ * param, detected automatically per message (see `isGsm7Text`). SSL Wireless
+ * and Mim SMS are assumed to auto-detect encoding from the message bytes —
+ * unverified, same caveat as their request shapes above.
  */
 import { getAdminOtpConfig } from "@/lib/otp/config";
 
@@ -24,6 +29,12 @@ export type SendSmsResult = { ok: true } | { ok: false; formError: string };
 
 function digitsOnly(raw: string): string {
   return raw.replace(/[^\d+]/g, "");
+}
+
+/** Bengali (or any non-GSM-7) text needs the gateway's Unicode mode — sent
+ * as plain "text" it arrives as garbled question marks. */
+function isGsm7Text(message: string): boolean {
+  return /^[\x00-\x7F]*$/.test(message);
 }
 
 async function sendViaSslWireless(input: {
@@ -119,7 +130,7 @@ async function sendViaBulkSmsBd(input: {
   }
   const params = new URLSearchParams({
     api_key: input.apiKey,
-    type: "text",
+    type: isGsm7Text(input.message) ? "text" : "unicode",
     number: input.to,
     senderid: input.senderId,
     message: input.message,
@@ -288,4 +299,11 @@ export async function sendSms(input: {
     default:
       return { ok: false, formError: "Unsupported SMS provider." };
   }
+}
+
+/** Fire-and-forget — SMS delivery must not fail the caller's mutation. */
+export function sendSmsSafe(input: Parameters<typeof sendSms>[0]): void {
+  void sendSms(input).catch(() => {
+    // Delivery failures must not affect the calling mutation.
+  });
 }

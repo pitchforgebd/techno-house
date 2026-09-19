@@ -214,6 +214,12 @@ export function AdminOtpSettings({
 
           <InstructionCard title="OTP / SMS notes">
             <p>
+              This gateway is not just for OTP codes — it also sends the order
+              confirmation SMS (in Bangla) that goes out when a customer
+              places an order and again when staff confirm it, alongside the
+              matching confirmation email.
+            </p>
+            <p>
               SSL Wireless, Mim SMS, and BulkSMSBD are common BD-friendly
               gateways for local delivery. Twilio and MessageBird also work
               for test sends.

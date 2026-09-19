@@ -8,6 +8,9 @@
  * (P13-T05) is the only path that may request PAID.
  */
 import { getPrisma } from "@/lib/db/prisma";
+import { getOrderViewById } from "@/lib/orders/customer-orders";
+import { sendCustomerOrderConfirmationSafe } from "@/lib/orders/order-confirmation-email";
+import { sendCustomerOrderConfirmationSmsSafe } from "@/lib/orders/order-confirmation-sms";
 import { releaseOrderStock } from "@/lib/orders/stock-reservation";
 import {
   getPaymentAdapter,
@@ -283,6 +286,11 @@ export async function applyPaymentTransition(
     input.next === "FAILED"
       ? (input.failureReason?.trim().slice(0, FAILURE_REASON_MAX) ?? null)
       : null;
+  // Set inside the transaction only if the auto-confirm write below actually
+  // matched a still-pending order — read after commit to fire the customer
+  // notification exactly once, the same "confirmedAt just got set" moment
+  // lib/orders/admin-orders.ts fires it on for the staff-driven path.
+  let autoConfirmedOrderId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${payment.id} FOR UPDATE`;
@@ -334,10 +342,13 @@ export async function applyPaymentTransition(
     // an order staff have already shipped or cancelled back to "Processing".
     // Auto-confirmation is only ever a step forward from the first state.
     if (autoConfirm && input.next === "PAID") {
-      await tx.order.updateMany({
+      const confirmed = await tx.order.updateMany({
         where: { id: payment.order.id, status: "PENDING" },
         data: { status: "PROCESSING", confirmedAt: now },
       });
+      if (confirmed.count > 0) {
+        autoConfirmedOrderId = payment.order.id;
+      }
     }
 
     // A payment that failed or was cancelled means the goods were never sold,
@@ -349,6 +360,18 @@ export async function applyPaymentTransition(
       await releaseOrderStock(tx, payment.order.id);
     }
   });
+
+  if (autoConfirmedOrderId) {
+    try {
+      const view = await getOrderViewById(autoConfirmedOrderId);
+      if (view) {
+        sendCustomerOrderConfirmationSafe(view, "confirmed");
+        sendCustomerOrderConfirmationSmsSafe(view, "confirmed");
+      }
+    } catch {
+      // The payment/order state already saved; never fail it on notification delivery.
+    }
+  }
 
   return { ok: true, status: input.next, paymentId: payment.id };
 }

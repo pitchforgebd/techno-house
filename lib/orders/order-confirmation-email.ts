@@ -1,8 +1,14 @@
 /**
- * Customer-facing order confirmation email — fires once, right after an
- * order is placed (not tied to payment status: a COD order is confirmed on
- * placement same as a paid one; see paymentPendingNote in order-view.ts for
- * how the actual payment state is communicated separately).
+ * Customer-facing order email — two events share this template:
+ *  - "placed": fires once, right after checkout (not tied to payment status;
+ *    a COD order is confirmed on placement same as a paid one — see
+ *    paymentPendingNote in order-view.ts for how payment state itself is
+ *    communicated).
+ *  - "confirmed": fires once, the moment staff move the order to
+ *    Processing (Order.confirmedAt going from unset to set — see the
+ *    `!existing.confirmedAt` guard in lib/orders/admin-orders.ts, which
+ *    keeps this from re-firing on every later edit while it stays
+ *    Processing).
  *
  * Sent from the dedicated orders mailbox rather than whatever address is
  * configured in Admin -> SMTP Settings, so replies land somewhere staff
@@ -13,20 +19,32 @@
 import { sendMailSafe } from "@/lib/mail/send";
 import { formatMoney } from "@/lib/format/currency";
 import type { CustomerOrderView } from "@/lib/orders/order-view";
+import { publicOrigin } from "@/lib/seo/public-origin";
+import { orderTrackingPath } from "@/lib/orders/tracking-link";
 
 const ORDERS_FROM_ADDRESS = "orders@technohouse.com.bd";
 const ORDERS_FROM_NAME = "Techno House Orders";
 
-function buildOrderConfirmationText(order: CustomerOrderView): string {
+export type OrderNotificationEvent = "placed" | "confirmed";
+
+function buildOrderConfirmationText(
+  order: CustomerOrderView,
+  event: OrderNotificationEvent,
+): string {
   const lines = order.items.map(
     (item) =>
       `  - ${item.productName} x${item.quantity} — ${formatMoney({ amount: item.totalAmount })}`,
   );
 
+  const opening =
+    event === "confirmed"
+      ? `Your order ${order.number} has been confirmed and is now being processed.`
+      : `Thank you for your order. Here is a summary of order ${order.number}.`;
+
   const parts = [
     `Hi ${order.customerName},`,
     "",
-    `Thank you for your order. Here is a summary of order ${order.number}.`,
+    opening,
     "",
     "Items:",
     ...lines,
@@ -59,23 +77,33 @@ function buildOrderConfirmationText(order: CustomerOrderView): string {
       : "You can check your payment status any time from your account.",
   );
   parts.push("");
-  parts.push(`Track your order: https://technohouse.com.bd/account/orders/${encodeURIComponent(order.number)}`);
+  parts.push(
+    `Track your order: ${publicOrigin()}${orderTrackingPath(order.number)}`,
+  );
   parts.push("");
   parts.push("— Techno House");
 
   return parts.join("\n");
 }
 
-/** Fire-and-forget, same as every other post-checkout side effect here — a
- * mail delivery failure must never undo an already-placed order. */
-export function sendCustomerOrderConfirmationSafe(order: CustomerOrderView): void {
+/** Fire-and-forget, same as every other post-checkout/order-update side
+ * effect here — a mail delivery failure must never undo the order change
+ * that triggered it. */
+export function sendCustomerOrderConfirmationSafe(
+  order: CustomerOrderView,
+  event: OrderNotificationEvent = "placed",
+): void {
   if (!order.customerEmail.trim()) {
     return;
   }
+  const subject =
+    event === "confirmed"
+      ? `Order confirmed — ${order.number}`
+      : `Order received — ${order.number}`;
   sendMailSafe({
     to: order.customerEmail,
-    subject: `Order confirmed — ${order.number}`,
-    text: buildOrderConfirmationText(order),
+    subject,
+    text: buildOrderConfirmationText(order, event),
     from: { address: ORDERS_FROM_ADDRESS, name: ORDERS_FROM_NAME },
   });
 }

@@ -7,6 +7,9 @@ import type {
   OrderPaymentStatus,
 } from "@/lib/admin/orders-mock";
 import { getPrisma } from "@/lib/db/prisma";
+import { getOrderViewById } from "@/lib/orders/customer-orders";
+import { sendCustomerOrderConfirmationSafe } from "@/lib/orders/order-confirmation-email";
+import { sendCustomerOrderConfirmationSmsSafe } from "@/lib/orders/order-confirmation-sms";
 import {
   convertOrderStock,
   reReserveOrderStock,
@@ -201,6 +204,12 @@ export async function updateAdminOrder(input: {
     data.cancelledAt = null;
   }
 
+  // The moment `confirmedAt` is first set, regardless of which status
+  // caused it (Processing normally, or a direct jump to Shipped/Delivered)
+  // — matches how the timestamp itself is defined above, and fires the
+  // customer notification exactly once per order.
+  const justConfirmed = !existing.confirmedAt && Boolean(data.confirmedAt);
+
   const paymentRow = existing.payments[0];
 
   await getPrisma().$transaction(async (tx) => {
@@ -263,6 +272,18 @@ export async function updateAdminOrder(input: {
       },
       ip: input.actor.ip,
     });
+  }
+
+  if (justConfirmed) {
+    try {
+      const view = await getOrderViewById(existing.id);
+      if (view) {
+        sendCustomerOrderConfirmationSafe(view, "confirmed");
+        sendCustomerOrderConfirmationSmsSafe(view, "confirmed");
+      }
+    } catch {
+      // The status change already saved; never fail it on notification delivery.
+    }
   }
 
   return { ok: true, id: existing.id, number: existing.number };

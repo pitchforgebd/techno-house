@@ -51,6 +51,7 @@ import type { CustomerOrderView } from "@/lib/orders/order-view";
 import { toCustomerOrderView } from "@/lib/orders/customer-orders";
 import { notifyStaffOfNewOrder } from "@/lib/orders/staff-order-alerts";
 import { sendCustomerOrderConfirmationSafe } from "@/lib/orders/order-confirmation-email";
+import { sendCustomerOrderConfirmationSmsSafe } from "@/lib/orders/order-confirmation-sms";
 import { sendMetaCapiPurchaseSafe } from "@/lib/analytics/meta-capi";
 import { getRequestMeta } from "@/lib/auth/request-meta";
 
@@ -634,6 +635,11 @@ export async function placeCustomerOrderForUser(
       sendCustomerOrderConfirmationSafe(view);
     } catch {
       // Order is already placed; never fail checkout on confirmation email delivery.
+    }
+    try {
+      sendCustomerOrderConfirmationSmsSafe(view);
+    } catch {
+      // Order is already placed; never fail checkout on confirmation SMS delivery.
     }
     try {
       const requestMeta = await getRequestMeta();
