@@ -482,6 +482,21 @@ export const prismaProductRepository: ProductRepository = {
       }),
     };
   },
+
+  async listCategoryBrandPairs() {
+    const rows = await getPrisma().product.findMany({
+      where: { isActive: true },
+      select: {
+        category: { select: { slug: true } },
+        brand: { select: { slug: true, name: true } },
+      },
+    });
+    return rows.map((row) => ({
+      categorySlug: row.category.slug,
+      brandSlug: row.brand.slug,
+      brandName: row.brand.name,
+    }));
+  },
 };
 
 /**

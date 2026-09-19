@@ -2,18 +2,15 @@
 import { collectBrandsByCategorySlug } from "@/lib/catalog/mega-menu";
 import { categoryRepository, productRepository } from "@/lib/data";
 
-/** Max page size the mock listing API allows — enough for the current catalog. */
-const NAV_PRODUCT_PAGE_SIZE = 48;
-
 export async function loadNavCatalog() {
-  const [categories, listing] = await Promise.all([
+  const [categories, categoryBrandPairs] = await Promise.all([
     categoryRepository.list(),
-    productRepository.list({ page: 1, pageSize: NAV_PRODUCT_PAGE_SIZE }),
+    productRepository.listCategoryBrandPairs(),
   ]);
 
   return {
     categories,
     tree: toCategoryTree(categories),
-    brandsByCategory: collectBrandsByCategorySlug(listing.items, categories),
+    brandsByCategory: collectBrandsByCategorySlug(categoryBrandPairs, categories),
   };
 }

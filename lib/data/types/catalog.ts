@@ -168,3 +168,11 @@ export type ProductListResult = {
   pageSize: number;
   facets: Facet[];
 };
+
+/** One row per active product, for mega-menu brand grouping — covers the
+ * whole catalog, not a paginated page, since every category needs a look. */
+export type CategoryBrandPair = {
+  categorySlug: string;
+  brandSlug: string;
+  brandName: string;
+};

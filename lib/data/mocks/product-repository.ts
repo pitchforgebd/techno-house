@@ -135,4 +135,12 @@ export const mockProductRepository: ProductRepository = {
     });
     return { items, total: matched.length };
   },
+
+  async listCategoryBrandPairs() {
+    return mockProducts.map((product) => ({
+      categorySlug: product.categorySlug,
+      brandSlug: product.brandSlug,
+      brandName: product.brandName,
+    }));
+  },
 };

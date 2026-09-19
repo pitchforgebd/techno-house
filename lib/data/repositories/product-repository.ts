@@ -1,6 +1,7 @@
 ﻿import type {
   BuilderCandidate,
   BuilderSlot,
+  CategoryBrandPair,
   ProductDetail,
   ProductListQuery,
   ProductListResult,
@@ -21,4 +22,6 @@ export interface ProductRepository {
     q: string,
     limit: number,
   ): Promise<{ items: ProductSearchSuggestion[]; total: number }>;
+  /** Every active product's category+brand, unpaginated — mega-menu brand flyouts. */
+  listCategoryBrandPairs(): Promise<CategoryBrandPair[]>;
 }
