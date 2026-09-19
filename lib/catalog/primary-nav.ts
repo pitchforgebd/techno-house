@@ -1,4 +1,7 @@
-﻿export const PRIMARY_NAV_START = [{ href: "/", label: "Home" }] as const;
+﻿/** Empty — the header logo already links home, and with 17 department
+ * panels the nav row needs every pixel it can get. */
+export const PRIMARY_NAV_START: ReadonlyArray<{ href: string; label: string }> =
+  [];
 
 export const PRIMARY_NAV_END: ReadonlyArray<{ href: string; label: string }> =
   [];

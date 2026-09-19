@@ -4,8 +4,8 @@ import { loadNavCatalog } from "@/lib/catalog/nav-data";
 import { PRIMARY_NAV_END, PRIMARY_NAV_START } from "@/lib/catalog/primary-nav";
 
 export async function CategoryNav() {
-  const { tree, brandsByCategory } = await loadNavCatalog();
-  const panels = buildMegaMenuPanels(tree, brandsByCategory);
+  const { tree, brandsByCategory, categories } = await loadNavCatalog();
+  const panels = buildMegaMenuPanels(tree, brandsByCategory, categories);
 
   return (
     <nav

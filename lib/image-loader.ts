@@ -11,6 +11,12 @@
  * uploaded sources bypass `/_next/image` entirely and go straight to that
  * reliable path. Everything else (Unsplash, bundled `/public` demo assets)
  * keeps the normal optimizer, unchanged.
+ *
+ * SVGs (the no-photo placeholder, brand logos) bypass it too, for a
+ * different reason: the built-in optimizer refuses to process SVG sources
+ * by default (they can embed scripts) and 404s instead — and a vector image
+ * gains nothing from raster resizing/quality params anyway, so there is no
+ * upside to routing them through it even with that setting turned on.
  */
 type ImageLoaderParams = {
   src: string;
@@ -19,7 +25,7 @@ type ImageLoaderParams = {
 };
 
 export default function imageLoader({ src, width, quality }: ImageLoaderParams): string {
-  if (src.startsWith("/uploads/")) {
+  if (src.startsWith("/uploads/") || src.endsWith(".svg")) {
     return src;
   }
   const params = new URLSearchParams({

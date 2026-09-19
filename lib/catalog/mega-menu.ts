@@ -99,14 +99,41 @@ function brandFlyout(
   ];
 }
 
+/** Direct children only, keyed by parent slug — built once per request. */
+function buildChildrenBySlug(categories: Category[]): Map<string, Category[]> {
+  const map = new Map<string, Category[]>();
+  for (const category of categories) {
+    if (!category.parentSlug) {
+      continue;
+    }
+    const siblings = map.get(category.parentSlug) ?? [];
+    siblings.push(category);
+    map.set(category.parentSlug, siblings);
+  }
+  return map;
+}
+
 function childLink(
   child: { slug: string; name: string },
   brandsByCategory: Record<string, MegaBrand[]>,
+  childrenBySlug: Map<string, Category[]>,
 ): MegaMenuLink {
+  // A category with its own real sub-categories (e.g. Star PC > Intel PC /
+  // Ryzen PC) shows those in the flyout — that's the actual taxonomy, more
+  // useful than a brand list. Only a childless category falls back to
+  // "shop by brand" for that spot.
+  const grandchildren = childrenBySlug.get(child.slug) ?? [];
+  const children =
+    grandchildren.length > 0
+      ? grandchildren.map((grandchild) => ({
+          href: `/category/${grandchild.slug}`,
+          label: grandchild.name,
+        }))
+      : brandFlyout(child.slug, brandsByCategory[child.slug] ?? []);
   return {
     href: `/category/${child.slug}`,
     label: child.name,
-    children: brandFlyout(child.slug, brandsByCategory[child.slug] ?? []),
+    children,
   };
 }
 
@@ -133,6 +160,7 @@ function brandColumn(
 function groupedComponentColumns(
   componentChildren: Category[],
   brandsByCategory: Record<string, MegaBrand[]>,
+  childrenBySlug: Map<string, Category[]>,
 ): MegaMenuColumn[] {
   const bySlug = new Map(componentChildren.map((child) => [child.slug, child]));
   const used = new Set<string>();
@@ -146,7 +174,7 @@ function groupedComponentColumns(
         continue;
       }
       used.add(slug);
-      links.push(childLink(child, brandsByCategory));
+      links.push(childLink(child, brandsByCategory, childrenBySlug));
     }
     if (links.length > 0) {
       columns.push({ title: group.title, links });
@@ -157,7 +185,9 @@ function groupedComponentColumns(
   if (leftover.length > 0) {
     columns.push({
       title: "More",
-      links: leftover.map((child) => childLink(child, brandsByCategory)),
+      links: leftover.map((child) =>
+        childLink(child, brandsByCategory, childrenBySlug),
+      ),
     });
   }
 
@@ -167,6 +197,7 @@ function groupedComponentColumns(
 function columnsForNode(
   node: CategoryNode,
   brandsByCategory: Record<string, MegaBrand[]>,
+  childrenBySlug: Map<string, Category[]>,
 ): MegaMenuColumn[] {
   if (node.slug === "component") {
     return [
@@ -174,7 +205,7 @@ function columnsForNode(
         title: node.name,
         links: [{ href: `/category/${node.slug}`, label: `All ${node.name}` }],
       },
-      ...groupedComponentColumns(node.children, brandsByCategory),
+      ...groupedComponentColumns(node.children, brandsByCategory, childrenBySlug),
     ];
   }
 
@@ -183,7 +214,9 @@ function columnsForNode(
       title: node.name,
       links: [
         { href: `/category/${node.slug}`, label: `All ${node.name}` },
-        ...node.children.map((child) => childLink(child, brandsByCategory)),
+        ...node.children.map((child) =>
+          childLink(child, brandsByCategory, childrenBySlug),
+        ),
       ],
     },
   ];
@@ -205,12 +238,14 @@ function columnsForNode(
 export function buildMegaMenuPanels(
   tree: CategoryNode[],
   brandsByCategory: Record<string, MegaBrand[]>,
+  categories: Category[],
 ): MegaMenuPanel[] {
+  const childrenBySlug = buildChildrenBySlug(categories);
   return tree.map((node) => ({
     slug: node.slug,
     name: node.name,
     href: `/category/${node.slug}`,
-    columns: columnsForNode(node, brandsByCategory),
+    columns: columnsForNode(node, brandsByCategory, childrenBySlug),
   }));
 }
 

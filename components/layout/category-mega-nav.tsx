@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { IconHome } from "@/components/layout/chrome-icons";
+import { ChevronRight } from "lucide-react";
 import {
   hasMegaMenu,
   type MegaMenuLink,
@@ -15,13 +14,14 @@ const CLOSE_DELAY_MS = 140;
 
 /**
  * The row scrolls horizontally with a hidden scrollbar, so anything past the
- * container edge is simply out of sight rather than wrapping. Bold is wider
- * than medium at the same size, which pushed the last categories off screen —
- * so the type steps down from 0.875rem to 0.8125rem and the horizontal
- * padding and icon gap tighten to win the width back and then some.
+ * container edge is simply out of sight rather than wrapping. There are now
+ * 17 department panels (Star Tech-style taxonomy) — no dropdown chevron on
+ * the trigger itself (the flyout opening is signal enough, and every pixel
+ * back from it goes toward fitting more labels), and the type is smaller and
+ * tighter than it looks like it should need to be, because it does.
  */
 const triggerClassName =
-  "relative inline-flex min-h-10 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-sm px-2.5 py-2 text-[0.8125rem] font-bold tracking-tight text-primary-foreground/90 transition-colors duration-200 hover:bg-primary-foreground/10 hover:text-primary-foreground";
+  "relative inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-sm px-2 py-1.5 text-[0.75rem] font-bold tracking-tight text-primary-foreground/90 transition-colors duration-200 hover:bg-primary-foreground/10 hover:text-primary-foreground";
 
 const triggerOpenClassName =
   "bg-primary-foreground/10 text-primary-foreground";
@@ -91,26 +91,17 @@ export function CategoryMegaNav({
       }}
     >
       <div className="mx-auto flex max-w-catalog items-center px-4 py-1">
-        <ul className="flex shrink-0 items-center">
-          {startLinks.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className={triggerClassName}
-                aria-label={item.label === "Home" ? "Home" : undefined}
-              >
-                {item.href === "/" ? (
-                  <>
-                    <IconHome className="size-5" />
-                    <span className="sr-only">{item.label}</span>
-                  </>
-                ) : (
-                  item.label
-                )}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {startLinks.length > 0 ? (
+          <ul className="flex shrink-0 items-center">
+            {startLinks.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} className={triggerClassName}>
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {/*
           `justify-between` spreads the categories across whatever room is
           left instead of leaving a ragged gap after the last one. It only
@@ -145,14 +136,6 @@ export function CategoryMegaNav({
                   onFocus={() => openPanel(panel.slug)}
                 >
                   {panel.name}
-                  <ChevronDown
-                    aria-hidden
-                    strokeWidth={2}
-                    className={cn(
-                      "size-3.5 text-current opacity-60 transition-transform duration-200",
-                      isOpen && "rotate-180 opacity-100",
-                    )}
-                  />
                 </Link>
               </li>
             );
