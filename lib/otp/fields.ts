@@ -2,6 +2,7 @@ export const OTP_PROVIDERS = [
   { value: "local-mock", label: "Local mock" },
   { value: "ssl-wireless", label: "SSL Wireless" },
   { value: "mim-sms", label: "Mim SMS" },
+  { value: "bulksmsbd", label: "BulkSMSBD" },
   { value: "twilio", label: "Twilio" },
   { value: "messagebird", label: "MessageBird" },
 ] as const;

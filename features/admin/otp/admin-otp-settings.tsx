@@ -214,8 +214,9 @@ export function AdminOtpSettings({
 
           <InstructionCard title="OTP / SMS notes">
             <p>
-              SSL Wireless and Mim SMS are common BD-friendly gateways for local
-              delivery. Twilio and MessageBird also work for test sends.
+              SSL Wireless, Mim SMS, and BulkSMSBD are common BD-friendly
+              gateways for local delivery. Twilio and MessageBird also work
+              for test sends.
             </p>
             <p>
               &quot;Send test OTP&quot; sends a real SMS through the selected

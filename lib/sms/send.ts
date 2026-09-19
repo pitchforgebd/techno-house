@@ -6,14 +6,16 @@
  * mapping differs per provider:
  *  - ssl-wireless: SID = SMS_API_KEY, API token = SMS_API_SECRET
  *  - mim-sms: username = SMS_API_KEY, API key = SMS_API_SECRET
+ *  - bulksmsbd: API key = SMS_API_KEY (SMS_API_SECRET unused), sender id =
+ *               the approved sender ID from the BulkSMSBD panel
  *  - twilio: Account SID = SMS_API_KEY, Auth token = SMS_API_SECRET,
  *            sender id = the Twilio "from" number
  *  - messagebird: Access key = SMS_API_SECRET (SMS_API_KEY unused)
  *  - local-mock: never sends; always fails with an explanatory message
  *
- * SSL Wireless and Mim SMS request shapes are best-effort from their
- * public docs and are not verified against a live account here — check
- * the provider's current API reference before relying on this in
+ * SSL Wireless, Mim SMS, and BulkSMSBD request shapes are best-effort from
+ * their public docs and are not verified against a live account here —
+ * check the provider's current API reference before relying on this in
  * production. Twilio and MessageBird follow their stable public REST APIs.
  */
 import { getAdminOtpConfig } from "@/lib/otp/config";
@@ -92,6 +94,51 @@ async function sendViaMimSms(input: {
     return {
       ok: false,
       formError: text || `Mim SMS send failed (${response.status}).`,
+    };
+  }
+  return { ok: true };
+}
+
+async function sendViaBulkSmsBd(input: {
+  to: string;
+  message: string;
+  apiKey?: string;
+  senderId: string;
+}): Promise<SendSmsResult> {
+  if (!input.apiKey) {
+    return {
+      ok: false,
+      formError: "BulkSMSBD needs SMS_API_KEY (API key).",
+    };
+  }
+  if (!input.senderId) {
+    return {
+      ok: false,
+      formError: "Set a Sender ID (your approved BulkSMSBD sender ID) before sending.",
+    };
+  }
+  const params = new URLSearchParams({
+    api_key: input.apiKey,
+    type: "text",
+    number: input.to,
+    senderid: input.senderId,
+    message: input.message,
+  });
+  const response = await fetch(
+    `http://bulksmsbd.net/api/smsapi?${params.toString()}`,
+  );
+  const text = await response.text().catch(() => "");
+  const data = (() => {
+    try {
+      return JSON.parse(text) as { response_code?: number; error_message?: string };
+    } catch {
+      return null;
+    }
+  })();
+  if (!response.ok || data?.response_code !== 202) {
+    return {
+      ok: false,
+      formError: data?.error_message || text || `BulkSMSBD send failed (${response.status}).`,
     };
   }
   return { ok: true };
@@ -214,6 +261,13 @@ export async function sendSms(input: {
         message: input.message,
         username: apiKey,
         apiKey: apiSecret,
+        senderId: config.senderId,
+      });
+    case "bulksmsbd":
+      return sendViaBulkSmsBd({
+        to,
+        message: input.message,
+        apiKey,
         senderId: config.senderId,
       });
     case "twilio":
