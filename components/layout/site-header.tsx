@@ -1,57 +1,15 @@
 import Link from "next/link";
 import { HeaderActions } from "@/components/layout/header-actions";
 import { HeaderBuilderLink } from "@/components/layout/header-builder-link";
-import { IconSearch } from "@/components/layout/chrome-icons";
+import { HeaderSearchForm } from "@/components/layout/header-search";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { loadNavCatalog } from "@/lib/catalog/nav-data";
 import {
   getStorefrontBranding,
   resolveChromeLogo,
 } from "@/lib/business/storefront-branding";
-import { SEARCH_QUERY_MAX_LENGTH } from "@/lib/search/query";
 import { logoStyle } from "@/lib/business/logo-size";
 import { cn } from "@/lib/cn";
-
-function HeaderSearchForm({
-  id,
-  className,
-}: {
-  id: string;
-  className?: string;
-}) {
-  return (
-    <form
-      action="/search"
-      method="get"
-      role="search"
-      className={cn(
-        "flex min-w-0 overflow-hidden rounded-sm bg-surface",
-        "focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus",
-        className,
-      )}
-    >
-      <label htmlFor={id} className="sr-only">
-        Search products
-      </label>
-      <input
-        id={id}
-        name="q"
-        type="search"
-        placeholder="Enter your keyword..."
-        maxLength={SEARCH_QUERY_MAX_LENGTH}
-        autoComplete="off"
-        className="min-h-10 w-full min-w-0 bg-transparent px-3 text-body text-text placeholder:text-text-muted focus:outline-none"
-      />
-      <button
-        type="submit"
-        className="inline-flex min-h-10 shrink-0 items-center justify-center bg-primary px-4 text-primary-foreground transition-colors hover:bg-primary-hover"
-        aria-label="Search"
-      >
-        <IconSearch />
-      </button>
-    </form>
-  );
-}
 
 function BrandMark({
   name,

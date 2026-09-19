@@ -1,19 +1,24 @@
 ﻿import { BRAND_FACET_KEY } from "@/lib/catalog/listing-params";
 import { loadProductPresetLookup } from "@/lib/catalog/product-notes-labels-server";
+import { effectiveStorefrontPricing } from "@/lib/catalog/discount-pricing";
 import {
+  PLACEHOLDER_IMAGE_SRC,
   toBuilderCandidate,
   toDbBuilderSlot,
   toProductDetail,
   toProductSummary,
+  toStockStatus,
 } from "@/lib/data/prisma/mappers";
 import type { ProductRepository } from "@/lib/data/repositories/product-repository";
 import type {
   Facet,
   ProductListQuery,
+  ProductSearchSuggestion,
   ProductSort,
 } from "@/lib/data/types/catalog";
 import { getPrisma } from "@/lib/db/prisma";
 import type { Prisma } from "@/lib/generated/prisma/client";
+import { CURRENCY_CODE } from "@/lib/format/currency";
 import { normalizeSearchNeedle } from "@/lib/search/query";
 
 const MAX_SLOT_CANDIDATES = 48;
@@ -22,6 +27,22 @@ const MAX_PAGE_SIZE = 48;
 const IN_STOCK: Prisma.EnumStockStatusFilter = {
   in: ["IN_STOCK", "LOW_STOCK"],
 };
+
+const SUGGESTION_SELECT = {
+  slug: true,
+  name: true,
+  priceAmount: true,
+  compareAtAmount: true,
+  discountStartsAt: true,
+  discountEndsAt: true,
+  isSale: true,
+  stockStatus: true,
+  images: {
+    select: { src: true, alt: true },
+    orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+    take: 1,
+  },
+} satisfies Prisma.ProductSelect;
 
 const SUMMARY_SELECT = {
   id: true,
@@ -409,6 +430,57 @@ export const prismaProductRepository: ProductRepository = {
             .then((rows) => rows.map((row) => toProductSummary(row, presets)));
 
     return { items, total, page, pageSize, facets };
+  },
+
+  async searchSuggestions(q, limit) {
+    const needle = normalizeSearchNeedle(q);
+    if (!needle) {
+      return { items: [], total: 0 };
+    }
+    const where: Prisma.ProductWhereInput = {
+      isActive: true,
+      OR: [
+        { name: { contains: needle, mode: "insensitive" } },
+        { sku: { contains: needle, mode: "insensitive" } },
+        { brand: { name: { contains: needle, mode: "insensitive" } } },
+        { category: { name: { contains: needle, mode: "insensitive" } } },
+      ],
+    };
+    const [total, rows] = await Promise.all([
+      getPrisma().product.count({ where }),
+      getPrisma().product.findMany({
+        where,
+        select: SUGGESTION_SELECT,
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      }),
+    ]);
+    return {
+      total,
+      items: rows.map((row): ProductSearchSuggestion => {
+        const priced = effectiveStorefrontPricing({
+          priceAmount: row.priceAmount,
+          compareAtAmount: row.compareAtAmount,
+          discountStartsAt: row.discountStartsAt,
+          discountEndsAt: row.discountEndsAt,
+          isSale: row.isSale,
+        });
+        const image = row.images[0];
+        return {
+          slug: row.slug,
+          name: row.name,
+          image: image
+            ? { src: image.src, alt: image.alt }
+            : { src: PLACEHOLDER_IMAGE_SRC, alt: row.name },
+          price: { amount: priced.priceAmount, currency: CURRENCY_CODE },
+          compareAtPrice:
+            priced.compareAtAmount != null
+              ? { amount: priced.compareAtAmount, currency: CURRENCY_CODE }
+              : null,
+          stockStatus: toStockStatus(row.stockStatus),
+        };
+      }),
+    };
   },
 };
 

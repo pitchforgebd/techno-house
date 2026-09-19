@@ -21,6 +21,7 @@ export type {
   ProductDetail,
   ProductListQuery,
   ProductListResult,
+  ProductSearchSuggestion,
   ProductSort,
   ProductSummary,
 } from "@/lib/data/types/catalog";

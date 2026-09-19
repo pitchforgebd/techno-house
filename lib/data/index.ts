@@ -27,6 +27,7 @@ export type {
   ProductListResult,
   ProductQuestion,
   ProductReview,
+  ProductSearchSuggestion,
   ProductSort,
   ProductSummary,
   SpecChip,

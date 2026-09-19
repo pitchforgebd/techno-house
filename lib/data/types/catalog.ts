@@ -89,6 +89,18 @@ export type ProductSummary = {
   labels: ProductLabelBadge[];
 };
 
+/** Minimal row for the header search-as-you-type dropdown — deliberately
+ * lighter than ProductSummary (no brand/specs/labels/preset lookup), since
+ * this runs on every keystroke. */
+export type ProductSearchSuggestion = {
+  slug: string;
+  name: string;
+  image: ProductImage;
+  price: Money;
+  compareAtPrice: Money | null;
+  stockStatus: StockStatus;
+};
+
 export type ProductColorOption = {
   id: string;
   name: string;

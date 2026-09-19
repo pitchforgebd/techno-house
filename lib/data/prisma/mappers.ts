@@ -35,7 +35,7 @@ import type { ProductQuestion, ProductReview } from "@/lib/data/types/reviews";
 import { CURRENCY_CODE } from "@/lib/format/currency";
 
 /** Matches `features/product/product-gallery.tsx` for products with no image. */
-const PLACEHOLDER_IMAGE_SRC = "/products/placeholder.svg";
+export const PLACEHOLDER_IMAGE_SRC = "/products/placeholder.svg";
 
 type DbStockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
 

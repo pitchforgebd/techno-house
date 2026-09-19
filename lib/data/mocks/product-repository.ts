@@ -14,7 +14,11 @@ import {
   toCandidate,
   toSummary,
 } from "@/lib/data/mocks/query";
-import type { BuilderSlot, ProductDetail } from "@/lib/data/types/catalog";
+import type {
+  BuilderSlot,
+  ProductDetail,
+  ProductSearchSuggestion,
+} from "@/lib/data/types/catalog";
 
 const MAX_SLOT_CANDIDATES = 48;
 
@@ -105,5 +109,30 @@ export const mockProductRepository: ProductRepository = {
       pageSize,
       facets,
     };
+  },
+
+  async searchSuggestions(q, limit) {
+    const needle = q.trim().toLowerCase();
+    if (!needle) {
+      return { items: [], total: 0 };
+    }
+    const matched = mockProducts.filter(
+      (product) =>
+        product.name.toLowerCase().includes(needle) ||
+        product.sku.toLowerCase().includes(needle) ||
+        product.brandName.toLowerCase().includes(needle),
+    );
+    const items: ProductSearchSuggestion[] = matched.slice(0, limit).map((product) => {
+      const summary = toSummary(product);
+      return {
+        slug: summary.slug,
+        name: summary.name,
+        image: summary.image,
+        price: summary.price,
+        compareAtPrice: summary.compareAtPrice,
+        stockStatus: summary.stockStatus,
+      };
+    });
+    return { items, total: matched.length };
   },
 };
