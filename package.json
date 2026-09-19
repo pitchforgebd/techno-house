@@ -25,6 +25,7 @@
     "db:migrate:status": "prisma migrate status",
     "staff:bootstrap-owner": "tsx scripts/deploy/create-first-admin.ts",
     "catalog:bootstrap-categories": "tsx scripts/deploy/create-catalog-categories.ts",
+    "catalog:rebuild-taxonomy": "tsx scripts/deploy/rebuild-catalog-taxonomy.ts",
     "catalog:bootstrap-brands": "tsx scripts/deploy/create-brands.ts",
     "catalog:bootstrap-attributes": "tsx scripts/deploy/create-product-attributes.ts",
     "catalog:bootstrap-units": "tsx scripts/deploy/create-product-units.ts",

@@ -26,31 +26,32 @@ export type MegaBrand = {
   name: string;
 };
 
-/** Grouped component links under PC and Server — original Techno House grouping. */
+/** Grouped links under the Component department — original Techno House grouping. */
 const COMPONENT_COLUMNS: ReadonlyArray<{
   title: string;
   slugs: readonly string[];
 }> = [
   {
     title: "Compute",
-    slugs: ["cpu", "cpu-coolers", "motherboards", "ram"],
+    slugs: ["processor", "cpu-cooler", "motherboard", "ram-desktop", "ram-laptop"],
   },
   {
     title: "Graphics & storage",
-    slugs: ["graphics-cards", "ssd", "hdd"],
+    slugs: [
+      "graphics-card",
+      "ssd",
+      "portable-ssd",
+      "hard-disk-drive",
+      "portable-hard-disk-drive",
+    ],
   },
   {
     title: "Chassis & power",
-    slugs: ["psu", "cases", "case-fans"],
+    slugs: ["power-supply", "casing", "casing-cooler"],
   },
 ];
 
-const BRAND_COLUMN_SLUGS = new Set([
-  "laptops",
-  "desktops",
-  "pcs-servers",
-  "monitors",
-]);
+const BRAND_COLUMN_SLUGS = new Set(["laptop", "desktop", "monitor"]);
 
 export function collectBrandsByCategorySlug(
   products: Array<{
@@ -163,44 +164,11 @@ function groupedComponentColumns(
   return columns;
 }
 
-function pcsServersColumns(
-  node: CategoryNode,
-  brandsByCategory: Record<string, MegaBrand[]>,
-  categories: Category[],
-): MegaMenuColumn[] {
-  const pcChildren = node.children.filter(
-    (child) => child.slug !== "components",
-  );
-  const componentChildren = categories.filter(
-    (category) => category.parentSlug === "components",
-  );
-
-  return [
-    {
-      title: node.name,
-      links: [
-        { href: `/category/${node.slug}`, label: `All ${node.name}` },
-        ...pcChildren.map((child) => childLink(child, brandsByCategory)),
-        {
-          href: "/category/components",
-          label: "Components",
-        },
-      ],
-    },
-    ...groupedComponentColumns(componentChildren, brandsByCategory),
-  ];
-}
-
 function columnsForNode(
   node: CategoryNode,
   brandsByCategory: Record<string, MegaBrand[]>,
-  categories: Category[],
 ): MegaMenuColumn[] {
-  if (node.slug === "pcs-servers") {
-    return pcsServersColumns(node, brandsByCategory, categories);
-  }
-
-  if (node.slug === "components") {
+  if (node.slug === "component") {
     return [
       {
         title: node.name,
@@ -237,13 +205,12 @@ function columnsForNode(
 export function buildMegaMenuPanels(
   tree: CategoryNode[],
   brandsByCategory: Record<string, MegaBrand[]>,
-  categories: Category[],
 ): MegaMenuPanel[] {
   return tree.map((node) => ({
     slug: node.slug,
     name: node.name,
     href: `/category/${node.slug}`,
-    columns: columnsForNode(node, brandsByCategory, categories),
+    columns: columnsForNode(node, brandsByCategory),
   }));
 }
 
