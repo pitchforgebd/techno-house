@@ -86,6 +86,10 @@ import { AdminProductFormSidebar } from "@/features/admin/products/admin-product
 import type { ProductFormAttributeOption } from "@/lib/admin/load-products";
 import type { Category, ProductDetail, StockStatus } from "@/lib/data";
 import {
+  categoryDescendantsWithDepth,
+  categoryRootSlug,
+} from "@/lib/catalog/category-tree";
+import {
   formatDiscountDateInput,
 } from "@/lib/catalog/discount-pricing";
 import {
@@ -299,10 +303,7 @@ export function AdminProductForm({
   );
   const [categorySlug, setCategorySlug] = useState(() => {
     if (product?.categorySlug) {
-      const match = categories.find(
-        (item) => item.slug === product.categorySlug,
-      );
-      return match?.parentSlug ?? product.categorySlug;
+      return categoryRootSlug(product.categorySlug, categories);
     }
     return rootCategories[0]?.slug ?? "";
   });
@@ -310,8 +311,8 @@ export function AdminProductForm({
     if (!product?.categorySlug) {
       return "";
     }
-    const match = categories.find((item) => item.slug === product.categorySlug);
-    return match?.parentSlug ? product.categorySlug : "";
+    const root = categoryRootSlug(product.categorySlug, categories);
+    return product.categorySlug !== root ? product.categorySlug : "";
   });
   const [position, setPosition] = useState(
     product ? String(product.position) : "0",
@@ -340,7 +341,7 @@ export function AdminProductForm({
     colorRowsFromProduct(product?.colors),
   );
   const childCategories = useMemo(
-    () => categories.filter((category) => category.parentSlug === categorySlug),
+    () => categoryDescendantsWithDepth(categorySlug, categories),
     [categories, categorySlug],
   );
   const [specialPrice, setSpecialPrice] = useState(
@@ -775,6 +776,8 @@ export function AdminProductForm({
                   <option value="">Use main category</option>
                   {childCategories.map((category) => (
                     <option key={category.slug} value={category.slug}>
+                      {"  ".repeat(category.depth)}
+                      {category.depth > 0 ? "— " : ""}
                       {category.name}
                     </option>
                   ))}
