@@ -35,22 +35,12 @@ export type FooterSocialItem = {
   href: string;
 };
 
-/** An additional branch/office shown after the primary contact block. */
-export type FooterExtraContact = {
-  id: string;
-  label: string;
-  address: string;
-  phone: string;
-  email: string;
-};
-
 export type FooterWidgetsConfig = {
   aboutDescription: string;
   showSocial: boolean;
   socialLinks: FooterSocialItem[];
   columns: FooterNavColumn[];
   contactHours: string;
-  extraContacts: FooterExtraContact[];
   showContactFormLink: boolean;
   showCtaButtons: boolean;
   showNewsletter: boolean;
@@ -107,7 +97,6 @@ export function defaultFooterWidgetsConfig(): FooterWidgetsConfig {
       },
     ],
     contactHours: "Hours 9:00–22:00",
-    extraContacts: [],
     showContactFormLink: true,
     showCtaButtons: true,
     showNewsletter: true,

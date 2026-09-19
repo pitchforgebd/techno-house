@@ -265,7 +265,28 @@ export async function SiteFooter() {
                 ) : null}
               </span>
             </p>
-            {branding.phone || branding.supportEmail ? (
+
+            {branding.extraAddresses.map((item) => (
+              <p key={item.id} className="flex items-start gap-3">
+                <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-footer-text/10 text-primary-soft">
+                  <IconMapPin className="size-4" />
+                </span>
+                <span className="leading-relaxed">
+                  {item.title ? (
+                    <span className="font-semibold text-footer-text">
+                      {item.title}
+                      <br />
+                    </span>
+                  ) : null}
+                  {item.address}
+                </span>
+              </p>
+            ))}
+
+            {branding.phone ||
+            branding.supportEmail ||
+            branding.extraPhones.length > 0 ||
+            branding.extraEmails.length > 0 ? (
               <p className="flex items-start gap-3">
                 <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-footer-text/10 text-primary-soft">
                   <IconPhone className="size-4" />
@@ -279,6 +300,15 @@ export async function SiteFooter() {
                       {branding.phone}
                     </a>
                   ) : null}
+                  {branding.extraPhones.map((phone) => (
+                    <a
+                      key={phone}
+                      href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+                      className={cn("block", accentTextClass)}
+                    >
+                      {phone}
+                    </a>
+                  ))}
                   {branding.supportEmail ? (
                     <a
                       href={branding.emailHref}
@@ -287,6 +317,15 @@ export async function SiteFooter() {
                       {branding.supportEmail}
                     </a>
                   ) : null}
+                  {branding.extraEmails.map((email) => (
+                    <a
+                      key={email}
+                      href={`mailto:${email}`}
+                      className={cn("block break-all", accentTextClass)}
+                    >
+                      {email}
+                    </a>
+                  ))}
                 </span>
               </p>
             ) : null}
@@ -300,42 +339,6 @@ export async function SiteFooter() {
                 </Link>
               </p>
             ) : null}
-
-            {footer.extraContacts.map((item) => (
-              <p key={item.id} className="flex items-start gap-3">
-                <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-footer-text/10 text-primary-soft">
-                  <IconMapPin className="size-4" />
-                </span>
-                <span className="leading-relaxed">
-                  {item.label ? (
-                    <span className="font-semibold text-footer-text">
-                      {item.label}
-                      <br />
-                    </span>
-                  ) : null}
-                  {item.address}
-                  {item.phone ? (
-                    <>
-                      <br />
-                      <a href={`tel:${item.phone.replace(/[^\d+]/g, "")}`} className={accentTextClass}>
-                        {item.phone}
-                      </a>
-                    </>
-                  ) : null}
-                  {item.email ? (
-                    <>
-                      <br />
-                      <a
-                        href={`mailto:${item.email}`}
-                        className={cn("break-all", accentTextClass)}
-                      >
-                        {item.email}
-                      </a>
-                    </>
-                  ) : null}
-                </span>
-              </p>
-            ))}
 
             {branding.googleMapsUrl ? (
               <div className="pt-1">

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { notifyError } from "@/components/ui/feedback-provider";
 import {
@@ -27,7 +28,12 @@ import {
 import {
   BUSINESS_TIMEZONES,
   type AdminBusinessSettings,
+  type BusinessExtraAddress,
 } from "@/lib/business/fields";
+
+function newFormId(prefix: string): string {
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
 import {
   LABEL_SIZES,
   PICKUP_POINTS,
@@ -127,6 +133,9 @@ export function AdminGeneralSettingsForm({
     timezone: settings.timezone,
     taxId: settings.taxId,
     googleMapsUrl: settings.googleMapsUrl,
+    extraAddresses: settings.extraAddresses,
+    extraPhones: settings.extraPhones,
+    extraEmails: settings.extraEmails,
   });
 
   function save() {
@@ -188,6 +197,49 @@ export function AdminGeneralSettingsForm({
             onChange={(e) => setForm({ ...form, supportEmail: e.target.value })}
           />
         </FieldRow>
+        {form.extraEmails.map((email, index) => (
+          <FieldRow key={index} label="Additional email">
+            <div className="flex items-center gap-2">
+              <Input
+                type="email"
+                className={controlClass}
+                value={email}
+                onChange={(e) => {
+                  const next = [...form.extraEmails];
+                  next[index] = e.target.value;
+                  setForm({ ...form, extraEmails: next });
+                }}
+              />
+              <button
+                type="button"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                aria-label="Remove email"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    extraEmails: form.extraEmails.filter((_, i) => i !== index),
+                  })
+                }
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </button>
+            </div>
+          </FieldRow>
+        ))}
+        {form.extraEmails.length < 10 ? (
+          <FieldRow label="">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+              onClick={() =>
+                setForm({ ...form, extraEmails: [...form.extraEmails, ""] })
+              }
+            >
+              <Plus className="size-4" aria-hidden />
+              Add email
+            </button>
+          </FieldRow>
+        ) : null}
         <FieldRow label="Phone">
           <Input
             className={controlClass}
@@ -195,7 +247,52 @@ export function AdminGeneralSettingsForm({
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
         </FieldRow>
-        <FieldRow label="Address">
+        {form.extraPhones.map((phone, index) => (
+          <FieldRow key={index} label="Additional number">
+            <div className="flex items-center gap-2">
+              <Input
+                className={controlClass}
+                value={phone}
+                onChange={(e) => {
+                  const next = [...form.extraPhones];
+                  next[index] = e.target.value;
+                  setForm({ ...form, extraPhones: next });
+                }}
+              />
+              <button
+                type="button"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                aria-label="Remove number"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    extraPhones: form.extraPhones.filter((_, i) => i !== index),
+                  })
+                }
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </button>
+            </div>
+          </FieldRow>
+        ))}
+        {form.extraPhones.length < 10 ? (
+          <FieldRow label="">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+              onClick={() =>
+                setForm({ ...form, extraPhones: [...form.extraPhones, ""] })
+              }
+            >
+              <Plus className="size-4" aria-hidden />
+              Add number
+            </button>
+          </FieldRow>
+        ) : null}
+        <FieldRow
+          label="Address"
+          hint="Shown in the footer under the store name as its title."
+        >
           <Textarea
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
@@ -210,6 +307,73 @@ export function AdminGeneralSettingsForm({
             onChange={(e) => setForm({ ...form, city: e.target.value })}
           />
         </FieldRow>
+        {form.extraAddresses.map((item, index) => (
+          <div
+            key={item.id}
+            className="space-y-2 rounded-md border border-neutral-200 p-3"
+          >
+            <div className="flex items-center gap-2">
+              <Input
+                value={item.title}
+                onChange={(e) => {
+                  const next = [...form.extraAddresses];
+                  next[index] = { ...item, title: e.target.value };
+                  setForm({ ...form, extraAddresses: next });
+                }}
+                placeholder="Address title (e.g. Chattogram Branch)"
+                className={controlClass}
+              />
+              <button
+                type="button"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                aria-label="Remove address"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    extraAddresses: form.extraAddresses.filter(
+                      (row) => row.id !== item.id,
+                    ),
+                  })
+                }
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </button>
+            </div>
+            <Textarea
+              value={item.address}
+              onChange={(e) => {
+                const next = [...form.extraAddresses];
+                next[index] = { ...item, address: e.target.value };
+                setForm({ ...form, extraAddresses: next });
+              }}
+              rows={2}
+              placeholder="Address"
+              className={controlClass}
+            />
+          </div>
+        ))}
+        {form.extraAddresses.length < 10 ? (
+          <FieldRow label="">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+              onClick={() => {
+                const row: BusinessExtraAddress = {
+                  id: newFormId("address"),
+                  title: "",
+                  address: "",
+                };
+                setForm({
+                  ...form,
+                  extraAddresses: [...form.extraAddresses, row],
+                });
+              }}
+            >
+              <Plus className="size-4" aria-hidden />
+              Add address
+            </button>
+          </FieldRow>
+        ) : null}
         <FieldRow label="Timezone">
           <Select
             className={controlClass}

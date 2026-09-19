@@ -6,6 +6,10 @@ import {
   clampLogoHeight,
   LOGO_HEIGHT_DEFAULT,
 } from "@/lib/business/logo-size";
+import {
+  normalizeExtraAddresses,
+  type BusinessExtraAddress,
+} from "@/lib/business/fields";
 import { DEFAULT_BUSINESS_SETTINGS } from "@/lib/admin/settings-mock";
 import { usesDatabase } from "@/lib/runtime/data-source";
 
@@ -20,6 +24,11 @@ export type StorefrontBranding = {
   /** Google Maps share/embed link (Business Settings → General). Empty hides
    * the footer's location map. */
   googleMapsUrl: string;
+  /** Additional addresses/phones/emails (Business Settings → General),
+   * shown alongside the primary contact block in the storefront footer. */
+  extraAddresses: BusinessExtraAddress[];
+  extraPhones: string[];
+  extraEmails: string[];
   /** Logo for dark header/footer bars. */
   /** Logo for light surfaces. */
   logoSrc: string | null;
@@ -54,6 +63,9 @@ export function defaultStorefrontBranding(): StorefrontBranding {
     address: DEFAULT_BUSINESS_SETTINGS.address,
     city: DEFAULT_BUSINESS_SETTINGS.city,
     googleMapsUrl: "",
+    extraAddresses: [],
+    extraPhones: [],
+    extraEmails: [],
     logoSrc: null,
     faviconSrc: null,
     logoHeightPx: LOGO_HEIGHT_DEFAULT,
@@ -74,6 +86,9 @@ export async function getStorefrontBranding(): Promise<StorefrontBranding> {
       address: true,
       city: true,
       googleMapsUrl: true,
+      extraPhones: true,
+      extraEmails: true,
+      extraAddressesJson: true,
       logoSrc: true,
       logoHeightPx: true,
       faviconSrc: true,
@@ -84,6 +99,14 @@ export async function getStorefrontBranding(): Promise<StorefrontBranding> {
   }
   const phone = row.phone?.trim() || fallback.phone;
   const email = row.supportEmail?.trim() || fallback.supportEmail;
+  let extraAddresses: BusinessExtraAddress[] = [];
+  try {
+    extraAddresses = normalizeExtraAddresses(
+      JSON.parse(row.extraAddressesJson),
+    ) ?? [];
+  } catch {
+    extraAddresses = [];
+  }
   return {
     storeName: row.storeName.trim() || fallback.storeName,
     supportEmail: email,
@@ -93,6 +116,9 @@ export async function getStorefrontBranding(): Promise<StorefrontBranding> {
     address: row.address?.trim() || fallback.address,
     city: row.city?.trim() || fallback.city,
     googleMapsUrl: row.googleMapsUrl?.trim() || "",
+    extraAddresses,
+    extraPhones: row.extraPhones,
+    extraEmails: row.extraEmails,
     logoSrc: row.logoSrc?.trim() || null,
     faviconSrc: row.faviconSrc?.trim() || null,
     // Clamped on read as well as on write: this value is also reachable by a

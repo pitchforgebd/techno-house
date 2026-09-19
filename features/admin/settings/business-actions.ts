@@ -10,6 +10,7 @@ import {
   saveBusinessSettings,
   type BusinessMutationResult,
 } from "@/lib/business/config";
+import type { BusinessExtraAddress } from "@/lib/business/fields";
 import { revalidatePath } from "next/cache";
 
 export async function saveBusinessSettingsAction(input: {
@@ -22,6 +23,9 @@ export async function saveBusinessSettingsAction(input: {
   timezone: string;
   taxId: string;
   googleMapsUrl: string;
+  extraAddresses: BusinessExtraAddress[];
+  extraPhones: string[];
+  extraEmails: string[];
 }): Promise<BusinessMutationResult> {
   if (!(await isSameOriginRequest())) {
     return { ok: false, formError: CROSS_ORIGIN_ERROR };

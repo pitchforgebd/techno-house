@@ -1754,6 +1754,14 @@ model SiteSettings {
   /// Google Maps share/embed link, shown in the storefront footer below the
   /// contact block.
   googleMapsUrl  String?
+  /// Additional phone numbers/emails shown alongside the primary contact
+  /// block in the storefront footer.
+  extraPhones    String[] @default([])
+  extraEmails    String[] @default([])
+  /// Additional addresses (each with its own title, e.g. a second branch),
+  /// shown below the primary address in the storefront footer. JSON array of
+  /// { id, title, address } — see BusinessExtraAddress in lib/business/fields.ts.
+  extraAddressesJson String @default("[]")
   timezone       String   @default("Asia/Dhaka")
   taxId          String?
   /// Public path for the store logo (e.g. `/uploads/general/...`). One logo:

@@ -20,11 +20,15 @@ import {
   STORE_NAME_MAX,
   TAX_ID_MAX,
   normalizeBusinessTimezone,
+  normalizeExtraAddresses,
+  normalizeExtraEmails,
+  normalizeExtraPhones,
   normalizeGoogleMapsUrl,
   normalizeOptionalText,
   normalizeStoreName,
   normalizeSupportEmail,
   type AdminBusinessSettings,
+  type BusinessExtraAddress,
   type BusinessTimezone,
 } from "@/lib/business/fields";
 import { DEFAULT_BUSINESS_SETTINGS } from "@/lib/admin/settings-mock";
@@ -53,6 +57,9 @@ const EMPTY_ADMIN: AdminBusinessSettings = {
   timezone: "Asia/Dhaka",
   taxId: DEFAULT_BUSINESS_SETTINGS.taxId,
   googleMapsUrl: "",
+  extraAddresses: [],
+  extraPhones: [],
+  extraEmails: [],
   logoSrc: "",
   logoHeightPx: LOGO_HEIGHT_DEFAULT,
   faviconSrc: "",
@@ -77,11 +84,22 @@ function toAdmin(row: {
   timezone: string;
   taxId: string | null;
   googleMapsUrl: string | null;
+  extraPhones: string[];
+  extraEmails: string[];
+  extraAddressesJson: string;
   logoSrc: string | null;
   logoHeightPx: number;
   faviconSrc: string | null;
   updatedAt: Date;
 }): AdminBusinessSettings {
+  let extraAddresses: BusinessExtraAddress[] = [];
+  try {
+    extraAddresses = normalizeExtraAddresses(
+      JSON.parse(row.extraAddressesJson),
+    ) ?? [];
+  } catch {
+    extraAddresses = [];
+  }
   return {
     storeName: row.storeName,
     legalName: row.legalName ?? "",
@@ -94,6 +112,9 @@ function toAdmin(row: {
       "Asia/Dhaka",
     taxId: row.taxId ?? "",
     googleMapsUrl: row.googleMapsUrl ?? "",
+    extraAddresses,
+    extraPhones: row.extraPhones,
+    extraEmails: row.extraEmails,
     logoSrc: row.logoSrc ?? "",
     logoHeightPx: clampLogoHeight(row.logoHeightPx),
     faviconSrc: row.faviconSrc ?? "",
@@ -117,6 +138,9 @@ export async function getAdminBusinessSettings(): Promise<AdminBusinessSettings>
       timezone: true,
       taxId: true,
       googleMapsUrl: true,
+      extraPhones: true,
+      extraEmails: true,
+      extraAddressesJson: true,
       logoSrc: true,
       logoHeightPx: true,
       faviconSrc: true,
@@ -139,6 +163,9 @@ export async function saveBusinessSettings(input: {
   timezone: string;
   taxId: string;
   googleMapsUrl: string;
+  extraAddresses: BusinessExtraAddress[];
+  extraPhones: string[];
+  extraEmails: string[];
   actor?: BusinessActor;
 }): Promise<BusinessMutationResult> {
   if (!usesDatabase()) {
@@ -183,6 +210,18 @@ export async function saveBusinessSettings(input: {
   if (googleMapsUrl == null) {
     return fail("Enter a valid http(s) Google Maps link, or leave it blank.");
   }
+  const extraAddresses = normalizeExtraAddresses(input.extraAddresses);
+  if (extraAddresses == null) {
+    return fail(`Add up to 10 additional addresses.`);
+  }
+  const extraPhones = normalizeExtraPhones(input.extraPhones);
+  if (extraPhones == null) {
+    return fail(`Add up to 10 additional phone numbers.`);
+  }
+  const extraEmails = normalizeExtraEmails(input.extraEmails);
+  if (extraEmails == null) {
+    return fail("Enter valid additional emails (up to 10).");
+  }
 
   const row = await getPrisma().siteSettings.upsert({
     where: { id: "singleton" },
@@ -197,6 +236,9 @@ export async function saveBusinessSettings(input: {
       timezone,
       taxId: taxId || null,
       googleMapsUrl: googleMapsUrl || null,
+      extraAddressesJson: JSON.stringify(extraAddresses),
+      extraPhones,
+      extraEmails,
     },
     update: {
       storeName,
@@ -208,6 +250,9 @@ export async function saveBusinessSettings(input: {
       timezone,
       taxId: taxId || null,
       googleMapsUrl: googleMapsUrl || null,
+      extraAddressesJson: JSON.stringify(extraAddresses),
+      extraPhones,
+      extraEmails,
     },
     select: { id: true },
   });
