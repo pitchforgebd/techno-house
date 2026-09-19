@@ -623,6 +623,24 @@ h6 {
   display: none;
 }
 
+/* Fixed-bottom marquee notice bar (Design Studio -> Footer widgets).
+   The track holds two copies of the text back to back and slides exactly
+   -50%, so the second copy lands where the first started — a seamless loop
+   with no gap or jump, regardless of text length. Falls under the global
+   prefers-reduced-motion collapse like every other th- animation here. */
+@keyframes th-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.th-marquee-track {
+  animation: th-marquee 18s linear infinite;
+}
+
 /* Shared styling for blog post body content — used by both the admin
    rich-text editor (TipTap, AD-264) and the storefront post render, so
    what the admin sees while writing matches the live page exactly. */

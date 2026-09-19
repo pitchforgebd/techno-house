@@ -541,6 +541,30 @@ export function AdminStudioFooterWidgetsPage({
           />
         </Field>
       </StudioCard>
+
+      <StudioCard
+        title="Marquee notice"
+        hint="A scrolling notice bar pinned to the bottom of every storefront page (above the mobile menu bar), for things like holiday hours or a branch closure."
+        onUpdate={() => saveConfig()}
+      >
+        <label className="flex items-center gap-2 text-sm">
+          <AdminToggleSwitch
+            label="Enable marquee notice"
+            checked={config.marqueeEnabled}
+            onChange={(checked) => patch({ marqueeEnabled: checked })}
+          />
+          Enable marquee notice
+        </label>
+        <Field label="Notice text">
+          <Input
+            value={config.marqueeText}
+            onChange={(e) => patch({ marqueeText: e.target.value })}
+            placeholder="e.g. All our branches are open except IDB Branch."
+            className={controlClass}
+            disabled={pending}
+          />
+        </Field>
+      </StudioCard>
     </PageShell>
   );
 }

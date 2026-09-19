@@ -44,7 +44,12 @@ function MessengerButton({ pageId }: { pageId: string }) {
   );
 }
 
-export async function StorefrontChatWidget() {
+export async function StorefrontChatWidget({
+  pushedUpForMarquee = false,
+}: {
+  /** Marquee notice bar is on — clear its height too, on top of Tawk's. */
+  pushedUpForMarquee?: boolean;
+} = {}) {
   const { tawkPropertyId, tawkWidgetId, whatsappNumber, messengerPageId } =
     await getStorefrontChatWidgetTag();
   const hasTawk = Boolean(tawkPropertyId && tawkWidgetId);
@@ -68,10 +73,18 @@ s0.parentNode.insertBefore(s1,s0);
         // Tawk.to renders its own launcher bubble fixed at bottom-right with
         // no DOM we control (it's their iframe) — when it's also on, our
         // stack is pushed up clear of it instead of sitting underneath.
+        // Same idea for the marquee notice bar, which is real DOM we do
+        // control but that lives in a different part of the tree.
         <div
           className={cn(
             "fixed right-5 z-50 flex flex-col items-center gap-3",
-            hasTawk ? "bottom-24" : "bottom-5",
+            pushedUpForMarquee
+              ? hasTawk
+                ? "bottom-36"
+                : "bottom-16"
+              : hasTawk
+                ? "bottom-24"
+                : "bottom-5",
           )}
         >
           {messengerPageId ? <MessengerButton pageId={messengerPageId} /> : null}

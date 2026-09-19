@@ -41,6 +41,9 @@ export type FooterWidgetsConfig = {
   socialLinks: FooterSocialItem[];
   columns: FooterNavColumn[];
   contactHours: string;
+  /** Fixed-bottom scrolling notice bar shown on every storefront page. */
+  marqueeEnabled: boolean;
+  marqueeText: string;
   showContactFormLink: boolean;
   showCtaButtons: boolean;
   showNewsletter: boolean;
@@ -97,6 +100,8 @@ export function defaultFooterWidgetsConfig(): FooterWidgetsConfig {
       },
     ],
     contactHours: "Hours 9:00–22:00",
+    marqueeEnabled: false,
+    marqueeText: "",
     showContactFormLink: true,
     showCtaButtons: true,
     showNewsletter: true,

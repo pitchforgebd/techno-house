@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { CategoryNav } from "@/components/layout/category-nav";
+import { MarqueeNoticeBar } from "@/components/layout/marquee-notice-bar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -20,6 +21,7 @@ import { getStorefrontBranding } from "@/lib/business/storefront-branding";
 import { EMPTY_CART } from "@/lib/cart/cart";
 import { getPersistedCart, usesCartDatabase } from "@/lib/cart/persist";
 import { getStorefrontCustomScripts } from "@/lib/analytics/custom-scripts";
+import { getFooterWidgetsConfig } from "@/lib/content/footer-settings";
 import { getStorefrontThemeCss } from "@/lib/design/theme-settings";
 import { getActiveAlertForStorefront } from "@/lib/marketing/alerts";
 import { getActivePopupForStorefront } from "@/lib/marketing/popups";
@@ -28,6 +30,7 @@ import {
   getSaleAlertSettings,
 } from "@/lib/marketing/sale-alerts";
 import { getStorefrontSeoMetadata } from "@/lib/seo/config";
+import { cn } from "@/lib/cn";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [seo, branding] = await Promise.all([
@@ -95,6 +98,7 @@ export default async function StorefrontLayout({
     saleAlertEvents,
     customScripts,
     themeCss,
+    footer,
   ] = await Promise.all([
     persist ? getPersistedCart() : Promise.resolve(EMPTY_CART),
     getActivePopupForStorefront(),
@@ -103,7 +107,9 @@ export default async function StorefrontLayout({
     getRecentSaleAlertEvents(),
     getStorefrontCustomScripts(),
     getStorefrontThemeCss(),
+    getFooterWidgetsConfig(),
   ]);
+  const hasMarquee = footer.marqueeEnabled && Boolean(footer.marqueeText);
 
   return (
     <CustomerSessionProvider
@@ -138,13 +144,19 @@ export default async function StorefrontLayout({
             <SiteHeader />
             <CategoryNav />
           </div>
-          <main id="main-content" className="flex-1 pb-16 md:pb-0">
+          <main
+            id="main-content"
+            className={cn("flex-1", hasMarquee ? "pb-28 md:pb-11" : "pb-16 md:pb-0")}
+          >
             {children}
           </main>
           <SiteFooter />
-          <MobileBottomNav />
+          <div className="fixed inset-x-0 bottom-0 z-50 flex flex-col">
+            {hasMarquee ? <MarqueeNoticeBar text={footer.marqueeText} /> : null}
+            <MobileBottomNav />
+          </div>
           <StorefrontAnalytics />
-          <StorefrontChatWidget />
+          <StorefrontChatWidget pushedUpForMarquee={hasMarquee} />
           <DynamicPopup popup={popup} />
           <SiteAlert alert={alert} />
           <SaleAlertToast

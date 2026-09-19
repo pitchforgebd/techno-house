@@ -40,6 +40,7 @@ const TEXT_MAX = 1000;
 const COLUMN_MAX = 6;
 const LINKS_PER_COLUMN_MAX = 20;
 const SOCIAL_MAX = 8;
+const MARQUEE_TEXT_MAX = 200;
 
 function fail(formError: string): FooterMutationResult {
   return { ok: false, formError };
@@ -175,6 +176,11 @@ export function parseFooterWidgetsConfig(raw: unknown): FooterWidgetsConfig {
       .replace(/[<>]/g, "")
       .trim()
       .slice(0, 120),
+    marqueeEnabled: Boolean(row.marqueeEnabled),
+    marqueeText: String(row.marqueeText ?? "")
+      .replace(/[<>]/g, "")
+      .trim()
+      .slice(0, MARQUEE_TEXT_MAX),
     showContactFormLink: row.showContactFormLink !== false,
     showCtaButtons: row.showCtaButtons !== false,
     showNewsletter: row.showNewsletter !== false,

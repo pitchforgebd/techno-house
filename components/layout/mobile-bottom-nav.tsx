@@ -87,7 +87,7 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Mobile quick links"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0e1a24] text-white md:hidden"
+      className="border-t border-white/10 bg-[#0e1a24] text-white md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="mx-auto grid max-w-catalog grid-cols-5">
