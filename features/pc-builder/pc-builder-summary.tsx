@@ -9,6 +9,7 @@ import { PcBuilderSaveShare } from "@/features/pc-builder/pc-builder-save-share"
 import type { ProductSummary } from "@/lib/data";
 import {
   countFilledSlots,
+  type BuilderSlotMeta,
   type BuildPowerSummary,
   type BuildPricingSummary,
   type BuildSelection,
@@ -29,6 +30,7 @@ export function PcBuilderSummary({
   loadError,
   onClearBuild,
   onLoadSelection,
+  slots,
 }: {
   selection: BuildSelection;
   products: ProductSummary[];
@@ -41,8 +43,9 @@ export function PcBuilderSummary({
   loadError: string | null;
   onClearBuild: () => void;
   onLoadSelection: (selection: BuildSelection) => void;
+  slots: readonly BuilderSlotMeta[];
 }) {
-  const counts = countFilledSlots(selection);
+  const counts = countFilledSlots(selection, slots);
 
   return (
     <aside
@@ -122,6 +125,7 @@ export function PcBuilderSummary({
           productsPending={productsPending}
           compatibility={compatibility}
           issues={issues}
+          slots={slots}
         />
         <PcBuilderSaveShare
           selection={selection}

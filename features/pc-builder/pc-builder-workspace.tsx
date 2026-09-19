@@ -92,6 +92,7 @@ export function PcBuilderWorkspace() {
         loadError={loadError}
         onClearBuild={clearBuild}
         onLoadSelection={loadSelection}
+        slots={snapshot.slots}
       />
     </div>
   );

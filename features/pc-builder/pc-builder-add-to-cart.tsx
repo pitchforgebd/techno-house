@@ -15,6 +15,7 @@ import { MAX_CART_LINES } from "@/lib/cart/cart";
 import {
   countFilledSlots,
   planValidatedBuildToCart,
+  type BuilderSlotMeta,
   type BuildSelection,
   type BuildValidationIssue,
   type CompatibilityResult,
@@ -26,19 +27,21 @@ export function PcBuilderAddToCart({
   productsPending,
   compatibility,
   issues,
+  slots,
 }: {
   selection: BuildSelection;
   products: ProductSummary[];
   productsPending: boolean;
   compatibility: CompatibilityResult | null;
   issues: BuildValidationIssue[];
+  slots: readonly BuilderSlotMeta[];
 }) {
   const router = useRouter();
   const { state, persist, addBuild } = useCartStore();
   const [message, setMessage] = useState<string | null>(null);
   const [addedKey, setAddedKey] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const filled = countFilledSlots(selection).filled;
+  const filled = countFilledSlots(selection, slots).filled;
 
   const plan = useMemo(
     () =>
@@ -52,8 +55,9 @@ export function PcBuilderAddToCart({
         issues,
         existingCartSlugs: state.lines.map((line) => line.slug),
         maxCartLines: MAX_CART_LINES,
+        slots,
       }),
-    [selection, products, compatibility, issues, state.lines],
+    [selection, products, compatibility, issues, state.lines, slots],
   );
 
   const planKey = plan.ok ? plan.slugs.join("|") : "";
