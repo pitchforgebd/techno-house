@@ -14,7 +14,7 @@
  */
 import { sendSmsSafe } from "@/lib/sms/send";
 import { formatMoney } from "@/lib/format/currency";
-import type { OrderNotificationEvent } from "@/lib/orders/order-confirmation-email";
+import type { OrderNotificationEvent } from "@/lib/orders/order-notification-event";
 import type { CustomerOrderView } from "@/lib/orders/order-view";
 import { orderTrackingPath } from "@/lib/orders/tracking-link";
 import { publicOrigin } from "@/lib/seo/public-origin";

@@ -10,22 +10,38 @@
  *    keeps this from re-firing on every later edit while it stays
  *    Processing).
  *
+ * Every send carries the PDF invoice as an attachment, stamped PAID or
+ * UNPAID to match the order's actual payment status at send time — a COD
+ * order re-sent after later being paid would otherwise still say UNPAID,
+ * but each event builds this fresh from the current order/payment row, not
+ * from anything cached.
+ *
  * Sent from the dedicated orders mailbox rather than whatever address is
  * configured in Admin -> SMTP Settings, so replies land somewhere staff
  * actually read order mail from. sendMail's `from` override is display-only
  * (see its doc comment) — this still goes out over the one SMTP account
  * configured in admin.
  */
-import { sendMailSafe } from "@/lib/mail/send";
+import { sendMail } from "@/lib/mail/send";
 import { formatMoney } from "@/lib/format/currency";
 import type { CustomerOrderView } from "@/lib/orders/order-view";
+import type { OrderNotificationEvent } from "@/lib/orders/order-notification-event";
 import { publicOrigin } from "@/lib/seo/public-origin";
 import { orderTrackingPath } from "@/lib/orders/tracking-link";
+import { renderOrderConfirmationHtml } from "@/lib/orders/order-confirmation-html";
+import { getAdminOrderInvoice } from "@/lib/orders/admin-invoice";
+import {
+  generateInvoiceQrDataUrl,
+  invoiceQrSourceFromInvoice,
+} from "@/lib/orders/invoice-qr";
+import { renderInvoiceHtml } from "@/lib/orders/invoice-html";
+import { renderInvoicePdf } from "@/lib/orders/invoice-pdf";
+import { getStorefrontBranding } from "@/lib/business/storefront-branding";
+
+export type { OrderNotificationEvent } from "@/lib/orders/order-notification-event";
 
 const ORDERS_FROM_ADDRESS = "orders@technohouse.com.bd";
 const ORDERS_FROM_NAME = "Techno House Orders";
-
-export type OrderNotificationEvent = "placed" | "confirmed";
 
 function buildOrderConfirmationText(
   order: CustomerOrderView,
@@ -81,9 +97,64 @@ function buildOrderConfirmationText(
     `Track your order: ${publicOrigin()}${orderTrackingPath(order.number)}`,
   );
   parts.push("");
+  parts.push("The invoice is attached as a PDF.");
+  parts.push("");
   parts.push("— Techno House");
 
   return parts.join("\n");
+}
+
+/** Builds the PDF invoice attachment. Returns null (never throws) so a
+ * PDF/rendering problem degrades to a plain email instead of no email. */
+async function buildInvoiceAttachment(
+  orderNumber: string,
+): Promise<{ filename: string; content: Buffer } | null> {
+  try {
+    const invoice = await getAdminOrderInvoice(orderNumber);
+    if (!invoice) {
+      return null;
+    }
+    const qrDataUrl = await generateInvoiceQrDataUrl(
+      invoiceQrSourceFromInvoice(invoice),
+    );
+    const html = renderInvoiceHtml(invoice, qrDataUrl, {
+      paid: invoice.paymentStatus === "Paid",
+    });
+    const pdf = await renderInvoicePdf(html);
+    return { filename: `invoice-${invoice.number}.pdf`, content: pdf };
+  } catch {
+    return null;
+  }
+}
+
+async function sendOrderConfirmationMail(
+  order: CustomerOrderView,
+  event: OrderNotificationEvent,
+): Promise<void> {
+  const [attachment, branding] = await Promise.all([
+    buildInvoiceAttachment(order.number),
+    getStorefrontBranding(),
+  ]);
+  const trackUrl = `${publicOrigin()}${orderTrackingPath(order.number)}`;
+  const subject =
+    event === "confirmed"
+      ? `Order confirmed — ${order.number}`
+      : `Order received — ${order.number}`;
+
+  await sendMail({
+    to: order.customerEmail,
+    subject,
+    text: buildOrderConfirmationText(order, event),
+    html: renderOrderConfirmationHtml(
+      order,
+      event,
+      trackUrl,
+      branding.storeName,
+      branding.logoSrc ? `${publicOrigin()}${branding.logoSrc}` : null,
+    ),
+    attachments: attachment ? [attachment] : undefined,
+    from: { address: ORDERS_FROM_ADDRESS, name: ORDERS_FROM_NAME },
+  });
 }
 
 /** Fire-and-forget, same as every other post-checkout/order-update side
@@ -96,14 +167,7 @@ export function sendCustomerOrderConfirmationSafe(
   if (!order.customerEmail.trim()) {
     return;
   }
-  const subject =
-    event === "confirmed"
-      ? `Order confirmed — ${order.number}`
-      : `Order received — ${order.number}`;
-  sendMailSafe({
-    to: order.customerEmail,
-    subject,
-    text: buildOrderConfirmationText(order, event),
-    from: { address: ORDERS_FROM_ADDRESS, name: ORDERS_FROM_NAME },
+  void sendOrderConfirmationMail(order, event).catch(() => {
+    // Delivery failures must not affect the calling mutation.
   });
 }

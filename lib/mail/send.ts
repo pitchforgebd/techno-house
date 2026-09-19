@@ -14,6 +14,10 @@ export async function sendMail(input: {
   to: string;
   subject: string;
   text: string;
+  /** Optional rich body. Most clients prefer this over `text` when both are
+   * present; `text` still matters as the plain-text fallback. */
+  html?: string;
+  attachments?: { filename: string; content: Buffer }[];
   /**
    * Overrides the Admin-configured from address for this message only — the
    * SMTP connection still authenticates as the one configured account
@@ -58,6 +62,8 @@ export async function sendMail(input: {
       to: input.to,
       subject: input.subject,
       text: input.text,
+      html: input.html,
+      attachments: input.attachments,
     });
     return { ok: true };
   } catch (error) {
