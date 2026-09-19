@@ -85,7 +85,7 @@ export function HeaderSearchForm({
   return (
     <div
       ref={containerRef}
-      className="relative min-w-0"
+      className={cn("relative min-w-0", className)}
       onBlur={(event) => {
         if (
           event.relatedTarget &&
@@ -101,11 +101,7 @@ export function HeaderSearchForm({
         method="get"
         role="search"
         autoComplete="off"
-        className={cn(
-          "flex min-w-0 overflow-hidden rounded-sm bg-surface",
-          "focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus",
-          className,
-        )}
+        className="flex min-w-0 overflow-hidden rounded-sm bg-surface focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus"
       >
         <label htmlFor={id} className="sr-only">
           Search products
