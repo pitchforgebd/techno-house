@@ -61,6 +61,12 @@ export async function removeTodaysDealProductAction(
   return setTodaysDealFlagAction({ productIds: [productId], on: false });
 }
 
+export async function bulkRemoveTodaysDealProductsAction(
+  productIds: string[],
+): Promise<DealMutationResult> {
+  return setTodaysDealFlagAction({ productIds, on: false });
+}
+
 export async function setTodaysDealProductFlagAction(
   productId: string,
   on: boolean,

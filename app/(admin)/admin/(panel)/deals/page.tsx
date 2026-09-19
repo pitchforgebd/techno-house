@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import {
   assignTodaysDealProductsAction,
+  bulkRemoveTodaysDealProductsAction,
   removeTodaysDealProductAction,
-  setTodaysDealFlagAction,
   setTodaysDealProductFlagAction,
 } from "@/features/admin/deals/deal-actions";
 import { AdminPromoProductChannelList } from "@/features/admin/marketing/admin-promo-product-channel-list";
@@ -43,7 +43,7 @@ export default async function AdminDealsPage() {
       persist={{
         assign: assignTodaysDealProductsAction,
         remove: removeTodaysDealProductAction,
-        bulkRemove: (ids) => setTodaysDealFlagAction({ productIds: ids, on: false }),
+        bulkRemove: bulkRemoveTodaysDealProductsAction,
         setFlag: setTodaysDealProductFlagAction,
       }}
     />
