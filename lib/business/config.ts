@@ -20,6 +20,7 @@ import {
   STORE_NAME_MAX,
   TAX_ID_MAX,
   normalizeBusinessTimezone,
+  normalizeGoogleMapsUrl,
   normalizeOptionalText,
   normalizeStoreName,
   normalizeSupportEmail,
@@ -51,6 +52,7 @@ const EMPTY_ADMIN: AdminBusinessSettings = {
   city: DEFAULT_BUSINESS_SETTINGS.city,
   timezone: "Asia/Dhaka",
   taxId: DEFAULT_BUSINESS_SETTINGS.taxId,
+  googleMapsUrl: "",
   logoSrc: "",
   logoHeightPx: LOGO_HEIGHT_DEFAULT,
   faviconSrc: "",
@@ -74,6 +76,7 @@ function toAdmin(row: {
   city: string | null;
   timezone: string;
   taxId: string | null;
+  googleMapsUrl: string | null;
   logoSrc: string | null;
   logoHeightPx: number;
   faviconSrc: string | null;
@@ -90,6 +93,7 @@ function toAdmin(row: {
       (normalizeBusinessTimezone(row.timezone) as BusinessTimezone) ??
       "Asia/Dhaka",
     taxId: row.taxId ?? "",
+    googleMapsUrl: row.googleMapsUrl ?? "",
     logoSrc: row.logoSrc ?? "",
     logoHeightPx: clampLogoHeight(row.logoHeightPx),
     faviconSrc: row.faviconSrc ?? "",
@@ -112,6 +116,7 @@ export async function getAdminBusinessSettings(): Promise<AdminBusinessSettings>
       city: true,
       timezone: true,
       taxId: true,
+      googleMapsUrl: true,
       logoSrc: true,
       logoHeightPx: true,
       faviconSrc: true,
@@ -133,6 +138,7 @@ export async function saveBusinessSettings(input: {
   city: string;
   timezone: string;
   taxId: string;
+  googleMapsUrl: string;
   actor?: BusinessActor;
 }): Promise<BusinessMutationResult> {
   if (!usesDatabase()) {
@@ -173,6 +179,10 @@ export async function saveBusinessSettings(input: {
   if (taxId == null) {
     return fail(`Tax / BIN ID must be ${TAX_ID_MAX} characters or fewer.`);
   }
+  const googleMapsUrl = normalizeGoogleMapsUrl(input.googleMapsUrl);
+  if (googleMapsUrl == null) {
+    return fail("Enter a valid http(s) Google Maps link, or leave it blank.");
+  }
 
   const row = await getPrisma().siteSettings.upsert({
     where: { id: "singleton" },
@@ -186,6 +196,7 @@ export async function saveBusinessSettings(input: {
       city: city || null,
       timezone,
       taxId: taxId || null,
+      googleMapsUrl: googleMapsUrl || null,
     },
     update: {
       storeName,
@@ -196,6 +207,7 @@ export async function saveBusinessSettings(input: {
       city: city || null,
       timezone,
       taxId: taxId || null,
+      googleMapsUrl: googleMapsUrl || null,
     },
     select: { id: true },
   });

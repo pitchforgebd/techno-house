@@ -5,6 +5,7 @@ import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/auth/audit-log";
 import {
   defaultFooterWidgetsConfig,
   FOOTER_SOCIAL_NETWORKS,
+  type FooterExtraContact,
   type FooterNavColumn,
   type FooterNavLink,
   type FooterSocialItem,
@@ -40,6 +41,9 @@ const TEXT_MAX = 1000;
 const COLUMN_MAX = 6;
 const LINKS_PER_COLUMN_MAX = 20;
 const SOCIAL_MAX = 8;
+const EXTRA_CONTACTS_MAX = 10;
+const PHONE_MAX = 40;
+const EMAIL_MAX = 120;
 
 function fail(formError: string): FooterMutationResult {
   return { ok: false, formError };
@@ -133,6 +137,39 @@ function sanitizeSocial(raw: unknown): FooterSocialItem | null {
   };
 }
 
+function sanitizeExtraContact(raw: unknown): FooterExtraContact | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const row = raw as Record<string, unknown>;
+  const label = String(row.label ?? "")
+    .replace(/[<>]/g, "")
+    .trim()
+    .slice(0, LABEL_MAX);
+  const address = String(row.address ?? "")
+    .replace(/[<>]/g, "")
+    .trim()
+    .slice(0, TEXT_MAX);
+  const phone = String(row.phone ?? "")
+    .replace(/[<>]/g, "")
+    .trim()
+    .slice(0, PHONE_MAX);
+  const email = String(row.email ?? "")
+    .trim()
+    .toLowerCase()
+    .slice(0, EMAIL_MAX);
+  if (!label && !address && !phone && !email) {
+    return null;
+  }
+  return {
+    id: String(row.id ?? "").trim() || newId("contact"),
+    label,
+    address,
+    phone,
+    email,
+  };
+}
+
 function sanitizePublicPath(raw: string): string {
   const value = raw.trim().slice(0, 300);
   if (!value) {
@@ -162,6 +199,12 @@ export function parseFooterWidgetsConfig(raw: unknown): FooterWidgetsConfig {
         .filter((item): item is FooterSocialItem => Boolean(item))
         .slice(0, SOCIAL_MAX)
     : defaults.socialLinks;
+  const extraContacts = Array.isArray(row.extraContacts)
+    ? row.extraContacts
+        .map(sanitizeExtraContact)
+        .filter((item): item is FooterExtraContact => Boolean(item))
+        .slice(0, EXTRA_CONTACTS_MAX)
+    : defaults.extraContacts;
 
   return {
     aboutDescription: String(row.aboutDescription ?? defaults.aboutDescription)
@@ -175,6 +218,7 @@ export function parseFooterWidgetsConfig(raw: unknown): FooterWidgetsConfig {
       .replace(/[<>]/g, "")
       .trim()
       .slice(0, 120),
+    extraContacts,
     showContactFormLink: row.showContactFormLink !== false,
     showCtaButtons: row.showCtaButtons !== false,
     showNewsletter: row.showNewsletter !== false,

@@ -21,6 +21,7 @@ export async function saveBusinessSettingsAction(input: {
   city: string;
   timezone: string;
   taxId: string;
+  googleMapsUrl: string;
 }): Promise<BusinessMutationResult> {
   if (!(await isSameOriginRequest())) {
     return { ok: false, formError: CROSS_ORIGIN_ERROR };

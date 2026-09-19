@@ -12,6 +12,7 @@ export const PHONE_MAX = 40;
 export const ADDRESS_MAX = 240;
 export const CITY_MAX = 80;
 export const TAX_ID_MAX = 64;
+export const GOOGLE_MAPS_URL_MAX = 500;
 
 export type AdminBusinessSettings = {
   storeName: string;
@@ -22,6 +23,7 @@ export type AdminBusinessSettings = {
   city: string;
   timezone: BusinessTimezone;
   taxId: string;
+  googleMapsUrl: string;
   logoSrc: string;
   logoHeightPx: number;
   faviconSrc: string;
@@ -59,6 +61,26 @@ export function normalizeSupportEmail(raw: string): string | null {
     return null;
   }
   if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(value)) {
+    return null;
+  }
+  return value;
+}
+
+/** Empty is allowed (map hidden); anything set must be an http(s) URL. */
+export function normalizeGoogleMapsUrl(raw: string): string | null {
+  const value = stripControlChars(raw);
+  if (!value) {
+    return "";
+  }
+  if (value.length > GOOGLE_MAPS_URL_MAX) {
+    return null;
+  }
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+  } catch {
     return null;
   }
   return value;

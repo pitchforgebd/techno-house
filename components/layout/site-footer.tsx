@@ -15,6 +15,7 @@ import {
   formatFooterCopyright,
   getFooterWidgetsConfig,
 } from "@/lib/content/footer-settings";
+import { googleMapsEmbedSrc } from "@/lib/content/google-maps";
 import { logoStyle } from "@/lib/business/logo-size";
 import { cn } from "@/lib/cn";
 
@@ -55,6 +56,7 @@ export async function SiteFooter() {
     getFooterWidgetsConfig(),
   ]);
   const logoSrc = resolveChromeLogo(branding);
+  const mapEmbedSrc = googleMapsEmbedSrc(branding.googleMapsUrl);
   const year = new Date().getFullYear();
   const copyrightLines = formatFooterCopyright(footer.copyrightText, {
     year,
@@ -297,6 +299,69 @@ export async function SiteFooter() {
                   Contact form
                 </Link>
               </p>
+            ) : null}
+
+            {footer.extraContacts.map((item) => (
+              <p key={item.id} className="flex items-start gap-3">
+                <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-footer-text/10 text-primary-soft">
+                  <IconMapPin className="size-4" />
+                </span>
+                <span className="leading-relaxed">
+                  {item.label ? (
+                    <span className="font-semibold text-footer-text">
+                      {item.label}
+                      <br />
+                    </span>
+                  ) : null}
+                  {item.address}
+                  {item.phone ? (
+                    <>
+                      <br />
+                      <a href={`tel:${item.phone.replace(/[^\d+]/g, "")}`} className={accentTextClass}>
+                        {item.phone}
+                      </a>
+                    </>
+                  ) : null}
+                  {item.email ? (
+                    <>
+                      <br />
+                      <a
+                        href={`mailto:${item.email}`}
+                        className={cn("break-all", accentTextClass)}
+                      >
+                        {item.email}
+                      </a>
+                    </>
+                  ) : null}
+                </span>
+              </p>
+            ))}
+
+            {branding.googleMapsUrl ? (
+              <div className="pt-1">
+                {mapEmbedSrc ? (
+                  <div className="overflow-hidden rounded-md border border-footer-text/15">
+                    <iframe
+                      src={mapEmbedSrc}
+                      title={`${branding.storeName} location`}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className="h-40 w-full border-0"
+                    />
+                  </div>
+                ) : null}
+                <a
+                  href={branding.googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "mt-2 inline-flex items-center gap-2",
+                    accentTextClass,
+                  )}
+                >
+                  View on Google Maps
+                </a>
+              </div>
             ) : null}
           </div>
         </div>

@@ -1751,6 +1751,9 @@ model SiteSettings {
   phone          String?
   address        String?
   city           String?
+  /// Google Maps share/embed link, shown in the storefront footer below the
+  /// contact block.
+  googleMapsUrl  String?
   timezone       String   @default("Asia/Dhaka")
   taxId          String?
   /// Public path for the store logo (e.g. `/uploads/general/...`). One logo:

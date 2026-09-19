@@ -23,6 +23,7 @@ import {
 import { saveBrandContactAction } from "@/features/admin/settings/branding-actions";
 import {
   FOOTER_SOCIAL_NETWORKS,
+  type FooterExtraContact,
   type FooterNavColumn,
   type FooterSocialItem,
   type FooterSocialNetwork,
@@ -399,6 +400,102 @@ export function AdminStudioFooterWidgetsPage({
           />
           Show contact form link
         </label>
+
+        <div className="space-y-3 border-t border-neutral-100 pt-4">
+          <p className="text-xs text-neutral-500">
+            Extra branches/offices shown below the main contact block in the
+            footer. Each one can set an address, phone, and email — leave any
+            field blank to skip it.
+          </p>
+          {config.extraContacts.map((item, index) => (
+            <div
+              key={item.id}
+              className="space-y-2 rounded-md border border-neutral-200 p-3"
+            >
+              <div className="flex items-center gap-2">
+                <Input
+                  value={item.label}
+                  onChange={(e) => {
+                    const next = [...config.extraContacts];
+                    next[index] = { ...item, label: e.target.value };
+                    patch({ extraContacts: next });
+                  }}
+                  placeholder="Branch name (optional)"
+                  className={controlClass}
+                  disabled={pending}
+                />
+                <button
+                  type="button"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                  aria-label="Remove branch"
+                  disabled={pending}
+                  onClick={() =>
+                    patch({
+                      extraContacts: config.extraContacts.filter(
+                        (row) => row.id !== item.id,
+                      ),
+                    })
+                  }
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
+              </div>
+              <Input
+                value={item.address}
+                onChange={(e) => {
+                  const next = [...config.extraContacts];
+                  next[index] = { ...item, address: e.target.value };
+                  patch({ extraContacts: next });
+                }}
+                placeholder="Address"
+                className={controlClass}
+                disabled={pending}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  value={item.phone}
+                  onChange={(e) => {
+                    const next = [...config.extraContacts];
+                    next[index] = { ...item, phone: e.target.value };
+                    patch({ extraContacts: next });
+                  }}
+                  placeholder="Phone"
+                  className={controlClass}
+                  disabled={pending}
+                />
+                <Input
+                  value={item.email}
+                  onChange={(e) => {
+                    const next = [...config.extraContacts];
+                    next[index] = { ...item, email: e.target.value };
+                    patch({ extraContacts: next });
+                  }}
+                  placeholder="Email"
+                  className={controlClass}
+                  disabled={pending}
+                />
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            disabled={pending || config.extraContacts.length >= 10}
+            onClick={() => {
+              const row: FooterExtraContact = {
+                id: newId("contact"),
+                label: "",
+                address: "",
+                phone: "",
+                email: "",
+              };
+              patch({ extraContacts: [...config.extraContacts, row] });
+            }}
+          >
+            <Plus className="size-4" aria-hidden />
+            Add another address
+          </button>
+        </div>
       </StudioCard>
 
       <StudioCard title="Footer modules" onUpdate={() => saveConfig()}>

@@ -17,6 +17,9 @@ export type StorefrontBranding = {
   emailHref: string;
   address: string;
   city: string;
+  /** Google Maps share/embed link (Business Settings → General). Empty hides
+   * the footer's location map. */
+  googleMapsUrl: string;
   /** Logo for dark header/footer bars. */
   /** Logo for light surfaces. */
   logoSrc: string | null;
@@ -50,6 +53,7 @@ export function defaultStorefrontBranding(): StorefrontBranding {
     emailHref: emailToHref(email),
     address: DEFAULT_BUSINESS_SETTINGS.address,
     city: DEFAULT_BUSINESS_SETTINGS.city,
+    googleMapsUrl: "",
     logoSrc: null,
     faviconSrc: null,
     logoHeightPx: LOGO_HEIGHT_DEFAULT,
@@ -69,6 +73,7 @@ export async function getStorefrontBranding(): Promise<StorefrontBranding> {
       phone: true,
       address: true,
       city: true,
+      googleMapsUrl: true,
       logoSrc: true,
       logoHeightPx: true,
       faviconSrc: true,
@@ -87,6 +92,7 @@ export async function getStorefrontBranding(): Promise<StorefrontBranding> {
     emailHref: emailToHref(email),
     address: row.address?.trim() || fallback.address,
     city: row.city?.trim() || fallback.city,
+    googleMapsUrl: row.googleMapsUrl?.trim() || "",
     logoSrc: row.logoSrc?.trim() || null,
     faviconSrc: row.faviconSrc?.trim() || null,
     // Clamped on read as well as on write: this value is also reachable by a

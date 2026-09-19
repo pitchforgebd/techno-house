@@ -126,6 +126,7 @@ export function AdminGeneralSettingsForm({
     city: settings.city,
     timezone: settings.timezone,
     taxId: settings.taxId,
+    googleMapsUrl: settings.googleMapsUrl,
   });
 
   function save() {
@@ -234,6 +235,19 @@ export function AdminGeneralSettingsForm({
             className={controlClass}
             value={form.taxId}
             onChange={(e) => setForm({ ...form, taxId: e.target.value })}
+          />
+        </FieldRow>
+        <FieldRow
+          label="Google Maps link"
+          hint="Paste a Google Maps share or embed link. Shown as a location map in the storefront footer, below the contact details. Leave blank to hide it."
+        >
+          <Input
+            className={controlClass}
+            value={form.googleMapsUrl}
+            onChange={(e) =>
+              setForm({ ...form, googleMapsUrl: e.target.value })
+            }
+            placeholder="https://maps.google.com/..."
           />
         </FieldRow>
       </SetupCard>
