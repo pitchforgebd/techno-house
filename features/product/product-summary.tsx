@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { B2BApplyDialog } from "@/features/b2b/b2b-apply-dialog";
 import { useCartStore } from "@/features/cart/use-cart-store";
 import { useListsStore } from "@/features/lists/use-lists-store";
+import { ProductEmiTooltip } from "@/features/product/product-emi-tooltip";
 import { ProductShareBar } from "@/features/product/product-share-bar";
 import { RatingStars } from "@/features/product/rating-stars";
 import {
@@ -201,11 +202,21 @@ export function ProductSummary({
     retailReference && retailReference.amount > displayPrice.amount
       ? retailReference.amount - displayPrice.amount
       : null;
-  const emiAmount = Math.max(1, Math.round(displayPrice.amount / 12));
-  const emiOfferAmount = Math.max(1, Math.round(displayPrice.amount / 11));
+  // One monthly figure per configured tenure, longest first — the longest
+  // tenure is the smallest monthly, which is the figure quoted in the buy
+  // box ("EMI ৳X/month") and the one a shopper compares on. This used to
+  // divide by a hardcoded 12 (and, for the offer box, by 11) regardless of
+  // what the admin had actually configured.
+  const emiPlans = [...emiConfig.tenureMonths]
+    .sort((left, right) => right - left)
+    .map((months) => ({
+      months,
+      monthly: Math.max(1, Math.round(displayPrice.amount / months)),
+    }));
+  const emiLowestMonthly = emiPlans[0]?.monthly ?? 0;
   const emiVisible =
     emiConfig.enabled &&
-    emiConfig.tenureMonths.length > 0 &&
+    emiPlans.length > 0 &&
     displayPrice.amount >= emiConfig.minOrderAmount;
 
   if (minApplied !== minQuantity) {
@@ -329,14 +340,17 @@ export function ProductSummary({
           ) : null}
 
           {emiVisible ? (
-            <p className="text-caption font-semibold tabular-nums text-text">
-              EMI {formatMoney({ amount: emiAmount })}/month
-              <span className="font-normal text-text-muted">
-                {emiConfig.tenureMonths.length > 0
-                  ? ` for ${Math.min(...emiConfig.tenureMonths)}–${Math.max(...emiConfig.tenureMonths)} months`
-                  : ""}
-                {emiConfig.partnerName ? ` via ${emiConfig.partnerName}` : ""}
-              </span>
+            <p className="flex flex-wrap items-baseline gap-x-2">
+              <ProductEmiTooltip
+                label={`EMI ${formatMoney({ amount: emiLowestMonthly })}/month`}
+                plans={emiPlans}
+                note={emiConfig.interestNote || undefined}
+              />
+              {emiConfig.partnerName ? (
+                <span className="text-caption text-text-muted">
+                  via {emiConfig.partnerName}
+                </span>
+              ) : null}
             </p>
           ) : null}
 
@@ -632,10 +646,10 @@ export function ProductSummary({
             </div>
             <div className="rounded-lg border border-primary/25 bg-primary-soft/60 px-3.5 py-3">
               <p className="text-label font-semibold tabular-nums text-text">
-                From {formatMoney({ amount: emiOfferAmount })}/month
+                From {formatMoney({ amount: emiLowestMonthly })}/month
               </p>
               <p className="mt-1 text-caption text-text-muted">
-                {emiConfig.tenureMonths.map((m) => `${m} months`).join(" · ")}
+                {emiPlans.map((plan) => `${plan.months} months`).join(" · ")}
               </p>
             </div>
           </div>
