@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { PackageCheck, Zap } from "lucide-react";
+import { PcBuilderStatusRow } from "@/features/pc-builder/pc-builder-status-row";
 import type {
   BuildPowerSummary,
   BuildPricingSummary,
@@ -55,58 +56,59 @@ function powerCopy(power: BuildPowerSummary): string {
 
 export function PcBuilderPricing({
   filledCount,
-  pricing,
   stock,
   power,
 }: {
   filledCount: number;
-  pricing: BuildPricingSummary;
   stock: BuildStockSummary;
   power: BuildPowerSummary;
 }) {
-  const totalLabel =
+  return (
+    <>
+      <PcBuilderStatusRow
+        icon={PackageCheck}
+        label="Stock"
+        tone={
+          filledCount === 0
+            ? "neutral"
+            : stock.anyOutOfStock
+              ? "danger"
+              : stock.allAvailable
+                ? "success"
+                : "neutral"
+        }
+      >
+        {stockCopy(stock, filledCount)}
+      </PcBuilderStatusRow>
+
+      <PcBuilderStatusRow icon={Zap} label="Power estimate">
+        {filledCount === 0
+          ? "Select a CPU, GPU, and PSU to estimate draw."
+          : powerCopy(power)}
+      </PcBuilderStatusRow>
+    </>
+  );
+}
+
+/** The headline figure at the top of the build summary. */
+export function PcBuilderTotal({ pricing }: { pricing: BuildPricingSummary }) {
+  const label =
     pricing.missingPriceCount > 0 && pricing.pricedCount > 0
       ? "Partial total"
       : "Estimated total";
 
   return (
-    <>
-      <dl className="space-y-2 text-body">
-        <div className="flex justify-between gap-3 border-t border-border pt-2">
-          <dt className="font-semibold text-text">{totalLabel}</dt>
-          <dd className="tabular-nums text-label font-semibold text-text">
-            {formatMoney({ amount: pricing.subtotal })}
-          </dd>
-        </div>
-        {pricing.missingPriceCount > 0 ? (
-          <p className="text-caption text-text-muted">
-            {pricing.missingPriceCount} selected part
-            {pricing.missingPriceCount === 1 ? "" : "s"} missing a price.
-          </p>
-        ) : null}
-      </dl>
-
-      <div className="flex gap-2.5 rounded-md border border-border bg-surface-muted/60 px-3 py-2.5">
-        <PackageCheck className="mt-0.5 size-4 shrink-0 text-text-muted" aria-hidden />
-        <div>
-          <p className="text-caption font-medium text-text">Stock</p>
-          <p className="mt-0.5 text-caption text-text-muted">
-            {stockCopy(stock, filledCount)}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex gap-2.5 rounded-md border border-border bg-surface-muted/60 px-3 py-2.5">
-        <Zap className="mt-0.5 size-4 shrink-0 text-text-muted" aria-hidden />
-        <div>
-          <p className="text-caption font-medium text-text">Power estimate</p>
-          <p className="mt-0.5 text-caption text-text-muted">
-            {filledCount === 0
-              ? "Select a CPU, GPU, and PSU to estimate draw."
-              : powerCopy(power)}
-          </p>
-        </div>
-      </div>
-    </>
+    <div className="rounded-md bg-primary-soft/60 px-3 py-3 ring-1 ring-primary/10">
+      <p className="text-caption font-medium text-text-muted">{label}</p>
+      <p className="mt-0.5 tabular-nums text-2xl font-bold tracking-tight text-text">
+        {formatMoney({ amount: pricing.subtotal })}
+      </p>
+      {pricing.missingPriceCount > 0 ? (
+        <p className="mt-1 text-caption text-text-muted">
+          {pricing.missingPriceCount} part
+          {pricing.missingPriceCount === 1 ? "" : "s"} missing a price.
+        </p>
+      ) : null}
+    </div>
   );
 }

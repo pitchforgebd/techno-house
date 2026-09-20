@@ -13,9 +13,14 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 /** Downloadable quote PDF for a shared build — same lookup as the share
  * page itself (`/pc-builder/share/[id]`), just rendered to PDF instead
- * of HTML. Anyone with the share link can generate this, same as the page. */
-export async function GET(_request: Request, { params }: RouteParams) {
+ * of HTML. Anyone with the share link can generate this, same as the page.
+ *
+ * `?inline=1` serves it for display instead of download, which is what the
+ * Print buttons open: printing this quote gives a clean parts list, where
+ * printing the builder page itself would carry the site header and footer. */
+export async function GET(request: Request, { params }: RouteParams) {
   const { id } = await params;
+  const inline = new URL(request.url).searchParams.get("inline") === "1";
   const shared = await getPublicSharedBuild(id);
   if (!shared) {
     return NextResponse.json(
@@ -82,7 +87,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename || "pc-builder-quote.pdf"}"`,
+      "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${filename || "pc-builder-quote.pdf"}"`,
       "Cache-Control": "no-store",
     },
   });

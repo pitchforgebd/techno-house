@@ -1,6 +1,8 @@
 ﻿"use client";
 
+import { ShieldAlert, ShieldCheck } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
+import { PcBuilderStatusRow } from "@/features/pc-builder/pc-builder-status-row";
 import type {
   CompatibilityResult,
   CompatibilityWarning,
@@ -37,51 +39,43 @@ export function PcBuilderCompatibility({
 }) {
   if (filledCount === 0) {
     return (
-      <div className="rounded-md border border-border bg-surface-muted/60 px-3 py-2">
-        <p className="text-caption font-medium text-text">Compatibility</p>
-        <p className="mt-0.5 text-caption text-text-muted">
-          Select parts to run socket, memory, form-factor, PSU, and storage
-          checks. Missing data never shows as compatible.
-        </p>
-      </div>
+      <PcBuilderStatusRow icon={ShieldCheck} label="Compatibility">
+        Select parts to run socket, memory, form-factor, PSU, and storage
+        checks.
+      </PcBuilderStatusRow>
     );
   }
 
   if (!result) {
     return (
-      <div className="rounded-md border border-border bg-surface-muted/60 px-3 py-2">
-        <p className="text-caption font-medium text-text">Compatibility</p>
-        <p className="mt-0.5 text-caption text-text-muted">
-          Checking selected parts…
-        </p>
-      </div>
+      <PcBuilderStatusRow icon={ShieldCheck} label="Compatibility">
+        Checking selected parts…
+      </PcBuilderStatusRow>
     );
   }
 
   const { warnings, checkedOk, hasIncompatible, hasUnknown } = result;
 
   return (
-    <div className="space-y-2" aria-labelledby="pc-builder-compat-heading">
-      <div className="rounded-md border border-border bg-surface-muted/60 px-3 py-2">
-        <p
-          id="pc-builder-compat-heading"
-          className="text-caption font-medium text-text"
-        >
-          Compatibility
-        </p>
-        <p className="mt-0.5 text-caption text-text-muted">
-          {hasIncompatible
-            ? "One or more checks failed. Review the notes below."
-            : hasUnknown
-              ? "No hard conflicts found, but some checks need more product data."
-              : checkedOk > 0
-                ? `${checkedOk} check${checkedOk === 1 ? "" : "s"} passed with available data.`
-                : "Not enough paired parts yet for a compatibility check."}
-        </p>
-      </div>
+    <div className="space-y-2">
+      <PcBuilderStatusRow
+        icon={hasIncompatible ? ShieldAlert : ShieldCheck}
+        label="Compatibility"
+        tone={
+          hasIncompatible ? "danger" : hasUnknown ? "warning" : checkedOk > 0 ? "success" : "neutral"
+        }
+      >
+        {hasIncompatible
+          ? "One or more checks failed. Review the notes below."
+          : hasUnknown
+            ? "No hard conflicts found, but some checks need more product data."
+            : checkedOk > 0
+              ? `${checkedOk} check${checkedOk === 1 ? "" : "s"} passed with available data.`
+              : "Not enough paired parts yet for a compatibility check."}
+      </PcBuilderStatusRow>
 
       {warnings.length > 0 ? (
-        <ul className="space-y-2">
+        <ul className="space-y-2 px-3 pb-1">
           {warnings.map((warning) => (
             <li key={`${warning.code}-${warning.message}`}>
               <Alert

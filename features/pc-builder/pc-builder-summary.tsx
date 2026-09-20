@@ -1,14 +1,20 @@
 ﻿"use client";
 
+import { useMemo } from "react";
 import { Alert } from "@/components/ui/alert";
 import { buttonClassName } from "@/components/ui/button";
 import { PcBuilderAddToCart } from "@/features/pc-builder/pc-builder-add-to-cart";
+import { PcBuilderBuildActions } from "@/features/pc-builder/pc-builder-build-actions";
 import { PcBuilderCompatibility } from "@/features/pc-builder/pc-builder-compatibility";
-import { PcBuilderPricing } from "@/features/pc-builder/pc-builder-pricing";
+import {
+  PcBuilderPricing,
+  PcBuilderTotal,
+} from "@/features/pc-builder/pc-builder-pricing";
 import { PcBuilderSaveShare } from "@/features/pc-builder/pc-builder-save-share";
 import type { ProductSummary } from "@/lib/data";
 import {
   countFilledSlots,
+  sharePathForSelection,
   type BuilderSlotMeta,
   type BuildPowerSummary,
   type BuildPricingSummary,
@@ -46,51 +52,53 @@ export function PcBuilderSummary({
   slots: readonly BuilderSlotMeta[];
 }) {
   const counts = countFilledSlots(selection, slots);
+  // Encodes the parts into the URL itself, so Download/Print/Share work for
+  // a guest without saving the build first.
+  const sharePath = useMemo(
+    () => sharePathForSelection(selection),
+    [selection],
+  );
 
   return (
     <aside
       className="h-fit space-y-4 rounded-md border border-border bg-surface p-4 shadow-sm lg:sticky lg:top-4"
       aria-labelledby="pc-builder-summary-heading"
     >
-      <div>
-        <h2
-          id="pc-builder-summary-heading"
-          className="text-label font-semibold text-text"
-        >
-          Build summary
-        </h2>
-        <p className="mt-1 text-caption text-text-muted">
-          Prices, stock, and compatibility are checked on the server. Adding a
-          build writes the cart after a second server check.
-        </p>
-      </div>
+      <h2
+        id="pc-builder-summary-heading"
+        className="text-label font-semibold text-text"
+      >
+        Build summary
+      </h2>
 
-      <dl className="space-y-2 text-body">
-        <div className="flex justify-between gap-3">
-          <dt className="text-text-muted">Parts selected</dt>
-          <dd className="tabular-nums font-medium text-text">
+      <PcBuilderTotal pricing={pricing} />
+
+      <dl className="grid grid-cols-2 gap-2">
+        <div className="rounded-md border border-border px-3 py-2">
+          <dt className="text-caption text-text-muted">Parts</dt>
+          <dd className="tabular-nums text-label font-semibold text-text">
             {counts.filled} / {counts.total}
           </dd>
         </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-text-muted">Required slots</dt>
-          <dd className="tabular-nums text-text">
+        <div className="rounded-md border border-border px-3 py-2">
+          <dt className="text-caption text-text-muted">Required</dt>
+          <dd className="tabular-nums text-label font-semibold text-text">
             {counts.requiredFilled} / {counts.requiredTotal}
           </dd>
         </div>
       </dl>
 
-      <PcBuilderPricing
-        filledCount={counts.filled}
-        pricing={pricing}
-        stock={stock}
-        power={power}
-      />
-
-      <PcBuilderCompatibility
-        result={compatibility}
-        filledCount={counts.filled}
-      />
+      <div className="divide-y divide-border rounded-md border border-border">
+        <PcBuilderPricing
+          filledCount={counts.filled}
+          stock={stock}
+          power={power}
+        />
+        <PcBuilderCompatibility
+          result={compatibility}
+          filledCount={counts.filled}
+        />
+      </div>
 
       {issues.length > 0 ? (
         <ul className="space-y-2">
@@ -103,14 +111,6 @@ export function PcBuilderSummary({
           ))}
         </ul>
       ) : null}
-
-      <Alert tone="info" title="Server-checked cart">
-        <p className="text-caption">
-          Add build rechecks required slots, stock, and compatibility on the
-          server, then writes each part through the normal cart. Checkout still
-          recalculates prices.
-        </p>
-      </Alert>
 
       {loadError ? (
         <Alert tone="warning" title="Refresh issue">
@@ -126,6 +126,10 @@ export function PcBuilderSummary({
           compatibility={compatibility}
           issues={issues}
           slots={slots}
+        />
+        <PcBuilderBuildActions
+          sharePath={sharePath}
+          buildName="My PC build"
         />
         <PcBuilderSaveShare
           selection={selection}
@@ -143,6 +147,11 @@ export function PcBuilderSummary({
           Clear all parts
         </button>
       </div>
+
+      <p className="text-caption text-text-muted">
+        Stock, compatibility, and prices are re-checked on the server when you
+        add the build to cart.
+      </p>
     </aside>
   );
 }
