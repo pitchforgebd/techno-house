@@ -20,6 +20,7 @@ export default async function PcBuilderSharePage({ params }: PageProps) {
 
   return (
     <PcBuilderShareView
+      id={id}
       name={shared?.name ?? null}
       selection={shared?.selection ?? {}}
       valid={shared !== null}

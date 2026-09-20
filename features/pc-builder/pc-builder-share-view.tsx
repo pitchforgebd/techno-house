@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
+import { Download, Printer, Share2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { buttonClassName } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import { useBuilderStore } from "@/features/pc-builder/use-builder-store";
 import type { ProductSummary } from "@/lib/data";
 import {
@@ -18,7 +20,64 @@ import {
 } from "@/lib/domain/pc-builder";
 import { formatMoney } from "@/lib/format/currency";
 
+const shareActionClassName =
+  "flex flex-col items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-3 text-center transition-colors hover:border-primary/40 hover:bg-surface-muted";
+const shareActionLabelClassName = "text-caption font-semibold text-primary";
+
+function BuildShareActions({ id, buildName }: { id: string; buildName: string }) {
+  async function handleShare() {
+    const url = typeof window === "undefined" ? "" : window.location.href;
+    if (!url) {
+      return;
+    }
+    // Native share sheet on mobile/supporting browsers; clipboard copy is
+    // the fallback everywhere else (and when the user cancels the sheet,
+    // most browsers reject the promise rather than resolving — swallow that
+    // silently rather than treating "I changed my mind" as a copy failure).
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: buildName, url });
+        return;
+      } catch {
+        return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      notifySuccess("Link copied");
+    } catch {
+      notifyError({ title: "Could not copy the link" });
+    }
+  }
+
+  return (
+    <div className="print:hidden grid grid-cols-3 gap-2">
+      <a href={`/pc-builder/share/${id}/pdf`} download className={shareActionClassName}>
+        <Download aria-hidden className="size-5 text-text" strokeWidth={1.75} />
+        <span className={shareActionLabelClassName}>Download</span>
+      </a>
+      <button
+        type="button"
+        onClick={() => window.print()}
+        className={shareActionClassName}
+      >
+        <Printer aria-hidden className="size-5 text-text" strokeWidth={1.75} />
+        <span className={shareActionLabelClassName}>Print</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => void handleShare()}
+        className={shareActionClassName}
+      >
+        <Share2 aria-hidden className="size-5 text-text" strokeWidth={1.75} />
+        <span className={shareActionLabelClassName}>Share</span>
+      </button>
+    </div>
+  );
+}
+
 export function PcBuilderShareView({
+  id,
   name,
   selection,
   valid,
@@ -26,6 +85,7 @@ export function PcBuilderShareView({
   pricing,
   issues,
 }: {
+  id: string;
   name?: string | null;
   selection: BuildSelection;
   valid: boolean;
@@ -36,6 +96,7 @@ export function PcBuilderShareView({
   const router = useRouter();
   const { loadSelection } = useBuilderStore();
   const filled = countFilledSlots(selection).filled;
+  const buildName = name?.trim() || "Shared build";
 
   const productsBySlug = useMemo(() => {
     const map = new Map<string, ProductSummary>();
@@ -85,9 +146,7 @@ export function PcBuilderShareView({
         ]}
       />
       <header className="mt-4 max-w-prose">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {name?.trim() || "Shared build"}
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{buildName}</h1>
         <p className="mt-2 text-body text-text-muted">
           Read-only share. Parts only — no account or personal data. Prices come
           from the server. Open in the builder to edit on this device.
@@ -173,9 +232,12 @@ export function PcBuilderShareView({
               {pricing.missingPriceCount === 1 ? "" : "s"} could not be priced.
             </p>
           ) : null}
+
+          <BuildShareActions id={id} buildName={buildName} />
+
           <button
             type="button"
-            className={buttonClassName({ className: "w-full" })}
+            className={buttonClassName({ className: "w-full print:hidden" })}
             onClick={() => {
               loadSelection(selection);
               router.push("/pc-builder");
@@ -187,7 +249,7 @@ export function PcBuilderShareView({
             href="/pc-builder"
             className={buttonClassName({
               variant: "ghost",
-              className: "w-full border border-border",
+              className: "w-full border border-border print:hidden",
             })}
           >
             Back to builder
