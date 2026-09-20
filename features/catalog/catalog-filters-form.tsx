@@ -1,10 +1,17 @@
-﻿import Link from "next/link";
-import { Button, buttonClassName } from "@/components/ui/button";
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useOptimistic, useRef, useTransition } from "react";
+import { buttonClassName } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BRAND_FACET_KEY } from "@/lib/catalog/listing-params";
 import type { Brand, Facet } from "@/lib/data";
 import type { ParsedListingFilters } from "@/lib/catalog/listing-params";
 import { cn } from "@/lib/cn";
+
+/** Typing in a price box shouldn't fire a request per keystroke. */
+const PRICE_DEBOUNCE_MS = 500;
 
 const FACET_LABELS: Record<string, string> = {
   [BRAND_FACET_KEY]: "Brand",
@@ -29,6 +36,53 @@ function facetLabel(key: string): string {
     FACET_LABELS[key] ??
     key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase())
   );
+}
+
+/** The query string the current URL state would produce, in the same shape
+ * the form itself submits — so an in-flight optimistic value and the value
+ * that arrives back from the server are directly comparable. */
+function paramsFromParsed(
+  parsed: ParsedListingFilters,
+  facets: Facet[],
+  preserved: { q?: string },
+  sort?: string,
+): string {
+  const params = new URLSearchParams();
+  if (preserved.q) {
+    params.set("q", preserved.q);
+  }
+  if (sort && sort !== "featured") {
+    params.set("sort", sort);
+  }
+  if (parsed.inStockOnly) {
+    params.set("stock", "1");
+  }
+  if (parsed.minPrice != null) {
+    params.set("minPrice", String(parsed.minPrice));
+  }
+  if (parsed.maxPrice != null) {
+    params.set("maxPrice", String(parsed.maxPrice));
+  }
+  for (const facet of facets) {
+    const values =
+      facet.key === BRAND_FACET_KEY
+        ? parsed.brandSlugs
+        : (parsed.filters[facet.key] ?? []);
+    for (const value of values) {
+      params.append(facet.key, value);
+    }
+  }
+  return params.toString();
+}
+
+function paramsFromForm(form: HTMLFormElement): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of new FormData(form).entries()) {
+    if (typeof value === "string" && value.trim() !== "") {
+      params.append(key, value);
+    }
+  }
+  return params.toString();
 }
 
 export function CatalogFiltersForm({
@@ -56,12 +110,76 @@ export function CatalogFiltersForm({
   compact?: boolean;
 }) {
   const brandNames = new Map(brands.map((brand) => [brand.slug, brand.name]));
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const priceTimer = useRef<number | null>(null);
+
+  const serverParams = paramsFromParsed(parsed, facets, preserved, sort);
+  // Ticks the box immediately instead of waiting for the server round-trip,
+  // and is dropped automatically once the new URL's state arrives — so the
+  // browser's back button stays correct too.
+  const [activeParams, setActiveParams] = useOptimistic(serverParams);
+  const active = new URLSearchParams(activeParams);
+
+  useEffect(
+    () => () => {
+      if (priceTimer.current !== null) {
+        window.clearTimeout(priceTimer.current);
+      }
+    },
+    [],
+  );
+
+  /** No `page` is ever carried over: changing a filter goes back to page 1,
+   * exactly as the old submit button did. */
+  function apply(form: HTMLFormElement) {
+    const next = paramsFromForm(form);
+    startTransition(() => {
+      setActiveParams(next);
+      router.push(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    });
+  }
+
+  function applyNow(form: HTMLFormElement | null) {
+    if (!form) {
+      return;
+    }
+    if (priceTimer.current !== null) {
+      window.clearTimeout(priceTimer.current);
+      priceTimer.current = null;
+    }
+    apply(form);
+  }
+
+  function applyDebounced(form: HTMLFormElement | null) {
+    if (!form) {
+      return;
+    }
+    if (priceTimer.current !== null) {
+      window.clearTimeout(priceTimer.current);
+    }
+    priceTimer.current = window.setTimeout(() => {
+      priceTimer.current = null;
+      apply(form);
+    }, PRICE_DEBOUNCE_MS);
+  }
 
   return (
     <form
+      // Kept as a real GET form so it still submits natively if the click
+      // handler never runs; filtering itself no longer needs a button.
       method="get"
       action={pathname}
-      className={cn("flex flex-col", compact ? "gap-5" : "gap-6")}
+      aria-busy={isPending}
+      className={cn(
+        "flex flex-col transition-opacity",
+        compact ? "gap-5" : "gap-6",
+        isPending && "opacity-60",
+      )}
+      onSubmit={(event) => {
+        event.preventDefault();
+        applyNow(event.currentTarget);
+      }}
     >
       {preserved.q ? (
         <input type="hidden" name="q" value={preserved.q} />
@@ -80,7 +198,8 @@ export function CatalogFiltersForm({
             type="checkbox"
             name="stock"
             value="1"
-            defaultChecked={parsed.inStockOnly}
+            checked={active.get("stock") === "1"}
+            onChange={(event) => applyNow(event.currentTarget.form)}
             className="size-3.5 rounded-sm border-border accent-primary"
           />
           In stock only
@@ -107,6 +226,7 @@ export function CatalogFiltersForm({
               step={1}
               inputMode="numeric"
               defaultValue={parsed.minPrice ?? ""}
+              onChange={(event) => applyDebounced(event.currentTarget.form)}
               className="mt-1 h-9 text-label"
             />
           </div>
@@ -125,6 +245,7 @@ export function CatalogFiltersForm({
               step={1}
               inputMode="numeric"
               defaultValue={parsed.maxPrice ?? ""}
+              onChange={(event) => applyDebounced(event.currentTarget.form)}
               className="mt-1 h-9 text-label"
             />
           </div>
@@ -138,10 +259,6 @@ export function CatalogFiltersForm({
           </legend>
           <ul className="mt-2.5 space-y-2">
             {facet.values.map((entry) => {
-              const selected =
-                facet.key === BRAND_FACET_KEY
-                  ? parsed.brandSlugs.includes(entry.value)
-                  : (parsed.filters[facet.key] ?? []).includes(entry.value);
               const label =
                 facet.key === BRAND_FACET_KEY
                   ? (brandNames.get(entry.value) ?? entry.value)
@@ -153,7 +270,8 @@ export function CatalogFiltersForm({
                       type="checkbox"
                       name={facet.key}
                       value={entry.value}
-                      defaultChecked={selected}
+                      checked={active.getAll(facet.key).includes(entry.value)}
+                      onChange={(event) => applyNow(event.currentTarget.form)}
                       className="mt-0.5 size-3.5 shrink-0 rounded-sm border-border accent-primary"
                     />
                     <span>
@@ -170,19 +288,20 @@ export function CatalogFiltersForm({
         </fieldset>
       ))}
 
-      <div className={cn("flex flex-wrap gap-2", compact && "pt-1")}>
-        <Button type="submit" size="sm" className={cn(compact && "w-full")}>
-          {compact ? "Submit" : "Apply filters"}
-        </Button>
-        {hideReset ? null : (
+      {hideReset ? null : (
+        <div className={cn("flex flex-wrap gap-2", compact && "pt-1")}>
           <Link
             href={resetHref}
-            className={buttonClassName({ variant: "ghost", size: "sm" })}
+            className={buttonClassName({
+              variant: "ghost",
+              size: "sm",
+              className: cn("border border-border", compact && "w-full"),
+            })}
           >
-            Reset
+            Reset filters
           </Link>
-        )}
-      </div>
+        </div>
+      )}
     </form>
   );
 }

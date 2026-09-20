@@ -24,7 +24,18 @@ export function CatalogFiltersMobile({ children }: { children: ReactNode }) {
         title="Filters"
         side="left"
       >
-        <div className="overflow-y-auto pb-8">{children}</div>
+        <div className="overflow-y-auto pb-4">{children}</div>
+        {/* Filters apply as they are ticked, so this only dismisses the
+            drawer — the results behind it are already up to date. */}
+        <div className="sticky bottom-0 -mx-4 -mb-4 border-t border-border bg-surface px-4 py-3">
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() => setOpen(false)}
+          >
+            Show results
+          </Button>
+        </div>
       </Sheet>
     </div>
   );

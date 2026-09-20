@@ -169,20 +169,27 @@ async function categoryTreeSlugs(slug: string): Promise<string[]> {
   return [...slugs];
 }
 
-async function buildWhere(
+/** Which already-applied filter to leave out — see `buildFacets`. */
+type WhereExclusion = { brand?: boolean; attributeKey?: string };
+
+function composeWhere(
   query: ProductListQuery,
-): Promise<Prisma.ProductWhereInput> {
+  categorySlugs: string[] | null,
+  exclude: WhereExclusion = {},
+): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = { isActive: true };
 
-  if (query.categorySlug) {
-    where.category = {
-      slug: { in: await categoryTreeSlugs(query.categorySlug) },
-    };
+  if (categorySlugs) {
+    where.category = { slug: { in: categorySlugs } };
   }
 
+  // `brandSlug` is the brand page itself — page context, not a tick box the
+  // shopper can clear — so it is never excluded. `brandSlugs` is the facet.
   const brandSlugs = query.brandSlug
     ? [query.brandSlug]
-    : (query.brandSlugs ?? []);
+    : exclude.brand
+      ? []
+      : (query.brandSlugs ?? []);
   if (brandSlugs.length > 0) {
     where.brand = { slug: { in: brandSlugs } };
   }
@@ -217,7 +224,7 @@ async function buildWhere(
   // Each active filter must match, so they are separate `some` clauses rather
   // than one clause with every value in it.
   const attributeFilters = Object.entries(query.filters ?? {}).filter(
-    ([, values]) => values.length > 0,
+    ([key, values]) => values.length > 0 && key !== exclude.attributeKey,
   );
   if (attributeFilters.length > 0) {
     where.AND = attributeFilters.map(([key, values]) => ({
@@ -238,22 +245,33 @@ function normalizePage(page: number, pageSize: number) {
 }
 
 /**
- * Facet counts cover the whole matched set, not the current page, and reflect
- * the filters already applied — the same behaviour the listing UI was built
- * against. Counting happens in the database via `groupBy`.
+ * Facet counts cover the whole matched set, not the current page.
+ *
+ * Every *other* active filter narrows a facet, but a facet is never narrowed
+ * by its own selection: ticking one brand must not drop every other brand
+ * from the brand list, or a second brand could never be ticked. Filters now
+ * apply on click (no submit button), so the list a shopper sees after one
+ * tick is the only list they get — this exclusion is what keeps multi-select
+ * possible. Counting happens in the database via `groupBy`.
+ *
+ * A facet with nothing selected shares one grouped query against the plain
+ * where, so the common unfiltered case costs exactly what it used to; only
+ * the facets actually being filtered on need a query of their own.
  */
 async function buildFacets(
-  where: Prisma.ProductWhereInput,
+  query: ProductListQuery,
+  categorySlugs: string[] | null,
   filterKeys: string[],
   includeBrandFacet: boolean,
 ): Promise<Facet[]> {
   const facets: Facet[] = [];
+  const baseWhere = composeWhere(query, categorySlugs);
 
   if (includeBrandFacet) {
     const [grouped, brands] = await Promise.all([
       getPrisma().product.groupBy({
         by: ["brandId"],
-        where,
+        where: composeWhere(query, categorySlugs, { brand: true }),
         _count: { _all: true },
       }),
       getPrisma().brand.findMany({ select: { id: true, slug: true } }),
@@ -276,29 +294,71 @@ async function buildFacets(
     return facets;
   }
 
-  const [grouped, attributes] = await Promise.all([
-    getPrisma().productAttributeValue.groupBy({
-      by: ["attributeId", "value"],
-      where: { attribute: { key: { in: attributeKeys } }, product: where },
-      _count: { _all: true },
-    }),
-    getPrisma().productAttribute.findMany({
-      where: { key: { in: attributeKeys } },
-      select: { id: true, key: true },
-    }),
-  ]);
-
+  const attributes = await getPrisma().productAttribute.findMany({
+    where: { key: { in: attributeKeys } },
+    select: { id: true, key: true },
+  });
   const keyById = new Map(attributes.map((item) => [item.id, item.key]));
+  const idByKey = new Map(attributes.map((item) => [item.key, item.id]));
+
+  const selectedKeys = attributeKeys.filter(
+    (key) => (query.filters?.[key] ?? []).length > 0,
+  );
+  const sharedKeys = attributeKeys.filter((key) => !selectedKeys.includes(key));
+
   const byKey = new Map<string, { value: string; count: number }[]>();
-  for (const entry of grouped) {
-    const key = keyById.get(entry.attributeId);
-    if (!key) {
+  const pending: Promise<void>[] = [];
+
+  if (sharedKeys.length > 0) {
+    pending.push(
+      getPrisma()
+        .productAttributeValue.groupBy({
+          by: ["attributeId", "value"],
+          where: { attribute: { key: { in: sharedKeys } }, product: baseWhere },
+          _count: { _all: true },
+        })
+        .then((grouped) => {
+          for (const entry of grouped) {
+            const key = keyById.get(entry.attributeId);
+            if (!key) {
+              continue;
+            }
+            const bucket = byKey.get(key) ?? [];
+            bucket.push({ value: entry.value, count: entry._count._all });
+            byKey.set(key, bucket);
+          }
+        }),
+    );
+  }
+
+  for (const key of selectedKeys) {
+    const attributeId = idByKey.get(key);
+    if (!attributeId) {
       continue;
     }
-    const bucket = byKey.get(key) ?? [];
-    bucket.push({ value: entry.value, count: entry._count._all });
-    byKey.set(key, bucket);
+    pending.push(
+      getPrisma()
+        .productAttributeValue.groupBy({
+          by: ["value"],
+          where: {
+            attributeId,
+            product: composeWhere(query, categorySlugs, { attributeKey: key }),
+          },
+          _count: { _all: true },
+        })
+        .then((grouped) => {
+          byKey.set(
+            key,
+            grouped.map((entry) => ({
+              value: entry.value,
+              count: entry._count._all,
+            })),
+          );
+        }),
+    );
   }
+
+  await Promise.all(pending);
 
   // Presented in the order the category declares its filters.
   for (const key of attributeKeys) {
@@ -407,12 +467,15 @@ export const prismaProductRepository: ProductRepository = {
 
   async list(query) {
     const { page, pageSize } = normalizePage(query.page, query.pageSize);
-    const where = await buildWhere(query);
+    const categorySlugs = query.categorySlug
+      ? await categoryTreeSlugs(query.categorySlug)
+      : null;
+    const where = composeWhere(query, categorySlugs);
 
     const filterKeys = await resolveFilterKeys(where, query.categorySlug);
     const [total, facets] = await Promise.all([
       getPrisma().product.count({ where }),
-      buildFacets(where, filterKeys, !query.brandSlug),
+      buildFacets(query, categorySlugs, filterKeys, !query.brandSlug),
     ]);
 
     const presets = await loadProductPresetLookup();
