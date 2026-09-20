@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   hasMegaMenu,
   type MegaMenuLink,
@@ -200,15 +200,30 @@ function MegaPanel({
           const ownsFlyout = column.links.some(
             (link) => `${link.href}-${link.label}` === flyoutHref,
           );
+          // A flyout in the rightmost column has nowhere to open but off the
+          // edge of the panel (or the viewport), so it opens leftward there
+          // instead — every other column keeps opening to the right.
+          const flyoutAlign =
+            index === panel.columns.length - 1 ? "left" : "right";
           return (
           <div
-            key={column.title}
+            key={`${column.title}-${index}`}
             className={cn("th-mega-col", ownsFlyout && "relative z-10")}
             style={{ animationDelay: `${index * 45}ms` }}
           >
-            <p className="mb-3 border-b border-border/70 pb-2 text-[0.7rem] font-bold tracking-[0.14em] text-text-muted uppercase">
-              {column.title}
-            </p>
+            {/* A title-less column is a continuation of the previous one
+                (a long list split for legibility, not a new group) — an
+                invisible placeholder keeps every column's links starting at
+                the same height without drawing a second header. */}
+            {column.title ? (
+              <p className="mb-3 border-b border-border/70 pb-2 text-[0.7rem] font-bold tracking-[0.14em] text-text-muted uppercase">
+                {column.title}
+              </p>
+            ) : (
+              <p aria-hidden className="mb-3 pb-2 text-[0.7rem]">
+                &nbsp;
+              </p>
+            )}
             {/* Capped so a 2-column panel doesn't stretch each row (and its
                 chevron) across half the viewport. */}
             <ul className="max-w-xs space-y-0.5">
@@ -216,6 +231,7 @@ function MegaPanel({
                 <MegaRow
                   key={`${link.href}-${link.label}`}
                   link={link}
+                  flyoutAlign={flyoutAlign}
                   flyoutOpen={flyoutHref === `${link.href}-${link.label}`}
                   onFlyoutEnter={() =>
                     setFlyoutHref(
@@ -238,16 +254,21 @@ function MegaPanel({
 
 function MegaRow({
   link,
+  flyoutAlign,
   flyoutOpen,
   onFlyoutEnter,
   onFlyoutLeave,
 }: {
   link: MegaMenuLink;
+  /** Which side the flyout opens on — "left" flips it for a rightmost
+   * column, so it can't spill past the panel or the viewport edge. */
+  flyoutAlign: "left" | "right";
   flyoutOpen: boolean;
   onFlyoutEnter: () => void;
   onFlyoutLeave: () => void;
 }) {
   const nested = link.children && link.children.length > 0;
+  const Chevron = flyoutAlign === "left" ? ChevronLeft : ChevronRight;
 
   return (
     <li
@@ -266,7 +287,7 @@ function MegaRow({
           {link.label}
         </span>
         {nested ? (
-          <ChevronRight
+          <Chevron
             aria-hidden
             strokeWidth={2}
             className="size-3.5 shrink-0 text-text-muted transition-[color,transform] duration-150 group-hover/row:translate-x-0.5 group-hover/row:text-primary"
@@ -274,7 +295,12 @@ function MegaRow({
         ) : null}
       </Link>
       {nested && flyoutOpen ? (
-        <ul className="th-mega-flyout absolute top-0 left-full z-50 ml-2 min-w-48 rounded-lg border border-border bg-surface p-2 shadow-[0_16px_32px_-10px_rgba(14,26,36,0.3)]">
+        <ul
+          className={cn(
+            "th-mega-flyout absolute top-0 z-50 min-w-48 rounded-lg border border-border bg-surface p-2 shadow-[0_16px_32px_-10px_rgba(14,26,36,0.3)]",
+            flyoutAlign === "left" ? "right-full mr-2" : "left-full ml-2",
+          )}
+        >
           {link.children?.map((child) => (
             <li key={`${child.href}-${child.label}`}>
               <Link

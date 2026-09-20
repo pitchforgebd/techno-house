@@ -137,6 +137,38 @@ function childLink(
   };
 }
 
+/**
+ * Deep departments (Office Equipment has 29 direct children, Accessories 28,
+ * Networking 22, …) would otherwise render one endless single-item-wide
+ * column — legible on Star Tech's site only because it wraps the same list
+ * across two bare `<ul>`s. This does the equivalent: split a long column
+ * into up to `MAX_SPLIT_COLUMNS` balanced ones, titling only the first so
+ * the rest read as a continuation rather than a new group. Capped so a
+ * split column plus an optional trailing brand column never exceeds the
+ * 4-column grid the panel renders.
+ */
+const MAX_COLUMN_LINKS = 9;
+const MAX_SPLIT_COLUMNS = 3;
+
+function splitColumn(title: string, links: MegaMenuLink[]): MegaMenuColumn[] {
+  if (links.length <= MAX_COLUMN_LINKS) {
+    return [{ title, links }];
+  }
+  const columnCount = Math.min(
+    MAX_SPLIT_COLUMNS,
+    Math.ceil(links.length / MAX_COLUMN_LINKS),
+  );
+  const perColumn = Math.ceil(links.length / columnCount);
+  const columns: MegaMenuColumn[] = [];
+  for (let i = 0; i < links.length; i += perColumn) {
+    columns.push({
+      title: i === 0 ? title : "",
+      links: links.slice(i, i + perColumn),
+    });
+  }
+  return columns;
+}
+
 function brandColumn(
   categorySlug: string,
   title: string,
@@ -200,26 +232,33 @@ function columnsForNode(
   childrenBySlug: Map<string, Category[]>,
 ): MegaMenuColumn[] {
   if (node.slug === "component") {
-    return [
-      {
-        title: node.name,
-        links: [{ href: `/category/${node.slug}`, label: `All ${node.name}` }],
-      },
-      ...groupedComponentColumns(node.children, brandsByCategory, childrenBySlug),
-    ];
+    const columns = groupedComponentColumns(
+      node.children,
+      brandsByCategory,
+      childrenBySlug,
+    );
+    // "All Component" rides at the top of the first group rather than its
+    // own near-empty column — matching how every other department's "All X"
+    // is just the first row of its column, not a column of its own.
+    const firstColumn = columns[0];
+    if (firstColumn) {
+      columns[0] = {
+        ...firstColumn,
+        links: [
+          { href: `/category/${node.slug}`, label: `All ${node.name}` },
+          ...firstColumn.links,
+        ],
+      };
+    }
+    return columns;
   }
 
-  const columns: MegaMenuColumn[] = [
-    {
-      title: node.name,
-      links: [
-        { href: `/category/${node.slug}`, label: `All ${node.name}` },
-        ...node.children.map((child) =>
-          childLink(child, brandsByCategory, childrenBySlug),
-        ),
-      ],
-    },
-  ];
+  const columns: MegaMenuColumn[] = splitColumn(node.name, [
+    { href: `/category/${node.slug}`, label: `All ${node.name}` },
+    ...node.children.map((child) =>
+      childLink(child, brandsByCategory, childrenBySlug),
+    ),
+  ]);
 
   if (BRAND_COLUMN_SLUGS.has(node.slug)) {
     const brands = brandColumn(
@@ -228,7 +267,7 @@ function columnsForNode(
       brandsByCategory[node.slug] ?? [],
     );
     if (brands) {
-      columns.push(brands);
+      columns.push(...splitColumn(brands.title, brands.links));
     }
   }
 
