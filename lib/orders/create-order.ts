@@ -301,6 +301,7 @@ export async function placeCustomerOrderForUser(
         colorHex: string | null;
         buildBatchId: string | null;
         builderSlot: DbBuilderSlot | null;
+        wantsEmi: boolean;
       }[] = [];
 
       /**
@@ -403,6 +404,7 @@ export async function placeCustomerOrderForUser(
           colorHex: item.color?.hex ?? null,
           buildBatchId: item.buildBatchId,
           builderSlot: item.builderSlot,
+          wantsEmi: item.wantsEmi,
         });
       }
 
@@ -534,6 +536,7 @@ export async function placeCustomerOrderForUser(
                   colorHex: line.colorHex,
                   buildBatchId: line.buildBatchId,
                   builderSlot: line.builderSlot,
+                  wantsEmi: line.wantsEmi,
                 })),
               },
               payments: {

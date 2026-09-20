@@ -23,6 +23,8 @@ export type AdminOrderLine = {
   colorHex: string | null;
   /** Set when this line was added via "Add build to cart" (AD-276) — lines sharing the same id came from one PC build. */
   buildBatchId: string | null;
+  /** Customer ticked "Avail EMI offer" for this line on the product page. */
+  wantsEmi: boolean;
 };
 
 export type AdminOrder = {
@@ -128,6 +130,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(18900),
       },
       {
@@ -138,6 +141,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(16800),
       },
       {
@@ -148,6 +152,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(7200),
       },
     ],
@@ -178,6 +183,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(18900),
       },
     ],
@@ -208,6 +214,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(97500),
       },
     ],
@@ -238,6 +245,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(6200),
       },
     ],
@@ -268,6 +276,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(65800),
       },
     ],
@@ -298,6 +307,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(31200),
       },
     ],
@@ -328,6 +338,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(8900),
       },
     ],
@@ -358,6 +369,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(24500),
       },
     ],
@@ -388,6 +400,7 @@ export const MOCK_ADMIN_ORDERS: readonly AdminOrder[] = [
         colorName: null,
         colorHex: null,
         buildBatchId: null,
+        wantsEmi: false,
         unitPrice: money(15200),
       },
     ],

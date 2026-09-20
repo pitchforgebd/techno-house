@@ -26,11 +26,12 @@ export async function addCartItemAction(
   slug: string,
   quantity = 1,
   colorId: string | null = null,
+  wantsEmi = false,
 ): Promise<CartMutationResult> {
   if (!(await isSameOriginRequest())) {
     return originBlocked();
   }
-  return addCartItem(slug, quantity, colorId);
+  return addCartItem(slug, quantity, colorId, wantsEmi);
 }
 
 export async function addCartItemsAction(

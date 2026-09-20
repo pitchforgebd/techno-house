@@ -172,6 +172,10 @@ export function ProductSummary({
   const [b2bOpen, setB2bOpen] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const [compareMessage, setCompareMessage] = useState<string | null>(null);
+  // "Avail EMI offer" — carried into the cart line (and from there, the
+  // order) when this item is added, so staff can see the request and
+  // arrange EMI with the partner bank manually; no gateway processes it.
+  const [emiSelected, setEmiSelected] = useState(false);
 
   const unavailable = stockStatus === "out_of_stock";
   const selectedColor =
@@ -250,11 +254,16 @@ export function ProductSummary({
       return;
     }
     const qty = Math.min(99, Math.max(minQuantity, quantity));
-    void addItem(slug, qty, {
-      colorId: selectedColor?.id ?? null,
-      colorName: selectedColor?.name ?? null,
-      colorHex: selectedColor?.hex ?? null,
-    }).then((result) => {
+    void addItem(
+      slug,
+      qty,
+      {
+        colorId: selectedColor?.id ?? null,
+        colorName: selectedColor?.name ?? null,
+        colorHex: selectedColor?.hex ?? null,
+      },
+      emiSelected,
+    ).then((result) => {
       if (!result.ok) {
         notifyError({
           title: "Could not add to cart",
@@ -632,26 +641,35 @@ export function ProductSummary({
         ) : null}
 
         {emiVisible ? (
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="rounded-lg border border-border bg-surface px-3.5 py-3">
-              <p className="text-label font-semibold text-text">
+          <div className="space-y-1.5 rounded-lg border border-border bg-surface px-3.5 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+              <label className="flex items-center gap-2 text-label font-semibold text-text">
+                <input
+                  type="checkbox"
+                  checked={emiSelected}
+                  onChange={(event) => setEmiSelected(event.target.checked)}
+                  className="size-4 rounded-sm border-border accent-primary"
+                />
                 Avail EMI offer
-              </p>
-              <p className="mt-1 text-caption text-text-muted">
-                {emiConfig.partnerName
-                  ? `Through ${emiConfig.partnerName}.`
-                  : "Through our partner banks."}{" "}
-                {emiConfig.interestNote}
-              </p>
-            </div>
-            <div className="rounded-lg border border-primary/25 bg-primary-soft/60 px-3.5 py-3">
-              <p className="text-label font-semibold tabular-nums text-text">
-                From {formatMoney({ amount: emiLowestMonthly })}/month
-              </p>
-              <p className="mt-1 text-caption text-text-muted">
-                {emiPlans.map((plan) => `${plan.months} months`).join(" · ")}
+                <ProductEmiTooltip
+                  label="View Plans"
+                  plans={emiPlans}
+                  note={emiConfig.interestNote || undefined}
+                  triggerClassName="text-label font-semibold text-primary underline-offset-2 hover:underline"
+                />
+              </label>
+              <p className="text-caption tabular-nums text-text-muted">
+                EMI starts from {formatMoney({ amount: emiLowestMonthly })}
+                /month
               </p>
             </div>
+            {emiSelected ? (
+              <p className="text-caption text-success">
+                Noted — we&apos;ll arrange your EMI
+                {emiConfig.partnerName ? ` with ${emiConfig.partnerName}` : ""}{" "}
+                after checkout.
+              </p>
+            ) : null}
           </div>
         ) : null}
 

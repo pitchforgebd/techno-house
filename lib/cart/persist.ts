@@ -309,6 +309,7 @@ export async function addCartItem(
   slug: string,
   quantity = 1,
   colorId: string | null = null,
+  wantsEmi = false,
 ): Promise<CartMutationResult> {
   if (!usesCartDatabase()) {
     return fail(CART_DB_REQUIRED);
@@ -317,7 +318,7 @@ export async function addCartItem(
   if (!owner) {
     return fail("The cart could not be opened.");
   }
-  return addCartItemForOwner(owner, slug, quantity, colorId);
+  return addCartItemForOwner(owner, slug, quantity, colorId, undefined, wantsEmi);
 }
 
 export async function addCartItemForOwner(
@@ -326,6 +327,7 @@ export async function addCartItemForOwner(
   quantity = 1,
   colorId: string | null = null,
   buildMeta?: { buildBatchId: string; builderSlot: BuilderSlot },
+  wantsEmi = false,
 ): Promise<CartMutationResult> {
   const product = await loadSellableProduct(slug);
   if (!product) {
@@ -373,7 +375,13 @@ export async function addCartItemForOwner(
   if (existing) {
     await getPrisma().cartItem.update({
       where: { id: existing.id },
-      data: { quantity: capped },
+      data: {
+        quantity: capped,
+        // Ticking the box and adding again (a top-up on an existing line)
+        // updates the preference; it never *clears* one a previous add
+        // already set — unchecked here just means "no change requested."
+        ...(wantsEmi ? { wantsEmi: true } : {}),
+      },
     });
   } else {
     await getPrisma().cartItem.create({
@@ -384,6 +392,7 @@ export async function addCartItemForOwner(
         quantity: capped,
         buildBatchId: buildMeta?.buildBatchId ?? null,
         builderSlot: buildMeta ? toDbBuilderSlot(buildMeta.builderSlot) : null,
+        wantsEmi,
       },
     });
   }

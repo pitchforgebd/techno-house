@@ -811,6 +811,11 @@ model CartItem {
   buildBatchId String?
   /// Which PC Builder slot this line filled, when buildBatchId is set.
   builderSlot  BuilderSlot?
+  /// Customer ticked "Avail EMI offer" on the product page for this line.
+  /// Informational only — no gateway processes EMI itself; this just
+  /// surfaces the request to staff on the order for manual arrangement
+  /// with the partner bank. Carried through to OrderItem at checkout.
+  wantsEmi  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1009,6 +1014,8 @@ model OrderItem {
   /// Builder order traceability, carried from the cart line at checkout.
   buildBatchId String?
   builderSlot  BuilderSlot?
+  /// Copied from the cart line at checkout — see CartItem.wantsEmi.
+  wantsEmi Boolean @default(false)
 
   product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)

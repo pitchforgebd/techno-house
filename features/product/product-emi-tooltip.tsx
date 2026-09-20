@@ -18,10 +18,14 @@ export function ProductEmiTooltip({
   label,
   plans,
   note,
+  triggerClassName,
 }: {
   label: string;
   plans: EmiPlan[];
   note?: string;
+  /** Overrides the default price-figure styling — e.g. a "View Plans"
+   * link reuses this same panel with its own, plainer trigger look. */
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLSpanElement>(null);
@@ -64,7 +68,10 @@ export function ProductEmiTooltip({
       <button
         type="button"
         aria-expanded={open}
-        className="text-body font-bold tabular-nums text-text underline decoration-dotted decoration-from-font underline-offset-4 transition-colors hover:text-primary focus-visible:text-primary"
+        className={
+          triggerClassName ??
+          "text-body font-bold tabular-nums text-text underline decoration-dotted decoration-from-font underline-offset-4 transition-colors hover:text-primary focus-visible:text-primary"
+        }
         // Opens rather than toggles: a tap fires mouseenter first on most
         // touch browsers, so toggling here would open it and immediately
         // shut it again. Closing is mouse-leave, tap-outside, or Escape.

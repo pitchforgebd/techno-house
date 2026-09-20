@@ -367,6 +367,9 @@ export function AdminOrderDetail({
                       {line.buildBatchId ? (
                         <Badge tone="warranty">PC Build</Badge>
                       ) : null}
+                      {line.wantsEmi ? (
+                        <Badge tone="neutral">EMI requested</Badge>
+                      ) : null}
                     </p>
                     {line.colorName ? (
                       <p className="flex items-center gap-1.5 text-text-muted">

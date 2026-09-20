@@ -292,6 +292,7 @@ export function useCartStore() {
         colorName: null,
         colorHex: null,
       },
+      wantsEmi = false,
     ): Promise<CartWriteResult> => {
       if (!persist) {
         const next = localAddItem(readStorage(), slug, quantity, color);
@@ -307,7 +308,12 @@ export function useCartStore() {
       if (!("ok" in optimistic)) {
         ctx.replacePersisted(optimistic);
       }
-      const result = await addCartItemAction(slug, quantity, color.colorId);
+      const result = await addCartItemAction(
+        slug,
+        quantity,
+        color.colorId,
+        wantsEmi,
+      );
       if (!result.ok) {
         ctx.replacePersisted(previous);
         return result;

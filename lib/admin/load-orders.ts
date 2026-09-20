@@ -168,6 +168,7 @@ const orderSelect = {
       colorName: true,
       colorHex: true,
       buildBatchId: true,
+      wantsEmi: true,
     },
   },
   payments: {
@@ -208,6 +209,7 @@ type OrderRow = {
     colorName: string | null;
     colorHex: string | null;
     buildBatchId: string | null;
+    wantsEmi: boolean;
   }[];
   payments: { method: string | null; provider: string }[];
   refunds: { status: DbRefundStatus }[];
@@ -225,6 +227,7 @@ function toAdminOrder(row: OrderRow, options?: { maskPhone?: boolean }): AdminOr
     colorName: item.colorName,
     colorHex: item.colorHex,
     buildBatchId: item.buildBatchId,
+    wantsEmi: item.wantsEmi,
   }));
   const methodId = row.payments[0]?.method ?? row.payments[0]?.provider ?? null;
 
