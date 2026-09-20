@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { PackageCheck, Zap } from "lucide-react";
 import type {
   BuildPowerSummary,
   BuildPricingSummary,
@@ -85,20 +86,26 @@ export function PcBuilderPricing({
         ) : null}
       </dl>
 
-      <div className="rounded-md border border-border bg-surface-muted/60 px-3 py-2">
-        <p className="text-caption font-medium text-text">Stock</p>
-        <p className="mt-0.5 text-caption text-text-muted">
-          {stockCopy(stock, filledCount)}
-        </p>
+      <div className="flex gap-2.5 rounded-md border border-border bg-surface-muted/60 px-3 py-2.5">
+        <PackageCheck className="mt-0.5 size-4 shrink-0 text-text-muted" aria-hidden />
+        <div>
+          <p className="text-caption font-medium text-text">Stock</p>
+          <p className="mt-0.5 text-caption text-text-muted">
+            {stockCopy(stock, filledCount)}
+          </p>
+        </div>
       </div>
 
-      <div className="rounded-md border border-border bg-surface-muted/60 px-3 py-2">
-        <p className="text-caption font-medium text-text">Power estimate</p>
-        <p className="mt-0.5 text-caption text-text-muted">
-          {filledCount === 0
-            ? "Select a CPU, GPU, and PSU to estimate draw."
-            : powerCopy(power)}
-        </p>
+      <div className="flex gap-2.5 rounded-md border border-border bg-surface-muted/60 px-3 py-2.5">
+        <Zap className="mt-0.5 size-4 shrink-0 text-text-muted" aria-hidden />
+        <div>
+          <p className="text-caption font-medium text-text">Power estimate</p>
+          <p className="mt-0.5 text-caption text-text-muted">
+            {filledCount === 0
+              ? "Select a CPU, GPU, and PSU to estimate draw."
+              : powerCopy(power)}
+          </p>
+        </div>
       </div>
     </>
   );

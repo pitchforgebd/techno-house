@@ -49,7 +49,7 @@ export function PcBuilderSummary({
 
   return (
     <aside
-      className="h-fit space-y-4 rounded-md border border-border bg-surface p-4 lg:sticky lg:top-4"
+      className="h-fit space-y-4 rounded-md border border-border bg-surface p-4 shadow-sm lg:sticky lg:top-4"
       aria-labelledby="pc-builder-summary-heading"
     >
       <div>

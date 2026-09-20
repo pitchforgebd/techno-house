@@ -43,7 +43,7 @@ export function PcBuilderSelectedPart({
   onRemove: () => void;
 }) {
   return (
-    <li className="px-4 py-4 sm:px-5">
+    <li className="bg-success/5 px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
           <BuilderSlotIcon slotId={slot.id} className="size-5" />

@@ -40,7 +40,7 @@ export function PcBuilderSlotList({
 
   return (
     <section
-      className="overflow-hidden rounded-md border border-border bg-surface"
+      className="overflow-hidden rounded-md border border-border bg-surface shadow-sm"
       aria-labelledby="pc-builder-slots-heading"
     >
       <div className="border-b border-border bg-surface-muted/40 px-4 py-4 sm:px-5">
@@ -64,9 +64,9 @@ export function PcBuilderSlotList({
             </p>
           </div>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-border">
+        <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-border">
           <div
-            className="h-full rounded-full bg-primary transition-all duration-300"
+            className="h-full rounded-full bg-gradient-to-r from-primary to-primary-hover transition-all duration-300"
             style={{ width: `${progress}%` }}
             role="progressbar"
             aria-valuenow={progress}
@@ -103,14 +103,14 @@ export function PcBuilderSlotList({
             <li key={slot.id}>
               <Link
                 href={builderSelectPath(slot.id)}
-                className="flex w-full flex-wrap items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-surface-muted/50 sm:flex-nowrap sm:px-5"
+                className="group flex w-full flex-wrap items-center gap-3 px-4 py-4 text-left transition-[background-color,box-shadow] duration-200 hover:bg-surface-muted/50 hover:shadow-sm sm:flex-nowrap sm:px-5"
               >
                 <span
                   className={cn(
-                    "inline-flex size-10 shrink-0 items-center justify-center rounded-md border",
+                    "inline-flex size-11 shrink-0 items-center justify-center rounded-md ring-1 transition-colors duration-200",
                     slot.required
-                      ? "border-primary/20 bg-primary/10 text-primary"
-                      : "border-border bg-surface-muted text-text-muted",
+                      ? "bg-gradient-to-br from-primary-soft to-primary-soft/40 text-primary ring-primary/10 group-hover:from-primary group-hover:to-primary-hover group-hover:text-primary-foreground group-hover:ring-primary/40"
+                      : "bg-surface-muted text-text-muted ring-border group-hover:text-primary",
                   )}
                 >
                   <BuilderSlotIcon slotId={slot.id} className="size-5" />
