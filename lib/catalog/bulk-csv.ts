@@ -114,10 +114,10 @@ function fieldsFromCsvRow(row: Record<string, string>): ProductInputFields {
     isSale: toBool(row.is_sale),
     warrantyEnabled: Boolean((row.warranty_label ?? "").trim()),
     warrantyLabel: row.warranty_label ?? "",
-    variants: [],
-    attributes: [],
-    colors: [],
-    specGroups: [],
+    // Deliberately omitted, not `[]` — the bulk CSV format has no columns
+    // for these, and `[]` would tell saveAdminProduct to wipe whatever a
+    // matching-SKU product already has on every re-import (see
+    // ProductInputFields in product-input.ts).
     builderSlot: "",
     builderSocket: "",
     builderRamType: "",

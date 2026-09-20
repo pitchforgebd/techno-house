@@ -295,6 +295,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: true,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "A compact 14-inch laptop for study, spreadsheets, and video calls.",
       "Ships with 16GB RAM and a 512GB SSD so everyday apps stay responsive.",
@@ -337,6 +339,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: true,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "16-inch gaming notebook with dedicated 8GB graphics and a fast IPS panel.",
       "1TB SSD and 16GB RAM for games, creative apps, and multitasking.",
@@ -390,6 +394,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Ready-to-use tower for home office and light creative work.",
       "Six-core CPU, 16GB DDR5, and a 512GB SSD — expand later with PC Builder parts.",
@@ -428,6 +434,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Six-core AM5 desktop CPU for efficient everyday builds.",
       "65W TDP pairs cleanly with tower air coolers such as Frost Air.",
@@ -466,6 +474,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: true,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Eight-core AM5 option for heavier multitasking and light content work.",
       "Currently out of stock in the demo catalog — request or check back later.",
@@ -505,6 +515,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "AM5 Micro-ATX board with DDR5 support for compact towers.",
       "Pairs with CoreLine CPUs and Volt DDR5 modules in PC Builder.",
@@ -543,6 +555,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: true,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Single 16GB DDR5 module for AM5 and other DDR5 platforms.",
       "Sale pricing in the demo catalog — not a live charge.",
@@ -580,6 +594,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "DDR4 module for older platforms.",
       "Incompatible with DDR5 boards — PC Builder flags the mismatch.",
@@ -614,6 +630,8 @@ export const mockProducts: ProductDetail[] = (
     specs: [{ label: "Memory", value: "8GB" }],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "8GB graphics card aimed at 1080p and light 1440p gaming.",
       "Plan roughly 160W GPU draw when sizing a PSU in PC Builder.",
@@ -648,6 +666,8 @@ export const mockProducts: ProductDetail[] = (
     specs: [{ label: "Capacity", value: "1TB" }],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "PCIe NVMe drive for the OS, games, and project files.",
       "1TB capacity with a five-year demo warranty label.",
@@ -682,6 +702,8 @@ export const mockProducts: ProductDetail[] = (
     specs: [{ label: "Capacity", value: "2TB" }],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "2TB spinning drive for media libraries and backups.",
       "Use beside an NVMe SSD for the operating system.",
@@ -713,6 +735,8 @@ export const mockProducts: ProductDetail[] = (
     specs: [{ label: "Wattage", value: "650W" }],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "650W bronze-rated unit suited to mid-range GPU builds.",
       "Matches Apex Arc–class cards with headroom for drives and fans.",
@@ -747,6 +771,8 @@ export const mockProducts: ProductDetail[] = (
     specs: [{ label: "Form factor", value: "Micro-ATX" }],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Mesh-front Micro-ATX chassis for cooler intake airflow.",
       "Fits Volt B650 boards and common 120mm fans.",
@@ -778,6 +804,8 @@ export const mockProducts: ProductDetail[] = (
     specs: [{ label: "Size", value: "120mm" }],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Quiet 120mm case fan for intake or exhaust.",
       "Add multiple units in PC Builder for denser airflow.",
@@ -809,6 +837,8 @@ export const mockProducts: ProductDetail[] = (
     specs: [{ label: "Type", value: "Air" }],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Tower air cooler with AM5 mounting hardware in the box.",
       "Good match for CoreLine 6-core CPUs in quiet builds.",
@@ -846,6 +876,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "24-inch Full HD IPS panel for office and study desks.",
       "Slim stand footprint; HDMI connectivity in the demo specs.",
@@ -884,6 +916,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: true,
     isSale: true,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "27-inch QHD IPS monitor for sharper spreadsheets and light creative work.",
       "Demo sale badge — compare-at price is display-only.",
@@ -922,6 +956,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: true,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Compact Android phone for calls, messaging, and light apps.",
       "128GB storage and a 6.1-inch display in the demo catalog.",
@@ -959,6 +995,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "10.1-inch tablet for reading, streaming, and note-taking.",
       "128GB onboard storage in this demo listing.",
@@ -996,6 +1034,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: true,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "43-inch 4K smart TV for living-room streaming.",
       "Sale compare-at price is for demo merchandising only.",
@@ -1033,6 +1073,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Over-ear gaming headset with a flexible boom mic.",
       "3.5mm connection works with PCs, consoles, and many laptops.",
@@ -1070,6 +1112,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: true,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "75% mechanical keyboard with linear switches for gaming desks.",
       "Compact layout leaves room for a mouse on smaller desks.",
@@ -1108,6 +1152,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: true,
     isSale: true,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "15W wireless charging pad for phones that support Qi charging.",
       "USB-C input keeps the desk cable neat; rubber feet hold the pad in place.",
@@ -1147,6 +1193,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "Two-coil stand for phone and earbuds cases that support wireless charging.",
       "Upright angle keeps notifications readable while charging.",
@@ -1186,6 +1234,8 @@ export const mockProducts: ProductDetail[] = (
     ],
     isNew: false,
     isSale: false,
+    overviewHtml: null,
+    detailsHtml: null,
     overview: [
       "USB-C to USB-C cable for charging pads, phones, and laptops within 60W.",
       "Braided jacket for desk use; length is one metre.",

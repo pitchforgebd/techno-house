@@ -112,7 +112,12 @@ export type ProductColorOption = {
 };
 
 export type ProductDetail = ProductSummary & {
+  /** Legacy plain-text bullets — <meta description> fallback only now. */
   overview: string[];
+  /** Rich-text "Quick overview" (buy box), sanitized HTML or `null`. */
+  overviewHtml: string | null;
+  /** Rich-text "Details" tab content, sanitized HTML or `null`. */
+  detailsHtml: string | null;
   specGroups: SpecGroup[];
   images: ProductImage[];
   relatedSlugs: string[];

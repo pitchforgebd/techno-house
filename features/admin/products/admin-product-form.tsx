@@ -3,30 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import {
-  AlignLeft,
-  Bold,
-  Eraser,
-  Image as ImageIcon,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Maximize2,
-  Palette,
-  Redo2,
-  Table,
-  Underline,
-  Undo2,
-  Video,
-  Wand2,
-} from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
+import { RichTextEditor } from "@/features/admin/marketing/rich-text-editor";
 import {
   cloneAdminProductAction,
   saveAdminProductAction,
@@ -217,48 +200,6 @@ function AttributeSelectWithOther({
   );
 }
 
-function DescriptionToolbar() {
-  const tools = [
-    { icon: Bold, label: "Bold" },
-    { icon: Underline, label: "Underline" },
-    { icon: Italic, label: "Italic" },
-    { icon: Eraser, label: "Clear formatting" },
-    { icon: List, label: "Bullet list" },
-    { icon: ListOrdered, label: "Numbered list" },
-    { icon: AlignLeft, label: "Alignment" },
-    { icon: Wand2, label: "Enhance" },
-    { icon: Palette, label: "Text color" },
-    { icon: Table, label: "Table" },
-    { icon: Link2, label: "Link" },
-    { icon: ImageIcon, label: "Image" },
-    { icon: Video, label: "Video" },
-    { icon: Maximize2, label: "Fullscreen" },
-    { icon: Undo2, label: "Undo" },
-    { icon: Redo2, label: "Redo" },
-  ];
-
-  return (
-    <div className="flex flex-wrap items-center gap-0.5 border border-neutral-200 bg-neutral-50 p-1.5">
-      {tools.map(({ icon: Icon, label }) => (
-        <button
-          key={label}
-          type="button"
-          aria-label={label}
-          className="inline-flex size-8 items-center justify-center rounded text-neutral-600 hover:bg-white hover:text-neutral-900"
-        >
-          <Icon className="size-4" aria-hidden />
-        </button>
-      ))}
-      <button
-        type="button"
-        className="ml-1 rounded border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
-      >
-        Clear
-      </button>
-    </div>
-  );
-}
-
 export function AdminProductForm({
   mode,
   product,
@@ -362,9 +303,14 @@ export function AdminProductForm({
   const [stockStatus, setStockStatus] = useState<StockStatus>(
     product?.stockStatus ?? "in_stock",
   );
-  const [description, setDescription] = useState(
-    product?.overview.join("\n\n") ?? "",
+  // Legacy plain-text bullets — no editor exposed for this anymore (see
+  // "Quick overview"/"Details" below), it just round-trips unchanged so a
+  // product imported via bulk CSV keeps its <meta description> fallback.
+  const [description] = useState(product?.overview.join("\n\n") ?? "");
+  const [overviewHtml, setOverviewHtml] = useState(
+    product?.overviewHtml ?? "",
   );
+  const [detailsHtml, setDetailsHtml] = useState(product?.detailsHtml ?? "");
   const [seoTitle, setSeoTitle] = useState(product?.name ?? "");
   const [seoDescription, setSeoDescription] = useState(
     product?.overview.join(" ") ?? "",
@@ -505,6 +451,8 @@ export function AdminProductForm({
           discountStartsAt,
           discountEndsAt,
           overview: description,
+          overviewHtml,
+          detailsHtml,
           quantity: stockQty,
           lowStockThreshold: lowStockWarning ? lowStockQty : "0",
           isActive: publish,
@@ -991,13 +939,30 @@ export function AdminProductForm({
             </div>
           </AdminFormCard>
 
-          <AdminFormCard title="Product description">
-            <DescriptionToolbar />
-            <Textarea
-              rows={8}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              className="min-h-[12rem] w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-[#3897f0] focus:outline-none focus:ring-2 focus:ring-[#3897f0]/15"
+          <AdminFormCard title="Quick overview">
+            <p className="text-xs text-neutral-500">
+              Shown in the buy box, next to the price. Keep it short — a few
+              highlights, not the full spec sheet (that&apos;s Specifications).
+            </p>
+            <RichTextEditor
+              value={overviewHtml}
+              onChange={setOverviewHtml}
+              disabled={pending}
+              placeholder="A few short highlights…"
+            />
+          </AdminFormCard>
+
+          <AdminFormCard title="Details">
+            <p className="text-xs text-neutral-500">
+              Shown in the &quot;Details&quot; tab below the gallery. Independent of
+              Quick overview and Specifications — write it fresh, it is
+              never derived from either.
+            </p>
+            <RichTextEditor
+              value={detailsHtml}
+              onChange={setDetailsHtml}
+              disabled={pending}
+              placeholder="Longer-form details about this product…"
             />
           </AdminFormCard>
 

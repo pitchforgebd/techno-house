@@ -15,6 +15,7 @@ import { ProductSimilarSidebar } from "@/features/product/product-similar-sideba
 import { ProductSpecifications } from "@/features/product/product-specifications";
 import { ProductWarranty } from "@/features/product/product-warranty";
 import { productRepository, reviewRepository } from "@/lib/data";
+import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
 import { getCustomerSession } from "@/lib/auth/customer-session";
 import { getB2BTermsForProductId } from "@/lib/b2b/product-terms";
 import { getMyB2BAccount } from "@/lib/b2b/applications";
@@ -148,6 +149,17 @@ export default async function ProductPage({
     notAlreadyShown.length > 0 ? notAlreadyShown : sameCategory
   ).slice(0, 4);
 
+  // Sanitized again here, not just on save — stored HTML is never trusted
+  // just because it was clean when the admin form submitted it (AD-264
+  // precedent). `null` propagates through so each panel can distinguish
+  // "add real content" from "nothing written yet."
+  const overviewHtml = product.overviewHtml
+    ? sanitizeBlogBody(product.overviewHtml)
+    : null;
+  const detailsHtml = product.detailsHtml
+    ? sanitizeBlogBody(product.detailsHtml)
+    : null;
+
   const visitorWidgetSettings = await getVisitorWidgetSettings();
   const liveViewerCount = visitorWidgetSettings.enabled
     ? await getLiveViewerCount(product.slug, visitorWidgetSettings.windowMinutes)
@@ -172,8 +184,7 @@ export default async function ProductPage({
         isNew={product.isNew}
         isSale={product.isSale}
         warrantyLabel={product.warrantyLabel}
-        overview={product.overview}
-        specs={product.specs}
+        overviewHtml={overviewHtml}
         averageRating={averageRating}
         colors={product.colors}
         discountStartsAt={product.discountStartsAt}
@@ -228,8 +239,7 @@ export default async function ProductPage({
                 warrantyLabel={product.warrantyLabel}
                 warrantyBadge={product.warrantyBadge}
                 warrantyLogoSrc={product.warrantyLogoSrc}
-                overview={product.overview}
-                specs={product.specs}
+                detailsHtml={detailsHtml}
               />
             }
             reviews={

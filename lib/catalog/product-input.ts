@@ -42,6 +42,8 @@ export const PRODUCT_WEIGHT_GRAMS_MAX = 100_000;
 const PRODUCT_WEIGHT_GRAMS_DEFAULT = 500;
 export const PRODUCT_OVERVIEW_MAX = 8_000;
 export const PRODUCT_OVERVIEW_PARAGRAPHS = 12;
+/** Same cap as the other rich-text admin fields (category SEO content). */
+export const PRODUCT_CONTENT_HTML_MAX = 60_000;
 export const PRODUCT_VARIANT_MAX = 20;
 export const PRODUCT_WARRANTY_MAX = 80;
 export const BUILDER_ATTR_MAX = 40;
@@ -165,6 +167,10 @@ export type ProductInputFields = {
   discountStartsAt: string;
   discountEndsAt: string;
   overview: string;
+  /** Rich-text "Quick overview" (buy box) and "Details" tab — genuinely
+   * separate from each other and from `specGroups`/`overview`. */
+  overviewHtml?: string;
+  detailsHtml?: string;
   quantity: string;
   lowStockThreshold: string;
   isActive: boolean;
@@ -177,10 +183,19 @@ export type ProductInputFields = {
   /** Blank clears it. Nullable + unique in the schema. */
   barcode?: string;
   relatedProductIds?: string[];
-  variants: ProductVariantInputFields[];
-  attributes: ProductAttributeInputFields[];
-  colors: ProductColorInputFields[];
-  specGroups: SpecGroupInputFields[];
+  /**
+   * Omitted (not `[]`) means "don't touch" — the bulk CSV importer has no
+   * column for any of these four, and submitting `[]` on every row would
+   * wipe whatever a product already had (variants, attributes/colors/specs
+   * from the single-product form, or the regex-populated attribute values
+   * from `populate-import-attributes.ts`) on every re-import. The single-
+   * product form always sends a real array, including `[]` to actually
+   * clear a section — see `saveAdminProduct`.
+   */
+  variants?: ProductVariantInputFields[];
+  attributes?: ProductAttributeInputFields[];
+  colors?: ProductColorInputFields[];
+  specGroups?: SpecGroupInputFields[];
   builderSlot: string;
   builderSocket: string;
   builderRamType: string;
@@ -206,6 +221,9 @@ export type ParsedProductInput = {
   discountStartsAt: Date | null;
   discountEndsAt: Date | null;
   overview: string[];
+  /** `null` = clear it. `undefined` = not submitted, leave untouched. */
+  overviewHtml?: string | null;
+  detailsHtml?: string | null;
   quantity: number;
   lowStockThreshold: number;
   stockStatus: StockStatus;
@@ -217,10 +235,11 @@ export type ParsedProductInput = {
   labelIds: string[];
   barcode: string | null;
   relatedProductIds: string[];
-  variants: ParsedProductVariant[];
-  attributes: ParsedProductAttribute[];
-  colors: ParsedProductColor[];
-  specGroups: ParsedSpecGroup[];
+  /** `undefined` = leave whatever this product already has untouched. */
+  variants?: ParsedProductVariant[];
+  attributes?: ParsedProductAttribute[];
+  colors?: ParsedProductColor[];
+  specGroups?: ParsedSpecGroup[];
   builderSlot: BuilderSlot | null;
   builderAttrs: BuilderAttrs | null;
   youtubeUrl: string | null;

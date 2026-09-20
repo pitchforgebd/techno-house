@@ -30,6 +30,7 @@
     "catalog:bootstrap-import-brands": "tsx scripts/deploy/create-import-brands.ts",
     "catalog:bootstrap-filter-keys": "tsx scripts/deploy/set-catalog-filter-keys.ts",
     "catalog:populate-attributes": "tsx scripts/deploy/populate-import-attributes.ts",
+    "catalog:migrate-overview-html": "tsx scripts/deploy/migrate-overview-to-html.ts",
     "catalog:bootstrap-attributes": "tsx scripts/deploy/create-product-attributes.ts",
     "catalog:bootstrap-units": "tsx scripts/deploy/create-product-units.ts",
     "shipping:bootstrap-districts": "tsx scripts/shipping/seed-districts.ts",

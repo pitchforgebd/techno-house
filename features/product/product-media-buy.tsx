@@ -7,7 +7,6 @@ import type {
   Money,
   ProductColorOption,
   ProductImage,
-  SpecChip,
   StockStatus,
 } from "@/lib/data";
 import { buildProductGalleryImages } from "@/lib/product/gallery-images";
@@ -26,8 +25,7 @@ type ProductMediaBuyProps = {
   isNew: boolean;
   isSale: boolean;
   warrantyLabel: string;
-  overview: string[];
-  specs: SpecChip[];
+  overviewHtml: string | null;
   averageRating: number;
   colors: ProductColorOption[];
   discountStartsAt: string | null;
@@ -61,8 +59,7 @@ export function ProductMediaBuy({
   isNew,
   isSale,
   warrantyLabel,
-  overview,
-  specs,
+  overviewHtml,
   averageRating,
   colors,
   discountStartsAt,
@@ -124,8 +121,7 @@ export function ProductMediaBuy({
         isNew={isNew}
         isSale={isSale}
         warrantyLabel={warrantyLabel}
-        overview={overview}
-        specs={specs}
+        overviewHtml={overviewHtml}
         averageRating={averageRating}
         colors={colors}
         selectedColorId={selectedColorId}

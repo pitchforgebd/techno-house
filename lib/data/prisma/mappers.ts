@@ -222,6 +222,8 @@ export function toBuilderCandidate(
 
 export type ProductDetailRow = ProductCandidateRow & {
   overview: string[];
+  overviewHtml: string | null;
+  detailsHtml: string | null;
   youtubeUrl: string | null;
   pdfSpecificationSrc: string | null;
   noteIds?: string[];
@@ -251,6 +253,8 @@ export function toProductDetail(
   return {
     ...toProductSummary(row, presets),
     overview: row.overview,
+    overviewHtml: row.overviewHtml,
+    detailsHtml: row.detailsHtml,
     specs: mergeSpecChipsWithAttributes(
       toSpecChips(row.specChips),
       row.attributeValues,

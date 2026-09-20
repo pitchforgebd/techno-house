@@ -31,7 +31,7 @@ import {
   type B2BProductTerms,
 } from "@/lib/b2b/pricing";
 import type { B2BStatus } from "@/lib/generated/prisma/enums";
-import type { Money, ProductColorOption, SpecChip, StockStatus } from "@/lib/data";
+import type { Money, ProductColorOption, StockStatus } from "@/lib/data";
 import type { AdminEmiConfig } from "@/lib/payments/emi-shared";
 import { cartItemCount, cartLineKey } from "@/lib/cart/cart";
 import { formatMoney } from "@/lib/format/currency";
@@ -55,8 +55,8 @@ type ProductSummaryProps = {
   isNew: boolean;
   isSale: boolean;
   warrantyLabel: string;
-  overview: string[];
-  specs: SpecChip[];
+  /** Pre-sanitized on the server (page.tsx) — safe to render as-is. */
+  overviewHtml: string | null;
   averageRating: number;
   colors: ProductColorOption[];
   selectedColorId?: string | null;
@@ -123,8 +123,7 @@ export function ProductSummary({
   isNew,
   isSale,
   warrantyLabel,
-  overview,
-  specs,
+  overviewHtml,
   averageRating,
   colors,
   selectedColorId: selectedColorIdProp,
@@ -213,12 +212,6 @@ export function ProductSummary({
       setQuantity(minQuantity);
     }
   }
-
-  const quickSpecs = specs.slice(0, 6);
-  const quickLines = [
-    ...overview,
-    ...quickSpecs.map((spec) => `${spec.label} - ${spec.value}`),
-  ];
 
   function handleAddToCart() {
     if (unavailable) {
@@ -486,21 +479,15 @@ export function ProductSummary({
           Check availability
         </Button>
 
-        {quickLines.length > 0 ? (
+        {overviewHtml ? (
           <div>
             <h2 className="text-label font-semibold uppercase tracking-wide text-text">
               Quick overview
             </h2>
-            <ul className="mt-2 space-y-1.5 text-label text-text-muted">
-              {quickLines.map((item) => (
-                <li key={item} className="flex gap-2">
-                  <span aria-hidden className="text-primary">
-                    •
-                  </span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+            <div
+              className="th-rich-text mt-2 text-label text-text-muted"
+              dangerouslySetInnerHTML={{ __html: overviewHtml }}
+            />
           </div>
         ) : null}
 

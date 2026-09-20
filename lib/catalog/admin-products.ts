@@ -125,6 +125,8 @@ const SUMMARY_SELECT = {
 const DETAIL_SELECT = {
   ...SUMMARY_SELECT,
   overview: true,
+  overviewHtml: true,
+  detailsHtml: true,
   youtubeUrl: true,
   pdfSpecificationSrc: true,
   barcode: true,
@@ -455,7 +457,7 @@ async function barcodeTakenByOther(
 async function syncVariants(
   prisma: Prisma.TransactionClient,
   productId: string,
-  variants: ParsedProductInput["variants"],
+  variants: NonNullable<ParsedProductInput["variants"]>,
 ): Promise<
   | { ok: true; stocks: { variantId: string; quantity: number }[] }
   | { ok: false; formError: string }
@@ -520,7 +522,7 @@ async function syncVariants(
 async function syncAttributeValues(
   prisma: Prisma.TransactionClient,
   productId: string,
-  attributes: ParsedProductInput["attributes"],
+  attributes: NonNullable<ParsedProductInput["attributes"]>,
 ): Promise<{ ok: true } | { ok: false; formError: string }> {
   if (attributes.length === 0) {
     await prisma.productAttributeValue.deleteMany({ where: { productId } });
@@ -558,7 +560,7 @@ async function syncAttributeValues(
 async function syncProductColors(
   prisma: Prisma.TransactionClient,
   productId: string,
-  colors: ParsedProductInput["colors"],
+  colors: NonNullable<ParsedProductInput["colors"]>,
 ): Promise<{ ok: true } | { ok: false; formError: string }> {
   const existing = await prisma.productColor.findMany({
     where: { productId },
@@ -622,7 +624,7 @@ async function syncProductColors(
 async function syncSpecGroups(
   prisma: Prisma.TransactionClient,
   productId: string,
-  groups: ParsedProductInput["specGroups"],
+  groups: NonNullable<ParsedProductInput["specGroups"]>,
 ): Promise<{ ok: true } | { ok: false; formError: string }> {
   await prisma.productSpecGroup.deleteMany({ where: { productId } });
   await prisma.productSpecChip.deleteMany({ where: { productId } });
@@ -675,6 +677,10 @@ function productData(
     categoryId: ids.categoryId,
     warrantyId: ids.warrantyId,
     overview: parsed.overview,
+    // `undefined` here means Prisma leaves the column untouched (its own
+    // update-input convention) — matches "not submitted" from parsing above.
+    overviewHtml: parsed.overviewHtml,
+    detailsHtml: parsed.detailsHtml,
     priceAmount: parsed.priceAmount,
     compareAtAmount: parsed.compareAtAmount,
     discountStartsAt: parsed.discountStartsAt,
@@ -745,7 +751,7 @@ async function persistParsed(
     where: { slug: parsed.slug },
     select: { id: true },
   });
-  for (const variant of parsed.variants) {
+  for (const variant of parsed.variants ?? []) {
     if (await skuTakenByOther(variant.sku, currentId)) {
       return { ok: false, formError: "A variant SKU is already in use." };
     }
@@ -834,35 +840,47 @@ async function persistParsed(
           }
         }
 
-        const variantsResult = await syncVariants(
-          tx,
-          existing.id,
-          parsed.variants,
-        );
-        if (!variantsResult.ok) {
-          throw new PersistRollback(variantsResult);
+        // Each of these four is `undefined` when not submitted (the bulk
+        // CSV importer has no column for any of them) — skip the sync
+        // entirely rather than wiping the product's existing rows, which is
+        // what passing `[]` through to a delete-then-recreate/reconcile sync
+        // would do.
+        let variantStocks: { variantId: string; quantity: number }[] = [];
+        if (parsed.variants !== undefined) {
+          const variantsResult = await syncVariants(
+            tx,
+            existing.id,
+            parsed.variants,
+          );
+          if (!variantsResult.ok) {
+            throw new PersistRollback(variantsResult);
+          }
+          variantStocks = variantsResult.stocks;
         }
-        const attributesResult = await syncAttributeValues(
-          tx,
-          existing.id,
-          parsed.attributes,
-        );
-        if (!attributesResult.ok) {
-          throw new PersistRollback(attributesResult);
+        if (parsed.attributes !== undefined) {
+          const attributesResult = await syncAttributeValues(
+            tx,
+            existing.id,
+            parsed.attributes,
+          );
+          if (!attributesResult.ok) {
+            throw new PersistRollback(attributesResult);
+          }
         }
-        const colorsResult = await syncProductColors(
-          tx,
-          existing.id,
-          parsed.colors,
-        );
-        if (!colorsResult.ok) {
-          throw new PersistRollback(colorsResult);
+        if (parsed.colors !== undefined) {
+          const colorsResult = await syncProductColors(
+            tx,
+            existing.id,
+            parsed.colors,
+          );
+          if (!colorsResult.ok) {
+            throw new PersistRollback(colorsResult);
+          }
         }
-        const specsResult = await syncSpecGroups(
-          tx,
-          existing.id,
-          parsed.specGroups,
-        );
+        const specsResult =
+          parsed.specGroups !== undefined
+            ? await syncSpecGroups(tx, existing.id, parsed.specGroups)
+            : { ok: true as const };
         if (!specsResult.ok) {
           throw new PersistRollback(specsResult);
         }
@@ -871,7 +889,7 @@ async function persistParsed(
             productId: existing.id,
             quantity: parsed.quantity,
             lowStockThreshold: parsed.lowStockThreshold,
-            variantStocks: variantsResult.stocks,
+            variantStocks,
           },
           tx,
         );
@@ -889,9 +907,9 @@ async function persistParsed(
     await recordProductAudit(actor, AUDIT_ACTIONS.PRODUCT_UPDATE, existing, {
       slug: parsed.slug,
       isActive: parsed.isActive,
-      variantCount: parsed.variants.length,
-      attributeCount: parsed.attributes.length,
-      specGroupCount: parsed.specGroups.length,
+      variantCount: parsed.variants?.length ?? null,
+      attributeCount: parsed.attributes?.length ?? null,
+      specGroupCount: parsed.specGroups?.length ?? null,
       quantity: parsed.quantity,
       builderSlot: parsed.builderSlot,
     });
@@ -920,6 +938,8 @@ async function persistParsed(
           categoryId: category.id,
           warrantyId,
           overview: parsed.overview,
+          overviewHtml: parsed.overviewHtml ?? null,
+          detailsHtml: parsed.detailsHtml ?? null,
           priceAmount: parsed.priceAmount,
           compareAtAmount: parsed.compareAtAmount,
           stockStatus: toDbStockStatus(parsed.stockStatus),
@@ -971,35 +991,42 @@ async function persistParsed(
         });
       }
 
-      const variantsResult = await syncVariants(
-        tx,
-        createdRow.id,
-        parsed.variants,
-      );
-      if (!variantsResult.ok) {
-        throw new PersistRollback(variantsResult);
+      let variantStocks: { variantId: string; quantity: number }[] = [];
+      if (parsed.variants !== undefined) {
+        const variantsResult = await syncVariants(
+          tx,
+          createdRow.id,
+          parsed.variants,
+        );
+        if (!variantsResult.ok) {
+          throw new PersistRollback(variantsResult);
+        }
+        variantStocks = variantsResult.stocks;
       }
-      const attributesResult = await syncAttributeValues(
-        tx,
-        createdRow.id,
-        parsed.attributes,
-      );
-      if (!attributesResult.ok) {
-        throw new PersistRollback(attributesResult);
+      if (parsed.attributes !== undefined) {
+        const attributesResult = await syncAttributeValues(
+          tx,
+          createdRow.id,
+          parsed.attributes,
+        );
+        if (!attributesResult.ok) {
+          throw new PersistRollback(attributesResult);
+        }
       }
-      const colorsResult = await syncProductColors(
-        tx,
-        createdRow.id,
-        parsed.colors,
-      );
-      if (!colorsResult.ok) {
-        throw new PersistRollback(colorsResult);
+      if (parsed.colors !== undefined) {
+        const colorsResult = await syncProductColors(
+          tx,
+          createdRow.id,
+          parsed.colors,
+        );
+        if (!colorsResult.ok) {
+          throw new PersistRollback(colorsResult);
+        }
       }
-      const specsResult = await syncSpecGroups(
-        tx,
-        createdRow.id,
-        parsed.specGroups,
-      );
+      const specsResult =
+        parsed.specGroups !== undefined
+          ? await syncSpecGroups(tx, createdRow.id, parsed.specGroups)
+          : { ok: true as const };
       if (!specsResult.ok) {
         throw new PersistRollback(specsResult);
       }
@@ -1008,7 +1035,7 @@ async function persistParsed(
           productId: createdRow.id,
           quantity: parsed.quantity,
           lowStockThreshold: parsed.lowStockThreshold,
-          variantStocks: variantsResult.stocks,
+          variantStocks,
         },
         tx,
       );
@@ -1027,9 +1054,9 @@ async function persistParsed(
 
   await recordProductAudit(actor, AUDIT_ACTIONS.PRODUCT_CREATE, created, {
     isActive: parsed.isActive,
-    variantCount: parsed.variants.length,
-    attributeCount: parsed.attributes.length,
-    specGroupCount: parsed.specGroups.length,
+    variantCount: parsed.variants?.length ?? null,
+    attributeCount: parsed.attributes?.length ?? null,
+    specGroupCount: parsed.specGroups?.length ?? null,
     quantity: parsed.quantity,
     builderSlot: parsed.builderSlot,
   });
@@ -1182,6 +1209,8 @@ const CLONE_SELECT = {
   discountStartsAt: true,
   discountEndsAt: true,
   overview: true,
+  overviewHtml: true,
+  detailsHtml: true,
   isNew: true,
   isSale: true,
   warranty: { select: { label: true, logoSrc: true } },
@@ -1293,6 +1322,8 @@ export async function cloneAdminProduct(
     discountStartsAt: null,
     discountEndsAt: null,
     overview: source.overview,
+    overviewHtml: source.overviewHtml,
+    detailsHtml: source.detailsHtml,
     quantity: source.stock?.quantity ?? 0,
     lowStockThreshold: source.stock?.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
     stockStatus: deriveStockStatus(

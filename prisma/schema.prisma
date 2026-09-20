@@ -470,8 +470,18 @@ model Product {
   categoryId String
   warrantyId String?
 
-  /// Short paragraphs shown above the specification table.
+  /// Legacy plain-text bullets. Still written by the bulk CSV importer and
+  /// used as a <meta description> fallback, but no longer the storefront
+  /// "Quick overview" source — see `overviewHtml`.
   overview        String[]
+  /// Rich-text "Quick overview", shown in the buy box. Sanitized HTML
+  /// (`sanitizeRichBody`), edited via Admin -> Product -> Quick overview.
+  overviewHtml    String?
+  /// Rich-text "Details" tab content. Deliberately independent of
+  /// `overviewHtml` and `specGroups` — previously the Details tab just
+  /// re-rendered both of those, so anything added to either "bled into"
+  /// Details with no way to write Details-only content.
+  detailsHtml     String?
   priceAmount     Int
   compareAtAmount Int?
   /// Inclusive calendar start for the compare-at / sale offer (UTC date).

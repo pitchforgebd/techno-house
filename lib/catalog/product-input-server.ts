@@ -17,6 +17,7 @@ import {
 } from "@/lib/catalog/inventory-input";
 import { normalizePdfSpecificationSrc } from "@/lib/product/pdf-specification";
 import { normalizeYoutubeUrl } from "@/lib/product/youtube";
+import { sanitizeRichBody } from "@/lib/content/sanitize-html";
 import { parseProductColors } from "@/lib/catalog/color-input";
 import {
   computeDiscountPricing,
@@ -40,6 +41,7 @@ import {
   parseVariants,
   slugifyProduct,
   PRODUCT_BARCODE_MAX,
+  PRODUCT_CONTENT_HTML_MAX,
   PRODUCT_NAME_MAX,
   PRODUCT_WARRANTY_MAX,
   PRODUCT_WEIGHT_GRAMS_MAX,
@@ -179,6 +181,33 @@ export async function parseProductInput(
     return { ok: false, formError: overview };
   }
 
+  // `undefined` = not submitted (leave whatever the product already has),
+  // matching attributes/colors/specGroups above — the single-product form
+  // always submits a string (possibly empty, which clears it to `null`).
+  let overviewHtml: string | null | undefined;
+  if (input.overviewHtml !== undefined) {
+    const result = sanitizeRichBody(input.overviewHtml, {
+      maxLength: PRODUCT_CONTENT_HTML_MAX,
+      tooLongError: "Quick overview is too long.",
+    });
+    if (!result.ok) {
+      return result;
+    }
+    overviewHtml = result.value;
+  }
+
+  let detailsHtml: string | null | undefined;
+  if (input.detailsHtml !== undefined) {
+    const result = sanitizeRichBody(input.detailsHtml, {
+      maxLength: PRODUCT_CONTENT_HTML_MAX,
+      tooLongError: "Details is too long.",
+    });
+    if (!result.ok) {
+      return result;
+    }
+    detailsHtml = result.value;
+  }
+
   const quantity = parseStockInt(
     input.quantity,
     "Stock quantity",
@@ -251,22 +280,38 @@ export async function parseProductInput(
     return relatedProductIds;
   }
 
-  const variants = parseVariants(input.variants, sku);
+  // `undefined` (the bulk CSV importer's case — it has no column for any of
+  // these four) skips validation entirely and passes `undefined` straight
+  // through, so the sync step in admin-products.ts leaves whatever the
+  // product already has untouched instead of wiping it on every re-import.
+  const variants =
+    input.variants === undefined
+      ? { ok: true as const, value: undefined }
+      : parseVariants(input.variants, sku);
   if (!variants.ok) {
     return variants;
   }
 
-  const attributes = parseProductAttributes(input.attributes ?? []);
+  const attributes =
+    input.attributes === undefined
+      ? { ok: true as const, value: undefined }
+      : parseProductAttributes(input.attributes);
   if (!attributes.ok) {
     return attributes;
   }
 
-  const colors = parseProductColors(input.colors ?? []);
+  const colors =
+    input.colors === undefined
+      ? { ok: true as const, value: undefined }
+      : parseProductColors(input.colors);
   if (!colors.ok) {
     return colors;
   }
 
-  const specGroups = parseSpecGroups(input.specGroups ?? []);
+  const specGroups =
+    input.specGroups === undefined
+      ? { ok: true as const, value: undefined }
+      : parseSpecGroups(input.specGroups);
   if (!specGroups.ok) {
     return specGroups;
   }
@@ -360,6 +405,8 @@ export async function parseProductInput(
       discountStartsAt: pricedAsSale ? startDate : null,
       discountEndsAt: pricedAsSale ? endDate : null,
       overview,
+      overviewHtml,
+      detailsHtml,
       quantity,
       lowStockThreshold,
       stockStatus: deriveStockStatus(quantity, 0, lowStockThreshold),

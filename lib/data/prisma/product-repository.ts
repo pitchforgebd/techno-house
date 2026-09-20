@@ -85,6 +85,8 @@ const CANDIDATE_SELECT = {
 const DETAIL_SELECT = {
   ...CANDIDATE_SELECT,
   overview: true,
+  overviewHtml: true,
+  detailsHtml: true,
   youtubeUrl: true,
   pdfSpecificationSrc: true,
   noteIds: true,
