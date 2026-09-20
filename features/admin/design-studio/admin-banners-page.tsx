@@ -23,7 +23,13 @@ import {
 /** Mirrors AdminHomeBanner in lib/design/home-banners.ts (server-only, not importable from a client component). */
 type AdminHomeBannerProp = {
   id: string;
-  slot: "hero" | "hero-side" | "flash-wide" | "promo-tile" | "category";
+  slot:
+    | "hero"
+    | "hero-side"
+    | "flash-wide"
+    | "promo-tile"
+    | "category"
+    | "product-page";
   eyebrow: string;
   title: string;
   text: string;
@@ -53,7 +59,7 @@ function BannerForm({
   onSaved,
   onCancel,
 }: {
-  slot: "hero" | "hero-side" | "flash-wide" | "promo-tile";
+  slot: "hero" | "hero-side" | "flash-wide" | "promo-tile" | "product-page";
   banner: AdminHomeBannerProp | null;
   position: number;
   onSaved: () => void;
@@ -98,6 +104,8 @@ function BannerForm({
     "flash-wide":
       "Recommended 1370px × 242px on desktop (crops to 400×184 on mobile). Uploads immediately.",
     "promo-tile": "Recommended 800px × 230px, wide tile. Uploads immediately.",
+    "product-page":
+      "Recommended 1200px × 260px, wide strip. Uploads immediately.",
   };
 
   return (
@@ -263,17 +271,20 @@ export function AdminBannersPage({
   const [addingHeroSide, setAddingHeroSide] = useState(false);
   const [addingFlash, setAddingFlash] = useState(false);
   const [addingTile, setAddingTile] = useState(false);
+  const [addingProductPage, setAddingProductPage] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const heroBanners = banners.filter((b) => b.slot === "hero");
   const heroSideBanners = banners.filter((b) => b.slot === "hero-side");
   const flashBanners = banners.filter((b) => b.slot === "flash-wide");
   const tileBanners = banners.filter((b) => b.slot === "promo-tile");
+  const productPageBanners = banners.filter((b) => b.slot === "product-page");
   function refresh() {
     setAddingHero(false);
     setAddingHeroSide(false);
     setAddingFlash(false);
     setAddingTile(false);
+    setAddingProductPage(false);
     setEditingId(null);
     router.refresh();
   }
@@ -449,6 +460,49 @@ export function AdminBannersPage({
             position={tileBanners.length}
             onSaved={refresh}
             onCancel={() => setAddingTile(false)}
+          />
+        ) : null}
+      </StudioCard>
+
+      <StudioCard
+        title="Product page banner"
+        hint="Real — the campaign strip under the buy box on every product page (cashback offers and the like). Hidden entirely until one is added."
+        onUpdate={() => setAddingProductPage(true)}
+        updateLabel={
+          productPageBanners.length > 0 ? "Add another banner" : "Add banner"
+        }
+      >
+        {productPageBanners.map((banner) =>
+          editingId === banner.id ? (
+            <BannerForm
+              key={banner.id}
+              slot="product-page"
+              banner={banner}
+              position={banner.position}
+              onSaved={refresh}
+              onCancel={() => setEditingId(null)}
+            />
+          ) : (
+            <BannerRow
+              key={banner.id}
+              banner={banner}
+              onEdit={() => setEditingId(banner.id)}
+              onDeleted={refresh}
+            />
+          ),
+        )}
+        {productPageBanners.length === 0 && !addingProductPage ? (
+          <p className="text-sm text-neutral-400">
+            No product page banner yet — nothing shows under the buy box until one is added.
+          </p>
+        ) : null}
+        {addingProductPage ? (
+          <BannerForm
+            slot="product-page"
+            banner={null}
+            position={productPageBanners.length}
+            onSaved={refresh}
+            onCancel={() => setAddingProductPage(false)}
           />
         ) : null}
       </StudioCard>

@@ -26,7 +26,15 @@ function StarIcon({ filled }: { filled: boolean }) {
   );
 }
 
-export function RatingStars({ rating }: { rating: number }) {
+export function RatingStars({
+  rating,
+  reviewCount,
+}: {
+  rating: number;
+  /** When given, the stars are followed by "N reviews" instead of "x/5" —
+   * the count is what a shopper scanning a product page actually weighs. */
+  reviewCount?: number;
+}) {
   const value = clampRating(rating);
   const fullStars = Math.round(value);
 
@@ -40,7 +48,11 @@ export function RatingStars({ rating }: { rating: number }) {
           <StarIcon key={index} filled={index < fullStars} />
         ))}
       </span>
-      <span className="tabular-nums text-text-muted">{Math.round(value)}/5</span>
+      <span className="tabular-nums text-text-muted">
+        {reviewCount === undefined
+          ? `${Math.round(value)}/5`
+          : `${reviewCount} ${reviewCount === 1 ? "review" : "reviews"}`}
+      </span>
     </span>
   );
 }

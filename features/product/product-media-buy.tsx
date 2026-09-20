@@ -27,6 +27,7 @@ type ProductMediaBuyProps = {
   warrantyLabel: string;
   overviewHtml: string | null;
   averageRating: number;
+  reviewCount: number;
   colors: ProductColorOption[];
   discountStartsAt: string | null;
   discountEndsAt: string | null;
@@ -61,6 +62,7 @@ export function ProductMediaBuy({
   warrantyLabel,
   overviewHtml,
   averageRating,
+  reviewCount,
   colors,
   discountStartsAt,
   discountEndsAt,
@@ -123,6 +125,7 @@ export function ProductMediaBuy({
         warrantyLabel={warrantyLabel}
         overviewHtml={overviewHtml}
         averageRating={averageRating}
+        reviewCount={reviewCount}
         colors={colors}
         selectedColorId={selectedColorId}
         onSelectedColorIdChange={setSelectedColorId}

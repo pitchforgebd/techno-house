@@ -4,6 +4,7 @@ import { ProductDetailSections } from "@/features/product/product-detail-section
 import { ProductDetailsPanel } from "@/features/product/product-details-panel";
 import { ProductMediaBuy } from "@/features/product/product-media-buy";
 import { ProductMediaExtras } from "@/features/product/product-media-extras";
+import { ProductPageBanner } from "@/features/product/product-page-banner";
 import {
   ProductLabelsRow,
   ProductNotesPanel,
@@ -16,6 +17,7 @@ import { ProductSpecifications } from "@/features/product/product-specifications
 import { ProductWarranty } from "@/features/product/product-warranty";
 import { productRepository, reviewRepository } from "@/lib/data";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
+import { getStorefrontHomeBanners } from "@/lib/design/home-banners";
 import { getCustomerSession } from "@/lib/auth/customer-session";
 import { getB2BTermsForProductId } from "@/lib/b2b/product-terms";
 import { getMyB2BAccount } from "@/lib/b2b/applications";
@@ -160,6 +162,11 @@ export default async function ProductPage({
     ? sanitizeBlogBody(product.detailsHtml)
     : null;
 
+  // Campaign strip under the buy box — same admin-managed banner system as
+  // the homepage slots; absent until the operator adds one.
+  const productPageBanner =
+    (await getStorefrontHomeBanners("product-page"))[0] ?? null;
+
   const visitorWidgetSettings = await getVisitorWidgetSettings();
   const liveViewerCount = visitorWidgetSettings.enabled
     ? await getLiveViewerCount(product.slug, visitorWidgetSettings.windowMinutes)
@@ -186,6 +193,7 @@ export default async function ProductPage({
         warrantyLabel={product.warrantyLabel}
         overviewHtml={overviewHtml}
         averageRating={averageRating}
+        reviewCount={reviews.length}
         colors={product.colors}
         discountStartsAt={product.discountStartsAt}
         discountEndsAt={product.discountEndsAt}
@@ -222,6 +230,8 @@ export default async function ProductPage({
           </div>
         }
       />
+
+      <ProductPageBanner banner={productPageBanner} />
 
       <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div>

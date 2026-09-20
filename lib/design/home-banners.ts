@@ -17,6 +17,9 @@ export const HOME_BANNER_SLOTS = [
   "flash-wide",
   "promo-tile",
   "category",
+  /** Strip under the buy box on every product page — the campaign/cashback
+   * banner slot (bKash offers and the like). */
+  "product-page",
 ] as const;
 export type HomeBannerSlot = (typeof HOME_BANNER_SLOTS)[number];
 

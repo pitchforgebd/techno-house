@@ -58,6 +58,7 @@ type ProductSummaryProps = {
   /** Pre-sanitized on the server (page.tsx) — safe to render as-is. */
   overviewHtml: string | null;
   averageRating: number;
+  reviewCount: number;
   colors: ProductColorOption[];
   selectedColorId?: string | null;
   onSelectedColorIdChange?: (colorId: string | null) => void;
@@ -125,6 +126,7 @@ export function ProductSummary({
   warrantyLabel,
   overviewHtml,
   averageRating,
+  reviewCount,
   colors,
   selectedColorId: selectedColorIdProp,
   onSelectedColorIdChange,
@@ -262,7 +264,7 @@ export function ProductSummary({
             {name}
           </h1>
           <div className="mt-2">
-            <RatingStars rating={averageRating} />
+            <RatingStars rating={averageRating} reviewCount={reviewCount} />
           </div>
           <p className="mt-2 text-caption text-text-muted">
             Product ID: <span className="font-mono text-text">{sku}</span>
@@ -271,26 +273,38 @@ export function ProductSummary({
           </p>
         </div>
 
-        <div className="space-y-2 rounded-lg border border-border bg-surface-muted/50 p-5">
-          <span className="text-[0.7rem] font-bold tracking-[0.14em] text-text-muted uppercase">
-            {b2bActive ? "Wholesale price" : "Special price"}
-          </span>
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <div className="space-y-3">
+          {/* Special price sits in its own panel and the regular price on a
+              plain line beneath it, rather than struck through beside it —
+              the two figures read as separate facts that way, which is how
+              a shopper compares them. */}
+          <div className="inline-flex min-w-[13rem] flex-col gap-1 rounded-lg border border-border bg-surface-muted/60 px-5 py-4">
+            <span className="text-[0.7rem] font-bold tracking-[0.14em] text-text-muted uppercase">
+              {b2bActive ? "Wholesale price" : "Special price"}
+            </span>
             <span className="text-[2rem] leading-none font-bold tabular-nums tracking-tight text-text">
               {formatMoney(displayPrice)}
             </span>
-            {retailReference && retailReference.amount > displayPrice.amount ? (
-              <span className="text-body tabular-nums text-text-muted line-through">
-                {formatMoney(retailReference)}
-              </span>
-            ) : null}
-            {savings !== null ? (
-              <span className="inline-flex items-center rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
-                Save {formatMoney({ amount: savings })}
-                {b2bActive ? " (B2B)" : ""}
-              </span>
-            ) : null}
           </div>
+
+          {retailReference && retailReference.amount > displayPrice.amount ? (
+            <div className="space-y-0.5">
+              <p className="text-caption font-medium text-text-muted">
+                Regular price
+              </p>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="text-label tabular-nums text-text-muted line-through">
+                  {formatMoney(retailReference)}
+                </span>
+                {savings !== null ? (
+                  <span className="inline-flex items-center rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
+                    Save {formatMoney({ amount: savings })}
+                    {b2bActive ? " (B2B)" : ""}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           {discountEndsAt ? (
             <p className="text-caption text-text-muted">
@@ -315,12 +329,14 @@ export function ProductSummary({
           ) : null}
 
           {emiVisible ? (
-            <p className="text-caption tabular-nums text-text-muted">
+            <p className="text-caption font-semibold tabular-nums text-text">
               EMI {formatMoney({ amount: emiAmount })}/month
-              {emiConfig.tenureMonths.length > 0
-                ? ` for ${Math.min(...emiConfig.tenureMonths)}–${Math.max(...emiConfig.tenureMonths)} months`
-                : ""}
-              {emiConfig.partnerName ? ` via ${emiConfig.partnerName}` : ""}
+              <span className="font-normal text-text-muted">
+                {emiConfig.tenureMonths.length > 0
+                  ? ` for ${Math.min(...emiConfig.tenureMonths)}–${Math.max(...emiConfig.tenureMonths)} months`
+                  : ""}
+                {emiConfig.partnerName ? ` via ${emiConfig.partnerName}` : ""}
+              </span>
             </p>
           ) : null}
 
@@ -602,20 +618,26 @@ export function ProductSummary({
         ) : null}
 
         {emiVisible ? (
-          <div className="rounded-md border border-border bg-surface-muted/50 px-3 py-3">
-            <p className="text-label font-medium text-text">
-              EMI available
-              {emiConfig.partnerName ? ` — ${emiConfig.partnerName}` : ""}
-            </p>
-            <p className="mt-1 text-caption tabular-nums text-text-muted">
-              Starting from {formatMoney({ amount: emiOfferAmount })}/month ·{" "}
-              {emiConfig.tenureMonths.map((m) => `${m} mo`).join(", ")}
-            </p>
-            {emiConfig.interestNote ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-lg border border-border bg-surface px-3.5 py-3">
+              <p className="text-label font-semibold text-text">
+                Avail EMI offer
+              </p>
               <p className="mt-1 text-caption text-text-muted">
+                {emiConfig.partnerName
+                  ? `Through ${emiConfig.partnerName}.`
+                  : "Through our partner banks."}{" "}
                 {emiConfig.interestNote}
               </p>
-            ) : null}
+            </div>
+            <div className="rounded-lg border border-primary/25 bg-primary-soft/60 px-3.5 py-3">
+              <p className="text-label font-semibold tabular-nums text-text">
+                From {formatMoney({ amount: emiOfferAmount })}/month
+              </p>
+              <p className="mt-1 text-caption text-text-muted">
+                {emiConfig.tenureMonths.map((m) => `${m} months`).join(" · ")}
+              </p>
+            </div>
           </div>
         ) : null}
 
