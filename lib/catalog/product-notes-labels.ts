@@ -39,11 +39,14 @@ export type ProductLabelView = ProductLabelOption;
 export type ProductPresetLookup = {
   notes: Map<string, ProductNoteView>;
   labels: Map<string, ProductLabelView>;
+  /** Product ids currently in a live Promotion campaign — drives the "Offer" ribbon. */
+  activeOfferProductIds: Set<string>;
 };
 
 export const EMPTY_PRESET_LOOKUP: ProductPresetLookup = {
   notes: new Map(),
   labels: new Map(),
+  activeOfferProductIds: new Set(),
 };
 
 export function notesForType(

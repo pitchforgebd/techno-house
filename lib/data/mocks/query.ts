@@ -35,6 +35,7 @@ export function toSummary(product: ProductDetail): ProductSummary {
     discountStartsAt: product.discountStartsAt,
     discountEndsAt: product.discountEndsAt,
     labels: product.labels,
+    hasActiveOffer: product.hasActiveOffer,
   };
 }
 

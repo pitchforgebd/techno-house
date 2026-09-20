@@ -17,6 +17,7 @@ import {
   type ProductNoteOption,
   type ProductPresetLookup,
 } from "@/lib/catalog/product-notes-labels";
+import { loadActivePromotionProductIds } from "@/lib/marketing/promotions";
 
 function usesDatabase(): boolean {
   return process.env.DATA_SOURCE !== "mock";
@@ -63,13 +64,15 @@ export async function listProductLabelOptions(): Promise<ProductLabelOption[]> {
 
 /** One query per request/list, not per product. */
 export async function loadProductPresetLookup(): Promise<ProductPresetLookup> {
-  const [notes, labels] = await Promise.all([
+  const [notes, labels, activeOfferProductIds] = await Promise.all([
     listProductNoteOptions(),
     listProductLabelOptions(),
+    loadActivePromotionProductIds(),
   ]);
   return {
     notes: new Map(notes.map((note) => [note.id, note])),
     labels: new Map(labels.map((label) => [label.id, label])),
+    activeOfferProductIds,
   };
 }
 

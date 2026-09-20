@@ -55,6 +55,8 @@ export type PublicPromotion = {
   bannerLabel: string | null;
   /** Local storefront path the banner links to, when set. */
   bannerHref: string | null;
+  /** Has at least one product assigned — `/offers/[slug]` has something to show. */
+  hasProducts: boolean;
 };
 
 const CHANNEL_TO_DB = {
@@ -321,6 +323,32 @@ export async function countPromotions(): Promise<number> {
   return getPrisma().promotion.count({ where: { kind: "PROMOTION" } });
 }
 
+/**
+ * Product ids currently in a live campaign — feeds the storefront "Offer"
+ * ribbon (`ProductSummary.hasActiveOffer`). Same active-window predicate as
+ * `listPublicPromotions`, just joined through to products instead of banners.
+ */
+export async function loadActivePromotionProductIds(): Promise<Set<string>> {
+  if (!usesDatabase()) {
+    return new Set();
+  }
+  const now = new Date();
+  const rows = await getPrisma().promotionProduct.findMany({
+    where: {
+      promotion: {
+        kind: "PROMOTION",
+        status: "ACTIVE",
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+        ],
+      },
+    },
+    select: { productId: true },
+  });
+  return new Set(rows.map((row) => row.productId));
+}
+
 function isPubliclyActive(item: AdminPromotion, now: Date): boolean {
   if (item.status !== "active") {
     return false;
@@ -356,6 +384,7 @@ export async function listPublicPromotions(): Promise<PublicPromotion[]> {
       bannerSrc: null,
       bannerLabel: null,
       bannerHref: null,
+      hasProducts: false,
     }));
   }
 
@@ -380,6 +409,7 @@ export async function listPublicPromotions(): Promise<PublicPromotion[]> {
       bannerSrc: true,
       bannerLabel: true,
       bannerHref: true,
+      _count: { select: { products: true } },
     },
   });
 
@@ -397,7 +427,63 @@ export async function listPublicPromotions(): Promise<PublicPromotion[]> {
     bannerSrc: publicLocalPath(row.bannerSrc),
     bannerLabel: row.bannerLabel,
     bannerHref: publicLocalPath(row.bannerHref),
+    hasProducts: row._count.products > 0,
   }));
+}
+
+/**
+ * A single active campaign by slug, for `/offers/[slug]`. Same visibility
+ * rule as `listPublicPromotions` — guests never see a draft/scheduled/ended
+ * campaign just because they have the link.
+ */
+export async function getPublicPromotionBySlug(
+  slug: string,
+): Promise<PublicPromotion | null> {
+  const trimmed = slug.trim();
+  if (!trimmed || !usesDatabase()) {
+    return null;
+  }
+  const now = new Date();
+  const row = await getPrisma().promotion.findFirst({
+    where: {
+      slug: trimmed,
+      kind: "PROMOTION",
+      status: "ACTIVE",
+      AND: [
+        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+        { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+      ],
+    },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      channel: true,
+      summary: true,
+      startsAt: true,
+      endsAt: true,
+      bannerSrc: true,
+      bannerLabel: true,
+      bannerHref: true,
+      _count: { select: { products: true } },
+    },
+  });
+  if (!row) {
+    return null;
+  }
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    channel: CHANNEL_FROM_DB[row.channel],
+    summary: row.summary ?? "",
+    startsAt: dateLabel(row.startsAt) || null,
+    endsAt: dateLabel(row.endsAt) || null,
+    bannerSrc: publicLocalPath(row.bannerSrc),
+    bannerLabel: row.bannerLabel,
+    bannerHref: publicLocalPath(row.bannerHref),
+    hasProducts: row._count.products > 0,
+  };
 }
 
 export async function savePromotion(input: {

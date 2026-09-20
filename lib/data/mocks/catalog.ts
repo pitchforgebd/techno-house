@@ -1217,6 +1217,7 @@ export const mockProducts: ProductDetail[] = (
   | "labels"
   | "notes"
   | "isNewArrival"
+  | "hasActiveOffer"
 >[]
 ).map((product) => ({
   ...product,
@@ -1236,4 +1237,6 @@ export const mockProducts: ProductDetail[] = (
   // Mock rows carry no `createdAt`, so the hand-set flag is the only signal
   // available here. The database path derives this from the real date.
   isNewArrival: product.isNew,
+  // Mock catalogue has no Promotion rows to check membership against.
+  hasActiveOffer: false,
 }));

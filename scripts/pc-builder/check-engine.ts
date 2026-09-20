@@ -96,6 +96,7 @@ function candidate(
     discountStartsAt: null,
     discountEndsAt: null,
     labels: [],
+    hasActiveOffer: false,
     builderSlot: null,
     builderAttrs: attrs,
   };

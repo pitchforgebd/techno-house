@@ -20,6 +20,12 @@ import {
   type PromotionalMutationResult,
 } from "@/lib/marketing/promotional-products";
 import {
+  assignPromotionProducts,
+  removePromotionProduct,
+  removePromotionProducts,
+  type PromotionProductMutationResult,
+} from "@/lib/marketing/promotion-products";
+import {
   savePromotion,
   type PromotionMutationResult,
 } from "@/lib/marketing/promotions";
@@ -54,6 +60,93 @@ async function guard(): Promise<GuardResult> {
 function revalidatePromotions() {
   revalidatePath("/admin/promotions/products");
   revalidatePath("/admin/promotions");
+}
+
+/** Gated on `promotion.manage` — same key as `savePromotionAction` below,
+ * since assigning a campaign's products is part of managing that campaign. */
+async function guardPromotionManage(): Promise<GuardResult> {
+  if (!(await isSameOriginRequest())) {
+    return { ok: false, formError: CROSS_ORIGIN_ERROR };
+  }
+  const allowed = await staffWithPermission("promotion.manage");
+  if (!allowed.ok) {
+    return allowed;
+  }
+  const meta = await getRequestMeta();
+  return {
+    ok: true,
+    actor: {
+      staffId: allowed.session.staffId,
+      email: allowed.session.email,
+      ip: meta.ip,
+    },
+  };
+}
+
+function revalidatePromotionDetail(promotionId: string) {
+  revalidatePath(`/admin/promotions/${promotionId}`);
+  revalidatePath("/admin/promotions/campaigns");
+  revalidatePath("/offers");
+}
+
+/** Bound to a `promotionId` before being passed to the product-list Client
+ * Component, e.g. `assignPromotionProductsAction.bind(null, promotion.id)` —
+ * a plain arrow-function wrapper is not a valid server action reference. */
+export async function assignPromotionProductsAction(
+  promotionId: string,
+  productIds: string[],
+): Promise<PromotionProductMutationResult> {
+  const gate = await guardPromotionManage();
+  if (!gate.ok) {
+    return gate;
+  }
+  const result = await assignPromotionProducts({
+    promotionId,
+    productIds,
+    actor: gate.actor,
+  });
+  if (result.ok) {
+    revalidatePromotionDetail(promotionId);
+  }
+  return result;
+}
+
+export async function removePromotionProductAction(
+  promotionId: string,
+  productId: string,
+): Promise<PromotionProductMutationResult> {
+  const gate = await guardPromotionManage();
+  if (!gate.ok) {
+    return gate;
+  }
+  const result = await removePromotionProduct({
+    promotionId,
+    productId,
+    actor: gate.actor,
+  });
+  if (result.ok) {
+    revalidatePromotionDetail(promotionId);
+  }
+  return result;
+}
+
+export async function bulkRemovePromotionProductsAction(
+  promotionId: string,
+  productIds: string[],
+): Promise<PromotionProductMutationResult> {
+  const gate = await guardPromotionManage();
+  if (!gate.ok) {
+    return gate;
+  }
+  const result = await removePromotionProducts({
+    promotionId,
+    productIds,
+    actor: gate.actor,
+  });
+  if (result.ok) {
+    revalidatePromotionDetail(promotionId);
+  }
+  return result;
 }
 
 export async function assignPromotionalProductsAction(

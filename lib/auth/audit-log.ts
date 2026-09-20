@@ -81,6 +81,7 @@ export const AUDIT_ACTIONS = {
   PC_BUILDER_SETTINGS_UPDATE: "pc_builder.settings.update",
   PROMOTION_CREATE: "promotion.create",
   PROMOTION_UPDATE: "promotion.update",
+  PROMOTION_PRODUCTS_UPDATE: "promotion_products.update",
   FLASH_SALE_CREATE: "flash_sale.create",
   FLASH_SALE_UPDATE: "flash_sale.update",
   FLASH_SALE_DELETE: "flash_sale.delete",

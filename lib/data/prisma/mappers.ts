@@ -196,6 +196,7 @@ export function toProductSummary(
       ? row.discountEndsAt?.toISOString() ?? null
       : null,
     labels: resolveProductLabels(row.labelIds ?? [], presets),
+    hasActiveOffer: presets.activeOfferProductIds.has(row.id),
   };
 }
 

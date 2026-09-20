@@ -54,6 +54,24 @@ function productLabel(
 }
 
 /**
+ * Diagonal ribbon across the top-left corner when the product is in a
+ * currently-running Promotion campaign — a bigger merchandising signal than
+ * a generic discount/New/Sale flag, so it takes that corner over instead of
+ * stacking on top of it. Needs `overflow-hidden` on the positioned ancestor
+ * to clip the strip to the card at both edges.
+ */
+function OfferRibbon() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute top-3.5 -left-10 z-[3] w-36 -rotate-45 bg-gradient-to-r from-[#e0217a] to-[#c2185b] py-1 text-center text-[0.65rem] leading-none font-extrabold tracking-wide text-white uppercase shadow-sm"
+    >
+      Offer
+    </div>
+  );
+}
+
+/**
  * Corner wedge in the top-left of the image. Discount wins the slot; a
  * New/Sale flag only fills it when there is no percentage to show.
  */
@@ -103,7 +121,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         shot by ~54px top and bottom — that empty band, not the spacing
         below, was most of the dead air in the card.
       */}
-      <div className="relative border-b border-border/60 bg-surface">
+      <div className="relative overflow-hidden border-b border-border/60 bg-surface">
         <Link href={href} className="block">
           <div className="relative aspect-[4/3]">
             <Image
@@ -116,19 +134,26 @@ export function ProductCard({ product }: { product: ProductSummary }) {
           </div>
         </Link>
 
-        <CornerFlag product={product} off={off} />
+        {product.hasActiveOffer ? (
+          <OfferRibbon />
+        ) : (
+          <>
+            <CornerFlag product={product} off={off} />
 
-        {/*
-          The corner wedge holds the discount when there is one, so a product
-          that is both new and discounted used to lose its NEW mark entirely —
-          exactly the case a new-arrivals listing needs to show. It gets its
-          own pill directly under the ribbon instead.
-        */}
-        {off != null && isNewBadgeWorthy(product) ? (
-          <span className="pointer-events-none absolute top-9 left-2 z-[2] inline-flex items-center rounded-sm bg-primary px-1.5 py-0.5 text-[0.6rem] leading-none font-extrabold tracking-wide text-primary-foreground uppercase shadow-sm">
-            New
-          </span>
-        ) : null}
+            {/*
+              The corner wedge holds the discount when there is one, so a
+              product that is both new and discounted used to lose its NEW
+              mark entirely — exactly the case a new-arrivals listing needs
+              to show. It gets its own pill directly under the ribbon
+              instead.
+            */}
+            {off != null && isNewBadgeWorthy(product) ? (
+              <span className="pointer-events-none absolute top-9 left-2 z-[2] inline-flex items-center rounded-sm bg-primary px-1.5 py-0.5 text-[0.6rem] leading-none font-extrabold tracking-wide text-primary-foreground uppercase shadow-sm">
+                New
+              </span>
+            ) : null}
+          </>
+        )}
 
         {product.labels.length > 0 ? (
           <ul
@@ -269,18 +294,24 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
           </div>
         </Link>
 
-        <CornerFlag product={product} off={off} />
+        {product.hasActiveOffer ? (
+          <OfferRibbon />
+        ) : (
+          <>
+            <CornerFlag product={product} off={off} />
 
-        {/*
-          The corner wedge holds the discount when there is one, so a product
-          that is both new and discounted would otherwise lose its NEW mark.
-          Same treatment as the compact card.
-        */}
-        {off != null && isNewBadgeWorthy(product) ? (
-          <span className="pointer-events-none absolute top-9 left-2 z-[2] inline-flex items-center rounded-sm bg-primary px-1.5 py-0.5 text-[0.6rem] leading-none font-extrabold tracking-wide text-primary-foreground uppercase shadow-sm">
-            New
-          </span>
-        ) : null}
+            {/*
+              The corner wedge holds the discount when there is one, so a
+              product that is both new and discounted would otherwise lose
+              its NEW mark. Same treatment as the compact card.
+            */}
+            {off != null && isNewBadgeWorthy(product) ? (
+              <span className="pointer-events-none absolute top-9 left-2 z-[2] inline-flex items-center rounded-sm bg-primary px-1.5 py-0.5 text-[0.6rem] leading-none font-extrabold tracking-wide text-primary-foreground uppercase shadow-sm">
+                New
+              </span>
+            ) : null}
+          </>
+        )}
 
         {product.labels.length > 0 ? (
           <ul

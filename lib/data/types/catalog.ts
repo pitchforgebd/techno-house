@@ -87,6 +87,8 @@ export type ProductSummary = {
   discountEndsAt: string | null;
   /** Custom labels attached in admin (Flash Sale, Free Shipping, …). */
   labels: ProductLabelBadge[];
+  /** In a currently-running Promotion campaign — drives the corner "Offer" ribbon. */
+  hasActiveOffer: boolean;
 };
 
 /** Minimal row for the header search-as-you-type dropdown — deliberately

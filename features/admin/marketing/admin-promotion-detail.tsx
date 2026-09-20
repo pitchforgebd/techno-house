@@ -13,17 +13,35 @@ import { notifySuccess } from "@/components/ui/feedback-provider";
 import { AdminMediaImageField } from "@/features/admin/media/admin-media-picker";
 import { savePromotionAction } from "@/features/admin/promotions/promotion-actions";
 import { CampaignStatusBadge } from "@/features/admin/marketing/admin-marketing-badges";
+import { AdminPromoProductChannelList } from "@/features/admin/marketing/admin-promo-product-channel-list";
 import type {
   AdminPromotion,
   CampaignStatus,
 } from "@/lib/admin/marketing-mock";
+import type { PromoCatalogProduct } from "@/lib/admin/promotions-offers-mock";
+
+type PersistResult = { ok: true } | { ok: false; formError: string };
+
+type ProductListProps = {
+  assignedProducts: PromoCatalogProduct[];
+  catalogProducts: PromoCatalogProduct[];
+  categories: { slug: string; name: string }[];
+  productActions: {
+    assign: (ids: string[]) => Promise<PersistResult>;
+    remove: (id: string) => Promise<PersistResult>;
+    bulkRemove: (ids: string[]) => Promise<PersistResult>;
+  };
+};
 
 export function AdminPromotionDetail({
   promotion,
   isNew,
+  products,
 }: {
   promotion: AdminPromotion | null;
   isNew?: boolean;
+  /** Omitted for a brand-new campaign — it needs an id before it can hold products. */
+  products?: ProductListProps;
 }) {
   const router = useRouter();
   const [name, setName] = useState(promotion?.name ?? "");
@@ -246,8 +264,11 @@ export function AdminPromotionDetail({
               placeholder="/category/monitors"
             />
             <span className="block text-caption text-text-muted">
-              Local storefront path only, starting with /. Leave empty to make
-              the banner non-clickable.
+              Local storefront path only, starting with /. Only used once
+              this campaign has no products assigned below — with products
+              assigned, the banner always links to its own offer page
+              instead. Leave empty to make a product-less banner
+              non-clickable.
             </span>
           </label>
         </div>
@@ -264,6 +285,32 @@ export function AdminPromotionDetail({
           </Link>
         </div>
       </form>
+
+      {products ? (
+        <div className="space-y-2">
+          <div>
+            <p className="text-body font-semibold text-text">
+              Products in this offer
+            </p>
+            <p className="mt-0.5 text-caption text-text-muted">
+              Shown on this campaign&apos;s public offer page, and marked
+              with the &quot;Offer&quot; ribbon everywhere on the storefront.
+            </p>
+          </div>
+          <AdminPromoProductChannelList
+            title="Offer products"
+            tabLabel="Offer product list"
+            addLabel="Add products"
+            pickerTitle="Add product to this offer"
+            emptyTitle="No products assigned to this offer yet"
+            assigned={products.assignedProducts}
+            catalog={products.catalogProducts}
+            categories={products.categories}
+            showTodaysDealToggle={false}
+            persist={products.productActions}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

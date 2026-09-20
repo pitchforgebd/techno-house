@@ -34,9 +34,23 @@ function stripLabel(promotion: PublicPromotion): string {
   return (promotion.bannerLabel || promotion.channel).toUpperCase();
 }
 
+/**
+ * Once a campaign has products assigned, its own offer page is the
+ * authoritative destination — a hand-typed `bannerHref` only matters for a
+ * product-less announcement banner (e.g. a cashback promo with nothing to
+ * list).
+ */
+function offerHref(promotion: PublicPromotion): string | null {
+  if (promotion.hasProducts) {
+    return `/offers/${promotion.slug}`;
+  }
+  return promotion.bannerHref;
+}
+
 function OfferCard({ promotion }: { promotion: PublicPromotion }) {
   const schedule = scheduleLabel(promotion.startsAt, promotion.endsAt);
   const label = stripLabel(promotion);
+  const href = offerHref(promotion);
 
   const inner = (
     <div className="flex h-full min-h-36 overflow-hidden rounded-sm border border-border bg-surface transition-[border-color,box-shadow,transform] duration-300 ease-out group-hover:border-primary/40 group-hover:shadow-[0_18px_40px_-28px_rgb(14_26_36/0.5)] motion-safe:group-hover:-translate-y-0.5 sm:min-h-44">
@@ -88,9 +102,9 @@ function OfferCard({ promotion }: { promotion: PublicPromotion }) {
 
   return (
     <li className="min-w-0">
-      {promotion.bannerHref ? (
+      {href ? (
         <Link
-          href={promotion.bannerHref}
+          href={href}
           aria-label={promotion.name}
           className="group block rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >

@@ -16,6 +16,7 @@ import {
   countPromotionalProducts,
   listPromotionalProductIds,
 } from "@/lib/marketing/promotional-products";
+import { listPromotionProductIds } from "@/lib/marketing/promotion-products";
 import {
   countActiveFlashSales,
   countFlashSales,
@@ -128,6 +129,18 @@ export async function loadPromotionalAssignedProducts(): Promise<
 export async function loadTodaysDealProducts(): Promise<PromoCatalogProduct[]> {
   const all = await loadPromoCatalogProducts();
   return all.filter((product) => product.isSale);
+}
+
+/** Products assigned to one campaign, for its `/admin/promotions/[id]` product list. */
+export async function loadPromotionAssignedProducts(
+  promotionId: string,
+): Promise<PromoCatalogProduct[]> {
+  const [all, assignedIds] = await Promise.all([
+    loadPromoCatalogProducts(),
+    listPromotionProductIds(promotionId),
+  ]);
+  const assigned = new Set(assignedIds);
+  return all.filter((p) => assigned.has(p.id));
 }
 
 export async function loadCategoryDiscountRows(): Promise<
