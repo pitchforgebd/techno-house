@@ -27,15 +27,12 @@ import {
 } from "@/lib/auth/staff-session-cookie";
 import { getPrisma } from "@/lib/db/prisma";
 
-export type StaffSessionView = {
-  staffId: string;
-  email: string;
-  fullName: string;
-  roleKey: string | null;
-  roleName: string;
-  /** Granted permission keys (e.g. `product.view`). Never includes tokens. */
-  permissions: string[];
-};
+// Re-exported so existing importers of `staff-session.ts` are unaffected.
+// `staff-session-core.ts` holds the canonical shape (and the middleware-safe
+// resolver, `resolveStaffSessionByToken`) since it has no `next/headers`
+// dependency and can be imported from `middleware.ts`.
+export type { StaffSessionView } from "@/lib/auth/staff-session-core";
+import type { StaffSessionView } from "@/lib/auth/staff-session-core";
 
 type CreateSessionInput = {
   staffId: string;

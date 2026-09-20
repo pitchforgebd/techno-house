@@ -20,6 +20,8 @@ import {
   useAdminLoginPath,
   useStaffSession,
 } from "@/features/admin/staff-session-provider";
+import { canAccessAdminPath } from "@/lib/auth/admin-route-permissions";
+import { hasPermission } from "@/lib/auth/permission-check";
 import type { StaffSessionView } from "@/lib/auth/staff-session";
 import { cn } from "@/lib/cn";
 
@@ -161,6 +163,21 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
   const date = todayLabel();
 
   const activeTab = ADMIN_DASHBOARD_TABS.find((tab) => tab.match(pathname));
+  const permissions = session?.permissions ?? [];
+  // `ADMIN_DASHBOARD_TABS` is a fixed list, unlike the sidebar (which is
+  // already built from the permission-filtered nav tree) — filter it the
+  // same way here, or a staff member without e.g. `orders.view_all` sees
+  // (and can click) an "Orders" tab that isn't in their sidebar at all.
+  const visibleTabs = ADMIN_DASHBOARD_TABS.filter((tab) =>
+    canAccessAdminPath(tab.href, permissions),
+  );
+  const canViewDesignStudio = canAccessAdminPath(
+    "/admin/design-studio",
+    permissions,
+  );
+  const canViewSupport = canAccessAdminPath("/admin/support", permissions);
+  const canViewContacts = canAccessAdminPath("/admin/contacts", permissions);
+  const canAddProduct = hasPermission(session, "product.add");
 
   return (
     <header className="border-b border-neutral-200/80 bg-white">
@@ -178,7 +195,7 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
           aria-label="Quick sections"
           className="hidden min-w-0 flex-1 items-center gap-1 md:flex"
         >
-          {ADMIN_DASHBOARD_TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const active = activeTab?.href === tab.href;
             return (
               <Link
@@ -198,13 +215,15 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          <Link
-            href="/admin/products/new"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0f766e] px-3 text-sm font-medium text-white shadow-sm hover:bg-[#0d5f59]"
-          >
-            <Plus className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Add new</span>
-          </Link>
+          {canAddProduct ? (
+            <Link
+              href="/admin/products/new"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0f766e] px-3 text-sm font-medium text-white shadow-sm hover:bg-[#0d5f59]"
+            >
+              <Plus className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Add new</span>
+            </Link>
+          ) : null}
 
           <span
             className="mx-2 hidden h-6 w-px bg-neutral-200 sm:block"
@@ -222,31 +241,37 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
             >
               <Globe className="size-4" aria-hidden />
             </Link>
-            <Link
-              href="/admin/design-studio"
-              title="Design Studio"
-              className="inline-flex size-9 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
-              aria-label="Design Studio"
-            >
-              <Palette className="size-4" aria-hidden />
-            </Link>
+            {canViewDesignStudio ? (
+              <Link
+                href="/admin/design-studio"
+                title="Design Studio"
+                className="inline-flex size-9 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+                aria-label="Design Studio"
+              >
+                <Palette className="size-4" aria-hidden />
+              </Link>
+            ) : null}
             <AdminOrderAlertBell />
-            <Link
-              href="/admin/support"
-              title="Support"
-              className="inline-flex size-9 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
-              aria-label="Support"
-            >
-              <LifeBuoy className="size-4" aria-hidden />
-            </Link>
-            <Link
-              href="/admin/contacts"
-              title="Contacts"
-              className="hidden size-9 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 sm:inline-flex"
-              aria-label="Contacts"
-            >
-              <MessageSquare className="size-4" aria-hidden />
-            </Link>
+            {canViewSupport ? (
+              <Link
+                href="/admin/support"
+                title="Support"
+                className="inline-flex size-9 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+                aria-label="Support"
+              >
+                <LifeBuoy className="size-4" aria-hidden />
+              </Link>
+            ) : null}
+            {canViewContacts ? (
+              <Link
+                href="/admin/contacts"
+                title="Contacts"
+                className="hidden size-9 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 sm:inline-flex"
+                aria-label="Contacts"
+              >
+                <MessageSquare className="size-4" aria-hidden />
+              </Link>
+            ) : null}
           </div>
 
           <span
@@ -268,7 +293,7 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
         aria-label="Quick sections"
         className="flex gap-1 overflow-x-auto border-t border-neutral-100 px-3 py-1.5 md:hidden"
       >
-        {ADMIN_DASHBOARD_TABS.map((tab) => {
+        {visibleTabs.map((tab) => {
           const active = activeTab?.href === tab.href;
           return (
             <Link
