@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ProductDetailTabs } from "@/features/product/product-detail-tabs";
+import { ProductDetailSections } from "@/features/product/product-detail-sections";
 import { ProductDetailsPanel } from "@/features/product/product-details-panel";
 import { ProductMediaBuy } from "@/features/product/product-media-buy";
 import { ProductMediaExtras } from "@/features/product/product-media-extras";
@@ -225,7 +225,7 @@ export default async function ProductPage({
 
       <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div>
-          <ProductDetailTabs
+          <ProductDetailSections
             specifications={
               <ProductSpecifications
                 groups={product.specGroups}
