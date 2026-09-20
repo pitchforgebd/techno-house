@@ -63,6 +63,8 @@ type ProductSummaryProps = {
   onSelectedColorIdChange?: (colorId: string | null) => void;
   discountStartsAt?: string | null;
   discountEndsAt?: string | null;
+  /** Digits only, wa.me-ready — same source as the floating chat widget. */
+  whatsappNumber?: string | null;
   emiConfig?: AdminEmiConfig;
   isSignedIn?: boolean;
   b2bAccount?: {
@@ -74,6 +76,27 @@ type ProductSummaryProps = {
   b2bTerms?: B2BProductTerms | null;
   viewerCount?: number | null;
 };
+
+/**
+ * Inline WhatsApp link next to the B2B prompt — same brand mark and number
+ * as the floating chat widget (`components/chat/storefront-chat-widget.tsx`),
+ * just sized to sit in a text row instead of as a standalone round button.
+ */
+function WhatsAppInlineLink({ number }: { number: string }) {
+  return (
+    <a
+      href={`https://wa.me/${number}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Ask about wholesale pricing on WhatsApp"
+      className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm transition-transform hover:scale-105"
+    >
+      <svg viewBox="0 0 32 32" aria-hidden="true" className="size-4" fill="currentColor">
+        <path d="M16.004 3C9.377 3 4 8.377 4 15.004c0 2.36.65 4.62 1.883 6.6L4 29l7.59-1.85a11.94 11.94 0 0 0 4.414.84h.005c6.627 0 12.004-5.377 12.004-12.004C28.013 8.377 22.636 3 16.004 3Zm0 21.86h-.004a9.9 9.9 0 0 1-5.05-1.386l-.362-.215-3.75.914 1-3.653-.236-.375a9.86 9.86 0 0 1-1.512-5.14c0-5.462 4.446-9.908 9.918-9.908 2.648 0 5.136 1.032 7.008 2.906a9.84 9.84 0 0 1 2.902 7.006c0 5.462-4.448 9.851-9.914 9.851Zm5.44-7.4c-.298-.15-1.762-.87-2.036-.968-.273-.1-.472-.15-.67.15-.198.298-.767.968-.94 1.167-.173.198-.347.223-.645.075-.298-.15-1.259-.464-2.398-1.48-.887-.79-1.486-1.767-1.66-2.065-.173-.298-.018-.459.13-.607.135-.134.298-.347.446-.52.15-.174.198-.298.298-.497.1-.198.05-.372-.025-.521-.075-.15-.67-1.612-.918-2.208-.242-.582-.487-.503-.67-.512l-.57-.01c-.198 0-.52.075-.792.372-.273.298-1.04 1.017-1.04 2.48 0 1.463 1.065 2.876 1.213 3.075.15.198 2.096 3.2 5.08 4.487.71.306 1.263.489 1.694.626.712.227 1.36.195 1.872.118.571-.085 1.762-.72 2.01-1.416.248-.695.248-1.29.174-1.415-.075-.124-.273-.198-.571-.347Z" />
+      </svg>
+    </a>
+  );
+}
 
 function WishlistHeartIcon({ filled }: { filled: boolean }) {
   return (
@@ -108,6 +131,7 @@ export function ProductSummary({
   onSelectedColorIdChange,
   discountStartsAt = null,
   discountEndsAt = null,
+  whatsappNumber = null,
   emiConfig = {
     enabled: false,
     tenureMonths: [],
@@ -309,50 +333,75 @@ export function ProductSummary({
 
           <div className="pt-1">
             {b2bActive ? (
-              <span className="text-caption font-medium text-primary">
+              <span className="text-label font-bold text-primary">
                 Wholesale pricing active — {b2bAccount?.company}
               </span>
             ) : b2bAccount?.status === "PENDING" ? (
-              <span className="text-caption text-text-muted">
+              <span className="text-label font-bold text-text-muted">
                 Your wholesale application is under review.
               </span>
             ) : !isSignedIn ? (
               // Wholesale has its own entry point — the customer login sent
               // B2B buyers to a retail form with no way to register a business.
-              <span className="text-label text-text-muted">
-                <Link
-                  href="/b2b/register"
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  For B2B — register for wholesale price
-                </Link>
-                {" · "}
-                <Link
-                  href="/b2b/login"
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  Sign in
-                </Link>
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-body font-bold text-text-muted">
+                  <Link
+                    href="/b2b/register"
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    For B2B — register for wholesale price
+                  </Link>
+                  {" · "}
+                  <Link
+                    href="/b2b/login"
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    Sign in
+                  </Link>
+                </span>
+                {whatsappNumber ? (
+                  <WhatsAppInlineLink number={whatsappNumber} />
+                ) : null}
+              </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setB2bOpen(true)}
-                className="text-label font-medium text-primary underline-offset-2 hover:underline"
-              >
-                {b2bAccount?.status === "SUSPENDED"
-                  ? "Wholesale account suspended — re-apply"
-                  : "For B2B — apply for wholesale price"}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setB2bOpen(true)}
+                  className="text-body font-bold text-primary underline-offset-2 hover:underline"
+                >
+                  {b2bAccount?.status === "SUSPENDED"
+                    ? "Wholesale account suspended — re-apply"
+                    : "For B2B — apply for wholesale price"}
+                </button>
+                {whatsappNumber ? (
+                  <WhatsAppInlineLink number={whatsappNumber} />
+                ) : null}
+              </div>
             )}
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {isNew ? <Badge tone="new">New</Badge> : null}
-          {isSale || savings !== null ? <Badge tone="sale">Sale</Badge> : null}
-          {b2bActive ? <Badge tone="neutral">Wholesale</Badge> : null}
-          <Badge tone={stockStatus === "in_stock" ? "stock" : "neutral"}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {isNew ? (
+            <Badge tone="new" size="md">
+              New
+            </Badge>
+          ) : null}
+          {isSale || savings !== null ? (
+            <Badge tone="sale" size="md">
+              Sale
+            </Badge>
+          ) : null}
+          {b2bActive ? (
+            <Badge tone="neutral" size="md">
+              Wholesale
+            </Badge>
+          ) : null}
+          <Badge
+            tone={stockStatus === "in_stock" ? "stock" : "neutral"}
+            size="md"
+          >
             {STOCK_LABEL[stockStatus]}
           </Badge>
         </div>

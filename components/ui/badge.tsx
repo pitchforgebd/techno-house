@@ -11,15 +11,33 @@ const tones: Record<BadgeTone, string> = {
   neutral: "bg-surface-muted text-text-muted",
 };
 
-export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
-  tone?: BadgeTone;
+export type BadgeSize = "sm" | "md";
+
+/** `cn` here is a plain joiner (no tailwind-merge), so size can't be a
+ * `className` override — a same-specificity `text-caption`/`text-label`
+ * pair would depend on stylesheet rule order, not prop order. It has to be
+ * baked into the variant instead. */
+const sizes: Record<BadgeSize, string> = {
+  sm: "px-2.5 py-0.5 text-caption font-medium",
+  md: "px-3 py-1 text-label font-bold",
 };
 
-export function Badge({ tone = "neutral", className, ...props }: BadgeProps) {
+export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
+  tone?: BadgeTone;
+  size?: BadgeSize;
+};
+
+export function Badge({
+  tone = "neutral",
+  size = "sm",
+  className,
+  ...props
+}: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-caption font-medium",
+        "inline-flex items-center rounded-full",
+        sizes[size],
         tones[tone],
         className,
       )}

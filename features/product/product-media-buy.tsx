@@ -32,6 +32,7 @@ type ProductMediaBuyProps = {
   colors: ProductColorOption[];
   discountStartsAt: string | null;
   discountEndsAt: string | null;
+  whatsappNumber?: string | null;
   productImages: ProductImage[];
   primaryImage: ProductImage;
   refundStickerSrc?: string | null;
@@ -66,6 +67,7 @@ export function ProductMediaBuy({
   colors,
   discountStartsAt,
   discountEndsAt,
+  whatsappNumber,
   productImages,
   primaryImage,
   refundStickerSrc,
@@ -130,6 +132,7 @@ export function ProductMediaBuy({
         onSelectedColorIdChange={setSelectedColorId}
         discountStartsAt={discountStartsAt}
         discountEndsAt={discountEndsAt}
+        whatsappNumber={whatsappNumber}
         emiConfig={emiConfig}
         isSignedIn={isSignedIn}
         b2bAccount={b2bAccount}

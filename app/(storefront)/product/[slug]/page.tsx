@@ -20,6 +20,7 @@ import { getB2BTermsForProductId } from "@/lib/b2b/product-terms";
 import { getMyB2BAccount } from "@/lib/b2b/applications";
 import { getLiveViewerCount } from "@/lib/analytics/product-views";
 import { getVisitorWidgetSettings } from "@/lib/marketing/visitor-widget-settings";
+import { getStorefrontChatWidgetTag } from "@/lib/chat/config";
 import { ProductViewTracker } from "@/features/storefront/product-view-tracker";
 import {
   listOwnPendingQuestionsForProduct,
@@ -97,6 +98,7 @@ export default async function ProductPage({
     emiConfig,
     b2bAccount,
     questionsEnabled,
+    chatWidgetTag,
   ] = await Promise.all([
     reviewRepository.listReviewsByProductSlug(product.slug),
     reviewRepository.listQuestionsByProductSlug(product.slug),
@@ -120,6 +122,7 @@ export default async function ProductPage({
     getEmiConfig(),
     session ? getMyB2BAccount(session.userId) : Promise.resolve(null),
     isFeatureFlagEnabled("product-query"),
+    getStorefrontChatWidgetTag(),
   ]);
 
   const averageRating = averageProductRating(reviews);
@@ -175,6 +178,7 @@ export default async function ProductPage({
         colors={product.colors}
         discountStartsAt={product.discountStartsAt}
         discountEndsAt={product.discountEndsAt}
+        whatsappNumber={chatWidgetTag.whatsappNumber}
         productImages={product.images}
         primaryImage={product.image}
         refundStickerSrc={refundSettings.stickerSrc}
