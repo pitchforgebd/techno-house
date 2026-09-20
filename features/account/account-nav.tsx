@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
   Bell,
+  Cpu,
   Heart,
   LayoutGrid,
   MapPin,
@@ -28,6 +29,7 @@ import { cn } from "@/lib/cn";
 const ICONS: Record<AccountNavItem["icon"], LucideIcon> = {
   overview: LayoutGrid,
   orders: Package,
+  builds: Cpu,
   addresses: MapPin,
   wishlist: Heart,
   compare: ArrowLeftRight,

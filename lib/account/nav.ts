@@ -5,6 +5,7 @@
   icon:
     | "overview"
     | "orders"
+    | "builds"
     | "addresses"
     | "wishlist"
     | "compare"
@@ -20,6 +21,7 @@
 export const ACCOUNT_NAV: readonly AccountNavItem[] = [
   { href: "/account", label: "Overview", icon: "overview" },
   { href: "/account/orders", label: "Orders", icon: "orders" },
+  { href: "/account/builds", label: "My builds", icon: "builds" },
   { href: "/account/addresses", label: "Addresses", icon: "addresses" },
   { href: "/account/wishlist", label: "Wishlist", icon: "wishlist" },
   { href: "/account/compare", label: "Compare", icon: "compare" },
