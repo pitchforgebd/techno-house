@@ -66,6 +66,43 @@ persist in `RefundSettings` / `RefundReason`; customer requests enforce the
 configured window; PDP shows the refund sticker when set. Account support
 tickets UI no longer pulls Prisma into the client bundle (AD-234).
 
+**SMART catalog import (2026-09-20, not an AD-numbered item — operator-driven
+catalog data-ops, run via one-off `scripts/deploy/*.ts`, not through admin
+UI):** the "PRODUCTS LIST ALL SMART.xlsx" POS export (4,218 rows) was
+converted to 5 `bulk-import-part-*.csv` files (1000/1000/1000/1000/218 rows,
+the admin bulk importer's hard cap) and imported via Admin → Products → Bulk
+Import. New one-time bootstrap scripts, all idempotent/safe to re-run,
+`npm run catalog:*`:
+- `catalog:bootstrap-import-brands` (`create-import-brands.ts`) — 83
+  import-specific brands, create-only (never touches an existing brand).
+- `catalog:bootstrap-filter-keys` (`set-catalog-filter-keys.ts`) — sets
+  `Category.filterKeys` on Photocopier, IP Camera, Operating System, Server,
+  Headphone (the 5 highest-volume imported categories that had none
+  configured). Deliberately not a re-run of `rebuild-catalog-taxonomy.ts`,
+  which also reassigns products off old categories and isn't safe to replay
+  against a live, populated catalog.
+- `catalog:populate-attributes` (`populate-import-attributes.ts`) — regex-
+  extracts attribute *values* (RAM/storage/processor/socket/form factor/
+  panel/size/audio type) from `Product.name` + `Product.overview` for six
+  categories whose SMART names are clean enough to parse reliably: All
+  Laptop, RAM (Desktop/Laptop), Motherboard, Casing, Monitor, Headphone.
+  1,650 values set on the real catalog; additive only, never overwrites an
+  existing value. `buildFacets` (`lib/data/prisma/product-repository.ts`)
+  silently drops a configured `filterKey` when zero products carry a value
+  for it — this is why filters were missing on category pages even after
+  products existed, and why `filterKeys` config alone isn't enough.
+
+**Known, disclosed gap, not yet fixed:** Photocopier, IP Camera, Server, and
+Operating System categories contain real category-*classification* mistakes
+inherited from the source POS export (toner/drum consumables filed under
+Photocopier instead of Toner; AMC service line items and bare RAM/HDD parts
+filed under Server; doorbell/accessory items filed under IP Camera;
+B2B/CSP licensing line items with no consumer-readable name filed under
+Operating System) — regex attribute extraction was deliberately not
+attempted there, since the underlying problem is category assignment, not
+missing specs. `bulk-import-needs-review.csv` (248 rows) also still needs
+manual review/import — never touched by any script.
+
 ## Last Completed Task
 AD-288 `/complaint` page redesign — operator shared a reference
 screenshot (a bilingual EN/বাংলা complaint form: bold red banner
