@@ -44,6 +44,9 @@ export type CustomerOrderView = {
   itemCount: number;
   subtotalAmount: number;
   discountAmount: number;
+  /** Ad-hoc discount a staff member applied while confirming the order —
+   * separate from the coupon-sourced `discountAmount` above. */
+  adminDiscountAmount: number;
   shippingAmount: number;
   taxAmount: number;
   serviceChargeAmount: number;

@@ -34,6 +34,14 @@ export type AdminOrder = {
   placedAt: string;
   placedAtSort: string;
   total: Money;
+  /** Set the moment the order was first confirmed — the discount window
+   * (`adminDiscountAmount`) is only open while this is unset. Optional like
+   * the other DB-only fields below (`staffNotes`, `carrierId`) — mock rows
+   * don't carry it. */
+  confirmedAt?: string | null;
+  /** Ad-hoc discount applied while confirming, if any — separate from any
+   * coupon-sourced discount already baked into `total`. */
+  adminDiscountAmount?: Money;
   paymentStatus: OrderPaymentStatus;
   paymentMethod: string;
   fulfillmentStatus: OrderFulfillmentStatus;

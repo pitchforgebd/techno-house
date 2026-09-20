@@ -71,6 +71,11 @@ function buildOrderConfirmationText(
   if (order.discountAmount > 0) {
     parts.push(`Discount: -${formatMoney({ amount: order.discountAmount })}`);
   }
+  if (order.adminDiscountAmount > 0) {
+    parts.push(
+      `Confirmation discount: -${formatMoney({ amount: order.adminDiscountAmount })}`,
+    );
+  }
   parts.push(
     `Shipping: ${order.shippingAmount === 0 ? "Free" : formatMoney({ amount: order.shippingAmount })}`,
   );

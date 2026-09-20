@@ -186,6 +186,7 @@ export function renderInvoiceHtml(
       <div class="totals-box">
         <div class="row"><span>Subtotal</span><span>${formatMoney({ amount: invoice.subtotalAmount })}</span></div>
         ${invoice.discountAmount > 0 ? `<div class="row"><span>Discount</span><span>−${formatMoney({ amount: invoice.discountAmount })}</span></div>` : ""}
+        ${invoice.adminDiscountAmount > 0 ? `<div class="row"><span>Confirmation discount</span><span>−${formatMoney({ amount: invoice.adminDiscountAmount })}</span></div>` : ""}
         <div class="row"><span>Shipping</span><span>${formatMoney({ amount: invoice.shippingAmount })}</span></div>
         ${invoice.serviceChargeAmount > 0 ? `<div class="row"><span>Service charge</span><span>${formatMoney({ amount: invoice.serviceChargeAmount })}</span></div>` : ""}
         ${invoice.taxAmount > 0 ? `<div class="row"><span>Tax / VAT</span><span>${formatMoney({ amount: invoice.taxAmount })}</span></div>` : ""}

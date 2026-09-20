@@ -72,6 +72,11 @@ export function AdminOrderDetail({
     order.paymentStatus === "paid" ? "paid" : "unpaid",
   );
   const paymentLocked = order.paymentStatus === "refunded";
+  const [discountAmount, setDiscountAmount] = useState("");
+  // The discount window closes the instant an order is first confirmed —
+  // matches `updateAdminOrder`'s `justConfirmed` guard, which is the only
+  // moment the backend will ever apply one.
+  const canDiscount = !order.confirmedAt;
 
   const subtotal = order.lines.reduce(
     (sum, line) => sum + line.unitPrice.amount * line.quantity,
@@ -88,6 +93,9 @@ export function AdminOrderDetail({
         staffNotes: order.staffNotes ?? "",
         deliveryBoy,
         ...(paymentLocked ? {} : { paymentStatus }),
+        ...(canDiscount && discountAmount.trim() !== ""
+          ? { discountAmount }
+          : {}),
       });
       if (!result.ok) {
         notifyError(result.formError);
@@ -239,6 +247,40 @@ export function AdminOrderDetail({
             </div>
           </div>
         </div>
+
+        {canDiscount ? (
+          <div className="mt-4 border-t border-neutral-100 pt-4">
+            <label className="block max-w-xs space-y-1">
+              <span className="text-xs font-semibold text-neutral-600">
+                Confirm with discount (৳, optional)
+              </span>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                value={discountAmount}
+                onChange={(event) => setDiscountAmount(event.target.value)}
+                placeholder="0"
+                className={controlClass}
+                disabled={pending}
+              />
+            </label>
+            <p className="mt-1 max-w-sm text-xs text-neutral-500">
+              Applied the moment this order is confirmed (moved to
+              Processing or further) — the confirmation email to the
+              customer will show the reduced total.
+            </p>
+          </div>
+        ) : order.adminDiscountAmount && order.adminDiscountAmount.amount > 0 ? (
+          <div className="mt-4 border-t border-neutral-100 pt-4">
+            <span className="text-xs font-semibold text-neutral-600">
+              Admin discount applied on confirm
+            </span>
+            <p className="text-sm font-semibold text-emerald-700">
+              −{formatMoney(order.adminDiscountAmount)}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">

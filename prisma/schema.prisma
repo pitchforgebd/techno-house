@@ -922,7 +922,14 @@ model Order {
 
   currency       Currency @default(BDT)
   subtotalAmount Int
+  /// Coupon-sourced discount, redeemed by the customer at checkout (`CouponRedemption`).
   discountAmount Int      @default(0)
+  /// Ad-hoc discount a staff member applies while confirming the order
+  /// (moving it to Processing for the first time) — separate from the
+  /// coupon-sourced `discountAmount` above so the two never conflate one
+  /// mechanism's bookkeeping with the other's. Locked to that one moment:
+  /// `updateAdminOrder()` only ever sets it on the `justConfirmed` transition.
+  adminDiscountAmount Int @default(0)
   shippingAmount Int      @default(0)
   taxAmount      Int      @default(0)
   /// Flat per-order charge from `StoreOperationsSettings.serviceChargeAmount`,

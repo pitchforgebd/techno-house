@@ -88,6 +88,13 @@ export async function updateAdminOrder(input: {
   deliveryBoy?: string;
   /** Staff offline / COD override — paid or unpaid only. */
   paymentStatus?: OrderPaymentStatus | ManualPaymentStatus;
+  /**
+   * A flat Taka amount off the order total, only meaningful on the
+   * transition that first confirms the order (see `justConfirmed` below).
+   * Ignored — never re-applied — on any later edit, including a later call
+   * that happens to include this field again.
+   */
+  discountAmount?: string;
   actor?: OrderActor;
 }): Promise<OrderMutationResult> {
   if (!usesDatabase()) {
@@ -109,6 +116,7 @@ export async function updateAdminOrder(input: {
       shippedAt: true,
       deliveredAt: true,
       cancelledAt: true,
+      totalAmount: true,
       payments: {
         orderBy: { createdAt: "desc" as const },
         take: 1,
@@ -159,6 +167,21 @@ export async function updateAdminOrder(input: {
     nextPayment = toDbPayment(manual);
   }
 
+  // Parsed here (before any DB write) so a malformed amount fails the whole
+  // save rather than silently applying 0 — but only actually written into
+  // `data` further down, once we know this is the confirming transition.
+  let parsedDiscount: number | null = null;
+  if (input.discountAmount !== undefined && input.discountAmount.trim() !== "") {
+    const value = Number.parseInt(input.discountAmount.trim(), 10);
+    if (!Number.isFinite(value) || value < 0) {
+      return fail("Enter a discount amount of 0 or more.");
+    }
+    if (value > existing.totalAmount) {
+      return fail("The discount can't be more than the order total.");
+    }
+    parsedDiscount = value;
+  }
+
   const now = new Date();
   const data: {
     status: DbOrderStatus;
@@ -169,6 +192,8 @@ export async function updateAdminOrder(input: {
     shippedAt?: Date | null;
     deliveredAt?: Date | null;
     cancelledAt?: Date | null;
+    adminDiscountAmount?: number;
+    totalAmount?: number;
   } = {
     status,
     trackingCode: trackingCode || null,
@@ -209,6 +234,15 @@ export async function updateAdminOrder(input: {
   // — matches how the timestamp itself is defined above, and fires the
   // customer notification exactly once per order.
   const justConfirmed = !existing.confirmedAt && Boolean(data.confirmedAt);
+
+  // A discount submitted on any later edit (order already confirmed) is
+  // silently dropped rather than erroring the whole save — the admin UI only
+  // shows the field pre-confirm, so reaching here past that moment means a
+  // stale form, not an accidental discount.
+  if (justConfirmed && parsedDiscount != null && parsedDiscount > 0) {
+    data.adminDiscountAmount = parsedDiscount;
+    data.totalAmount = existing.totalAmount - parsedDiscount;
+  }
 
   const paymentRow = existing.payments[0];
 
@@ -267,6 +301,13 @@ export async function updateAdminOrder(input: {
           ? {
               paymentStatus: nextPayment,
               previousPaymentStatus: existing.paymentStatus,
+            }
+          : {}),
+        ...(data.adminDiscountAmount != null
+          ? {
+              adminDiscountAmount: data.adminDiscountAmount,
+              totalBeforeDiscount: existing.totalAmount,
+              totalAfterDiscount: data.totalAmount,
             }
           : {}),
       },

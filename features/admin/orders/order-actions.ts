@@ -144,6 +144,9 @@ export async function updateAdminOrderAction(input: {
   staffNotes: string;
   deliveryBoy?: string;
   paymentStatus?: "paid" | "unpaid";
+  /** Flat Taka amount, only applied on the confirming transition — see
+   * `updateAdminOrder`'s doc comment. */
+  discountAmount?: string;
 }): Promise<OrderMutationResult> {
   const blocked = await guardOrigin();
   if (blocked) {
@@ -155,6 +158,14 @@ export async function updateAdminOrderAction(input: {
   }
   if (
     input.paymentStatus !== undefined &&
+    !hasPermission(allowed.session, "orders.payment_status")
+  ) {
+    return { ok: false, formError: PERMISSION_DENIED };
+  }
+  // Same gate as payment status — both change what the order is worth
+  // financially, not just its fulfilment state.
+  if (
+    input.discountAmount !== undefined &&
     !hasPermission(allowed.session, "orders.payment_status")
   ) {
     return { ok: false, formError: PERMISSION_DENIED };

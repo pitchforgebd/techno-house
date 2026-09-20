@@ -149,6 +149,8 @@ const orderSelect = {
   status: true,
   paymentStatus: true,
   totalAmount: true,
+  confirmedAt: true,
+  adminDiscountAmount: true,
   shippingMethodLabel: true,
   shippingAddress: true,
   notes: true,
@@ -189,6 +191,8 @@ type OrderRow = {
   status: DbOrderStatus;
   paymentStatus: DbPaymentStatus;
   totalAmount: number;
+  confirmedAt: Date | null;
+  adminDiscountAmount: number;
   shippingMethodLabel: string | null;
   shippingAddress: string;
   notes: string | null;
@@ -236,6 +240,8 @@ function toAdminOrder(row: OrderRow, options?: { maskPhone?: boolean }): AdminOr
     placedAt: placed.label,
     placedAtSort: placed.sort,
     total: money(row.totalAmount),
+    confirmedAt: row.confirmedAt ? row.confirmedAt.toISOString() : null,
+    adminDiscountAmount: money(row.adminDiscountAmount),
     paymentStatus: toPayment(row.paymentStatus),
     paymentMethod: paymentMethodLabel(methodId),
     fulfillmentStatus: toFulfillment(row.status),

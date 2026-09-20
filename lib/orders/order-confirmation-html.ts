@@ -63,6 +63,9 @@ export function renderOrderConfirmationHtml(
   const totalRows = [
     ["Subtotal", order.subtotalAmount],
     ...(order.discountAmount > 0 ? [["Discount", -order.discountAmount]] : []),
+    ...(order.adminDiscountAmount > 0
+      ? [["Confirmation discount", -order.adminDiscountAmount]]
+      : []),
     [
       "Shipping",
       order.shippingAmount === 0 ? null : order.shippingAmount,

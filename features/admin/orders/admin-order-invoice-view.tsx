@@ -255,6 +255,14 @@ export function AdminOrderInvoiceView({
               </span>
             </div>
           ) : null}
+          {invoice.adminDiscountAmount > 0 ? (
+            <div className="flex justify-between text-neutral-700">
+              <span>Confirmation discount</span>
+              <span className="tabular-nums">
+                −{formatMoney({ amount: invoice.adminDiscountAmount })}
+              </span>
+            </div>
+          ) : null}
           <div className="flex justify-between text-neutral-700">
             <span>Shipping</span>
             <span className="tabular-nums">

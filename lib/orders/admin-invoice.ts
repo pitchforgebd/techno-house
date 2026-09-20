@@ -34,6 +34,7 @@ export type AdminInvoice = {
   trackingCode: string | null;
   subtotalAmount: number;
   discountAmount: number;
+  adminDiscountAmount: number;
   shippingAmount: number;
   taxAmount: number;
   serviceChargeAmount: number;
@@ -110,6 +111,7 @@ export async function getAdminOrderInvoice(
       trackingCode: true,
       subtotalAmount: true,
       discountAmount: true,
+      adminDiscountAmount: true,
       shippingAmount: true,
       taxAmount: true,
       serviceChargeAmount: true,
@@ -164,6 +166,7 @@ export async function getAdminOrderInvoice(
     trackingCode: row.trackingCode,
     subtotalAmount: row.subtotalAmount,
     discountAmount: row.discountAmount,
+    adminDiscountAmount: row.adminDiscountAmount,
     shippingAmount: row.shippingAmount,
     taxAmount: row.taxAmount,
     serviceChargeAmount: row.serviceChargeAmount,

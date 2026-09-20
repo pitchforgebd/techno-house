@@ -45,6 +45,7 @@ type OrderRow = {
   shippingMethodLabel: string | null;
   subtotalAmount: number;
   discountAmount: number;
+  adminDiscountAmount: number;
   shippingAmount: number;
   taxAmount: number;
   serviceChargeAmount: number;
@@ -119,6 +120,7 @@ export function toCustomerOrderView(row: OrderRow): CustomerOrderView {
     itemCount,
     subtotalAmount: row.subtotalAmount,
     discountAmount: row.discountAmount,
+    adminDiscountAmount: row.adminDiscountAmount,
     shippingAmount: row.shippingAmount,
     taxAmount: row.taxAmount,
     serviceChargeAmount: row.serviceChargeAmount,
