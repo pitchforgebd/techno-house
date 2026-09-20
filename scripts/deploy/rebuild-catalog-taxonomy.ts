@@ -202,7 +202,10 @@ const NEW_CATALOG_TREE: TreeNode[] = [
       { name: "ID Card Printer" },
       { name: "POS Printer" },
       { name: "Label Printer" },
-      { name: "Photocopier" },
+      {
+        name: "Photocopier",
+        filterKeys: ["printTechnology", "function", "printColor", "paperSize", "duplex"],
+      },
       { name: "Toner" },
       { name: "Cartridge" },
       { name: "Ink Bottle" },
@@ -259,7 +262,10 @@ const NEW_CATALOG_TREE: TreeNode[] = [
     name: "Security",
     children: [
       { name: "Portable WiFi Camera" },
-      { name: "IP Camera" },
+      {
+        name: "IP Camera",
+        filterKeys: ["resolution", "cameraType", "connectivity", "nightVision"],
+      },
       { name: "CC Camera" },
       { name: "PTZ Camera" },
       { name: "CC Camera Package" },
@@ -313,7 +319,7 @@ const NEW_CATALOG_TREE: TreeNode[] = [
   {
     name: "Software",
     children: [
-      { name: "Operating System" },
+      { name: "Operating System", filterKeys: ["licenseType", "platform"] },
       { name: "Office Application" },
       { name: "Database Server Solution" },
       { name: "Mail Server Solution" },
@@ -332,7 +338,10 @@ const NEW_CATALOG_TREE: TreeNode[] = [
   {
     name: "Server & Storage",
     children: [
-      { name: "Server" },
+      {
+        name: "Server",
+        filterKeys: ["processor", "ram", "storage", "formFactor", "raid"],
+      },
       { name: "GPU Server" },
       { name: "Server Rack" },
       { name: "Workstation" },
@@ -352,7 +361,10 @@ const NEW_CATALOG_TREE: TreeNode[] = [
       { name: "Watch" },
       { name: "Keyboard" },
       { name: "Mouse" },
-      { name: "Headphone" },
+      {
+        name: "Headphone",
+        filterKeys: ["audioType", "connectivity", "microphone"],
+      },
       { name: "Bluetooth Headphone" },
       { name: "Mouse Pad" },
       { name: "Wrist Rest" },

@@ -81,7 +81,16 @@ const ATTRIBUTES: AttributeSeed[] = [
   {
     key: "formFactor",
     label: "Form Factor",
-    allowedValues: ["ATX", "Micro-ATX", "Mini-ITX", "E-ATX"],
+    // Motherboard/casing sizes plus server chassis types — shared key,
+    // same soft-suggestion convention as "size" above.
+    allowedValues: [
+      "ATX",
+      "Micro-ATX",
+      "Mini-ITX",
+      "E-ATX",
+      "Rack",
+      "Tower",
+    ],
   },
   {
     key: "ramType",
@@ -127,6 +136,94 @@ const ATTRIBUTES: AttributeSeed[] = [
     key: "panel",
     label: "Panel Type",
     allowedValues: ["IPS", "VA", "TN", "OLED"],
+  },
+
+  // Added for the SMART catalog import (2026-09) — Photocopier, IP Camera,
+  // Operating System, Server, Headphone. See
+  // scripts/deploy/set-catalog-filter-keys.ts for the matching Category
+  // filterKeys assignment (this script only creates the shared attribute
+  // definitions).
+  {
+    key: "printTechnology",
+    label: "Print Technology",
+    allowedValues: ["Laser", "Inkjet", "Ink Tank", "Thermal", "Dot Matrix"],
+  },
+  {
+    key: "function",
+    label: "Function",
+    allowedValues: ["Single Function", "Multi-Function"],
+  },
+  {
+    key: "printColor",
+    label: "Print Color",
+    allowedValues: ["Mono", "Color"],
+  },
+  {
+    key: "paperSize",
+    label: "Paper Size",
+    allowedValues: ["A4", "A3", "A5", "Letter", "Legal"],
+  },
+  {
+    key: "duplex",
+    label: "Duplex Printing",
+    allowedValues: ["Yes", "No"],
+  },
+  {
+    key: "resolution",
+    label: "Resolution",
+    allowedValues: ["2MP", "4MP", "5MP", "6MP", "8MP"],
+  },
+  {
+    key: "cameraType",
+    label: "Camera Type",
+    allowedValues: ["Dome", "Bullet", "PTZ", "Turret"],
+  },
+  {
+    key: "connectivity",
+    label: "Connectivity",
+    // Shared across cameras (IP/Wi-Fi/Analog/PoE) and audio gear
+    // (Wired/Bluetooth/USB) — same "size"-style soft suggestion list, not
+    // enforced; real facets come from what products actually have.
+    allowedValues: [
+      "IP",
+      "Wi-Fi",
+      "Analog",
+      "PoE",
+      "Wired",
+      "Bluetooth",
+      "USB",
+    ],
+  },
+  {
+    key: "nightVision",
+    label: "Night Vision Range",
+    unit: "m",
+    allowedValues: ["10m", "20m", "30m", "50m"],
+  },
+  {
+    key: "licenseType",
+    label: "License Type",
+    allowedValues: ["OEM", "Retail", "Subscription", "Volume License"],
+  },
+  {
+    key: "platform",
+    label: "Platform",
+    allowedValues: ["Windows", "Mac", "Linux"],
+  },
+  {
+    key: "raid",
+    label: "RAID Support",
+    allowedValues: ["None", "RAID 0", "RAID 1", "RAID 5", "RAID 10"],
+  },
+  {
+    key: "audioType",
+    label: "Type",
+    allowedValues: ["Over-ear", "On-ear", "In-ear", "True Wireless"],
+  },
+  {
+    key: "microphone",
+    label: "Microphone",
+    allowedValues: ["Yes", "No"],
   },
 ];
 

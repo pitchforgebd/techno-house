@@ -28,6 +28,7 @@
     "catalog:rebuild-taxonomy": "tsx scripts/deploy/rebuild-catalog-taxonomy.ts",
     "catalog:bootstrap-brands": "tsx scripts/deploy/create-brands.ts",
     "catalog:bootstrap-import-brands": "tsx scripts/deploy/create-import-brands.ts",
+    "catalog:bootstrap-filter-keys": "tsx scripts/deploy/set-catalog-filter-keys.ts",
     "catalog:bootstrap-attributes": "tsx scripts/deploy/create-product-attributes.ts",
     "catalog:bootstrap-units": "tsx scripts/deploy/create-product-units.ts",
     "shipping:bootstrap-districts": "tsx scripts/shipping/seed-districts.ts",
