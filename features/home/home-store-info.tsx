@@ -21,11 +21,11 @@ const INTRO_BLOCKS: InfoBlock[] = [
           laptops
         </Link>{" "}
         for office and study,{" "}
-        <Link href="/category/cpu" className={linkClass}>
+        <Link href="/category/processor" className={linkClass}>
           processors
         </Link>{" "}
         and{" "}
-        <Link href="/category/graphics-cards" className={linkClass}>
+        <Link href="/category/graphics-card" className={linkClass}>
           graphics cards
         </Link>{" "}
         for a new build, plus{" "}
