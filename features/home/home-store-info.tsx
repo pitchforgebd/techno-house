@@ -17,7 +17,7 @@ const INTRO_BLOCKS: InfoBlock[] = [
     body: (
       <>
         Browse the catalog by department:{" "}
-        <Link href="/category/laptops" className={linkClass}>
+        <Link href="/category/laptop" className={linkClass}>
           laptops
         </Link>{" "}
         for office and study,{" "}
@@ -29,7 +29,7 @@ const INTRO_BLOCKS: InfoBlock[] = [
           graphics cards
         </Link>{" "}
         for a new build, plus{" "}
-        <Link href="/category/phones" className={linkClass}>
+        <Link href="/category/phone" className={linkClass}>
           phones
         </Link>
         ,{" "}
@@ -37,11 +37,11 @@ const INTRO_BLOCKS: InfoBlock[] = [
           gaming gear
         </Link>
         ,{" "}
-        <Link href="/category/tvs" className={linkClass}>
+        <Link href="/category/tv" className={linkClass}>
           televisions
         </Link>
         , and{" "}
-        <Link href="/category/printers" className={linkClass}>
+        <Link href="/category/printer" className={linkClass}>
           printers
         </Link>
         . Every listing shows its specifications, stock status, and warranty
