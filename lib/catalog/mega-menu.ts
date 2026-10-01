@@ -133,17 +133,19 @@ function childLink(
   childrenBySlug: Map<string, Category[]>,
 ): MegaMenuLink {
   // A category with its own real sub-categories (e.g. Star PC > Intel PC /
-  // Ryzen PC) shows those in the flyout — that's the actual taxonomy, more
-  // useful than a brand list. Only a childless category falls back to
-  // "shop by brand" for that spot.
+  // Ryzen PC, or SSD > NVMe SSD) shows those links first — that's the real
+  // taxonomy. Brand links (from real products anywhere in this category's
+  // tree, or admin-curated via Category.extraBrandSlugs) are appended below
+  // them rather than replaced: a grandchild subcategory and "shop by brand"
+  // both being useful is the common case (e.g. SSD has only one real
+  // subcategory today, but a dozen real SSD brands).
   const grandchildren = childrenBySlug.get(child.slug) ?? [];
-  const children =
-    grandchildren.length > 0
-      ? grandchildren.map((grandchild) => ({
-          href: `/category/${grandchild.slug}`,
-          label: grandchild.name,
-        }))
-      : brandFlyout(child.slug, brandsByCategory[child.slug] ?? []);
+  const grandchildLinks = grandchildren.map((grandchild) => ({
+    href: `/category/${grandchild.slug}`,
+    label: grandchild.name,
+  }));
+  const brandLinks = brandFlyout(child.slug, brandsByCategory[child.slug] ?? []);
+  const children = [...grandchildLinks, ...(brandLinks ?? [])];
   return {
     href: `/category/${child.slug}`,
     label: child.name,
