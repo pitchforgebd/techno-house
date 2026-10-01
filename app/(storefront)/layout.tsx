@@ -30,7 +30,6 @@ import {
   getSaleAlertSettings,
 } from "@/lib/marketing/sale-alerts";
 import { getStorefrontSeoMetadata } from "@/lib/seo/config";
-import { cn } from "@/lib/cn";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [seo, branding] = await Promise.all([
@@ -144,13 +143,19 @@ export default async function StorefrontLayout({
             <SiteHeader />
             <CategoryNav />
           </div>
-          <main
-            id="main-content"
-            className={cn("flex-1", hasMarquee ? "pb-28 md:pb-11" : "pb-16 md:pb-0")}
-          >
+          <main id="main-content" className="flex-1">
             {children}
           </main>
           <SiteFooter />
+          {/* Clears the fixed bottom bar (marquee + mobile nav) so it never
+              covers the footer's own tail content — this has to sit after
+              the footer, not as padding on <main>, since <main> ending
+              earlier doesn't change what's hidden at the actual bottom of
+              the page. */}
+          <div
+            aria-hidden
+            className={hasMarquee ? "h-28 md:h-11" : "h-16 md:h-0"}
+          />
           <div className="fixed inset-x-0 bottom-0 z-50 flex flex-col">
             {hasMarquee ? <MarqueeNoticeBar text={footer.marqueeText} /> : null}
             <MobileBottomNav />

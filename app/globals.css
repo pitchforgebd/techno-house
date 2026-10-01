@@ -641,6 +641,13 @@ h6 {
   animation: th-marquee 18s linear infinite;
 }
 
+/* Pauses exactly in place on hover/focus so a reader can finish the line,
+   then continues from that same position — never restarts the loop. */
+.th-marquee-track:hover,
+.th-marquee-track:focus-within {
+  animation-play-state: paused;
+}
+
 /* Shared styling for blog post body content — used by both the admin
    rich-text editor (TipTap, AD-264) and the storefront post render, so
    what the admin sees while writing matches the live page exactly. */
