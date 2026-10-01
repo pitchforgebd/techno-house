@@ -230,6 +230,7 @@ async function main(): Promise<void> {
         description: "Disposable e2e category",
         filterKeywords: "e2e,smoke",
         filterAttr: "",
+        extraBrandSlugs: "",
         isActive: true,
       },
     });

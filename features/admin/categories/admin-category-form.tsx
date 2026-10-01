@@ -56,6 +56,9 @@ export function AdminCategoryForm({
     category?.filterKeys.join(", ") ?? "",
   );
   const [filterAttr, setFilterAttr] = useState(category?.filterKeys[0] ?? "");
+  const [extraBrandSlugs, setExtraBrandSlugs] = useState(
+    category?.extraBrandSlugs.join(", ") ?? "",
+  );
   const [isActive, setIsActive] = useState(category?.isActive ?? true);
   const [bannerSrc, setBannerSrc] = useState(category?.bannerSrc ?? "");
   const [iconSrc, setIconSrc] = useState(category?.iconSrc ?? "");
@@ -88,6 +91,7 @@ export function AdminCategoryForm({
           description: metaDescription,
           filterKeywords: metaKeywords,
           filterAttr,
+          extraBrandSlugs,
           isActive,
           bannerSrc,
           iconSrc,
@@ -360,6 +364,27 @@ export function AdminCategoryForm({
             <option value="graphics">Graphics</option>
             <option value="size">Size</option>
           </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <AdminFormLabel htmlFor="extra-brand-slugs">
+            Show these brands even without products yet
+          </AdminFormLabel>
+          <Input
+            id="extra-brand-slugs"
+            placeholder="samsung, kingston, transcend"
+            value={extraBrandSlugs}
+            onChange={(event) => setExtraBrandSlugs(event.target.value)}
+            className={adminFormControlClass}
+            disabled={pending}
+          />
+          <p className="text-xs text-neutral-500">
+            Brand slugs, separated by comma. Lets the mega-menu and this
+            category&apos;s brand filter list a brand before any product is
+            actually stocked here — the client can add real products later.
+            Normal brand matching from real products still works on top of
+            this.
+          </p>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">

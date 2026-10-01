@@ -252,6 +252,7 @@ export async function loadAdminProductFormOptions(): Promise<{
         name: category.name,
         parentSlug: category.parentSlug,
         filterKeys: category.filterKeys,
+        extraBrandSlugs: category.extraBrandSlugs,
       })),
       brands: brands.map((brand) => ({ slug: brand.slug, name: brand.name })),
       attributes,

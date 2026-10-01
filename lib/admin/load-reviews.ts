@@ -38,12 +38,14 @@ function toCategory(record: {
   name: string;
   parentSlug: string | null;
   filterKeys: string[];
+  extraBrandSlugs: string[];
 }): Category {
   return {
     slug: record.slug,
     name: record.name,
     parentSlug: record.parentSlug,
     filterKeys: record.filterKeys,
+    extraBrandSlugs: record.extraBrandSlugs,
   };
 }
 

@@ -60,8 +60,10 @@ export function collectBrandsByCategorySlug(
     brandName: string;
   }>,
   categories: Category[],
+  brands: MegaBrand[] = [],
 ): Record<string, MegaBrand[]> {
   const result: Record<string, MegaBrand[]> = {};
+  const brandNameBySlug = new Map(brands.map((brand) => [brand.slug, brand.name]));
 
   for (const category of categories) {
     const tree = categoryAndDescendantSlugs(category.slug, categories);
@@ -69,6 +71,18 @@ export function collectBrandsByCategorySlug(
     for (const product of products) {
       if (tree.has(product.categorySlug) && !seen.has(product.brandSlug)) {
         seen.set(product.brandSlug, product.brandName);
+      }
+    }
+    // Admin-curated brands for this exact category, shown even with no
+    // matching product yet (see Category.extraBrandSlugs) — deliberately
+    // not inherited by descendants, since the admin picked them for this
+    // specific category, not its whole subtree.
+    for (const slug of category.extraBrandSlugs) {
+      if (!seen.has(slug)) {
+        const name = brandNameBySlug.get(slug);
+        if (name) {
+          seen.set(slug, name);
+        }
       }
     }
     result[category.slug] = [...seen.entries()]

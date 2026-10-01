@@ -33,6 +33,7 @@ export type AdminCategoryRecord = {
   parentSlug: string | null;
   parentName: string | null;
   filterKeys: string[];
+  extraBrandSlugs: string[];
   position: number;
   isActive: boolean;
   iconSrc: string | null;
@@ -50,6 +51,7 @@ const ADMIN_CATEGORY_SELECT = {
   name: true,
   description: true,
   filterKeys: true,
+  extraBrandSlugs: true,
   position: true,
   isActive: true,
   isFeatured: true,
@@ -67,6 +69,7 @@ function mapRecord(row: {
   name: string;
   description: string | null;
   filterKeys: string[];
+  extraBrandSlugs: string[];
   position: number;
   isActive: boolean;
   isFeatured: boolean;
@@ -85,6 +88,7 @@ function mapRecord(row: {
     parentSlug: row.parent?.slug ?? null,
     parentName: row.parent?.name ?? null,
     filterKeys: row.filterKeys,
+    extraBrandSlugs: row.extraBrandSlugs,
     position: row.position,
     isActive: row.isActive,
     isFeatured: row.isFeatured,
@@ -248,6 +252,7 @@ async function persistParsed(
         description: parsed.description,
         parentId: parent.parentId,
         filterKeys: parsed.filterKeys,
+        extraBrandSlugs: parsed.extraBrandSlugs,
         position: parsed.position,
         isActive: parsed.isActive,
         ...(parsed.iconSrc !== undefined ? { iconSrc: parsed.iconSrc } : {}),
@@ -278,6 +283,7 @@ async function persistParsed(
       description: parsed.description,
       parentId: parent.parentId,
       filterKeys: parsed.filterKeys,
+      extraBrandSlugs: parsed.extraBrandSlugs,
       position: parsed.position,
       isActive: parsed.isActive,
       iconSrc: parsed.iconSrc ?? null,

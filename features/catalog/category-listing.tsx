@@ -90,6 +90,18 @@ export async function CategoryListing({
       name: brandNames.get(entry.value) ?? entry.value,
       count: entry.count,
     })) ?? [];
+  // Admin-curated brands for this category (Category.extraBrandSlugs) show
+  // up even with zero matching products yet — lets the page look "ready"
+  // before the client finishes stocking it. Real product-derived brands
+  // above take precedence; this only adds slugs not already listed.
+  const brandPillSlugs = new Set(brandPills.map((pill) => pill.slug));
+  for (const slug of category.extraBrandSlugs) {
+    if (!brandPillSlugs.has(slug) && brandNames.has(slug)) {
+      brandPills.push({ slug, name: brandNames.get(slug)!, count: 0 });
+      brandPillSlugs.add(slug);
+    }
+  }
+  brandPills.sort((left, right) => left.name.localeCompare(right.name));
 
   const headerTitle =
     content.priceHeaderTitle ?? `${content.listingTitle} Price in Bangladesh`;

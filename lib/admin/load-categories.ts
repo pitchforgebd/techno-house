@@ -56,6 +56,7 @@ function recordsToRows(records: AdminCategoryRecord[]): AdminCategoryRow[] {
     parentSlug: record.parentSlug,
     parentName: record.parentName,
     filterKeys: record.filterKeys,
+    extraBrandSlugs: record.extraBrandSlugs,
     level: categoryDepthFromParents(record.slug, parentOf),
     orderLevel: record.position,
     productCount: record.productCount,
@@ -80,6 +81,7 @@ function recordsToCategories(records: AdminCategoryRecord[]): Category[] {
     name: record.name,
     parentSlug: record.parentSlug,
     filterKeys: record.filterKeys,
+    extraBrandSlugs: record.extraBrandSlugs,
   }));
 }
 

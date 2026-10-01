@@ -1538,6 +1538,7 @@ export function AdminProductForm({
               name: category.name,
               parentSlug: null,
               filterKeys: [],
+              extraBrandSlugs: [],
             },
           ]);
           setCategorySlug(category.slug);

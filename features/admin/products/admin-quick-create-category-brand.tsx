@@ -139,6 +139,7 @@ export function AdminQuickCreateCategoryModal({
             description: "",
             filterKeywords: "",
             filterAttr: "",
+            extraBrandSlugs: "",
             isActive: true,
           },
         });

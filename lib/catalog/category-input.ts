@@ -8,6 +8,7 @@ export const CATEGORY_SLUG_MAX = 80;
 export const CATEGORY_DESCRIPTION_MAX = 500;
 export const CATEGORY_POSITION_MAX = 99_999;
 export const CATEGORY_FILTER_KEY_MAX = 24;
+export const CATEGORY_EXTRA_BRAND_MAX = 40;
 
 export function slugifyCategory(value: string): string {
   return value
@@ -39,6 +40,25 @@ export function parseFilterKeys(keywords: string, extra?: string): string[] {
   return keys;
 }
 
+/**
+ * Brand slugs to show for this category even without matching products yet
+ * — admin-curated, comma-separated, same shape as `parseFilterKeys` but with
+ * no companion dropdown field.
+ */
+export function parseExtraBrandSlugs(raw: string): string[] {
+  const seen = new Set<string>();
+  const slugs: string[] = [];
+  for (const part of raw.split(",")) {
+    const slug = slugifyCategory(part);
+    if (!slug || seen.has(slug) || slugs.length >= CATEGORY_EXTRA_BRAND_MAX) {
+      continue;
+    }
+    seen.add(slug);
+    slugs.push(slug);
+  }
+  return slugs;
+}
+
 export function parseCategoryPosition(value: string): number | null {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -62,6 +82,8 @@ export type CategoryInputFields = {
   description: string;
   filterKeywords: string;
   filterAttr: string;
+  /** Comma-separated brand slugs/names — see `parseExtraBrandSlugs`. */
+  extraBrandSlugs: string;
   isActive: boolean;
   iconSrc?: string;
   bannerSrc?: string;
@@ -83,6 +105,7 @@ export type ParsedCategoryInput = {
   position: number;
   description: string | null;
   filterKeys: string[];
+  extraBrandSlugs: string[];
   isActive: boolean;
   iconSrc?: string | null;
   bannerSrc?: string | null;
@@ -169,6 +192,7 @@ export function parseCategoryInput(
       position,
       description: description.length > 0 ? description : null,
       filterKeys: parseFilterKeys(input.filterKeywords, input.filterAttr),
+      extraBrandSlugs: parseExtraBrandSlugs(input.extraBrandSlugs),
       isActive: input.isActive,
       ...(iconSrc !== undefined ? { iconSrc } : {}),
       ...(bannerSrc !== undefined ? { bannerSrc } : {}),

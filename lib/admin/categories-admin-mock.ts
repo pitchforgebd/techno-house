@@ -6,6 +6,7 @@ export type AdminCategoryRow = {
   parentSlug: string | null;
   parentName: string | null;
   filterKeys: string[];
+  extraBrandSlugs: string[];
   /** Depth in tree: 0 = root. */
   level: number;
   /** Display order — higher = higher priority (mock). */
@@ -118,6 +119,7 @@ export function buildAdminCategoryRows(
       parentSlug: category.parentSlug,
       parentName: parent?.name ?? null,
       filterKeys: category.filterKeys,
+      extraBrandSlugs: category.extraBrandSlugs,
       level,
       orderLevel: hashOrder(category.slug),
       productCount: productCounts.get(category.slug) ?? 0,

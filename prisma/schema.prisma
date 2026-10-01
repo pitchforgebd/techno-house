@@ -370,6 +370,11 @@ model Category {
   parentId    String?
   /// Attribute keys exposed as filters on this category's listing.
   filterKeys  String[]
+  /// Brand slugs to show for this category's mega-menu flyout and brand
+  /// filter even when no product is assigned here yet — lets a category
+  /// look "ready" before the client finishes stocking it. Admin-curated,
+  /// not validated against real inventory.
+  extraBrandSlugs String[] @default([])
   iconSrc     String?
   bannerSrc   String?
   coverSrc    String?

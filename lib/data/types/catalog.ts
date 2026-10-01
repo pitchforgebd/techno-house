@@ -40,6 +40,9 @@ export type Category = {
   name: string;
   parentSlug: string | null;
   filterKeys: string[];
+  /** Brand slugs to show for this category even without matching products
+   * yet — see Category.extraBrandSlugs in the schema. */
+  extraBrandSlugs: string[];
 };
 
 export type Brand = {
