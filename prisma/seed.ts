@@ -107,6 +107,13 @@ const BUILDER_SLOT = {
   case: "CASE",
   case_fans: "CASE_FANS",
   monitor: "MONITOR",
+  keyboard: "KEYBOARD",
+  mouse: "MOUSE",
+  ups: "UPS",
+  speaker: "SPEAKER",
+  headphone: "HEADPHONE",
+  network_adapter: "NETWORK_ADAPTER",
+  antivirus: "ANTIVIRUS",
 } as const satisfies Record<BuilderSlot, string>;
 
 const PC_RULE_TYPE = {

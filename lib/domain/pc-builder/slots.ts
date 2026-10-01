@@ -10,7 +10,6 @@ export type BuilderSlotMeta = {
 
 /**
  * Canonical builder slots. Order matches the UX slot list.
- * Optional peripherals beyond `monitor` are deferred until product data exists.
  */
 export const BUILDER_SLOTS: readonly BuilderSlotMeta[] = [
   {
@@ -78,6 +77,48 @@ export const BUILDER_SLOTS: readonly BuilderSlotMeta[] = [
     label: "Monitor",
     required: false,
     description: "Optional display",
+  },
+  {
+    id: "keyboard",
+    label: "Keyboard",
+    required: false,
+    description: "Optional keyboard",
+  },
+  {
+    id: "mouse",
+    label: "Mouse",
+    required: false,
+    description: "Optional mouse",
+  },
+  {
+    id: "ups",
+    label: "UPS",
+    required: false,
+    description: "Optional backup power",
+  },
+  {
+    id: "speaker",
+    label: "Speaker & Home Theater",
+    required: false,
+    description: "Optional audio output",
+  },
+  {
+    id: "headphone",
+    label: "Headphone",
+    required: false,
+    description: "Optional headphone",
+  },
+  {
+    id: "network_adapter",
+    label: "Wifi Adapter / LAN Card",
+    required: false,
+    description: "Optional network adapter",
+  },
+  {
+    id: "antivirus",
+    label: "Antivirus",
+    required: false,
+    description: "Optional antivirus license",
   },
 ] as const;
 

@@ -56,6 +56,13 @@ enum BuilderSlot {
   CASE
   CASE_FANS
   MONITOR
+  KEYBOARD
+  MOUSE
+  UPS
+  SPEAKER
+  HEADPHONE
+  NETWORK_ADAPTER
+  ANTIVIRUS
 }
 
 enum ActorType {

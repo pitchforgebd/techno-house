@@ -1129,7 +1129,7 @@ export const mockProducts: ProductDetail[] = (
     ],
     relatedSlugs: ["apex-pulse-headset", "shell-mesh-case"],
     attributes: { graphics: "Keyboard" },
-    builderSlot: null,
+    builderSlot: "keyboard",
     builderAttrs: null,
   },
   {

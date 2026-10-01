@@ -50,7 +50,8 @@ async function main(): Promise<void> {
       const byCategory = new Map<string, number>();
       for (const row of rows) {
         if (row.sku && !existingSkus.has(row.sku)) {
-          byCategory.set(row.category, (byCategory.get(row.category) ?? 0) + 1);
+          const category = row.category ?? "(none)";
+          byCategory.set(category, (byCategory.get(category) ?? 0) + 1);
         }
       }
       console.log("  missing rows by category:");

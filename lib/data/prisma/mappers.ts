@@ -50,7 +50,14 @@ type DbBuilderSlot =
   | "PSU"
   | "CASE"
   | "CASE_FANS"
-  | "MONITOR";
+  | "MONITOR"
+  | "KEYBOARD"
+  | "MOUSE"
+  | "UPS"
+  | "SPEAKER"
+  | "HEADPHONE"
+  | "NETWORK_ADAPTER"
+  | "ANTIVIRUS";
 
 const STOCK_STATUS: Record<DbStockStatus, StockStatus> = {
   IN_STOCK: "in_stock",
@@ -70,6 +77,13 @@ const BUILDER_SLOT: Record<DbBuilderSlot, BuilderSlot> = {
   CASE: "case",
   CASE_FANS: "case_fans",
   MONITOR: "monitor",
+  KEYBOARD: "keyboard",
+  MOUSE: "mouse",
+  UPS: "ups",
+  SPEAKER: "speaker",
+  HEADPHONE: "headphone",
+  NETWORK_ADAPTER: "network_adapter",
+  ANTIVIRUS: "antivirus",
 };
 
 export function toStockStatus(value: DbStockStatus): StockStatus {

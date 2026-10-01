@@ -25,6 +25,23 @@ const FEATURES = [
 ] as const;
 
 const REQUIRED_COUNT = BUILDER_SLOTS.filter((slot) => slot.required).length;
+const LAST_SLOT_INDEX = BUILDER_SLOTS.length - 1;
+
+/**
+ * How many columns the trailing grid cell needs to span, at a given column
+ * count, so a remainder row has no empty gap — e.g. 14 items in 3 columns
+ * leaves a 2-item last row, so that row's last cell spans 2 to fill it.
+ * Works for whatever BUILDER_SLOTS.length happens to be, rather than
+ * assuming a fixed slot count (as the old "exactly one optional slot"
+ * version did).
+ */
+function trailingSpan(columns: number): number {
+  const remainder = BUILDER_SLOTS.length % columns;
+  return remainder === 0 ? 1 : columns - remainder + 1;
+}
+
+const LAST_SPAN_AT_2COL = trailingSpan(2);
+const LAST_SPAN_AT_3COL = trailingSpan(3);
 
 /**
  * Homepage promo for PC Builder.
@@ -68,15 +85,23 @@ export function HomePcBuilder() {
           </div>
 
           <ul className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {BUILDER_SLOTS.map((slot) => (
+            {BUILDER_SLOTS.map((slot, index) => (
               <li
                 key={slot.id}
                 className={cn(
                   "flex min-w-0 items-center gap-2.5 rounded-sm border border-surface/10 bg-surface/[0.06] px-2.5 py-2.5",
-                  // 11 slots leave one trailing cell empty at both two and
-                  // three columns; the single optional slot takes it so the
-                  // grid closes square at every width.
-                  !slot.required && "col-span-2",
+                  index === LAST_SLOT_INDEX &&
+                    LAST_SPAN_AT_2COL === 2 &&
+                    "col-span-2",
+                  index === LAST_SLOT_INDEX &&
+                    LAST_SPAN_AT_3COL === 1 &&
+                    "sm:col-span-1",
+                  index === LAST_SLOT_INDEX &&
+                    LAST_SPAN_AT_3COL === 2 &&
+                    "sm:col-span-2",
+                  index === LAST_SLOT_INDEX &&
+                    LAST_SPAN_AT_3COL === 3 &&
+                    "sm:col-span-3",
                 )}
               >
                 <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-surface/10 text-surface/85">

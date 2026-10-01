@@ -13,6 +13,7 @@
  * curated per-product order; related slugs are therefore compared as sets.
  */
 import { config as loadEnvFiles } from "dotenv";
+import { BUILDER_SLOTS as DOMAIN_BUILDER_SLOTS } from "@/lib/domain/pc-builder/slots";
 import { mockBrandRepository } from "@/lib/data/mocks/brand-repository";
 import { mockCategoryRepository } from "@/lib/data/mocks/category-repository";
 import { mockProductRepository } from "@/lib/data/mocks/product-repository";
@@ -165,19 +166,7 @@ const LIST_QUERIES: { label: string; query: ProductListQuery }[] = [
   },
 ];
 
-const BUILDER_SLOTS = [
-  "cpu",
-  "cpu_cooler",
-  "motherboard",
-  "ram",
-  "gpu",
-  "ssd",
-  "hdd",
-  "psu",
-  "case",
-  "case_fans",
-  "monitor",
-] as const;
+const BUILDER_SLOTS = DOMAIN_BUILDER_SLOTS.map((slot) => slot.id);
 
 async function main(): Promise<void> {
   loadEnvFiles({ path: [".env.local", ".env"], quiet: true });

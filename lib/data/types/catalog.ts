@@ -17,7 +17,14 @@ export type BuilderSlot =
   | "psu"
   | "case"
   | "case_fans"
-  | "monitor";
+  | "monitor"
+  | "keyboard"
+  | "mouse"
+  | "ups"
+  | "speaker"
+  | "headphone"
+  | "network_adapter"
+  | "antivirus";
 
 export type BuilderAttrs = {
   socket?: string;
