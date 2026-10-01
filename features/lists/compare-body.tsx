@@ -207,15 +207,63 @@ export function CompareBody({ className }: { className?: string }) {
   if (state.compare.length === 0) {
     return (
       <div className={cn(className)}>
-        <EmptyState
-          title="No products to compare"
-          description={`Pick Compare on any product card to start. Products must share a category — up to ${MAX_COMPARE} at a time.`}
-          action={
-            <Link href="/shop" className={buttonClassName({ size: "sm" })}>
-              Browse shop
-            </Link>
-          }
-        />
+        <div className="mx-auto max-w-md rounded-lg border border-border bg-surface px-6 py-10 text-center">
+          <p className="text-xl font-bold tracking-tight text-text">
+            Search &amp; select products to compare
+          </p>
+          <p className="mt-1.5 text-body text-text-muted">
+            Products must share a category — up to {MAX_COMPARE} at a time.
+          </p>
+          <div className="mt-6 space-y-2.5 text-left">
+            <label className="sr-only" htmlFor="compare-category-empty">
+              Select product type
+            </label>
+            <select
+              id="compare-category-empty"
+              className={selectClass}
+              value={pickedCategory}
+              onChange={(event) => setPickedCategory(event.target.value)}
+            >
+              <option value="">Select Product Type</option>
+              {categories.map((category) => (
+                <option key={category.slug} value={category.slug}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+
+            <label className="sr-only" htmlFor="compare-product-empty">
+              Select product
+            </label>
+            <select
+              id="compare-product-empty"
+              className={selectClass}
+              value=""
+              disabled={!activeCategory || adding}
+              onChange={(event) => handleAdd(event.target.value)}
+            >
+              <option value="">
+                {activeCategory
+                  ? selectable.length > 0
+                    ? "Type Product Name"
+                    : "No products here yet"
+                  : "Select a type first"}
+              </option>
+              {selectable.map((item) => (
+                <option key={item.slug} value={item.slug}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="mt-5 text-caption text-text-muted">
+            Or pick{" "}
+            <Link href="/shop" className="text-primary hover:underline">
+              Compare
+            </Link>{" "}
+            on any product card while browsing.
+          </p>
+        </div>
       </div>
     );
   }

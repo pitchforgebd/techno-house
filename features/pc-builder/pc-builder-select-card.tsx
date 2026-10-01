@@ -34,12 +34,12 @@ export function PcBuilderSelectCard({
 }) {
   const isSelected = product.slug === selectedSlug;
   const disabled = product.stockStatus === "out_of_stock";
-  const specs = product.specs.slice(0, 6);
+  const specs = product.specs.slice(0, 4);
   const incompatible = compatibility?.status === "incompatible";
 
   return (
     <article
-      className={`flex h-full flex-col border p-4 transition-colors ${
+      className={`flex h-full flex-col border p-3 transition-colors ${
         incompatible
           ? "border-danger/40 bg-danger/5"
           : "border-border bg-surface hover:border-primary/40"
@@ -47,7 +47,7 @@ export function PcBuilderSelectCard({
     >
       {compatibility && compatibility.status !== "ok" ? (
         <p
-          className={`mb-2 text-caption font-medium ${
+          className={`mb-1.5 text-caption font-medium ${
             incompatible ? "text-danger" : "text-text-muted"
           }`}
         >
@@ -57,26 +57,26 @@ export function PcBuilderSelectCard({
         </p>
       ) : null}
       <Link href={`/product/${product.slug}`} className="block">
-        <div className="relative aspect-square overflow-hidden rounded-md bg-surface-muted">
+        <div className="relative aspect-square overflow-hidden rounded-sm bg-surface-muted">
           <Image
             src={product.image.src}
             alt={product.image.alt}
             fill
             sizes="(min-width: 1280px) 20vw, (min-width: 768px) 33vw, 50vw"
-            className="object-contain p-3"
+            className="object-contain p-2.5"
           />
         </div>
-        <h2 className="mt-3 line-clamp-2 min-h-10 text-label font-semibold tracking-tight text-text">
+        <h2 className="mt-2 line-clamp-2 min-h-10 text-label font-semibold tracking-tight text-text">
           {product.name}
         </h2>
       </Link>
 
-      <p className="mt-1 text-caption tabular-nums text-text-muted">
+      <p className="mt-0.5 text-caption tabular-nums text-text-muted">
         {product.sku}
       </p>
 
       {specs.length > 0 ? (
-        <ul className="mt-2 flex-1 space-y-0.5 text-caption text-text-muted">
+        <ul className="mt-1.5 flex-1 space-y-0.5 text-caption text-text-muted">
           {specs.map((spec) => (
             <li key={`${spec.label}-${spec.value}`} className="flex gap-1.5">
               <span aria-hidden className="text-text-muted">
@@ -91,12 +91,12 @@ export function PcBuilderSelectCard({
           ))}
         </ul>
       ) : (
-        <p className="mt-2 flex-1 text-caption text-text-muted">
+        <p className="mt-1.5 flex-1 text-caption text-text-muted">
           {product.brandName}
         </p>
       )}
 
-      <div className="mt-4 space-y-2 border-t border-border pt-4">
+      <div className="mt-3 space-y-1.5 border-t border-border pt-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-body font-semibold tabular-nums text-text">
             {formatMoney(product.price)}
@@ -123,19 +123,20 @@ export function PcBuilderSelectCard({
           disabled={disabled}
           className={buttonClassName({
             variant: incompatible ? "secondary" : "primary",
-            className: "inline-flex w-full gap-2 disabled:opacity-50",
+            size: "sm",
+            className: "inline-flex w-full gap-1.5 disabled:opacity-50",
           })}
           onClick={() => onAdd(slotId, product.slug)}
         >
           {isSelected ? (
             <>
-              <Check className="size-4" aria-hidden />
-              Added to build
+              <Check className="size-3.5" aria-hidden />
+              Added
             </>
           ) : (
             <>
-              <Plus className="size-4" aria-hidden />
-              {incompatible ? "Add anyway" : "Add to PC Builder"}
+              <Plus className="size-3.5" aria-hidden />
+              {incompatible ? "Add anyway" : "Add to build"}
             </>
           )}
         </button>
