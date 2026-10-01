@@ -4,28 +4,22 @@
  * `MobileBottomNav` inside the same fixed-bottom wrapper so the two never
  * overlap on mobile.
  *
- * The track renders the text twice back to back and animates translateX to
- * exactly -50% (see `.th-marquee-track` in globals.css) — a seamless loop
- * with no visible seam, regardless of how long the text is. The duplicate
- * copy is `aria-hidden` so screen readers announce the notice once.
+ * A single copy of the text scrolls fully across and off-screen before the
+ * next pass starts — no second copy visible at the same time. `left: 100%`
+ * (relative to this `relative` container) places it just past the right
+ * edge regardless of container width, and `translateX(-100%)` at the end
+ * (relative to the span's own width) pushes it fully past the left edge
+ * regardless of text length — see `.th-marquee-track` in globals.css.
  */
 export function MarqueeNoticeBar({ text }: { text: string }) {
   return (
     <div
       role="status"
-      className="h-11 shrink-0 overflow-hidden border-t border-primary/25 bg-surface shadow-[0_-4px_12px_-6px_rgba(14,26,36,0.15)]"
+      className="relative h-11 shrink-0 overflow-hidden border-t border-primary/25 bg-surface shadow-[0_-4px_12px_-6px_rgba(14,26,36,0.15)]"
     >
-      <div className="flex h-full w-max items-center th-marquee-track">
-        <span className="flex shrink-0 items-center whitespace-nowrap pr-16 text-label font-medium text-text">
-          {text}
-        </span>
-        <span
-          aria-hidden
-          className="flex shrink-0 items-center whitespace-nowrap pr-16 text-label font-medium text-text"
-        >
-          {text}
-        </span>
-      </div>
+      <span className="absolute inset-y-0 flex items-center whitespace-nowrap text-label font-medium text-text th-marquee-track">
+        {text}
+      </span>
     </div>
   );
 }

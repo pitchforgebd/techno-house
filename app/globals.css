@@ -624,21 +624,27 @@ h6 {
 }
 
 /* Fixed-bottom marquee notice bar (Design Studio -> Footer widgets).
-   The track holds two copies of the text back to back and slides exactly
-   -50%, so the second copy lands where the first started — a seamless loop
-   with no gap or jump, regardless of text length. Falls under the global
-   prefers-reduced-motion collapse like every other th- animation here. */
+   A single copy of the text scrolls fully across and off-screen before the
+   next pass starts. `left: 100%` is a percentage of the *containing block*
+   (the bar), so it starts just past the right edge regardless of the bar's
+   width; `translateX(-100%)` at the end is a percentage of the span's *own*
+   width, so it ends fully past the left edge regardless of text length —
+   together that works for any bar width and any notice length with no
+   separate measurement needed. Falls under the global prefers-reduced-motion
+   collapse like every other th- animation here. */
 @keyframes th-marquee {
   from {
+    left: 100%;
     transform: translateX(0);
   }
   to {
-    transform: translateX(-50%);
+    left: 0%;
+    transform: translateX(-100%);
   }
 }
 
 .th-marquee-track {
-  animation: th-marquee 18s linear infinite;
+  animation: th-marquee 14s linear infinite;
 }
 
 /* Pauses exactly in place on hover/focus so a reader can finish the line,
