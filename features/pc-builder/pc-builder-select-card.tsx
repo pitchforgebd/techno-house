@@ -17,6 +17,8 @@ const STOCK_LABEL: Record<StockStatus, string> = {
 export type PcBuilderCardCompatibility = {
   status: "ok" | "unknown" | "incompatible";
   reason?: string;
+  /** This product itself has no spec data for a check the build needs. */
+  candidateMissingData?: boolean;
 };
 
 export function PcBuilderSelectCard({
@@ -53,7 +55,10 @@ export function PcBuilderSelectCard({
         >
           {incompatible
             ? (compatibility.reason ?? "May not fit your current build.")
-            : "Fit not confirmed — missing spec data."}
+            : compatibility.candidateMissingData
+              ? "Compatibility isn't set for this product yet."
+              : (compatibility.reason ??
+                "Fit not confirmed — missing spec data.")}
         </p>
       ) : null}
       <Link href={`/product/${product.slug}`} className="block">
@@ -114,7 +119,11 @@ export function PcBuilderSelectCard({
             {STOCK_LABEL[product.stockStatus]}
           </Badge>
           {compatibility?.status === "unknown" ? (
-            <Badge tone="neutral">Unconfirmed fit</Badge>
+            <Badge tone="neutral">
+              {compatibility.candidateMissingData
+                ? "Compatibility not set"
+                : "Unconfirmed fit"}
+            </Badge>
           ) : null}
           {incompatible ? <Badge tone="sale">May not fit</Badge> : null}
         </div>

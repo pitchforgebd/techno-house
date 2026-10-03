@@ -21,7 +21,14 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import { CURRENCY_CODE } from "@/lib/format/currency";
 import { normalizeSearchNeedle } from "@/lib/search/query";
 
-const MAX_SLOT_CANDIDATES = 48;
+/**
+ * Upper bound on parts loaded for one PC Builder slot. The slot picker ranks
+ * and filters candidates for compatibility in the browser, so anything cut
+ * here can never be suggested — at 48 it silently dropped most of a 120+
+ * motherboard / RAM catalog before filtering even began. Sized well above the
+ * largest real slot (~140); still a ceiling, not "the whole catalog".
+ */
+const MAX_SLOT_CANDIDATES = 500;
 const MAX_PAGE_SIZE = 48;
 
 const IN_STOCK: Prisma.EnumStockStatusFilter = {

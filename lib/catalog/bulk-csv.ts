@@ -19,6 +19,10 @@ import {
   type ProductActor,
 } from "@/lib/catalog/admin-products";
 import {
+  carryForwardBuilderFields,
+  EXISTING_BUILDER_SELECT,
+} from "@/lib/catalog/bulk-builder-carry-forward";
+import {
   normalizeSku,
   slugifyProduct,
   type ProductInputFields,
@@ -206,10 +210,15 @@ export async function importProductsFromCsvText(
     try {
       const existing = await prisma.product.findUnique({
         where: { sku },
-        select: { id: true },
+        select: { id: true, ...EXISTING_BUILDER_SELECT },
       });
 
       const fields = fieldsFromCsvRow(raw);
+      if (existing) {
+        // No CSV column covers the PC Builder slot/compatibility values, and
+        // an empty value would wipe them on update — keep what's there.
+        Object.assign(fields, carryForwardBuilderFields(existing));
+      }
       const result = await saveAdminProduct({
         currentId: existing?.id,
         fields,

@@ -20,7 +20,9 @@ import type {
   ProductSearchSuggestion,
 } from "@/lib/data/types/catalog";
 
-const MAX_SLOT_CANDIDATES = 48;
+// Kept in step with the Prisma repository: the picker filters client-side,
+// so a low cap hides parts before compatibility is even checked.
+const MAX_SLOT_CANDIDATES = 500;
 
 const CATALOG_KEY_SET = new Set<string>(CATALOG_ATTRIBUTE_KEYS);
 

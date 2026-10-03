@@ -10,6 +10,14 @@ export type CompatibilityWarning = {
   code: string;
   message: string;
   slotIds?: BuilderSlot[];
+  /**
+   * Set only on an "unknown" warning from an exact-fit check (socket, RAM
+   * type, form factor, storage interface): the slots whose part has no spec
+   * data for that check. Lets the picker tell "this candidate lacks data"
+   * apart from "the part you already picked lacks data". Deliberately unset
+   * on the PSU-wattage estimate, which must never hide a part.
+   */
+  missingSlotIds?: BuilderSlot[];
 };
 
 export function emptyBuildSelection(): BuildSelection {

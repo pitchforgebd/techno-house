@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Search, SlidersHorizontal } from "lucide-react";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -26,6 +26,8 @@ import {
 } from "@/lib/domain/pc-builder";
 
 type SelectSort = "default" | "price_asc" | "price_desc" | "discount";
+
+const EMPTY_COMPAT = new Map<string, PcBuilderCardCompatibility>();
 
 const SORT_OPTIONS: { value: SelectSort; label: string }[] = [
   { value: "default", label: "Default" },
@@ -73,13 +75,25 @@ export function PcBuilderSelectView({
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SelectSort>("default");
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [showIncompatible, setShowIncompatible] = useState(false);
-  const [compatByslug, setCompatBySlug] = useState<
-    Map<string, PcBuilderCardCompatibility>
-  >(new Map());
+  const [showHidden, setShowHidden] = useState(false);
+  const [compat, setCompat] = useState<{
+    key: string;
+    bySlug: Map<string, PcBuilderCardCompatibility>;
+  } | null>(null);
 
   const selectedSlug =
     (selection[slot.id] as string | null | undefined) ?? null;
+
+  const selectionKey = JSON.stringify(selection);
+  const compatKey = `${slot.id}|${selectionKey}`;
+  const hasOtherParts = Object.entries(selection).some(
+    ([slotId, slug]) => slotId !== slot.id && Boolean(slug),
+  );
+  // Results belong to one (slot, selection) pair; until they arrive for the
+  // current pair, don't flash the unfiltered list.
+  const compatReady = compat?.key === compatKey;
+  const checking = hasOtherParts && !compatReady;
+  const compatBySlug = compatReady ? compat.bySlug : EMPTY_COMPAT;
 
   // Real "suggest as you pick" (AD-276): score every candidate against
   // whatever's already selected elsewhere in the build, using the same
@@ -98,24 +112,42 @@ export function PcBuilderSelectView({
         selectedParts,
         enabledTypes,
       });
-      setCompatBySlug(
-        new Map(
+      setCompat({
+        key: compatKey,
+        bySlug: new Map(
           ranked.map((entry) => [
             entry.candidate.slug,
             {
               status: entry.status,
               reason: entry.warnings[0]?.message,
+              candidateMissingData: entry.candidateMissingData,
             },
           ]),
         ),
-      );
+      });
     }
     void run();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, slot.id, JSON.stringify(selection)]);
+  }, [products, slot.id, selectionKey]);
+
+  // Hidden by default: parts that definitely don't fit, and parts that have
+  // no compatibility data of their own for a check the build now needs. A
+  // part is NOT hidden just because the already-picked part lacks data —
+  // that isn't this candidate's fault and nothing could be filtered anyway.
+  const hiddenReason = useCallback(
+    (slug: string): "incompatible" | "unverified" | null => {
+      const entry = compatBySlug.get(slug);
+      if (entry?.status === "incompatible") return "incompatible";
+      if (entry?.status === "unknown" && entry.candidateMissingData) {
+        return "unverified";
+      }
+      return null;
+    },
+    [compatBySlug],
+  );
 
   const filtered = useMemo(() => {
     let list = products;
@@ -130,21 +162,22 @@ export function PcBuilderSelectView({
         return haystack.includes(trimmed);
       });
     }
-    if (!showIncompatible) {
-      list = list.filter(
-        (product) => compatByslug.get(product.slug)?.status !== "incompatible",
-      );
+    if (!showHidden) {
+      list = list.filter((product) => hiddenReason(product.slug) === null);
     }
     return sortProducts(list, sort);
-  }, [products, query, sort, inStockOnly, showIncompatible, compatByslug]);
+  }, [products, query, sort, inStockOnly, showHidden, hiddenReason]);
 
-  const hiddenIncompatibleCount = useMemo(
-    () =>
-      products.filter(
-        (product) => compatByslug.get(product.slug)?.status === "incompatible",
-      ).length,
-    [products, compatByslug],
-  );
+  const hiddenCounts = useMemo(() => {
+    let incompatible = 0;
+    let unverified = 0;
+    for (const product of products) {
+      const reason = hiddenReason(product.slug);
+      if (reason === "incompatible") incompatible += 1;
+      if (reason === "unverified") unverified += 1;
+    }
+    return { incompatible, unverified, total: incompatible + unverified };
+  }, [products, hiddenReason]);
 
   function handleAdd(slotId: typeof slot.id, slug: string) {
     const product = products.find((item) => item.slug === slug);
@@ -186,10 +219,12 @@ export function PcBuilderSelectView({
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-text sm:text-3xl">
             {slot.label}
-            <span className="ml-2 text-body font-normal text-text-muted">
-              ({filtered.length}{" "}
-              {filtered.length === 1 ? "product" : "products"} found)
-            </span>
+            {checking ? null : (
+              <span className="ml-2 text-body font-normal text-text-muted">
+                ({filtered.length}{" "}
+                {filtered.length === 1 ? "product" : "products"} found)
+              </span>
+            )}
           </h1>
           <p className="mt-2 max-w-prose text-body text-text-muted">
             {slot.description}. Choose a part and it will be added to your
@@ -251,20 +286,28 @@ export function PcBuilderSelectView({
             </div>
           </div>
 
-          {hiddenIncompatibleCount > 0 ? (
+          {hiddenCounts.total > 0 ? (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface-muted/60 px-4 py-2.5 text-caption text-text-muted">
               <span>
-                {hiddenIncompatibleCount}{" "}
-                {hiddenIncompatibleCount === 1 ? "part doesn't" : "parts don't"}{" "}
-                match what you&apos;ve already picked
-                {showIncompatible ? " (shown below, flagged red)." : "."}
+                Showing only parts that fit your build.{" "}
+                {[
+                  hiddenCounts.incompatible > 0
+                    ? `${hiddenCounts.incompatible} ${hiddenCounts.incompatible === 1 ? "doesn't" : "don't"} match what you've picked`
+                    : null,
+                  hiddenCounts.unverified > 0
+                    ? `${hiddenCounts.unverified} ${hiddenCounts.unverified === 1 ? "has" : "have"} no compatibility info yet`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                {showHidden ? " (shown below, flagged)." : "."}
               </span>
               <button
                 type="button"
-                onClick={() => setShowIncompatible((value) => !value)}
+                onClick={() => setShowHidden((value) => !value)}
                 className="font-medium text-primary hover:underline"
               >
-                {showIncompatible ? "Hide them again" : "Show them anyway"}
+                {showHidden ? "Hide them again" : "Show them anyway"}
               </button>
             </div>
           ) : null}
@@ -274,6 +317,13 @@ export function PcBuilderSelectView({
               title="No parts for this slot"
               description="The catalog has no products mapped to this builder slot yet."
             />
+          ) : checking ? (
+            <p
+              role="status"
+              className="rounded-md border border-border bg-surface px-4 py-8 text-center text-caption text-text-muted"
+            >
+              Checking which parts fit your build…
+            </p>
           ) : filtered.length === 0 ? (
             <EmptyState
               title="No matches"
@@ -288,7 +338,7 @@ export function PcBuilderSelectView({
                     slotId={slot.id}
                     selectedSlug={selectedSlug}
                     onAdd={handleAdd}
-                    compatibility={compatByslug.get(product.slug)}
+                    compatibility={compatBySlug.get(product.slug)}
                   />
                 </li>
               ))}

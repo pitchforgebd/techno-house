@@ -5640,3 +5640,224 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `lint` 0 errors, `build` 0. Verified live with a real staff session:
       every range, custom range, invalid-range fallback, and permission tier
       render correctly.
+
+- [x] AD-346 PC Builder compatibility — multi-value attributes, real filtering
+      (operator, Banglish): "Motherboard DDR4 select korle RAM o DDR4 hobe;
+      AM5 → DDR5, AM4 → DDR4 — but select e click korle shob gulai ashteche,
+      jetar jonno jeta add kora ache ota na eshe. Intel board e DDR4 + DDR5
+      both support kore, tai 1tao na, 2tao 3tao select kora jay emon korte
+      hobe — add products theke PC Builder section e."
+
+      **Diagnosis (real Postgres, read-only, before any code).** Three
+      independent causes, not one:
+      1. *Data* — slots were bulk-tagged by category (`tag-builder-slots-by-
+         category.ts`) but the compatibility values were deliberately left
+         empty: of 138 active RAM only 2 had `builderRamType`, of 121
+         motherboards only 1. Missing data is "unknown", and unknown was
+         never hidden — so everything showed.
+      2. *Model* — `compareEqualField` was strict single-string equality, so
+         a part could carry exactly one value; a "DDR4 + DDR5" board, a
+         multi-socket cooler, or a case holding several board sizes could not
+         be expressed at all.
+      3. *Hidden cap* — `MAX_SLOT_CANDIDATES = 48`: the picker loaded only
+         the first 48 parts of a slot **before** compatibility filtering, so
+         73 of 121 motherboards and 90 of 138 RAM could never appear even
+         once tagged correctly.
+
+      **Multi-value attributes, no migration.** The four existing text
+      columns (`builderSocket/RamType/FormFactor/StorageInterface`) now hold a
+      comma-joined list ("DDR4, DDR5"); every value already in the database
+      is still a valid one-item list. New pure module
+      `lib/domain/pc-builder/attr-values.ts` (parse/format/overlap/toggle,
+      case-, space- and hyphen-insensitive so "am5" ≡ "AM5", "micro atx" ≡
+      "Micro-ATX"). The engine rule is now **overlap** — two parts fit when
+      their lists share a value; one value per side behaves exactly as the old
+      equality did. `BUILDER_ATTR_MAX` 40 → 120 (the string is a list now);
+      server-side `parseOptionalAttr` de-dupes, respells to the vocabulary and
+      caps at 12 values.
+
+      **Admin → Products → PC Builder card.** New `AdminBuilderMultiSelect`
+      (tick-chips + an "Other, comma-separated" box) replaces the old
+      single-value dropdown. The card now shows **only the fields the chosen
+      slot is actually checked on** (`SLOT_ATTRIBUTE_FIELDS`, mirroring what
+      the rule evaluators read): CPU → socket + TDP; cooler → sockets;
+      motherboard → socket / RAM types / form factor / drive interfaces; RAM →
+      RAM type; case → supported board sizes; SSD/HDD → interface; PSU/GPU →
+      wattage. Per-slot labels/hints ("Tick both DDR4 and DDR5 for a board
+      that accepts either"). Changing slot drops values the new slot never
+      checks, so nothing hidden is silently saved.
+
+      **Storefront picker (`/pc-builder/select/[slot]`).** Cap 48 → 500 (both
+      prisma + mock repos; largest real slot ≈ 140). `rankCandidatesForSlot`
+      now also returns `candidateMissingData`, fed by a new optional
+      `CompatibilityWarning.missingSlotIds` set only on the exact-fit rules —
+      so "this part has no compatibility data" is distinguishable from "the
+      part you already picked has none". The default list hides
+      **incompatible** parts **and** parts that lack data for a check the
+      build needs; a part is *not* hidden merely because the picked one lacks
+      data (nothing could be filtered then), and the PSU-wattage estimate
+      never hides anything. A banner states the counts and offers "Show them
+      anyway" (flagged red / "Compatibility not set"); a "Checking which parts
+      fit your build…" state replaces the unfiltered-list flash while the
+      ranking loads.
+
+      **Backfill (`npm run catalog:backfill-builder-compat`).** Pure,
+      conservative inference in `lib/domain/pc-builder/infer-attrs.ts`, run by
+      a script that is **dry-run by default** (`-- --apply` to write),
+      additive-only (never overwrites an existing value), idempotent, and
+      touches only the four compat columns. Rules lean on *leaving a value
+      unset over guessing it*: CPU socket from the explicit token, else Intel
+      generation / Ryzen series — and a CPU whose name contradicts its series
+      is reported as a CONFLICT, not set (the real "Ryzen 9 7900X … AM4"
+      listing is exactly this: the source name carries the wrong socket); RAM
+      type reuses the earlier SMART attribute pass; board RAM type is inferred
+      from the socket only for single-generation platforms (AM4/LGA1200 →
+      DDR4, AM5/LGA1851 → DDR5, LGA1150 → DDR3 — **never LGA1700**, which is
+      DDR4-or-DDR5); laptop **SODIMM** sticks are tagged "DDR4 SODIMM" /
+      "DDR5 SODIMM" so a desktop board never matches them (21 such sticks sit
+      in the desktop RAM slot); case sizes = the named size and everything
+      smaller ("Mid Tower"/"ATX" → ATX, Micro-ATX, Mini-ITX), preferring an
+      explicit "Motherboard Support:" overview line; drive interface from
+      NVMe/PCIe vs SATA, skipping external/USB and ambiguous "M.2"-only
+      names. **Applied 2026-10-04** on the operator's "go" — 473 products (CPU 14,
+      cooler 6, motherboard 120, RAM 134, case 107, SSD 79, HDD 13). Undo log:
+      `project-memory/backfill-logs/builder-compat-2026-10-04-step1.json`.
+
+      **Verification.** `test:pc-builder` 44 → **75 checks** (31 new: a dual-
+      support board accepts DDR4 and DDR5 and still rejects DDR3; multi-socket
+      cooler; multi-size case; case/space/hyphen-insensitive matching;
+      `candidateMissingData` attribution incl. the PSU estimate never blaming
+      the part; 12 inference checks built from real catalog names). Every
+      pre-existing check still passes unchanged. `tsc --noEmit` 0 (run through
+      a temp tsconfig excluding `.next`, so the live dev server's types were
+      not touched), `eslint` 0 on every touched file. **Real-data simulation**
+      (backfill values applied in memory only, nothing written): an AM4/DDR4
+      board → 59 of 138 RAM shown, all DDR4; an AM5/DDR5 board → 56 shown, all
+      DDR5; a board ticked DDR4+DDR5 → 115 shown (59 DDR4 + 56 DDR5), 21
+      SODIMM hidden. Admin parse path: `" ddr4 , DDR5 ,ddr4"` → `"DDR4, DDR5"`,
+      `"lga1700"` → `"LGA1700"`, `"micro atx"` → `"Micro-ATX"`, `"nvme; SATA"`
+      → `"NVMe, SATA"`. Live: select pages render 138 RAM / 121 motherboard /
+      134 case cards (was capped at 48 each); `/admin/products` and
+      `/admin/pc-builder` still 307 signed-out.
+
+      **Disclosed.** (a) No browser tool in this environment: the new admin
+      chips and the picker's client-side banner/loading state were verified by
+      type-check, lint, the pure-engine suite and the server-rendered HTML —
+      not clicked through. (b) *Resolved — the backfill was applied; see step 2 below.*
+      (c) After the backfill, parts the
+      rules deliberately leave unset (34 of 41 coolers — Corsair names carry
+      no socket list; 26 cases with no size; 3 LGA1700 boards with no DDR in
+      the name) stay "Compatibility
+      not set" and hidden by default until tagged in admin. (d) Bulk CSV
+      import still excludes builder attributes (unchanged AD-274/276 scope).
+      (e) **Form factor stays literal overlap** — a Micro-ATX board in a case
+      that lists only "ATX" is still "incompatible", as the pre-existing test
+      asserts; the admin ticks every size a case holds instead (the backfill
+      does this automatically for inferred cases).
+
+      **Found, not fixed (out of scope).** `npm run test:payments` reports 1
+      of 53 failing — "SSLCommerz browser return has no
+      applyPaymentTransition" — a **false positive**: the source guard does a
+      naive `includes()` and a *comment* in the (untouched, committed)
+      `app/api/payments/sslcommerz/return/route.ts` mentions
+      `processSslcommerzIpn`. Payment code left alone. Also observed in dev:
+      `/pc-builder/select/<nonexistent-slot>` returns 200 rather than 404 (not
+      investigated).
+
+      **Ops note.** The dev server's worker pool died while `tsc`/`eslint`
+      ran in parallel: every `generateStaticParams` route (`/category/*`,
+      `/pc-builder/select/*`) returned 500 "Jest worker encountered 2 child
+      process exceptions". Not a code fault — restarting `npm run dev` cleared
+      it with identical code.
+
+      **AD-346 step 2 — PSU wattage + CPU/GPU TDP (operator: "go" on the
+      recommendation).** The PSU-wattage rule already existed but could never
+      fire: no product carried a wattage or TDP, so the check was permanently
+      "unknown". `infer-attrs.ts` now also fills `tdpWatts` (→
+      `builderTdpWatts`, an Int column; the backfill script handles the
+      conversion) for the `psu`, `gpu` and `cpu` slots:
+      - **PSU** — explicit "650 Watt"/"450W" in the name wins (so "XPS550N
+        REAL 200W" is 200 W, not the model number's 550); else the wattage in
+        a Corsair (RM850x, CX550, HX1500i, SF850L) or Gigabyte (GP-P550B,
+        GP-UD1000GM) model code. Chargers/adapters that sit in the PSU slot
+        (UGREEN, ZKTECO, DAHUA, Zebra) get nothing.
+      - **GPU** — reference board power from an exact model-code table
+        (RTX 5050→130 W … 5090→575 W, RTX 3050 6 GB 70 W / 8 GB 130 W, RTX
+        3060 170 W, RX 9060 XT 150/160 W, RX 9070 220 W, Arc A310/A380 75 W,
+        A750 225 W, GTX 1650 75 W, GT 730 38 W; most specific code first so 5070
+        Ti ≠ 5070). **Deliberately not** the overview's "Power supply
+        requirement: 550W" — that is the whole system's recommended PSU, and
+        using it as the GPU's draw would double-count in the engine.
+      - **CPU** — Intel by suffix/gen (T 35 W, plain 65 W, K/KF 125 W, KS
+        150 W, i3 12th–14th-gen "100" parts 60 W, Core Ultra 65/125 W); Ryzen
+        by exact model table; mobile suffixes and unknown parts stay unset.
+        Manufacturer TDP, not peak turbo — the engine's 1.5× headroom covers it.
+      Applied 2026-10-04: **156 products** (CPU 15, PSU 89, GPU 52); step-1
+      values untouched (idempotent). Undo log
+      `project-memory/backfill-logs/builder-compat-2026-10-04-step2-power.json`.
+      The script now also **refuses `--apply` without `--log=<file>`** — every
+      write is recorded so a run can be undone (set those columns back to
+      null). Left unset on purpose: 12 PSU-slot rows (chargers/adapters, plus
+      "550CV" and a promotional SF1000L whose names lack a PSU keyword), 1 CPU
+      ("I7 Processor Pluggable PC Module"), and the Ryzen 9 7900X listing got
+      TDP 170 W but still has **no socket** (its name says AM4, its series
+      says AM5 — needs a human fix of the product).
+
+      *Verified on real DB values:* i5-12400 + RTX 5060 (needs ≥ 315 W) hides
+      only the 200/300 W units and shows 350 W+; i9-14900K + RTX 5090 (needs ≥
+      1050 W) shows only 1200 W+; picking a 550 W PSU first with an i5-12400
+      keeps every GPU ≤ 300 W and hides ≥ 360 W — the exact (65+gpu)×1.5 ≤ 550
+      boundary. `test:pc-builder` 75 → **83**; `tsc` 0, `eslint` 0; select
+      pages 200 (dev server survived the checks this time).
+
+      **Still open / disclosed.** The 12 junk PSU-slot rows are *shown* next to
+      real PSUs (their capacity is "unknown", which never hides a part) — a
+      category-classification problem inherited from the SMART import, like the
+      Photocopier/Server ones. GPU length, cooler height, radiator size, PSU
+      form factor and case-fan size are still not modelled: they need new
+      columns plus data the catalog names do not carry. Peripherals
+      (keyboard, mouse, monitor, speaker, headphone, UPS, antivirus) are
+      deliberately rule-free.
+
+      **AD-346 step 3 — leftovers workflow + a data-loss bug found on the way
+      (operator: "go for next phase").**
+      *Bug (pre-existing since AD-276, fixed):* bulk CSV import has no PC
+      Builder columns and sent `builderSlot: ""` + empty attrs for every row;
+      the update path (`productData()` in `admin-products.ts`) writes those
+      unconditionally, and an empty slot means "not a builder part" = null. So
+      **re-importing any existing SKU — including the admin Export → edit →
+      Import round trip, or the pending `techno-house-product-import-fixed.csv`
+      if it overlaps — would silently erase `builderSlot` and every
+      compatibility value** (the ~1,200 category slot tags *and* AD-346's 629
+      backfilled values). The in-file comment claimed the fields were
+      "deliberately omitted"; they were not. Established by reading the code
+      and a pure parse check ("empty row → slot null, attrs null"); not
+      reproduced live before the fix. *Fix, contained to the importer:* for an
+      existing SKU `importProductsFromCsvText` now feeds the product's current
+      builder values back in (`lib/catalog/bulk-builder-carry-forward.ts`,
+      pure); core `saveAdminProduct` semantics untouched. *Proved live on the
+      real importer:* a throwaway product (created, tagged RAM / "DDR4, DDR5" /
+      AM5 / 55 W, re-imported with a new price) came back with the new price
+      **and** every tag intact; deleted afterwards (0 left; run without an
+      actor so no audit rows were written). `test:pc-builder` 83 → **87**.
+      Still true: a *new* CSV row cannot set builder values (no columns) —
+      deliberate AD-274 scope.
+
+      *Leftovers workflow* for the 80 parts the rules cannot infer
+      (cooler 34, case 26, SSD 11, motherboard 3, CPU 2, RAM 2, HDD 2):
+      - `npm run catalog:export-untagged-builder` — read-only; writes
+        `untagged-builder-parts.csv` (sku, slot, name, `needs`, the four
+        editable columns pre-filled with what exists, a 140-char overview
+        hint; UTF-8 BOM so Excel opens it). "Needs" = core fit data only
+        (motherboard drive interface and CPU/GPU/PSU wattage are not listed).
+      - `npm run catalog:import-builder-compat -- <file.csv>` — **dry-run by
+        default**; `--apply` refuses without `--log=<json>` (undo record).
+        Matches by SKU only (unknown SKUs reported, never created), additive
+        (never overwrites a stored value), same canonicalising parser as the
+        admin form, and accepts only fields the product's slot actually uses.
+        Checked on a deliberately messy file: `am5 , AM4;lga1700` →
+        `AM5, AM4, LGA1700`; `atx, micro atx, Mini-ITX` → `ATX, Micro-ATX,
+        Mini-ITX`; a socket on a RAM row ignored; 14 values rejected (cap 12);
+        unknown SKU reported; the unfilled file changes nothing (0 of 80).
+      Nothing from this file has been applied — it is waiting to be filled in.
+      `tsc` 0, `eslint` 0, select/admin routes 200/307.

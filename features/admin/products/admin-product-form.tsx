@@ -19,18 +19,20 @@ import {
   AdminQuickCreateCategoryModal,
 } from "@/features/admin/products/admin-quick-create-category-brand";
 import {
-  BUILDER_ATTR_MAX,
   PRODUCT_BARCODE_MAX,
   slugifyProduct,
   type ProductVariantInputFields,
 } from "@/lib/catalog/product-input";
-import { BUILDER_SLOTS } from "@/lib/domain/pc-builder";
+import { AdminBuilderMultiSelect } from "@/features/admin/products/admin-builder-multi-select";
+import { BUILDER_SLOTS, isBuilderSlotId } from "@/lib/domain/pc-builder";
 import {
+  builderAttributeCopy,
   FORM_FACTOR_OPTIONS,
-  OTHER_OPTION_VALUE,
   RAM_TYPE_OPTIONS,
+  SLOT_ATTRIBUTE_FIELDS,
   SOCKET_OPTIONS,
   STORAGE_INTERFACE_OPTIONS,
+  type BuilderAttrField,
 } from "@/lib/domain/pc-builder/attribute-options";
 import {
   DEFAULT_LOW_STOCK_THRESHOLD,
@@ -129,75 +131,6 @@ function stockQtyFromStatus(status: StockStatus | undefined): string {
 
 function slugify(value: string): string {
   return slugifyProduct(value);
-}
-
-/**
- * Controlled-vocabulary dropdown with an "Other" escape hatch (AD-276).
- * Keeps compatibility-matching values consistent (no "AM5" vs "am5" drift)
- * without blocking a real value that isn't on the list yet.
- */
-function AttributeSelectWithOther({
-  id,
-  label,
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: readonly string[];
-  placeholder: string;
-  disabled?: boolean;
-}) {
-  const valueIsKnown = value === "" || options.includes(value);
-  // Once the admin picks "Other…" for a value not on the list, keep showing
-  // the free-text box even while they're still typing (value may be "").
-  const [otherMode, setOtherMode] = useState(!valueIsKnown);
-  const showOther = otherMode || !valueIsKnown;
-  const selectValue = showOther ? OTHER_OPTION_VALUE : value;
-
-  return (
-    <div className="space-y-1.5">
-      <AdminFormLabel htmlFor={id}>{label}</AdminFormLabel>
-      <Select
-        id={id}
-        value={selectValue}
-        onChange={(event) => {
-          const next = event.target.value;
-          if (next === OTHER_OPTION_VALUE) {
-            setOtherMode(true);
-            return;
-          }
-          setOtherMode(false);
-          onChange(next);
-        }}
-        className={adminFormControlClass}
-        disabled={disabled}
-      >
-        <option value="">Not set</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-        <option value={OTHER_OPTION_VALUE}>Other…</option>
-      </Select>
-      {showOther ? (
-        <Input
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          maxLength={BUILDER_ATTR_MAX}
-          placeholder={placeholder}
-          className={adminFormControlClass}
-          disabled={disabled}
-        />
-      ) : null}
-    </div>
-  );
 }
 
 export function AdminProductForm({
@@ -396,6 +329,13 @@ export function AdminProductForm({
   const [builderStorageInterface, setBuilderStorageInterface] = useState(
     product?.builderAttrs?.storageInterface ?? "",
   );
+  // Which compatibility fields the chosen slot actually checks (AD-346).
+  const builderPicker = isBuilderSlotId(builderSlot)
+    ? {
+        slotId: builderSlot,
+        fields: SLOT_ATTRIBUTE_FIELDS[builderSlot] ?? [],
+      }
+    : null;
   const [thumbnailSrc, setThumbnailSrc] = useState(
     product?.image.src && product.image.src !== "/products/placeholder.svg"
       ? product.image.src
@@ -1204,8 +1144,11 @@ export function AdminProductForm({
           <AdminFormCard title="PC Builder">
             <p className="text-xs text-neutral-500">
               Assign this product to one builder slot. Leave empty if it is not
-              a PC part. Compatibility fields are optional — missing data shows
-              as unknown later, never as a false match.
+              a PC part. Then tick what it is compatible with — a part can
+              support several values (e.g. a board that takes both DDR4 and
+              DDR5). The PC Builder only suggests parts whose values match what
+              the customer already picked, so parts with nothing ticked are
+              hidden by default.
             </p>
             <div className="space-y-1.5">
               <AdminFormLabel htmlFor="builder-slot">
@@ -1217,11 +1160,16 @@ export function AdminProductForm({
                 onChange={(event) => {
                   const next = event.target.value;
                   setBuilderSlot(next);
-                  if (!next) {
-                    setBuilderSocket("");
-                    setBuilderRamType("");
-                    setBuilderFormFactor("");
-                    setBuilderTdpWatts("");
+                  // Drop values the new slot never checks, so nothing hidden
+                  // is silently saved against the wrong kind of part.
+                  const keep: readonly BuilderAttrField[] = isBuilderSlotId(next)
+                    ? (SLOT_ATTRIBUTE_FIELDS[next] ?? [])
+                    : [];
+                  if (!keep.includes("socket")) setBuilderSocket("");
+                  if (!keep.includes("ramType")) setBuilderRamType("");
+                  if (!keep.includes("formFactor")) setBuilderFormFactor("");
+                  if (!keep.includes("tdpWatts")) setBuilderTdpWatts("");
+                  if (!keep.includes("storageInterface")) {
                     setBuilderStorageInterface("");
                   }
                 }}
@@ -1236,58 +1184,83 @@ export function AdminProductForm({
                 ))}
               </Select>
             </div>
-            {builderSlot ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <AttributeSelectWithOther
-                  id="builder-socket"
-                  label="Socket"
-                  value={builderSocket}
-                  onChange={setBuilderSocket}
-                  options={SOCKET_OPTIONS}
-                  placeholder="AM5"
-                  disabled={pending}
-                />
-                <AttributeSelectWithOther
-                  id="builder-ram"
-                  label="RAM type"
-                  value={builderRamType}
-                  onChange={setBuilderRamType}
-                  options={RAM_TYPE_OPTIONS}
-                  placeholder="DDR5"
-                  disabled={pending}
-                />
-                <AttributeSelectWithOther
-                  id="builder-form"
-                  label="Form factor"
-                  value={builderFormFactor}
-                  onChange={setBuilderFormFactor}
-                  options={FORM_FACTOR_OPTIONS}
-                  placeholder="Micro-ATX"
-                  disabled={pending}
-                />
-                <AttributeSelectWithOther
-                  id="builder-storage-interface"
-                  label="Storage interface"
-                  value={builderStorageInterface}
-                  onChange={setBuilderStorageInterface}
-                  options={STORAGE_INTERFACE_OPTIONS}
-                  placeholder="NVMe"
-                  disabled={pending}
-                />
-                <div className="space-y-1.5">
-                  <AdminFormLabel htmlFor="builder-tdp">
-                    TDP / wattage
-                  </AdminFormLabel>
-                  <Input
-                    id="builder-tdp"
-                    inputMode="numeric"
-                    value={builderTdpWatts}
-                    onChange={(event) => setBuilderTdpWatts(event.target.value)}
-                    placeholder="65"
-                    className={adminFormControlClass}
+            {builderPicker && builderPicker.fields.length === 0 ? (
+              <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+                This slot has no compatibility rules, so there is nothing to
+                tick — customers can pick it freely.
+              </p>
+            ) : null}
+            {builderPicker && builderPicker.fields.length > 0 ? (
+              <div className="space-y-5">
+                {builderPicker.fields.includes("socket") ? (
+                  <AdminBuilderMultiSelect
+                    key={`socket-${builderSlot}`}
+                    id="builder-socket"
+                    {...builderAttributeCopy(builderPicker.slotId, "socket")}
+                    value={builderSocket}
+                    onChange={setBuilderSocket}
+                    options={SOCKET_OPTIONS}
+                    otherPlaceholder="LGA1851"
                     disabled={pending}
                   />
-                </div>
+                ) : null}
+                {builderPicker.fields.includes("ramType") ? (
+                  <AdminBuilderMultiSelect
+                    key={`ram-${builderSlot}`}
+                    id="builder-ram"
+                    {...builderAttributeCopy(builderPicker.slotId, "ramType")}
+                    value={builderRamType}
+                    onChange={setBuilderRamType}
+                    options={RAM_TYPE_OPTIONS}
+                    otherPlaceholder="LPDDR5"
+                    disabled={pending}
+                  />
+                ) : null}
+                {builderPicker.fields.includes("formFactor") ? (
+                  <AdminBuilderMultiSelect
+                    key={`form-${builderSlot}`}
+                    id="builder-form"
+                    {...builderAttributeCopy(builderPicker.slotId, "formFactor")}
+                    value={builderFormFactor}
+                    onChange={setBuilderFormFactor}
+                    options={FORM_FACTOR_OPTIONS}
+                    otherPlaceholder="Thin Mini-ITX"
+                    disabled={pending}
+                  />
+                ) : null}
+                {builderPicker.fields.includes("storageInterface") ? (
+                  <AdminBuilderMultiSelect
+                    key={`storage-${builderSlot}`}
+                    id="builder-storage-interface"
+                    {...builderAttributeCopy(builderPicker.slotId, "storageInterface")}
+                    value={builderStorageInterface}
+                    onChange={setBuilderStorageInterface}
+                    options={STORAGE_INTERFACE_OPTIONS}
+                    otherPlaceholder="SAS"
+                    disabled={pending}
+                  />
+                ) : null}
+                {builderPicker.fields.includes("tdpWatts") ? (
+                  <div className="max-w-xs space-y-1.5">
+                    <AdminFormLabel
+                      htmlFor="builder-tdp"
+                      hint={builderAttributeCopy(builderPicker.slotId, "tdpWatts").hint}
+                    >
+                      {builderAttributeCopy(builderPicker.slotId, "tdpWatts").label}
+                    </AdminFormLabel>
+                    <Input
+                      id="builder-tdp"
+                      inputMode="numeric"
+                      value={builderTdpWatts}
+                      onChange={(event) =>
+                        setBuilderTdpWatts(event.target.value)
+                      }
+                      placeholder="65"
+                      className={adminFormControlClass}
+                      disabled={pending}
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </AdminFormCard>

@@ -1,0 +1,3550 @@
+[
+  {
+    "id": "cmuq3c20c015ozwfg9x5lqhff",
+    "name": "Intel Core i5 10500T 10th Gen Comet Lake Processor 3Years",
+    "set": {
+      "builderSocket": "LGA1200"
+    }
+  },
+  {
+    "id": "cmuq3c20n015rzwfg8y3sg5s3",
+    "name": "Intel Core i7 -14700 14th Gen Up to 5.40GHz 20 Core LGA1700 Socket (Tray 3 years warranty)",
+    "set": {
+      "builderSocket": "LGA1700"
+    }
+  },
+  {
+    "id": "cmuq3c21c015uzwfgtiogkf6k",
+    "name": "Intel® Core™ i3-10105 10th Gen Processor (6M Cache, up to 4.30 GHz) LGA1200",
+    "set": {
+      "builderSocket": "LGA1200"
+    }
+  },
+  {
+    "id": "cmuq3c260016ozwfgkqpm51cu",
+    "name": "Intel® Core™ i3-12100 12th Gen Processor (12M Cache, up to 4.30 GHz) LGA1700 Local Purchase",
+    "set": {
+      "builderSocket": "LGA1700"
+    }
+  },
+  {
+    "id": "cmuq3c21o015xzwfgob5rj00w",
+    "name": "Intel® Core™ i3-12100 12th Gen Processor 12M Cache, up to 4.30 GHz LGA1700 ( Tray 3 Year’s Limited Warranty)",
+    "set": {
+      "builderSocket": "LGA1700"
+    }
+  },
+  {
+    "id": "cmuq3c22a0160zwfghwvccg1c",
+    "name": "Intel® Core™ i3-14100 14th Gen Processor (12M Cache, up to 4.70 GHz) LGA1700    (Tray 3 years warranty)",
+    "set": {
+      "builderSocket": "LGA1700"
+    }
+  },
+  {
+    "id": "cmuq3c22k0163zwfgvqwptqig",
+    "name": "Intel® Core™ i5-10400 10th Gen Processor (12M Cache, up to 4.30 GHz) LGA1200",
+    "set": {
+      "builderSocket": "LGA1200"
+    }
+  },
+  {
+    "id": "cmuq3c26a016rzwfg223yrqtq",
+    "name": "Intel® Core™ i5-10500T 10th Gen Processor (12M Cache, up to 4.50 GHz) LGA1200 Local Purchase",
+    "set": {
+      "builderSocket": "LGA1200"
+    }
+  },
+  {
+    "id": "cmuq3c2360166zwfgiizqg6os",
+    "name": "Intel® Core™ i5-12400 12th Gen Processor (18M Cache, up to 4.40 GHz) LGA1700 (Tray 3 Year’s Limited Warranty)",
+    "set": {
+      "builderSocket": "LGA1700"
+    }
+  },
+  {
+    "id": "cmuq3c23g0169zwfgcl8805g3",
+    "name": "Intel® Core™ i5-14400 14th Gen Processor (10 CORE 16 THREAD) LGA1700 (Tray 3 Years )",
+    "set": {
+      "builderSocket": "LGA1700"
+    }
+  },
+  {
+    "id": "cmuq3c242016czwfgnvllhkkh",
+    "name": "Intel® Core™ i5-14500 14th Gen Processor (24MB Cache, up to 5.0 GHz) LGA1700",
+    "set": {
+      "builderSocket": "LGA1700"
+    }
+  },
+  {
+    "id": "cmuq3c24e016fzwfg4nh4vjf7",
+    "name": "Intel® Core™ i7-12700 12th Gen Processor (25M Cache, up to 4.90 GHz) LGA1700 (Tray)",
+    "set": {
+      "builderSocket": "LGA1700"
+    }
+  },
+  {
+    "id": "cmuq3c250016izwfg4e6tzeui",
+    "name": "Intel® Core™ i9-14900K 14th Gen Processor (16 CORES 32 THREAD) LGA1700 (BOX)",
+    "set": {
+      "builderSocket": "LGA1700"
+    }
+  },
+  {
+    "id": "cmuq3c25n016lzwfglbv28q8f",
+    "name": "Intel® Core™ Ultra 5 225 Processor (20 MB Cache, 3.3 GHz up to 4.9 GHz) LGA 1851(Tray 3 years warranty)",
+    "set": {
+      "builderSocket": "LGA1851"
+    }
+  },
+  {
+    "id": "cmuq3a875012x2wfg9fnp751f",
+    "name": "Gigabyte Eagle 360 Black ARGB 360mm All-in-One Liquid CPU Cooler CPU Socket: Intel LGA 1851/1700/1200/115x, AMD AM5/AM4",
+    "set": {
+      "builderSocket": "AM5, AM4, LGA1851, LGA1700, LGA1200, LGA1151"
+    }
+  },
+  {
+    "id": "cmuq3a87s01302wfgrh4doyo8",
+    "name": "GIGABYTE EAGLE 360 ICE # CPU Socket: Intel 1851 / 1700 / 115X / 1200 / AMD AM5 / AM4",
+    "set": {
+      "builderSocket": "AM5, AM4, LGA1851, LGA1700, LGA1200, LGA1151"
+    }
+  },
+  {
+    "id": "cmuq3a88201332wfg9ehjam6d",
+    "name": "GIGABYTE GAMING 240 (Black) # CPU Socket: Intel 1851 / 1700 / 115X / 1200 AMD AM5 / AM4",
+    "set": {
+      "builderSocket": "AM5, AM4, LGA1851, LGA1700, LGA1200, LGA1151"
+    }
+  },
+  {
+    "id": "cmuq3a88n01362wfgbpc1bu0p",
+    "name": "GIGABYTE GAMING 240 ICE (White) # CPU Socket: Intel 1851 / 1700 / 115X / 1200 AMD AM5 / AM4",
+    "set": {
+      "builderSocket": "AM5, AM4, LGA1851, LGA1700, LGA1200, LGA1151"
+    }
+  },
+  {
+    "id": "cmuq3a88y01392wfg67py95yy",
+    "name": "GIGABYTE GAMING 360 (Black) # CPU Socket: Intel 1851 / 1700 / 115X / 1200 AMD AM5 / AM4",
+    "set": {
+      "builderSocket": "AM5, AM4, LGA1851, LGA1700, LGA1200, LGA1151"
+    }
+  },
+  {
+    "id": "cmuq3a899013c2wfgsr61hd1w",
+    "name": "GIGABYTE GAMING 360 ICE (White) # CPU Socket: Intel 1851 / 1700 / 115X / 1200 AMD AM5 / AM4",
+    "set": {
+      "builderSocket": "AM5, AM4, LGA1851, LGA1700, LGA1200, LGA1151"
+    }
+  },
+  {
+    "id": "cmuq3avyp011fesfgrqavggmc",
+    "name": "GIGABYTE AMD # A520M DS3H WF6E, Socket AM4, 4 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3avyf011cesfg39asi57i",
+    "name": "GIGABYTE AMD # A520M DS3H, Socket AM4, 4 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3avyx011iesfgv7e6rzxj",
+    "name": "GIGABYTE AMD # A520M K, Socket AM4, 2 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3avz8011lesfgvxixnfxv",
+    "name": "GIGABYTE AMD # A620M H, Socket AM5, 2 x DDR5, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw0l0120esfgesuiq1rj",
+    "name": "GIGABYTE AMD # B550M AORUS ELITE AX",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw0w0123esfgf4pel8z3",
+    "name": "GIGABYTE AMD # B550M DS3H AC R2, Socket AM4, 4 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw150126esfgg2nh1ly3",
+    "name": "GIGABYTE AMD # B550M DS3H R2, Socket AM4, 4 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw1f0129esfgbjtxmpbi",
+    "name": "GIGABYTE AMD # B550M GAMING X WIFI6, Socket AM4, VRM Thermal Armor Advanced, 4 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw1p012cesfgj489td0q",
+    "name": "GIGABYTE AMD # B550M H ARGB, Socket AM4, 2 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw1y012fesfgml6bum5i",
+    "name": "GIGABYTE AMD # B550M K WF6E, Socket AM4, 4 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw29012iesfguu50byfz",
+    "name": "GIGABYTE AMD # B650 EAGLE AX DDR5, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw5d0139esfgkdinrtez",
+    "name": "GIGABYTE AMD # B650 UD AC, Socket AM5, 4 x DDR5, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw5n013cesfg0e77ofpt",
+    "name": "GIGABYTE AMD # B650 UD AX, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw2h012lesfgm7vnstqo",
+    "name": "GIGABYTE AMD # B650M A ELITE AX ICE, Socket AM5, Advanced Thermal Design & M.2 Thermal Guard, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw2s012oesfgaepevaup",
+    "name": "GIGABYTE AMD # B650M D3HP",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw32012resfgetjm63rl",
+    "name": "GIGABYTE AMD # B650M D3HP AX DDR5, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw3q012uesfgx47g3fh4",
+    "name": "GIGABYTE AMD # B650M GAMING PLUS WF, Socket AM5, PCIe 4.0 x4 M.2 Connector, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw3z012xesfgmd6oq29j",
+    "name": "GIGABYTE AMD # B650M GAMING WIFI, Socket AM5, PCIe 4.0 x4 M.2 Connector, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw490130esfglzszt1bq",
+    "name": "GIGABYTE AMD # B650M GAMING X AX DDR5, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw4l0133esfg0ogf7kor",
+    "name": "GIGABYTE AMD # B650M H, Socket AM5, 2 x DDR5, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw550136esfgsl5tf4fk",
+    "name": "GIGABYTE AMD # B650M S2H",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw65013iesfggcfjnvvj",
+    "name": "GIGABYTE AMD # B840M DS3H WF6, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw5x013fesfg2ddjpg7i",
+    "name": "GIGABYTE AMD # B840M DS3H, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw6g013lesfgmuci95n5",
+    "name": "GIGABYTE AMD # B840M EAGLE WIFI6, Socket AM5, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw6p013oesfgt5q0nj9x",
+    "name": "GIGABYTE AMD # B850 EAGLE WIFI6E, Socket AM5, 3*M.2 slots, including PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw6z013resfg8n57iope",
+    "name": "GIGABYTE AMD # B850I AORUS PRO (Mini-ITX Form Factor), Socket AM5, Wi-Fi 7, 2 x DDR5 DIMM, 2 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3aw78013uesfgmomrpuiz",
+    "name": "GIGABYTE AMD # B850M A ELITE WF6E ICE, Socket AM5, 2*M.2 slots, including PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw7j013xesfgg7iguzz2",
+    "name": "GIGABYTE AMD # B850M A ELT WF6E, Socket AM5, VRM Thermal Armor Advanced & M.2 Thermal Guard Ext, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw7t0140esfguj57rc75",
+    "name": "GIGABYTE AMD # B850M D3HP, Socket AM5, 2*M.2 slots, including 1* PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw820143esfgb5l595ns",
+    "name": "GIGABYTE AMD # B850M EAGLE WF6E, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw8c0146esfgjnm4vili",
+    "name": "GIGABYTE AMD # B850M FORCE WF6E, Socket AM5, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw8n0149esfgt01t1ltt",
+    "name": "GIGABYTE AMD # B850M GAMING X WF6E, Socket AM5, VRM Thermal Armor Advanced & M.2 Thermal Guard, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awbi014xesfgtbf1tdk7",
+    "name": "GIGABYTE AMD # X870 A ELITE WF7 ICE, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awbr0150esfg7hgf1om2",
+    "name": "GIGABYTE AMD # X870 EAGLE WIFI7, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awd60156esfgsb8aomif",
+    "name": "GIGABYTE AMD # X870 GAMING X WIFI7, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awcq0153esfgt07r2d2x",
+    "name": "GIGABYTE AMD # X870E EAGLE X WF7, Socket AM5, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awdh0159esfg3hy9lde3",
+    "name": "GIGABYTE AMD # X870I AORUS PRO ICE, Socket AM5, 2 x DDR5 DIMM, 2 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awds015cesfgvn7r817e",
+    "name": "GIGABYTE AMD # X870M A ELITE WF7, Socket AM5, 4 x DDR5 DIMM, 2 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3avzk011oesfg0agk8ib1",
+    "name": "Gigabyte AMD AM4 Chipset B550 EAGLE WIFI6 AM4 ATX Motherboard Ryzen 5000 Series Supported",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw0d011xesfguz33uzho",
+    "name": "GIGABYTE AMD AM5 Socket # X870 GAMING WF6, Digital twin 8+2+2 phases VRM solution, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw03011uesfg635pa99t",
+    "name": "GIGABYTE AMD AM5 Socket # X870E AORUS MASTER DDR5 ATX Motherboard",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3avzu011resfgmwq6b1fs",
+    "name": "Gigabyte AMD AM5 Socket #X870 AORUS ELITE WIFI 7 DDR5 ATX Motherboard",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw95014fesfgzdpvkpid",
+    "name": "Gigabyte AMD Chipset B450M DS3H WIFI AM4 AMD Micro ATX Motherboard Supported Processor: AMD Ryzen 5000/ 5000 G/ 3rd Gen / 2nd Gen / 1st Gen/ 2nd Gen Supported Memory: Dual Channel",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw8w014cesfgsjj23qkj",
+    "name": "Gigabyte AMD Chipset B450M DS3H, AM4 Socket, Ultra-Fast PCIe Gen3 x4 M.2 , 4 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw9f014iesfgh0tpcyyc",
+    "name": "Gigabyte AMD Chipset B450M K AM4 Micro-ATX Motherboard Supported RAM: 2 x DDR4, up to 64GB, 3600(O.C.) Graphics Output: 1 x HDMI port 1 x M.2 Slot, Realtek GbE LAN",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aw9p014lesfg20gk9y8t",
+    "name": "Gigabyte AMD Chipset B550M Aorus Elite AMD Micro ATX Motherboard AMD Ryzen 5000/4000G Series & AMD Ryzen 3rd Generation Processors Blazing Fast 2.5GbE LAN Q-Flash Plus Update BIOS",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awaa014oesfg8s6b70bt",
+    "name": "Gigabyte AMD Chipset B550M K AMD AM4 Micro ATX Motherboard Supported CPU: Ryzen 5000/ 5000 G/ 4000 G and 3000 Series Processors Supported RAM: 4x DDR4, Max 128GB 4733(OC) Graphics",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awal014resfgzksw7luj",
+    "name": "Gigabyte AMD Chipset B650M AORUS ELITE AX DDR5 AMD AM5 Micro-ATX Motherboard Supported CPU: Ryzen 7000 Series Processors for Socket AM5 Supported RAM: 4x DDR5, up to 128GB, 6666(OC",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awb6014uesfg1577ef38",
+    "name": "GIGABYTE AMD Chipset B650M K",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awwe01afesfgofretb11",
+    "name": "GIGABYTE INTEL # Z790 D DDR4, LGA1700, 4 x DDR DIMM, 6 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awwp01aiesfgegc5bft0",
+    "name": "GIGABYTE INTEL # Z790 D DDR5, LGA1700, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awzm01b0esfgea7xcrpl",
+    "name": "GIGABYTE INTEL # Z890 D PLUS, LGA1851, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3ax0c01b3esfggqi0jzho",
+    "name": "GIGABYTE INTEL # Z890 EAGLE WIFI 7, LGA1851, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awm6017lesfgugkq8k6s",
+    "name": "Gigabyte Intel Chipset B660M GAMING (DDR4), LGA1700, Dual Ultra-Fast NVMe PCIe 4.0 x4 M.2​, RGB FUSION 2.0, 2 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awmf017oesfgqa77mv1q",
+    "name": "Gigabyte Intel Chipset B760M DS3H AX 13th and 12th Gen mATX Motherboard Supported RAM: 4x DDR5, Max 192GB 7600(OC) Graphics Output: 1x HDMI, 2x DisplayPort Features: 2.5GbE LAN & W",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awmp017resfg33yuazqs",
+    "name": "Gigabyte Intel Chipset B760M DS3H DDR4 13th and 12th Gen Intel mATX Motherboard Supported RAM: 4x DDR4, Max 128GB 5333(OC) Graphics Output: 1x HDMI, 1x DisplayPort Realtek 2.5GbE L",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awmy017uesfg9902f3ka",
+    "name": "Gigabyte Intel Chipset B760M H DDR4 13th and 12th Gen mATX Motherboard Supported RAM: 2 x DDR4, Max 64GB 3200 Mhz Graphics Output: 1x HDMI, 1 x D-Sub Features: Realtek GbE LAN chip",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awn9017xesfgakwu33sw",
+    "name": "Gigabyte Intel Chipset GA-H81M-DS2, LGA1150, Ultra Durable™ 4 Plus Technology, 2 x 1.5V DDR3 DIMM, 2 x SATA 3Gb/s",
+    "set": {
+      "builderSocket": "LGA1150",
+      "builderRamType": "DDR3",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awnk0180esfgfoukbw6b",
+    "name": "Gigabyte Intel Chipset H110M-DS2 Micro ATX Motherboard",
+    "set": {
+      "builderSocket": "LGA1151",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awnu0183esfglci53uek",
+    "name": "Gigabyte Intel Chipset H110M-H Micro ATX Motherboard",
+    "set": {
+      "builderSocket": "LGA1151",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awo40186esfg3ynml5hw",
+    "name": "Gigabyte Intel Chipset H310M M.2 Micro ATX Motherboard",
+    "set": {
+      "builderSocket": "LGA1151",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awoe0189esfgukgp3rpz",
+    "name": "Gigabyte Intel Chipset H410M H Micro ATX Motherboard",
+    "set": {
+      "builderSocket": "LGA1200",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awon018cesfgi3t7rmob",
+    "name": "Gigabyte Intel Chipset H510M H Micro ATX Motherboard",
+    "set": {
+      "builderSocket": "LGA1200",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awoy018fesfg5pj0w0qa",
+    "name": "Gigabyte Intel Chipset H510M S2H Micro ATX Motherboard",
+    "set": {
+      "builderSocket": "LGA1200",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awp8018iesfggyjpsp32",
+    "name": "Gigabyte Intel Chipset H610M H DDR4, LGA1700, NVMe PCIe 3.0 x4 M.2, 2 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awpj018lesfgmgpb2btd",
+    "name": "Gigabyte Intel Chipset H610M H DDR5, LGA1700, NVMe PCIe 3.0 x4 M.2, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awq7018oesfgmrz4pgys",
+    "name": "Gigabyte Intel Chipset Z790 AORUS ELITE AX 13th & 12th Gen ATX Motherboard Supported CPU: 13th Gen & 12th Gen Processors (LGA1700) Supported RAM: 4 x DDR5 DIMMs, up to 7600(O.C.) G",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awqg018resfg5lupe8m8",
+    "name": "Gigabyte Intel Chipset Z790 AORUS ELITE DDR4 13th & 12th Gen ATX Motherboard Supported CPU: 13th Gen & 12th Gen Processors (LGA1700) Supported RAM: 4 x DDR4 DIMMs, up to 5333(O.C.)",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awqp018uesfgtogf5v1v",
+    "name": "Gigabyte Intel Chipset Z790 UD 13th & 12th Gen ATX Motherboard Supported CPU: 13th Gen & 12th Gen Processors (LGA1700) Supported RAM: 4 x DDR5 DIMMs, up to 7600(O.C.) Graphics Outp",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awqz018xesfgdbs1uh6z",
+    "name": "Gigabyte Intel Chipset Z790 UD AX 13th & 12th Gen ATX Motherboard Supported RAM: 4 x DDR5 DIMMs, up to 7600(O.C.) Graphics Output: 1 x HDMI, 1 x DisplayPort 2.5GbE LAN & Wi-Fi 6E 8",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awe1015fesfg513ced6f",
+    "name": "GIGABYTE INTEL® # B760 DS3H (DDR5)",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3aweb015iesfgj4qqdcya",
+    "name": "GIGABYTE INTEL® # B760 G X WF6E GEN5, LGA1700, SMD PCIe 5.0 Armor for enhanced graphics card support, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awek015lesfgkhqjchad",
+    "name": "GIGABYTE INTEL® # B760M A E WF6E GEN5, LGA1700, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awf4015oesfgwus9nndq",
+    "name": "GIGABYTE INTEL® # B760M AORUS ELITE DDR5",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awfg015resfgtir5x718",
+    "name": "GIGABYTE INTEL® # B760M D3HP DDR4, LGA1700, 2*PCIe 4.0 x4 M.2 Connectors, 4 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awg2015uesfg7nt80dja",
+    "name": "GIGABYTE INTEL® # B760M D3HP DDR5, LGA1700, 2*PCIe 4.0 x4 M.2 Connectors, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awgd015xesfg0z2l5n5w",
+    "name": "GIGABYTE INTEL® # B760M D3HP WIFI6 DDR5, LGA1700, 2*PCIe 4.0 x4 M.2 Connectors, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awgn0160esfgri8l9vr1",
+    "name": "GIGABYTE INTEL® # B760M E DDR5, LGA1700, 2*PCIe 4.0 x4 M.2 Connectors, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awi3016fesfgmdgkk96h",
+    "name": "GIGABYTE INTEL® # B760M G AX DDR5, LGA1700, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awib016iesfghf0kp9o4",
+    "name": "GIGABYTE INTEL® # B760M G P WIFI DDR4, LGA1700, 2*PCIe 4.0 x4 M.2 Connectors, 4 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awim016lesfg1q90csw1",
+    "name": "GIGABYTE INTEL® # B760M G X WF6E GEN5, LGA1700, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awgx0163esfgeaqz93nd",
+    "name": "GIGABYTE INTEL® # B760M GAMING DDR4, LGA1700, 2 x DDR4, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awh70166esfgammacdbr",
+    "name": "GIGABYTE INTEL® # B760M GAMING DDR5, LGA1700, 2 x DDR5, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awhh0169esfgwd33fdx6",
+    "name": "GIGABYTE INTEL® # B760M GAMING X (DDR5)",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awhq016cesfghm2qt1xk",
+    "name": "GIGABYTE INTEL® # B760M GAMING X GEN5 DDR5, LGA1700, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awiu016oesfgn5f89scj",
+    "name": "GIGABYTE INTEL® # B760M K DDR4, LGA1700, 2*PCIe 4.0 x4 M.2 Connectors, 2 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awj4016resfg9iw69y76",
+    "name": "GIGABYTE INTEL® # B860 A ELITE WF7 ICE, LGA1851, 3*M.2 slots, including 1* PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awje016uesfgqp3itv5w",
+    "name": "GIGABYTE INTEL® # B860 EAGLE WIFI6E, LGA1851, 3*M.2 slots, including 1* PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awjp016xesfg9wamexn2",
+    "name": "GIGABYTE INTEL® # B860M A ELITE WF6E ICE, LGA1851, 3*M.2 slots, including 1* PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awjy0170esfg5ffpl9lc",
+    "name": "GIGABYTE INTEL® # B860M A ELITE WIFI6E, LGA1851, 3*M.2 slots, including 1* PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awk80173esfg749zuq4y",
+    "name": "GIGABYTE INTEL® # B860M D2H, LGA1851, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awkh0176esfgg4yix3ay",
+    "name": "GIGABYTE INTEL® # B860M D3HP, LGA1851, 2*PCIe 4.0 x4 M.2 Connectors, 4 x DDR5 DIMM , 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awkq0179esfgj11i63s4",
+    "name": "GIGABYTE INTEL® # B860M DS3H WIFI6E, LGA1851, 2*M.2 slots, including 1* PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awkz017cesfge690jkrs",
+    "name": "GIGABYTE INTEL® # B860M EAGLE P WIFI6E DDR5, LGA1851, M.2 heatsinks with screwless design, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awla017fesfgnc8m0oiu",
+    "name": "GIGABYTE INTEL® # B860M GAMING WIFI6, LGA1851, 2*M.2 slots, including 1* PCIe 5.0 x4, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awlv017iesfg5htmmiap",
+    "name": "GIGABYTE INTEL® # B860M K, LGA1851, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awr70190esfgr28qrkqr",
+    "name": "GIGABYTE Intel® # GA-H110M-S2PH, LGA1151, Audio Noise Guard with LED Trace Path Lighting, 2 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1151",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awrf0193esfgeth1e3k4",
+    "name": "GIGABYTE INTEL® # GA-H81M-H",
+    "set": {
+      "builderSocket": "LGA1150",
+      "builderRamType": "DDR3",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awrz0199esfgryokc2ad",
+    "name": "GIGABYTE INTEL® # H110M-M.2 (Supported 6th, 7th, 8th & 9th Gen), LGA1151, 2 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1151",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awrp0196esfgbgef45rm",
+    "name": "GIGABYTE INTEL® # H110M-M.2, LGA1151, 2 x DDR4 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1151",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3aws8019cesfgvcp74umz",
+    "name": "GIGABYTE INTEL® # H410M K, LGA1200, NVMe PCIe Gen3 x4 2280 M.2 Connector, 2 x DDR4 DIMM, 2 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1200",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awsh019fesfg73coao2b",
+    "name": "GIGABYTE INTEL® # H510M K, LGA1200, 2 x DDR4, 2 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1200",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awsr019iesfgg35zpabi",
+    "name": "GIGABYTE INTEL® # H610M K DDR4, LGA1700, 2 x DDR4, 2 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awt2019lesfg5ickwvjl",
+    "name": "GIGABYTE INTEL® # H610M K DDR5, LGA1700, 2 x DDR5, 2 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awta019oesfgw3uxxc91",
+    "name": "GIGABYTE INTEL® # H610M S2H DDR5, LGA1700, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awtt019resfgsilxu1sp",
+    "name": "GIGABYTE INTEL® # H810M H, LGA1851, PCIe 4.0 x4 M.2 Connectors, 2 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awu5019uesfgli61fgux",
+    "name": "GIGABYTE INTEL® # H81M-H-M.2",
+    "set": {
+      "builderSocket": "LGA1150",
+      "builderRamType": "DDR3",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awuy01a3esfg1j4zb7qf",
+    "name": "GIGABYTE INTEL® # Z590 UD, LGA1200, Triple Ultra-Fast NVMe PCIe 4.0*/3.0 x4 M.2 with Thermal Guard, 4 x DDR4 DIMM, 5 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1200",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awvg01a9esfgf6agd4u6",
+    "name": "GIGABYTE INTEL® # Z790 AORUS MASTER X DDR5 14th Gen Ready ATX Motherboard Supported CPU",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awvq01acesfg5z2u8e6d",
+    "name": "GIGABYTE INTEL® # Z790 D AX DDR5, LGA1700, 3*PCIe 4.0 x4 M.2 Connectors, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awxd01alesfgpz2frbkb",
+    "name": "GIGABYTE INTEL® # Z790 EAGLE AX DDR5, LGA1700, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awxw01aresfgofgdt6w4",
+    "name": "GIGABYTE INTEL® # Z790 UD AC, LGA1700, 4 x DDR5 DIMM, 6 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awxm01aoesfgtj3opih5",
+    "name": "GIGABYTE INTEL® # Z790M AORUS ELITE AX DDR5, LGA1700, 4 x DDR5 DIMM, 6 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awy601auesfg15r5q1gv",
+    "name": "GIGABYTE INTEL® # Z890 A ELITE X ICE, LGA1851, 5*M.2 slots, including 1* PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3ax1k01b9esfgac8u60py",
+    "name": "GIGABYTE INTEL® # Z890M GAMING X, LGA1851, 3*M.2 slots, including 1* PCIe 5.0 x4, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmuq3awv701a6esfgijd4w8ag",
+    "name": "GIGABYTE INTEL® #Z790 A ELITE AX ICE DDR5 14th Gen Ready ATX Motherboard Supported CPU",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awyy01axesfgh4l4oatn",
+    "name": "GIGABYTE INTEL® #Z890 AORUS ELITE WIFI7 PLUS, LGA1851, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3ax1101b6esfg6592g9v1",
+    "name": "GIGABYTE INTEL® #Z890 EAGLE WIFI7 PLUS, LGA1851, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awuo01a0esfgjyzldq2i",
+    "name": "GIGABYTE INTEL® ULTRA Series Processor # Z890 UD WIFI6E, Digital twin 12+1+2 phases VRM solution, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3awuf019xesfgo3q9qjqn",
+    "name": "GIGABYTE INTEL® ULTRA Series Processor # Z890 UD, Digital twin 12+1+2 phases VRM solution, 4 x DDR5 DIMM, 4 x SATA 6Gb/s",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmuq3c42l01jfzwfgr5yxz86r",
+    "name": "AORUS Memory GP-ARS16G37, DDR4-3733 MHz, 16GB Kit (2 x 8GB), RGB Fusion 2.0 Supported Desktop RAM",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c2tf01axzwfg918n02rw",
+    "name": "Apacer 16GB DDR4 Desktop RAM, 3200MHz (EL.16G21.GSH)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c2tr01b0zwfgayhytyth",
+    "name": "Apacer 16GB DDR5 5200Mhz Desktop RAM (AH5U16G52C522MBAA-1)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c2u001b3zwfg4rpy5ucw",
+    "name": "Apacer 16GB DDR5 5600MHz Desktop RAM (AH5U16G56C522MBAA-1)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c2uc01b6zwfg52tktzfq",
+    "name": "Apacer 16GB DDR5 5600MHz Desktop RAM (FL.16G2C.PKH)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c2vx01bfzwfgx839krhy",
+    "name": "APACER 8GB DDR4 Desktop RAM, 2666MHz (EL.08G2V.GNH)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c2wg01bizwfgaf0x0jwl",
+    "name": "Apacer 8GB DDR4 Desktop RAM, 3200MHz (EL.08G21.GSH)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c2xl01bozwfgz2qu70bi",
+    "name": "Apacer 8GB DDR5 5600Mhz Desktop RAM (FL.08G2C.RKH)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c2y801brzwfg1vs2lwd0",
+    "name": "Apacer NOX 16GB DDR4 3200MHz Desktop RAM (AH4U16G32C28YMBAA-1)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c2yo01buzwfg70aaiv8e",
+    "name": "Apacer NOX 16GB DDR4 3200MHz Desktop RAM, RGB (AH4U16G32C28YNBAA-1)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c2yy01bxzwfgtak483im",
+    "name": "Apacer NOX 16GB DDR5 6000MHz Desktop RAM (AH5U16G60C622MBAA-1)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c2zl01c0zwfgkaqg9nvb",
+    "name": "Apacer NOX 16GB DDR5 6000MHz Desktop RAM, RGB  (AH5U16G60C622NBAA-1)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c30901c3zwfgd0glr0vs",
+    "name": "Apacer NOX 8GB DDR4 3200MHz Desktop RAM (AH4U08G32C28YMBAA-1)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c30n01c6zwfg3qu3781m",
+    "name": "Apacer NOX 8GB DDR4 3200MHz Desktop RAM, RGB WHITE (AH4U08G32C28YNWAA-1)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c31a01c9zwfguchqzfkp",
+    "name": "Apacer NOX 8GB DDR5 5200MHz Desktop RAM (AH5U08G52C52RMBAA-1)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c31l01cczwfgh2emdmuf",
+    "name": "Apacer PANTHER 16GB DDR5 6000Mhz Desktop RAM, (AH5U16G60C6227BAA-1)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c32401cfzwfg6tnesb7x",
+    "name": "Apacer PANTHER 16GB DDR5 6000MHz Desktop RAM, RGB, Black (AH5U16G60C6229BAA-1)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c32g01cizwfgip94g668",
+    "name": "Apacer PANTHER 32GB DDR5 6000Mhz Desktop RAM, RGB, Black (AH5U32G60C6229BAA-1)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c32z01clzwfgyrff3pgc",
+    "name": "CMD32GX4M2C3200C16 # CORSAIR DOMINATOR PLATINUM 16GB DDR4 3200MHZ MEMORY MODULE",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c33d01cozwfg4gbe324l",
+    "name": "CMK16GX4M1A2400C16# VENGEANCE CORSAIR LPX 16GB DDR4 2400MHZ RAM (BLACK)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c33u01crzwfg0dvnhhzc",
+    "name": "CMK16GX4M2B3200C16 # CORSAIR VENGEANCE 8GB DDR4 3200MHZ RAM (BLACK)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c34901cuzwfg7gtasxna",
+    "name": "CMK4GX4M1A2400C16# VENGEANCE CORSAIR LPX 4GB DDR4 2400MHZ RAM (BLACK)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c34j01cxzwfg5lryf0dg",
+    "name": "Corsair DOMINATOR® PLATINUM RGB 16GB (2 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit, CMT16GX4M2C3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c35501d0zwfgler9ofld",
+    "name": "Corsair DOMINATOR® PLATINUM RGB 32GB (2x16GB) DDR5 DRAM 5200MHz C40 Memory Kit — Black, CMT32GX5M2B5200C40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c35s01d3zwfgfij5l05o",
+    "name": "CORSAIR DOMINATOR® PLATINUM RGB 32GB (2x16GB) DDR5 DRAM 7200MHz C34 Memory Kit — Black, CMT32GX5M2X7200C34",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c36601d6zwfgv99lazcz",
+    "name": "CORSAIR DOMINATOR® TITANIUM RGB 32GB (2x16GB) DDR5 DRAM 6000MT/s CL30 AMD XMP Memory Kit — Grey, CMP32GX5M2B6000Z30",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c37e01dfzwfguencao80",
+    "name": "CORSAIR Vengeance 16GB (2 x 8GB) DDR5 5600MT/s CL40 Desktop memory Model, CMK16GX5M2B5600Z40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c37q01dizwfggk6adaax",
+    "name": "CORSAIR Vengeance 16GB (2 x 8GB) DDR5 6000MT/s CL36 Desktop memory Model CMK16GX5M2E6000Z36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3cj01efzwfgz9bf4qni",
+    "name": "Corsair VENGEANCE DDR5 RAM 8GB (1 x 8GB) 5200MHz CL40 Intel XMP 3.0 Desktop Memory - Black, CMK8GX5M1B5200C40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3dj01elzwfgku0humvz",
+    "name": "CORSAIR VENGEANCE DDR5 SODIMM 16GB (1 x16GB) DDR5-5200 (PC5-41600) C44 1.1V, CMSX16GX5M1A5200C44",
+    "set": {
+      "builderRamType": "DDR5 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c3e201eozwfg7khtx3pf",
+    "name": "CORSAIR VENGEANCE DDR5 SODIMM 16GB (1x16GB) DDR5-5600 (PC5-44800) C48 1.1V, CMSX16GX5M1A5600C48",
+    "set": {
+      "builderRamType": "DDR5 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c3d101eizwfgs91c1eew",
+    "name": "CORSAIR VENGEANCE DDR5 SODIMM 16GB (1x16GB) DDR5 4800 (PC5-38400) C40 1.1V, CMSX16GX5M1A4800C40",
+    "set": {
+      "builderRamType": "DDR5 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c3eg01erzwfgd5c19ymx",
+    "name": "CORSAIR VENGEANCE DDR5 SODIMM 32GB (1x32GB) DDR5-5200 (PC5-41600) C44 1.1V, CMSX32GX5M1A5200C44",
+    "set": {
+      "builderRamType": "DDR5 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c3f201euzwfg4z2o7a7o",
+    "name": "Corsair VENGEANCE DDR5 SODIMM 8GB (1x8GB) DDR5 4800MT/s (PC5-38400) CL40 1.1V — Black, CMSX8GX5M1A4800C40",
+    "set": {
+      "builderRamType": "DDR5 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c3nn01gizwfgicybn7rr",
+    "name": "CORSAIR Vengeance RGB 16GB (2 x 8GB) DDR5 5200MT/s CL40 Desktop Memory Model, CMH16GX5M2B5200Z40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3te01hozwfg7i1dri6j",
+    "name": "Corsair Vengeance RGB DDR5 RAM 16GB (2x8GB) 5600MHz CL40 AMD Expo & Intel XMP 3.0 Desktop Memory - Grey, CMH16GX5M2B5600Z40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3tz01hrzwfgdo0p8wwq",
+    "name": "Corsair Vengeance RGB DDR5 RAM 16GB (2x8GB) 6000MHz CL36 AMD EXPO and Intel XMP 3.0 Desktop Memory - Grey, CMH16GX5M2E6000Z36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3yh01iizwfg5d5h4jpl",
+    "name": "Corsair VENGEANCE RGB PRO SL 16GB (2x8GB) DDR4 DRAM 3200MHz C16 Memory Kit – White, CMH16GX4M2E3200C16W",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3xx01ifzwfgstym6h0h",
+    "name": "Corsair VENGEANCE RGB PRO SL 16GB (2x8GB) DDR4 DRAM 3200MHz C16 Memory Kit — Black, CMH16GX4M2E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3yt01ilzwfgcv9p0i3m",
+    "name": "Corsair VENGEANCE RGB PRO SL 16GB (2x8GB) DDR4 DRAM 3600MHz C18 Memory Kit – White, CMH16GX4M2D3600C18W",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3zc01iozwfgxttevakr",
+    "name": "Corsair VENGEANCE RGB PRO SL 32GB (2x16GB) DDR4 DRAM 3200MHz C16 Memory Kit – Black, CMH32GX4M2E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c40701ixzwfgbte9bs2g",
+    "name": "Corsair Vengeance RGB RS DDR5 RAM 16GB (2x8GB) 5600MHz CL40 AMD Expo Intel XMP Desktop Memory - Grey, CMG16GX5M2B5600Z40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c40f01j0zwfgq18pp56s",
+    "name": "Corsair Vengeance RGB RS DDR5 RAM 32GB (2x16GB) 6000MHz CL36 AMD EXPO Intel XMP Desktop Memory – Gray, CMG32GX5M2E6000Z36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c36i01d9zwfg9p5bj4mr",
+    "name": "Corsair VENGEANCE® 16GB (1x16GB) DDR5 DRAM 5600MHz C40 Memory Kit — Black, CMK16GX5M1B5600C40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c36s01dczwfgx23dlovp",
+    "name": "Corsair VENGEANCE® 16GB (1x16GB) DDR5 DRAM 6000MT/s CL36 AMD EXPO & Intel XMP Memory Kit, CMK16GX5M1E6000Z36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c38001dlzwfg1mn54sjb",
+    "name": "Corsair VENGEANCE® 16GB (2x8GB) DDR5 DRAM 5200MT/s CL40 AMD EXPO & Intel XMP Memory Kit - Black, CMK16GX5M2B5200Z40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c38k01dozwfgix0qxcqu",
+    "name": "Corsair VENGEANCE® 32GB (1x32GB) DDR5 DRAM 5600MHz C40 Memory Kit — Black, CMK32GX5M1B5600C40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c38x01drzwfg0239k2kl",
+    "name": "Corsair VENGEANCE® 32GB (2x16GB) DDR5 DRAM 5200MHz C40 Memory Kit — Black, CMK32GX5M2B5200C40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c39i01duzwfgauaa5tg1",
+    "name": "Corsair VENGEANCE® 32GB (2x16GB) DDR5 DRAM 6000MT/s CL30 AMD EXPO & Intel XMP Memory — Black, CMK32GX5M2B6000Z30",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c39v01dxzwfgwpoqs89q",
+    "name": "Corsair VENGEANCE® 32GB (2x16GB) DDR5 DRAM 6000MT/s CL36 AMD EXPO & Intel XMP Memory Kit - Black, CMK32GX5M2E6000Z36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3a501e0zwfgwuq6avrl",
+    "name": "Corsair VENGEANCE® 32GB (2x16GB) DDR5 DRAM 6000MT/s CL36 AMD EXPO & Intel XMP Memory Kit - Black, CMK32GX5M2E6000Z36 (I)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3ar01e3zwfghn9ue62l",
+    "name": "Corsair VENGEANCE® 32GB (2x16GB) DDR5 DRAM 6000MT/s CL36 Memory Kit, CMK32GX5M2F6000Z36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3b201e6zwfg31lfiqht",
+    "name": "Corsair VENGEANCE® 32GB (2x16GB) DDR5 DRAM 6000MT/s CL38 Memory Kit — Black, CMK32GX5M2B6000C38",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3bn01e9zwfgcx3pe6zx",
+    "name": "CORSAIR VENGEANCE® 32GB (2x16GB) DDR5 DRAM 6400MT/s CL36 Memory Kit, CMK32GX5M2B6400Z36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3by01eczwfgnb3l00df",
+    "name": "Corsair VENGEANCE® 64GB (2x32GB) DDR5 DRAM 6000MT/s CL40 AMD EXPO & Intel XMP Memory Kit, CMK64GX5M2D6000Z40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3ff01exzwfg5ywwqe5u",
+    "name": "Corsair VENGEANCE® LPX 16GB (1 x 16GB) DDR4 DRAM 3000MHz C16 Memory Kit - Black, CMK16GXM1D3000C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3g001f0zwfg9hgqjw6i",
+    "name": "Corsair VENGEANCE® LPX 16GB (1 x 16GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK16GX4M1E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3gw01f6zwfgd5ndv4r7",
+    "name": "Corsair VENGEANCE® LPX 16GB (1 x 16GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK16GX4M1E3200C16 (N)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3ha01f9zwfgljlxygdg",
+    "name": "Corsair VENGEANCE® LPX 16GB (1 x 16GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK16GX4M1E3200C16 (S)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3gc01f3zwfg7r03yac2",
+    "name": "Corsair VENGEANCE® LPX 16GB (1 x 16GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK16GX4M1E3200C16 L",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3hl01fczwfgnn3yalwz",
+    "name": "Corsair VENGEANCE® LPX 16GB (1 x 16GB) DDR4 DRAM 3600MHz C18 Memory Kit - Black, CMK16GX4M1Z3600C18",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3hu01ffzwfgdkajstrm",
+    "name": "Corsair VENGEANCE® LPX 16GB (2 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK16GX4M2E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3i501fizwfg6vohv4c6",
+    "name": "Corsair VENGEANCE® LPX 4GB (1 x 4GB) DDR4 DRAM 2400MHz C16 Memory Kit - Black CMK4GX4M1A2400C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3in01flzwfgnq9k8r70",
+    "name": "CORSAIR VENGEANCE® LPX 64GB (2 x 32GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK64GX4M2E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3j401fozwfgojuxs7w6",
+    "name": "Corsair VENGEANCE® LPX 8GB (1 x 8GB) DDR4 DRAM 2400MHz C16 Memory Kit - Black, CMK8GX4M1A2400C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3jo01frzwfgywxrfkn5",
+    "name": "Corsair VENGEANCE® LPX 8GB (1 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK8GX4M1E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3kl01fxzwfgyn1sp1go",
+    "name": "Corsair VENGEANCE® LPX 8GB (1 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK8GX4M1E3200C16 (I)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3ky01g0zwfgvvenn2ac",
+    "name": "Corsair VENGEANCE® LPX 8GB (1 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK8GX4M1E3200C16 (N)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3k101fuzwfgmt0psk3y",
+    "name": "Corsair VENGEANCE® LPX 8GB (1 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit - Black, CMK8GX4M1E3200C16 ©",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3l801g3zwfgimpzzx27",
+    "name": "Corsair VENGEANCE® LPX 8GB (1 x 8GB) DDR4 DRAM 3600MHz C18 Memory Kit - Black, CMK8GX4M1Z3600C18",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3lt01g6zwfgrn3rmtf1",
+    "name": "Corsair VENGEANCE® RGB 16GB (1x16GB) DDR5 DRAM 5200MT/s CL40 AMD EXPO & Intel XMP Memory Kit, CMH16GX5M1B5200Z40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3m201g9zwfgss3p3ofj",
+    "name": "Corsair VENGEANCE® RGB 16GB (1x16GB) DDR5 DRAM 6000MT/s CL36 AMD EXPO & Intel XMP Memory Kit, CMH16GX5M1E6000Z36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3mp01gczwfg3je5vaxp",
+    "name": "Corsair VENGEANCE® RGB 16GB (1x16GB) DDR5 DRAM 6000MT/s CL36 AMD EXPO & Intel XMP Memory Kit, CMH16GX5M1E6000Z36 (I)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3n001gfzwfgjmobhm43",
+    "name": "Corsair VENGEANCE® RGB 16GB (1x16GB) DDR5 DRAM 6000MT/s CL36 AMD EXPO & Intel XMP Memory Kit, CMH16GX5M1E6000Z36 (M)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3o701glzwfgzm2jo7n4",
+    "name": "CORSAIR VENGEANCE® RGB 32GB (2x16GB) DDR5 DRAM 5600MHz C40 Memory Kit — Black, CMH32GX5M2B5600C40K",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3ol01gozwfg5fevr990",
+    "name": "Corsair VENGEANCE® RGB 32GB (2x16GB) DDR5 DRAM 6000MT/s C36 Memory Kit — Black, CMH32GX5M2E6000C36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3ou01grzwfgud9416kx",
+    "name": "Corsair VENGEANCE® RGB 32GB (2x16GB) DDR5 DRAM 6000MT/s CL28 AMD EXPO & Intel XMP Memory Kit — Black, CMH32GX5M2B6000Z28",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3pi01guzwfgs8dq6mgb",
+    "name": "Corsair VENGEANCE® RGB 32GB (2x16GB) DDR5 DRAM 6000MT/s CL30 AMD EXPO & Intel XMP Memory Kit — Black, CMH32GX5M2B6000Z30K",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3ps01gxzwfgafmgbjan",
+    "name": "CORSAIR VENGEANCE® RGB 32GB (2x16GB) DDR5 DRAM 6000MT/s CL36 AMD EXPO & Intel XMP Memory Kit - Black, CMH32GX5M2E6000Z36 (I)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3qe01h0zwfgn7la00ls",
+    "name": "CORSAIR VENGEANCE® RGB 32GB (2x16GB) DDR5 DRAM 6800MT/s CL32 Memory Kit — Black, CMH32GX5M2X6800C32",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3qq01h3zwfgs8q5rt10",
+    "name": "Corsair VENGEANCE® RGB 32GB (2x16GB) DDR5 DRAM 7200MT/s CL34 Memory Kit — Black, CMH32GX5M2X7200C34",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3rd01h6zwfgeth7cwth",
+    "name": "CORSAIR VENGEANCE® RGB 32GB (2x16GB) DDR5 DRAM 8000MT/s CL36 Memory Kit — Black, CMH32GX5M2X8000C36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3s201h9zwfgkm0mk6d8",
+    "name": "CORSAIR VENGEANCE® RGB 48GB (2x24GB) DDR5 CUDIMM 9200MT/s CL44 Memory Kit, CMHC48GX5M2X9200C44",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3sc01hczwfgbwtcogng",
+    "name": "Corsair VENGEANCE® RGB 64GB (2x32GB) DDR5 DRAM 6000MT/s CL30 AMD EXPO & Intel XMP Memory Kit — Black, CMH64GX5M2B6000Z30",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3sl01hfzwfgxkivyzq4",
+    "name": "Corsair VENGEANCE® RGB 64GB (2x32GB) DDR5 DRAM 6000MT/s CL40 AMD EXPO & Intel XMP Memory Kit, CMH64GX5M2D6000Z40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3sv01hizwfgm6uh6odv",
+    "name": "Corsair VENGEANCE® RGB 64GB (2x32GB) DDR5 DRAM 6000MT/s CL40 AMD EXPO & Intel XMP Memory Kit, CMH64GX5M2D6000Z40 (S)",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3t501hlzwfgg19ebgmf",
+    "name": "CORSAIR VENGEANCE® RGB 8GB (1x8GB) DDR5 5200MT/s CL40 Memory Kit — Black, CMH8GX5M1B5200C40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c3ub01huzwfg2nvows7f",
+    "name": "Corsair VENGEANCE® RGB PRO 16GB (2 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit — Black, CMW16GX4M2C3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3uz01hxzwfghdwko270",
+    "name": "Corsair VENGEANCE® RGB PRO 16GB (2 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit — Black, CMW16GX4M2E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3vr01i0zwfgzb265e7z",
+    "name": "Corsair VENGEANCE® RGB PRO 16GB (2 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit — White, CMW16GX4M2C3200C16W",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3w301i3zwfgdufqza6q",
+    "name": "Corsair VENGEANCE® RGB PRO 16GB (2 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit — White, CMW16GX4M2E3200C16W",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3wm01i6zwfgoyjr1k3k",
+    "name": "Corsair VENGEANCE® RGB PRO 16GB (2 x 8GB) DDR4 DRAM 3600MHz C18 Memory Kit — Black, CMW16GX4M2D3600C18",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3wz01i9zwfg5fnc2iro",
+    "name": "Corsair VENGEANCE® RGB PRO 32GB (2 x 16GB) DDR4 DRAM 3200MHz C16 Memory Kit — Black, CMW32GX4M2C3200C18",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3xi01iczwfgei3o1zid",
+    "name": "Corsair VENGEANCE® RGB PRO 8GB (1 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit — Black, CMW8GX4M1E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3zp01irzwfgtmefumrj",
+    "name": "Corsair VENGEANCE® RGB RS 16GB (1 x 16GB) DDR4 DRAM 3200MHz C16 Memory Kit-Black, CMG16GX4M1E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c3zx01iuzwfg43c5oim7",
+    "name": "Corsair VENGEANCE® RGB RS 8GB (1 x 8GB) DDR4 DRAM 3200MHz C16 Memory Kit, Black, CMG8GX4M1E3200C16",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c40p01j3zwfglatx8c45",
+    "name": "CORSAIR VENGEANCE® Series 16GB (1 x 16GB) DDR4 SODIMM 3200MHz CL22 Memory Kit, CMSX16GX4M1A3200C22",
+    "set": {
+      "builderRamType": "DDR4 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c41801j6zwfga49rb7ad",
+    "name": "CORSAIR VENGEANCE® Series 8GB (1 x 8GB) DDR4 SODIMM 3200MHz CL22 Memory Kit, CMSX8GX4M1A3200C22",
+    "set": {
+      "builderRamType": "DDR4 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c41m01j9zwfgkp4gox55",
+    "name": "Corsair WS DDR5 ECC RDIMM 64GB (4 x 16GB) DDR5 DRAM 5600MT/s CL40 Memory Kit, CMA64GX5M4B5600Z40",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c42701jczwfgn6s0qldq",
+    "name": "Crucial 4GB DDR4 2666 Mhz SODIMM, Lram Life time Warrenty",
+    "set": {
+      "builderRamType": "DDR4 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3a1wf003c2wfg1nqfx6di",
+    "name": "LENOVO NPC RAM SAMSUNG 8GB DDR4 3200MHZ (F8LK)",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c43t01jozwfgkqhmse2k",
+    "name": "PATRIOT RAM 4GB DDR3 1600MHZ SIGHNATURE LINE-PSD34G1600",
+    "set": {
+      "builderRamType": "DDR3"
+    }
+  },
+  {
+    "id": "cmuq3c44e01juzwfgxhbzhqv8",
+    "name": "PNY XLR8 8GB DDR4 3200MHz Gaming Desktop RAM MD8GD4320016XR",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c44x01jxzwfg6fyvxeri",
+    "name": "PNY XLR8 8GB DDR4 3200MHz RGB Gaming Desktop RAM  MD8GD4320016XRGB",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c44401jrzwfgm06gex4h",
+    "name": "PSP44G240081H1# PATRIOT 4GB DDR4 2400MHZ RAM (Signature Line) With HEATSINK",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c45a01k0zwfgvhs47uyw",
+    "name": "SAMSUNG 4GB DDR4 3200 Mhz SO DIMM Laptop Ram",
+    "set": {
+      "builderRamType": "DDR4 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c45r01k3zwfg4ecylw12",
+    "name": "SAMSUNG 8GB DDR5 5600MHz Desktop RAM",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c46701k6zwfg5iwxwj5y",
+    "name": "SAMSUNG 8GB DDR5 5600MHz Laptop RAM",
+    "set": {
+      "builderRamType": "DDR5 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c46h01k9zwfg7kjvo4r5",
+    "name": "SMART 16GB DDR4 3200MHz SODIMM Laptop RAM #SM8NBD416G3200",
+    "set": {
+      "builderRamType": "DDR4 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c47301kczwfg2sgb1gb8",
+    "name": "SMART 8GB DDR4 3200MHz SODIMM Laptop RAM #SM8NBD48G3200",
+    "set": {
+      "builderRamType": "DDR4 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c47h01kfzwfg3jd10rkv",
+    "name": "SMART RAPTOR 16GB DDR4 3200MHz UDIMM Desktop RAM HS-Black #SM8PCHD416G3200XMP",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c47q01kizwfg22dfje0k",
+    "name": "SMART RAPTOR 8GB DDR4 2666MHz UDIMM Desktop RAM HS-Black #SM8PCHD48G2666",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c48001klzwfgtcdo5kcz",
+    "name": "SMART RAPTOR 8GB DDR4 3200MHz UDIMM Desktop RAM HS-Black #SM8PCHD48G3200",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c48d01kozwfgbs8is2oi",
+    "name": "Transcend 16GB DDR4 JM3200HLE-16G 3200MHz Desktop RAM",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c48y01krzwfgx288i78a",
+    "name": "TwinMOS 16GB DDR4 3200Mhz SODIMM Laptop RAM MDD416GB3200N",
+    "set": {
+      "builderRamType": "DDR4 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c49901kuzwfgb2ly0o8p",
+    "name": "TwinMOS 16GB DDR4 3200MHz UDIMM Heatsink (Black & Gold) Thunder GX CL16 # TMD416GB3200D16GX",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c49x01kxzwfgme8bwj20",
+    "name": "TwinMOS 16GB DDR4 3200MHz UDIMM Heatsink (Black) Thunder GX CL16 #TMD416GB3200D16BKGX",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c4al01l0zwfggo64z7ql",
+    "name": "TwinMOS 16GB DDR4 3200MHz UDIMM Heatsink (Black) Tornado Box X7 CL22 # TMD416GB3200D22BKX7",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c4ay01l3zwfgjhzeidw6",
+    "name": "TwinMOS 16GB DDR4 3200MHz UDIMM Supreme Desktop RAM #MDD416GB3200D",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c4bj01l6zwfgcoz8t0wd",
+    "name": "TwinMOS 16GB DDR5 5600MHz SODIMM Laptop RAM #TMD516GB5600S46",
+    "set": {
+      "builderRamType": "DDR5 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c4bu01l9zwfg17l82m6l",
+    "name": "TwinMOS 16GB DDR5 6000MHz UDIMM Heatsink (Black) VOLT-X CL36 #TMD516GB6000U36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c4ce01lczwfgqo5u6a6l",
+    "name": "TwinMOS 16GB DDR5 6000MHz UDIMM Heatsink (RGB) VOLT-X CL36 #TMD516GB6000URGB36",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c4cr01lfzwfgzbgkxkqq",
+    "name": "TwinMOS 2GB DDR3 1333Mhz UDIMM Desktop RAM (Without Warranty)",
+    "set": {
+      "builderRamType": "DDR3"
+    }
+  },
+  {
+    "id": "cmuq3c4dd01lizwfgpjuddu75",
+    "name": "TwinMOS 2GB DDR3 1600Mhz UDIMM Desktop RAM (Without Warranty)",
+    "set": {
+      "builderRamType": "DDR3"
+    }
+  },
+  {
+    "id": "cmuq3c4dq01llzwfgvrkxsfi4",
+    "name": "TwinMOS 32GB DDR5 6000MHz UDIMM Heatsink (RGB) VOLT-X CL36 #TMD532GB6000URGB36B",
+    "set": {
+      "builderRamType": "DDR5"
+    }
+  },
+  {
+    "id": "cmuq3c4ec01lozwfgy6v0xrgx",
+    "name": "TwinMOS 4GB DDR3 1333MHz UDIMM Desktop RAM (1 Year Warranty)",
+    "set": {
+      "builderRamType": "DDR3"
+    }
+  },
+  {
+    "id": "cmuq3c4en01lrzwfgem1ns19o",
+    "name": "TwinMOS 4GB DDR3 1600MHz UDIMM Desktop RAM (1 Year Warranty)",
+    "set": {
+      "builderRamType": "DDR3"
+    }
+  },
+  {
+    "id": "cmuq3c4f601luzwfgmf5pnmzv",
+    "name": "TwinMOS 8GB DDR3 1600MHz UDIMM Desktop RAM MDD38GB1600D",
+    "set": {
+      "builderRamType": "DDR3"
+    }
+  },
+  {
+    "id": "cmuq3c4fk01lxzwfggq7g8zig",
+    "name": "TwinMOS 8GB DDR4 2400Mhz UDIMM Heatsink (Silver) TMMDD48GB2400DSB",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c4g301m0zwfgxkp7zvaf",
+    "name": "TwinMOS 8GB DDR4 2666MHz UDIMM Desktop RAM #MDD48GB2666D",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c4gi01m3zwfgxowbxj79",
+    "name": "TwinMOS 8GB DDR4 3200Mhz SODIMM Laptop RAM MDD48GB3200N",
+    "set": {
+      "builderRamType": "DDR4 SODIMM"
+    }
+  },
+  {
+    "id": "cmuq3c4h401m6zwfgwun4dehi",
+    "name": "TwinMOS 8GB DDR4 3200MHz UDIMM Heatsink (Black & Gold) Thunder GX CL16 #TMD48GB3200D16GX",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c4hh01m9zwfgbz66jtx5",
+    "name": "TwinMOS 8GB DDR4 3200MHz UDIMM Heatsink (Black) Thunder GX CL16 #TMD48GB3200D16BKGX",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3c4i401mczwfgw2yqu4qp",
+    "name": "TwinMOS 8GB DDR4 3200MHz UDIMM Supreme Desktop RAM #MDD48GB3200D",
+    "set": {
+      "builderRamType": "DDR4"
+    }
+  },
+  {
+    "id": "cmuq3a62b00qo2wfgdvmcjblx",
+    "name": "AORUS CASING # GB-AORUS C601G, Mid Tower, Support for up to 420mm radiators, Front I/O with 4× USB 3.0 & USB 3.1 Gen2 Type-C",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a55e00ku2wfg0vjozkw0",
+    "name": "Corsair 2000D AIRFLOW Mini-ITX PC Case — Black, CC-9011244-WW",
+    "set": {
+      "builderFormFactor": "Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a56200kx2wfgbpvch5ct",
+    "name": "Corsair 2000D AIRFLOW Mini-ITX PC Case — White, CC-9011245-WW",
+    "set": {
+      "builderFormFactor": "Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a56f00l02wfgzt4hb9uj",
+    "name": "CORSAIR 2500D AIRFLOW Mid-Tower Dual Chamber PC Case - Black, CC-9011263-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a56q00l32wfgqiozecb7",
+    "name": "CORSAIR 2500X Micro ATX Dual Chamber PC Case - Black/Obsidian Aluminum, CC-9011287-WW",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a56z00l62wfgy4x778to",
+    "name": "CORSAIR 2500X Micro ATX Dual Chamber PC Case - White/Satin Gray Aluminum, CC-9011289-WW",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a57a00l92wfg2co63dzg",
+    "name": "CORSAIR 2500X Mid-Tower Dual Chamber PC Case - Black, CC-9011265-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a57o00lc2wfg3lmk7xbc",
+    "name": "CORSAIR 2500X Mid-Tower Dual Chamber PC Case - White, CC-9011266-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a57y00lf2wfgle1iqczk",
+    "name": "Corsair 2800X RS-R ARGB Black Micro-ATX PC Case, CC-9011347-WW",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a58800li2wfg0yt1h3fe",
+    "name": "Corsair 2800X RS-R ARGB White Micro-ATX PC Case, CC-9011348-WW",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a58l00ll2wfgu097zx8e",
+    "name": "Corsair 3000D AIRFLOW Mid-Tower PC Case — Black, CC-9011251-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a58t00lo2wfgbuwhan91",
+    "name": "Corsair 3000D AIRFLOW Mid-Tower PC Case — White, CC-9011252-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a59500lr2wfgt9ip1f79",
+    "name": "Corsair 3200D RS ARGB Mid-Tower Performance Case, Black, CC-9011344-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a59f00lu2wfg3gnsomlc",
+    "name": "Corsair 3200D RS ARGB Mid-Tower Performance Case, Smoke, CC-9011346-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a59p00lx2wfgscuqqajk",
+    "name": "Corsair 3200D RS ARGB Mid-Tower Performance Case, White, CC-9011345-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5a000m02wfgygbzrrz8",
+    "name": "CORSAIR 3500X ARGB Mid-Tower Glass PC Case - Black, CC-9011278-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ai00m32wfgp0l9ep4g",
+    "name": "CORSAIR 3500X ARGB Mid-Tower Glass PC Case - White, CC-9011279-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ay00m62wfgmwz27s46",
+    "name": "Corsair 3500X CALL OF DUTY® BLACK OPS 6 EDITION: Mid-Tower PC Case, CC-9011276-COD",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5bm00m92wfgdid7i3yy",
+    "name": "Corsair 3500X Mid-Tower PC Case - Black, CC-9011276-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5bx00mc2wfgxz1zev1e",
+    "name": "CORSAIR 3500X RS-R ARGB Tempered Glass Mid-Tower PC Case, Black, CC-9011322-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5c700mf2wfg5sudcy2x",
+    "name": "CORSAIR 3500X RS-R ARGB Tempered Glass Mid-Tower PC Case, White, CC-9011323-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ck00mi2wfgrl1ygelj",
+    "name": "Corsair 4000D AIRFLOW Tempered Glass Mid-Tower ATX Case — Black, CC-9011200-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ct00ml2wfghxdk9bag",
+    "name": "Corsair 4000D AIRFLOW Tempered Glass Mid-Tower ATX Case — White, CC-9011201-WW (N)",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ed00mx2wfgqp8um2bx",
+    "name": "Corsair 4000D RGB Airflow QL Edition Mid Tower ATX Case White, CC-9011232-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5eo00n02wfg9rqk93t9",
+    "name": "Corsair 4000D Tempered Glass Mid-Tower ATX Case — Black, CC-9011198-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ey00n32wfg2uoc1137",
+    "name": "Corsair 480T RGB Airflow Tempered Glass Mid Tower PC Case Black CC-9011272-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5f800n62wfgbkuqaivh",
+    "name": "Corsair 5000D Core Airflow Mid-Tower ATX PC Case Tempered Glass White, CC-9011262-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5fi00n92wfg2nm31sf7",
+    "name": "CORSAIR 6500D AIRFLOW Mid-Tower Dual Chamber PC Case - White, CC-9011260-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ft00nc2wfgudu7r7oe",
+    "name": "CORSAIR 6500X Mid-Tower Dual Chamber PC Case - White/Satin Gray Aluminum, CC-9011285-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5g700nf2wfg8g3b60im",
+    "name": "CORSAIR 7000D AIRFLOW Full-Tower ATX PC Case — Black # CC-9011218-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5gt00nl2wfgx8f9v2x0",
+    "name": "CORSAIR AIR 5400 RS-R ARGB Tempered Glass Mid-Tower, Black, CC-9011318-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5h400no2wfge1ssifdt",
+    "name": "CORSAIR AIR 5400 RS-R ARGB Tempered Glass Mid-Tower, White, CC-9011319-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5hf00nr2wfguo72h09o",
+    "name": "Corsair Carbide Series SPEC-05 Mid-Tower Gaming Case — Black, CC-9011138-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5hr00nu2wfg8eggbpw9",
+    "name": "Corsair Carbide Series SPEC-DELTA RGB Tempered Glass Mid-Tower ATX Gaming Case — Black, CC-9011166-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5i000nx2wfg81zyt2qw",
+    "name": "Corsair Carbide Series™ Air 540 Arctic White High Airflow ATX Cube Case, CC-9011048-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5iq00o02wfgao3yefy1",
+    "name": "Corsair Carbide Series™ SPEC-01 Red LED Mid-Tower Gaming Case, CC-9011050-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5iz00o32wfgpe9k1bqv",
+    "name": "Corsair Carbide Series™ SPEC-ALPHA Mid-Tower Gaming Case — Black/Yellow, CC-9011094-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5jj00o92wfg42ybhw2h",
+    "name": "CORSAIR CASING Crystal Series 280X RGB Tempered Glass Micro ATX White Case  # CC-9011137-WW",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5jw00oc2wfgd01vkcri",
+    "name": "CORSAIR Crystal 465X RGB Mid-Tower ATX # CC-9011188-ABA",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5k700of2wfgxrmrx9pg",
+    "name": "Corsair Crystal Series 680X RGB ATX High Airflow Tempered Glass Smart Case White #CC-9011169-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ku00oi2wfgeub44uvy",
+    "name": "CORSAIR FRAME 4000D Modular Mid-Tower PC Case - White, CC-9011291-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5l500ol2wfgezfwm7jw",
+    "name": "Corsair FRAME 4000D Vault Series Modular Mid-Tower PC Case – Nova, CC-9011343-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5lj00oo2wfg62h3xxtv",
+    "name": "CORSAIR FRAME 4500X RS-R ARGB Panoramic Glass Mid-Tower PC Case​, Black, CC-9011314-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5mc00or2wfgameooup8",
+    "name": "CORSAIR FRAME 4500X RS-R ARGB Panoramic Glass Mid-Tower PC Case​, White, CC-9011315-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5pu00ox2wfg390xxv10",
+    "name": "CORSAIR FRAME 5000D RS ARGB HIGH-AIRFLOW MID-TOWER PC CASE - WHITE, CC-9011310-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ol00ou2wfgbq8qjvhd",
+    "name": "CORSAIR FRAME 5000D RS ARGB HIGH-AIRFLOW MID-TOWER PC CASE, CC-9011309-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5qq00p02wfg1of8bbaz",
+    "name": "CORSAIR FRAME 5000D WORKSTATION Modular Mid-Tower PC Case, CC-9011330-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5r700p32wfgm8z6c3h9",
+    "name": "Corsair iCUE 220T RGB Airflow Tempered Glass Mid-Tower Smart Case — Black, CC-9011173-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ry00p62wfgnk5nluuc",
+    "name": "Corsair iCUE 4000D RGB AIRFLOW Mid-Tower Case — White, CC-9011241-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5s800p92wfgh8wx1dou",
+    "name": "Corsair iCUE 4000X RGB Tempered Glass Mid-Tower ATX Case — Black, CC-9011204-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5sw00pc2wfg09cho9ho",
+    "name": "Corsair iCUE 4000X RGB Tempered Glass Mid-Tower ATX Case — White, CC-9011205-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5t600pf2wfgxefwrtx9",
+    "name": "Corsair iCUE 465X RGB Mid-Tower ATX Smart Case — Black, CC-9011188-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5u200pl2wfghtge62ho",
+    "name": "CORSAIR iCUE LINK 2500X RGB Micro ATX Dual Chamber PC Case - Black, CC-9011267-WW",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ug00po2wfgrzezq1qm",
+    "name": "CORSAIR iCUE LINK 2500X RGB Micro ATX Dual Chamber PC Case - White, CC-9011268-WW",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5v100pr2wfgtlsnmh4h",
+    "name": "CORSAIR iCUE LINK 5000T LX RGB Mid-Tower High-Performance PC Case, CC-9011298-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5vx00px2wfg87560j8u",
+    "name": "Corsair WARTHOG RS Performance Mid-Tower Case Mil Green, CC-9011352-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5ve00pu2wfg4wofsw13",
+    "name": "Corsair WARTHOG RS Performance Mid-Tower Case, Black - CC-9011351-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5tj00pi2wfggzfsrqpu",
+    "name": "CORSAIR  iCUE 5000X RGB Tempered Glass Mid-Tower ATX PC Smart Case Black, CC-9011212-WW",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5wc00q02wfgly8h3qn9",
+    "name": "Delux DW301 ATX Thermal Casing with PSU, 1Y Warranty for PSU",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5wz00q32wfgyku4m90p",
+    "name": "Delux DW603 ATX Thermal Casing with PSU, 2Y Warranty for PSU",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5xc00q62wfgtu1lcc30",
+    "name": "Delux DW605 ATX Thermal Casing with PSU, 2Y Warranty for PSU",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5y100q92wfg8uk5ep7n",
+    "name": "DELUX J601 MICRO ATX COMPUTER CASE WITH 200W REAL POWER SUPPLY, 2Y WARRANTY FOR PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5yg00qc2wfgtxarx7dz",
+    "name": "DELUX J602 MICRO ATX COMPUTER CASE WITH 200W REAL POWER SUPPLY, 2Y WARRANTY FOR PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5z800qf2wfgkxuh7e01",
+    "name": "DELUX J603 MICRO ATX COMPUTER CASE WITH 200W REAL POWER SUPPLY, 2Y WARRANTY FOR PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a5zz00qi2wfgniwnmf62",
+    "name": "DELUX K01 ATX GAMING COMPUTER CASE, 2RGB, ACRYLIC, WITHOUT POWER SUPPLY",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a61c00ql2wfgxcwus1xj",
+    "name": "DELUX K03 ATX GAMING COMPUTER CASE, 2RGB, ACRYLIC, WITHOUT POWER SUPPLY",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a63400qr2wfgcpw8uyfm",
+    "name": "Gigabyte C200G Glass ATX Gaming Case, Tinted Tempered Glass, RGB Integrated, PSU Shroud Design, Detachable Dust Filter, Watercooling Ready, Enhanced Airflow - Black",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a63v00qu2wfg2j5xgsie",
+    "name": "GIGABYTE CASING # C102G (Black), Mid Tower, With USB 3.0 x2 on I/O panel, Up to 360mm Liquid Cooling Compatible",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a64j00qx2wfgdx4hnhw5",
+    "name": "GIGABYTE CASING # C102GI (White), Mid Tower, With USB 3.0 x2 on I/O panel, Up to 360mm Liquid Cooling Compatible",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a65j00r02wfgzeckfwmf",
+    "name": "GIGABYTE CASING # C103G (Black), Mid Tower, I/O panel with 1 x USB 3.0 and 2 x USB 2.0 ports, Supports radiators up to 360mm",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a66e00r32wfgcwuh1x95",
+    "name": "GIGABYTE CASING # C201 PANORAMIC (Black), Mid Tower, Dual USB 3.0 ports on front I/O, Supports radiators up to 360mm",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a67m00r62wfg0joq2j5d",
+    "name": "GIGABYTE CASING # C201 PANORAMIC ICE (White), Mid Tower, Dual USB 3.0 ports on front I/O, Supports radiators up to 360mm",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a68e00r92wfg328yppjc",
+    "name": "GIGABYTE CASING # C301G - (Black), Mid Tower, RGB Fusion, Up to 360mm Liquid Cooling Compatible, With USB 3.0 x2 and USB 3.1 Type-C x1 on I/O panel",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a69b00rc2wfgfifj2urq",
+    "name": "GIGABYTE CASING # C301G - (White), Mid Tower, RGB Fusion, Up to 360mm Liquid Cooling Compatible, With USB 3.0 x2 and USB 3.1 Type-C x1 on I/O panel",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6bg00rf2wfg458m6587",
+    "name": "GIGABYTE CASING # C500 PANORAMIC STEALTH (Black), Mid Tower, Support Vertical GPU Installation, RGB Fusion with ARGB Connector Hub",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6cu00ri2wfgeyl4hid3",
+    "name": "GIGABYTE CASING # C500 PANORAMIC STEALTH ICE (White), Mid Tower, Support Vertical GPU Installation, RGB Fusion with ARGB Connector Hub",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6e600ro2wfgopxexchm",
+    "name": "HUNTKEY GS400C ATX THERMAL COMPUTER CASE, NO WARRANTY",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6ei00rr2wfgk7fg79qn",
+    "name": "HUNTKEY GS450S ATX THERMAL COMPUTER CASE, NO WARRANTY",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6eu00ru2wfg7hz8iglx",
+    "name": "HUNTKEY S980 TORNADO WHITE ATX THERMAL CASING, NO WARRANTY",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6f700rx2wfgy85h9phk",
+    "name": "PC Power ATX Gaming Casing PG-200 White",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6fi00s02wfgl39kb4ke",
+    "name": "SMART A21-ULTRA MID TOWER ATX BLACK CASE WITH 3 ARGB FAN WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6fr00s32wfgp4qd6f5j",
+    "name": "SMART A400B CURVED TEMPERED GLASS MID TOWER ATX BLACK CASE WITH 4 ARGB FAN WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6gc00s62wfgqf7bm3rn",
+    "name": "XJOGOS 200-12 ATX Gaming Casing, 4RGB, Without PSU, No Warranty",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6h600s92wfg6xjbdzlb",
+    "name": "XJOGOS 200-22 ATX Gaming Casing, 4RGB, Without PSU, No Warranty",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6hl00sc2wfgmzuz1u55",
+    "name": "XJOGOS 200-3 ATX Thermal Gaming Casing, 4 RGB FAN,  Without PSU, No Warranty",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6hy00sf2wfgyaya8toj",
+    "name": "XJOGOS M200BK 1 RGB FAN, RGB STRIP+ FULL TEMPERED GLASS BLACK ATX GAMING COMPUTER CASE",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6i700si2wfgy5yd3ybf",
+    "name": "XJOGOS M200WH 1 RGB FAN, RGB STRIP+ FULL TEMPERED GLASS WHITE  ATX GAMING COMPUTER CASE",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6ii00sl2wfgdrzmh2ax",
+    "name": "XJOGOS M211BK 4 RGB FAN, MESH+ FULL TEMPERED GLASS BLACK ATX GAMING COMPUTER CASE",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6it00so2wfgdtxa6rla",
+    "name": "XJOGOS M211WH 4 RGB FAN, MESH+ FULL TEMPERED GLASS WHITE ATX GAMING COMPUTER CASE",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6jn00sr2wfgzn7e0jgf",
+    "name": "XJOGOS M300BK 3 RGB FAN, MESH+ FULL TEMPERED GLASS BLACK ATX GAMING COMPUTER CASE",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6ka00su2wfgcvai5hf2",
+    "name": "XJOGOS XJ07 ATX Thermal Gaming Casing,1RGB FAN, Without PSU No Warranty",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6mc00t92wfgw92uazkf",
+    "name": "XTREME 420B MID TOWER THERMAL ATX FRONT MESH CASE WITH 4 ARGB FAN WITHOUT PSU TEMPERED GLASS",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6o200ti2wfgzvkk0bw7",
+    "name": "Xtreme 950 ATX Thermal Casing Without PSU No Warranty",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6ob00tl2wfg5s3k9bme",
+    "name": "Xtreme 951 ATX Thermal Casing Without PSU No Warranty",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6ok00to2wfg0vuq1z72",
+    "name": "XTREME A100B MID TOWER ATX FRONT MESH CASE WITH 4 RGB FAN WITHOUT PSU TEMPERED GLASS",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6oy00tr2wfg6m1ivbrc",
+    "name": "XTREME A40 ATX CASING WITHOUT PSU NO WARRANTY",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6p900tu2wfgste7ec1e",
+    "name": "XTREME A41 ATX CASING WITHOUT PSU NO WARRANTY",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6px00tx2wfglzep2k81",
+    "name": "XTREME C31B M-ATX BLACK CASE TEMPERED GLASS WITH 3 RGB FAN WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6sf00u92wfgx7qihx3m",
+    "name": "XTREME F02 MINI ATX THERMAL CASING WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6uo00uu2wfg2rdwj58z",
+    "name": "XTREME M31B M-ATX BLACK CASE TEMPERED GLASS WITH 3 RGB FAN WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6uz00ux2wfgs2htqy0g",
+    "name": "XTREME M31W M-ATX WHITE CASE TEMPERED GLASS WITH 3 RGB FAN WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6v900v02wfga8osnzqi",
+    "name": "XTREME M72B M-ATX BLACK CASE TEMPERED GLASS WITH 3 ARGB FAN WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6vn00v32wfgcg3n94ts",
+    "name": "XTREME M72W M-ATX WHITE CASE TEMPERED GLASS WITH 3 ARGB FAN WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6vy00v62wfgywty4mxj",
+    "name": "XTREME M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS WITH 3 ARGB FAN WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6wa00v92wfgsl16k4ug",
+    "name": "XTREME M95W MINI TOWER M-ATX WHITE CASE TEMPERED GLASS WITH 3 ARGB FAN WITHOUT PSU",
+    "set": {
+      "builderFormFactor": "Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6yb00vl2wfgl04tkc8w",
+    "name": "Xtreme T38 ATX Thermal Casing Without PSU No Warranty",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3a6zm00vu2wfg5vfc3bv2",
+    "name": "Xtreme V3 ATX Thermal Gaming Computer Case Without PSU, No Warranty",
+    "set": {
+      "builderFormFactor": "ATX, Micro-ATX, Mini-ITX"
+    }
+  },
+  {
+    "id": "cmuq3cqlh01t05kfg6ebd9pqu",
+    "name": "AORUS Gen4 26 M.2 NVMe 1TB # 7000E SSD 1TB (Read 7100 MB/s, Write 6100 MB/s, 3D TLC NAND, 700TBW)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqls01t35kfgac5w5741",
+    "name": "AORUS Gen4 7000E SSD 1TB AG470E1TB , PCI Express 4.0x4, NVMe 1.4, Read7100MB/s , Write 6100 MB/s",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cq7701pu5kfgglxnwgom",
+    "name": "Apacer AS2280P4 M.2 NVMe SSD, 1TB, 3Y (AP1TBAS2280P4-1)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cq7t01px5kfgtu9mhvyw",
+    "name": "Apacer AS2280P4 M.2 NVMe SSD, 256GB, 3Y (AP256GAS2280P4-1)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cq8301q05kfgg8yycrtw",
+    "name": "Apacer AS2280P4 M.2 NVMe SSD, 512GB, 3Y (AP512GAS2280P4-1)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cq8e01q35kfgqjt60xl7",
+    "name": "Apacer AS2280Q4L Gen4 M.2 NVMe SSD, 1TB, 3Y (AP1TBAS2280Q4L-1)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cq8x01q65kfgyunxnh8a",
+    "name": "Apacer AS2280Q4U Gen4 M.2 NVMe SSD, 1TB, 3Y (AP1TBAS2280Q4U-1)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cq9b01q95kfghrunnysz",
+    "name": "Apacer AS2280Q4U Gen4 M.2 NVMe SSD, 512GB, 3Y (AP512GAS2280Q4U-1)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cq9j01qc5kfg56fjv6ci",
+    "name": "Apacer AS340 2.5\" SATAIII SSD, 120GB, 3Y (AP120GAS340G-1)",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqa401qf5kfgtu1exdts",
+    "name": "Apacer AS350 2.5\" SATAIII SSD, 128GB, 3Y (AP128GAS350-1)",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqag01qi5kfgj9v66y1f",
+    "name": "Apacer AS350 2.5\" SATAIII SSD, 1TB, 3Y (AP1TBAS350-1)",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqb201ql5kfgcgbmuaho",
+    "name": "Apacer AS350 2.5\" SATAIII SSD, 256GB, 3Y (AP256GAS350-1)",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqbc01qo5kfgu7sa7192",
+    "name": "Apacer AS350 2.5\" SATAIII SSD, 512GB, 3Y (AP512GAS350-1)",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqbx01qr5kfguzastkpw",
+    "name": "Apacer AS350X 2.5\" SATAIII SSD, 2TB, 3Y (AP2TBAS350XR-1)",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cskt02335kfg8rvodare",
+    "name": "Apacer AS350X 2.5\" SATAIII SSD, 4TB, 3Y (AP4TBAS350XR-1)",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqdk01r65kfgyksy11na",
+    "name": "Corsair MP600 ELITE 1TB PCIe Gen4 x4 NVMe 1.4 M.2 SSD, F1000GBMP600ENH",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqe301r95kfglf0r2ijl",
+    "name": "Corsair MP600 ELITE 2TB PCIe Gen4 x4 NVMe 1.4 M.2 SSD with Heatsink, CSSD-F2000GBMP600EHS",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqef01rc5kfgpk2bl5rq",
+    "name": "Corsair MP600 GS 500GB PCIe 4.0 (Gen 4) x4 NVMe M.2 SSD, F0500GBMP600GS",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqf001rf5kfghlqv8kgj",
+    "name": "Corsair MP600 GS 500GB PCIe 4.0 (Gen 4) x4 NVMe M.2 SSD, F0500GBMP600GS (S)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqfb01ri5kfge6ov1x1u",
+    "name": "Corsair MP600 MICRO 1TB PCIe 4.0 (Gen4) x4 NVMe M.2 2242 SSD, F1000GBMP600MCR2",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqfk01rl5kfghqcy2v82",
+    "name": "Corsair MP600 MINI 1TB (Gen4) PCIe x4 NVMe M.2 2230 SSD, F1000GBMP600MNR2",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqg701ro5kfg9o9i04le",
+    "name": "Corsair MP600 PRO LPX 1TB PCIe Gen4 x4 NVMe M.2 SSD - PS5* Compatible, F1000GBMP600PLP",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqgg01rr5kfglnpe2arw",
+    "name": "Corsair MP600 PRO LPX 2TB PCIe Gen4 SSD WITH DRAM Cache - PS5* Compatible, F2000GBMP600PLP",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqh301ru5kfgufl16bb9",
+    "name": "Corsair MP600 PRO NH 1TB PCIe 4.0 (Gen 4) x4 NVMe M.2 SSD, F1000GBMP600PNH",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqhe01rx5kfgq17o3a31",
+    "name": "Corsair MP600 PRO NH 1TB WITH DRAM (Gen 4) NVMe M.2 SSD,F1000GBMP600PNH",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqhn01s05kfggyuyyfwm",
+    "name": "Corsair MP600 PRO NH 1TB WITH DRAM (Gen 4) NVMe M.2 SSD,F1000GBMP600PNH (N)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqhv01s35kfgsqhewfqn",
+    "name": "Corsair MP600 PRO NH 2TB PCIe Gen4 SSD WITH DRAM Cache, CSSD-F2000GBMP600PNH",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqig01s65kfgion2r2ig",
+    "name": "Corsair MP600 PRO XT 1TB M.2 NVMe PCIe Gen. 4 x4 SSD, F1000GBMP600PXT",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqip01s95kfgmkju8go6",
+    "name": "Corsair MP600 PRO XT 2TB M.2 NVMe PCIe Gen. 4 x4 SSD, F2000GBMP600PXT",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqjb01sc5kfgvge8hfrh",
+    "name": "CORSAIR MP600 PRO XT 4TB M.2 NVMe PCIe Gen. 4 x4 SSD , F4000GBMP600PXT",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqjl01sf5kfg4sbu8zeb",
+    "name": "Corsair MP700 PRO 1TB PCIe Gen5 SSD WITH DRAM Cache, CSSD-F1000GBMP700PNH",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqjv01si5kfgzhwvdahf",
+    "name": "Corsair MP700 PRO 1TB with Air Cooler PCIe Gen5 x4 NVMe 2.0 M.2 SSD, F1000GBMP700PRO",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqk401sl5kfgejyw2faj",
+    "name": "Corsair MP700 PRO 4TB PCIe Gen5 x4 NVMe 2.0 M.2 SSD, CSSD-F4000GBMP700PNH",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqke01so5kfg26gi585e",
+    "name": "Corsair MP700 PRO SE Air Cooler 2TB PCIe 5.0 SSD WITH DRAM Cache, F2000GBMP700PROS",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqkp01sr5kfgbzqsbn8s",
+    "name": "Corsair MP700 PRO XT 1TB PCIe 5.0 x4 NVMe M.2 SSD, CSSD-F10GBMP700PXNH",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqkz01su5kfg03tbarq4",
+    "name": "Corsair MP700 PRO XT 2TB PCIe 5.0 NVMe M.2 SSD WITH DRAM Cache, CSSD-F20GBMP700PXNH",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cql801sx5kfgo9p3w944",
+    "name": "Corsair MP700 PRO XT 4TB PCIe 5.0 SSD WITH DRAM Cache, CSSD-F40GBMP700PXNH",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "p-ssd",
+    "name": "Frame 1TB NVMe SSD",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqmb01t65kfgzl0u54r0",
+    "name": "Gigabyte 128GB M.2 NVMe # GP-GSM2NE3128GNTD, Factor: M.2 2280, PCI-Express 3.0 x4, NVMe 1.3, Read Speed : up to 1550 MB/s, Write speed : up to 550 MB/s, 3 Years",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqmo01t95kfgld5j4hf4",
+    "name": "Gigabyte 256GB GP-GSM2NE3256GNTD M.2 2280 PCIe 3.0 x4 NVMe 1.3 Read Speed Up to 1700 MB/s Write Speed Up to 1110 MB/s Solid State Drive 3 Years",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqng01tc5kfgby6eryae",
+    "name": "GIGABYTE Gen3 26 M.2 NVMe 256GB # G3NVMEV2256G (Read 3200 MB/s, Write 1200 MB/s)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqo401tf5kfgx0wnlp14",
+    "name": "GIGABYTE Gen3 26 M.2 NVMe 500GB # G325E500G (Read2300 MB/s, Write 1500MB/s)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqor01ti5kfg7wvdgixx",
+    "name": "GIGABYTE Gen3 26 M.2 NVMe 512GB # G3NVME512G (Read 1900 MB/s, Write 1200 MB/s)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqpf01tl5kfg2acyjg3x",
+    "name": "GIGABYTE Gen3 M.2 NVMe 1TB # G325E1TB",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqps01to5kfgtr4ynm3y",
+    "name": "GIGABYTE Gen4 26 M.2 NVMe 250GB # G440E250G (Read 3500 MB/s,Write 1800MB/s)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqqi01tr5kfg5amtixiq",
+    "name": "GIGABYTE Gen4 26 M.2 NVMe 500GB # G440E500G (Read 3600 MB/s ,Write3000MB/s)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqr401tu5kfgyjyvprrd",
+    "name": "GIGABYTE Gen4 M2 NVMe 1TB # G440E1TB, Read speed Up to 4000 MB/s & Write speed Up to 3900MB/s",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqrr01tx5kfg7s79s8hv",
+    "name": "GIGABYTE Gen4 M2 NVMe 500GB # G440E500G, Read speed Up to 3600 MB/s & Write speed Up to 3000MB/s",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqs501u05kfg959p612k",
+    "name": "GIGABYTE SATA  26 240GB # GSTFS31240GNTD (Read 500 MB/s, Write 420 MB/s)",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqst01u35kfg6qkib8uo",
+    "name": "GIGABYTE SATA  26 256GB # GP-GSTFS31256GTND (Read 520 MB/s, Write 500 MB/s)",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqtm01u65kfgkx69ykpd",
+    "name": "Hiksemi Internal SSD 128GB PCIe Gen 3 x 4, NVMe, Up to 1175MB/s read speed, 700MB/s write speed - HS-SSD-E1000-128G",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqub01u95kfgsyl0k11k",
+    "name": "Hiksemi Internal SSD 256GB 3D NAND/SATA III 6 Gb/s, Up to 550MB/s read speed, 450MB/s write speed - HS-SSD-E100-256G",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cquz01uc5kfgsqp7xz21",
+    "name": "Hikvision Internal SSD 128GB 3D NAND/SATA III 6 Gb/s, Up to 550MB/s read speed, 430MB/s write speed - HS-SSD-E100-128G",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqvp01uf5kfghtzu7c6p",
+    "name": "Hikvision Internal SSD 128GB PCIe Gen 3 x 4, NVMe, Up to 1175MB/s read speed, 700MB/s write speed - HS-SSD-E1000-128G",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqwi01ui5kfg9jvvt4u9",
+    "name": "Hikvision Internal SSD 256GB 3D NAND/SATA III 6 Gb/s, Up to 550MB/s read speed, 450MB/s write speed - HS-SSD-E100-256G",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cqxe01ul5kfgio7j3epp",
+    "name": "Hikvision Internal SSD 256GB PCIe Gen 3 x 4, NVMe, Up to 3230MB/s read speed, 1240MB/s write speed - HS-SSD-E3000-256G",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cqyk01uo5kfgo5zhba9o",
+    "name": "Netac 256GB M.2 Nvme Internal Solid State Drive",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr0v01ur5kfg2rppzvmo",
+    "name": "PNY 120GB CS900 3D NAND 2.5\" SATA III Internal Solid State Drive (SSD7CS900-120-RB) Max",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cr1v01uu5kfgif2iohdo",
+    "name": "PNY 256GB CS1031 M.2 PCIe NVMe Gen3x4 Internal Solid State Drive (M280CS1031-256-RB)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr2m01ux5kfgdglefly0",
+    "name": "PNY 500GB CS1031 M.2 PCIe NVMe Gen3x4 Internal Solid State Drive (M280CS1031-500-RB)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr3c01v05kfg716bnnyj",
+    "name": "SMART SM1000 128GB High Performance Super Faster 2.5Inch SATA SSD 500/450 MB/s #SM1000128GB",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cr3y01v35kfg8ox1j5id",
+    "name": "SMART SM1000 256GB High Performance Super Faster 2.5Inch SATA SSD 500/450 MB/s #SM1000256GB",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cr4p01v65kfgjiefinbi",
+    "name": "SMART SM1000 512GB High Performance Super Faster 2.5Inch SATA SSD 500/450 MB/s #SM1000512GB",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cslf02365kfgzgy03e98",
+    "name": "SMT9013128G # SMART SM9013 128GB M.2 Nvme 2280 SOLID STATE DRIVE",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr5b01v95kfgsfhzw0oq",
+    "name": "Team MP33 256GB M.2 PCIe SSD NVMe Read : up to 1,600 MB/s Write: up to 1,000 MB/s (TM8FP6256G0C101)",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr5n01vc5kfgthuzhz3n",
+    "name": "TwinMOS 128GB H2 Ultra SATA III TLC 3D NAND, Solid State Drive 580/550 MBPS #TM128GH2U/TM128GH2UGL",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cr6c01vf5kfg6cm6atqc",
+    "name": "TwinMOS 128GB M.2 NVMe AlphaPro (PCIe Gen. 3.0×4) TLC 3D NAND Solid State Drive #NVMEDGBM2280",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr6o01vi5kfgraiud3rp",
+    "name": "TwinMOS 1TB H2 Ultra SATA III TLC 3D NAND, Solid State Drive 580/550 MBPS #TM1000GH2UG/TM1000GH2UGL",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cr7501vl5kfglk8h4sg8",
+    "name": "TwinMOS 1TB M.2 NVMe AlphaPro (PCIe Gen. 3.0×4) TLC 3D NAND Solid State Drive #NVMEGGBM2280/NVMe1TB2280AP",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr7j01vo5kfgjtn2cm59",
+    "name": "TwinMOS 1TB M.2 NVMe CoreX (PCIe Gen. 4.0×4) TLC 3D NAND Solid State Drive #NVCX1TBG42280",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr8201vr5kfg0h2gyw04",
+    "name": "TwinMOS 1TB M.2 NVMe XTREME Pro (PCIe Gen. 4.0×4) TLC 3D NAND Solid State Drive - Black Heatsink #NV1TBG42280",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr8f01vu5kfgj1u4eecg",
+    "name": "TwinMOS 256GB H2 Ultra SATA III TLC 3D NAND, Solid State Drive 580/550 MBPS #TM256GH2U/TM256GH2UGL",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cr9001vx5kfgcy8lkreg",
+    "name": "TwinMOS 256GB M.2 NVMe AlphaPro (PCIe Gen. 3.0×4) TLC 3D NAND Solid State Drive #NVMEEGBM2280/NVMe256GB2280AP",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3cr9d01w05kfgkdapduae",
+    "name": "TwinMOS 512GB H2 Ultra SATA III TLC 3D NAND, Solid State Drive 580/550 MBPS #TM512GH2U/TM512GH2UGL",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3cr9x01w35kfgc6xyuidt",
+    "name": "TwinMOS 512GB M.2 NVMe AlphaPro (PCIe Gen. 3.0×4) TLC 3D NAND Solid State Drive #NVMEFGBM2280/NVMe512GB2280AP",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3craa01w65kfgrfv5pqj7",
+    "name": "TwinMOS 512GB M.2 NVMe CoreX (PCIe Gen. 4.0×4) TLC 3D NAND Solid State Drive #NVCX512GBG42280",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3craz01w95kfg69xjz26l",
+    "name": "Western Digital Internal SSD Blue 250GB SN570 NVMe Gen3 x4 PCIe 8Gb/s, M.2, Up to 3300 MB/s - WDS250G3B0C",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3crbc01wc5kfgkktpuzr8",
+    "name": "Western Digital Internal SSD Green 240GB Sata III 6 Gb/s, 2.5\"/7mm, Up to 550 MB/s - WDS240G3G0A",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3crc101wf5kfgkd97ywxe",
+    "name": "Western Digital Internal SSD Green 240GB SN350 NVMe Gen3 x4 PCIe 8Gb/s, M.2, Up to 2400 MB/s - WDS240G2G0C",
+    "set": {
+      "builderStorageInterface": "NVMe"
+    }
+  },
+  {
+    "id": "cmuq3ac7v01ko2wfgyu113g0b",
+    "name": "Toshiba PC Hard Drive P300 1TB - 7200 RPM, SATA 6 Gb/s, 64 MB Cache, 3.5\" - HDWD110UZSVA",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3ac8g01kr2wfgpeg4uxt1",
+    "name": "Toshiba PC Hard Drive P300 2TB - (2 Years) 7200 RPM, SATA 6 Gb/s, 256 MB Cache, 3.5\" - HDWD320UZSVA",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3ac8u01ku2wfgdsqrwr50",
+    "name": "Toshiba PC Hard Drive P300 4TB - (2 Years) 5400 RPM, SATA 6 Gb/s, 128 MB Cache, 3.5\" - HDWD240UZSVA",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3ac9e01kx2wfg0888s2pf",
+    "name": "Toshiba Surveillance Hard Drive S300 1TB - 5700 RPM, SATA 6 Gb/s, 64 MB Cache, 3.5\" - HDWV110UZSVA",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3ac9p01l02wfgfqpbxd16",
+    "name": "Toshiba Surveillance Hard Drive S300 2TB - (2 Years) 5400 RPM, SATA 6 Gb/s, 128 MB Cache, 3.5\" - HDWT720UZSVA",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3aca101l32wfgxb8oq2m3",
+    "name": "Toshiba Surveillance Hard Drive S300 4TB - (2 Years) 5400 RPM, SATA 6 Gb/s, 128 MB Cache, 3.5\" - HDWT840UZSVA",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3acaj01l62wfggcj7x3bq",
+    "name": "Toshiba Surveillance Hard Drive S300 6TB - (2 Years) 5400 RPM, SATA 6 Gb/s, 256 MB Cache, 3.5\" - HDWT860UZSVA",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3acau01l92wfgpq9jbemu",
+    "name": "Toshiba Surveillance Hard Drive S300 AI 16TB - 7200 RPM, SATA 6 Gb/s, 1024 MB Cache, 3.5\" - MG11ACA16TE-V",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3acb401lc2wfg2e6pfek5",
+    "name": "Toshiba Surveillance Hard Drive S300 AI 20TB - 7200 RPM, SATA 6 Gb/s, 1024 MB Cache, 3.5\" - MG11ACA20TE-V",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3acbp01lf2wfgtl7yfm8h",
+    "name": "Toshiba Surveillance Hard Drive S300 Pro 10TB - 7200 RPM, SATA 6 Gb/s, 256 MB Cache, 3.5\" - HDWT31AUZSVA",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3acc001li2wfgszfu1xkt",
+    "name": "Toshiba Surveillance Hard Drive S300 Pro 10TB - 7200 RPM, SATA 6 Gb/s, 512 MB Cache, 3.5\" - HDWTA1AUZSVA",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3accl01ll2wfg4vlfvbjp",
+    "name": "Western Digital Surveillance Hard Drive Purple 2TB - 2 Years, 5400 RPM, SATA 6 Gb/s, 64 MB Cache, 3.5\" - WD23PURZ",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  },
+  {
+    "id": "cmuq3accx01lo2wfg68z92gxd",
+    "name": "Western Digital Surveillance Hard Drive Purple Pro 10TB - 2 Years, 7200 RPM, SATA 6 Gb/s, 512 MB Cache, 3.5\" - WD102PURP",
+    "set": {
+      "builderStorageInterface": "SATA"
+    }
+  }
+]

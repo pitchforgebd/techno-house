@@ -1,0 +1,1094 @@
+[
+  {
+    "id": "cmuq3c200015lzwfgnundq8td",
+    "name": "AMD Ryzen 9 7900X Processor (64MB Cache, up to 5.6GHz) AM4",
+    "set": {
+      "builderTdpWatts": 170
+    }
+  },
+  {
+    "id": "cmuq3c20c015ozwfg9x5lqhff",
+    "name": "Intel Core i5 10500T 10th Gen Comet Lake Processor 3Years",
+    "set": {
+      "builderTdpWatts": 35
+    }
+  },
+  {
+    "id": "cmuq3c20n015rzwfg8y3sg5s3",
+    "name": "Intel Core i7 -14700 14th Gen Up to 5.40GHz 20 Core LGA1700 Socket (Tray 3 years warranty)",
+    "set": {
+      "builderTdpWatts": 65
+    }
+  },
+  {
+    "id": "cmuq3c21c015uzwfgtiogkf6k",
+    "name": "Intel® Core™ i3-10105 10th Gen Processor (6M Cache, up to 4.30 GHz) LGA1200",
+    "set": {
+      "builderTdpWatts": 65
+    }
+  },
+  {
+    "id": "cmuq3c260016ozwfgkqpm51cu",
+    "name": "Intel® Core™ i3-12100 12th Gen Processor (12M Cache, up to 4.30 GHz) LGA1700 Local Purchase",
+    "set": {
+      "builderTdpWatts": 60
+    }
+  },
+  {
+    "id": "cmuq3c21o015xzwfgob5rj00w",
+    "name": "Intel® Core™ i3-12100 12th Gen Processor 12M Cache, up to 4.30 GHz LGA1700 ( Tray 3 Year’s Limited Warranty)",
+    "set": {
+      "builderTdpWatts": 60
+    }
+  },
+  {
+    "id": "cmuq3c22a0160zwfghwvccg1c",
+    "name": "Intel® Core™ i3-14100 14th Gen Processor (12M Cache, up to 4.70 GHz) LGA1700    (Tray 3 years warranty)",
+    "set": {
+      "builderTdpWatts": 60
+    }
+  },
+  {
+    "id": "cmuq3c22k0163zwfgvqwptqig",
+    "name": "Intel® Core™ i5-10400 10th Gen Processor (12M Cache, up to 4.30 GHz) LGA1200",
+    "set": {
+      "builderTdpWatts": 65
+    }
+  },
+  {
+    "id": "cmuq3c26a016rzwfg223yrqtq",
+    "name": "Intel® Core™ i5-10500T 10th Gen Processor (12M Cache, up to 4.50 GHz) LGA1200 Local Purchase",
+    "set": {
+      "builderTdpWatts": 35
+    }
+  },
+  {
+    "id": "cmuq3c2360166zwfgiizqg6os",
+    "name": "Intel® Core™ i5-12400 12th Gen Processor (18M Cache, up to 4.40 GHz) LGA1700 (Tray 3 Year’s Limited Warranty)",
+    "set": {
+      "builderTdpWatts": 65
+    }
+  },
+  {
+    "id": "cmuq3c23g0169zwfgcl8805g3",
+    "name": "Intel® Core™ i5-14400 14th Gen Processor (10 CORE 16 THREAD) LGA1700 (Tray 3 Years )",
+    "set": {
+      "builderTdpWatts": 65
+    }
+  },
+  {
+    "id": "cmuq3c242016czwfgnvllhkkh",
+    "name": "Intel® Core™ i5-14500 14th Gen Processor (24MB Cache, up to 5.0 GHz) LGA1700",
+    "set": {
+      "builderTdpWatts": 65
+    }
+  },
+  {
+    "id": "cmuq3c24e016fzwfg4nh4vjf7",
+    "name": "Intel® Core™ i7-12700 12th Gen Processor (25M Cache, up to 4.90 GHz) LGA1700 (Tray)",
+    "set": {
+      "builderTdpWatts": 65
+    }
+  },
+  {
+    "id": "cmuq3c250016izwfg4e6tzeui",
+    "name": "Intel® Core™ i9-14900K 14th Gen Processor (16 CORES 32 THREAD) LGA1700 (BOX)",
+    "set": {
+      "builderTdpWatts": 125
+    }
+  },
+  {
+    "id": "cmuq3c25n016lzwfglbv28q8f",
+    "name": "Intel® Core™ Ultra 5 225 Processor (20 MB Cache, 3.3 GHz up to 4.9 GHz) LGA 1851(Tray 3 years warranty)",
+    "set": {
+      "builderTdpWatts": 65
+    }
+  },
+  {
+    "id": "cmuq3c02j00uuzwfg3kp8x6pe",
+    "name": "AORUS ELITE POWER SUPPLY # GP-AE1000PM PG5, Fully modular design, 80 PLUS Platinum certified",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3c03900uxzwfgfzsnf11j",
+    "name": "AORUS ELITE POWER SUPPLY # GP-AE850PM PG5 ICE, Fully modular design, 80 PLUS Platinum certified",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bym500q6zwfgu3k82j4l",
+    "name": "Corsair CV Series™ CV450 — 450 Watt 80 Plus® Bronze Certified PSU, CP-9020209-UK",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3bymt00q9zwfgvxaugp9n",
+    "name": "Corsair CV Series™ CV550 — 550 Watt 80 Plus® Bronze Certified PSU, CP-9020210-UK",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3bynk00qczwfg2v4g78k8",
+    "name": "Corsair CV Series™ CV650 — 650 Watt 80 Plus® Bronze Certified PSU, CP-9020236-UK",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3byo700qfzwfgyfhpso41",
+    "name": "Corsair CV Series™ CV750 — 750 Watt 80 Plus® Bronze Certified PSU, CP-9020237-JP",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3byox00qizwfgup0gc4e0",
+    "name": "CORSAIR CV Series™ CV750 — 750 Watt 80 Plus® Bronze Certified PSU, CP-9020237-UK",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3byqd00qozwfgnueufu89",
+    "name": "Corsair CX Series CX550 – 550 Watt 80 PLUS Bronze ATX Power Supply (UK), CP-9020277-NA",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3byr000qrzwfgzxp6n1hm",
+    "name": "Corsair CX Series CX550 – 550 Watt 80 PLUS Bronze ATX Power Supply (UK), CP-9020277-UK",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3byre00quzwfgsxu4ft0m",
+    "name": "Corsair CX Series CX550 – 550 Watt 80 PLUS Bronze ATX Power Supply (UK), CP-9020277-UK (N)",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3bys200qxzwfgaqu2mkh9",
+    "name": "Corsair CX Series™ CX650 – 650 Watt 80 PLUS Bronze ATX Power Supply (UK), CP-9020278-UK",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3bysq00r0zwfgkq77e0df",
+    "name": "Corsair CX Series™ CX650F RGB — 650 Watt 80 Plus® Bronze Certified Fully Modular RGB PSU, CP-9020217-IN",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3byuw00r3zwfgrqfw2wlf",
+    "name": "CORSAIR CX Series™ CX650F RGB White — 650 Watt 80 Plus® Bronze Certified Fully Modular RGB White PSU (WW), CP-9020226-WW",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3byvr00r6zwfgth59umuk",
+    "name": "Corsair CX Series™ CX750 – 750 Watt 80 PLUS Bronze ATX Power Supply (UK), CP-9020279-UK",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3bywq00r9zwfgtcs78ssr",
+    "name": "Corsair CX Series™ CX750F RGB — 750 Watt 80 Plus® Bronze Certified Fully Modular RGB PSU, CP-9020218-IN",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3bypo00qlzwfgorn5hpjl",
+    "name": "Corsair CX550 – 550 Watt 80 PLUS Bronze Promotional / Marketing, CP-9020277-UK",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3bz1i00rozwfg5xlar9jv",
+    "name": "Corsair HX Series™ HX1000 — 1000 Watt 80 PLUS® PLATINUM Certified Fully Modular PSU, CP-9020139-UK",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3byxy00rczwfg6wkeeon1",
+    "name": "CORSAIR HX1200i Fully Modular Ultra-Low Noise Platinum ATX 1200 Watt PC Power Supply (UK), CP-9020307-UK",
+    "set": {
+      "builderTdpWatts": 1200
+    }
+  },
+  {
+    "id": "cmuq3byyu00rfzwfgcwn9udyz",
+    "name": "Corsair HX1500i 1500W 80+ Platinum Fully Modular ATX 2.52 Power Supply, CP-9020255-AU",
+    "set": {
+      "builderTdpWatts": 1500
+    }
+  },
+  {
+    "id": "cmuq3byzw00rizwfggbt0f1tn",
+    "name": "Corsair HX1500i Fully Modular Ultra-Low Noise Platinum ATX 1500 Watt PC Power Supply (UK), CP-9020215-UK",
+    "set": {
+      "builderTdpWatts": 1500
+    }
+  },
+  {
+    "id": "cmuq3bz0q00rlzwfgbrsrb9ss",
+    "name": "CORSAIR HX1500i Fully Modular Ultra-Low Noise Platinum ATX 1500 Watt PC Power Supply (UK), CP-9020309-UK",
+    "set": {
+      "builderTdpWatts": 1500
+    }
+  },
+  {
+    "id": "cmuq3bz4900rxzwfgeksfp3tq",
+    "name": "Corsair Power Supply CX-M Series™ CX450M — 450 Watt 80 PLUS Bronze Semi Modular ATX PSU (UK), CP-9020219-UK",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3bz3200ruzwfgj990ckai",
+    "name": "Corsair Power Supply CX-M Series™ CX450M — 450 Watt 80 PLUS Bronze Semi Modular ATX PSU, CP-9020219-UK",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3bz5100s0zwfgahnqzwji",
+    "name": "Corsair Power Supply CX-M Series™ CX550M — 550 Watt 80 PLUS Bronze Semi Modular ATX PSU (UK), CP-9020220-UK",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3bz7a00s6zwfgfkxp2mbl",
+    "name": "Corsair Power Supply CX Series™ CX450 — 450 Watt 80 PLUS® Bronze Certified ATX PSU (UK), CP-9020120-UK",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3bz5u00s3zwfgddipp11o",
+    "name": "Corsair Power Supply CX Series™ CX450 — 450 Watt 80 PLUS® Bronze Certified ATX PSU, CP-9020120-UK",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3bz8p00s9zwfg9tvt2p8b",
+    "name": "Corsair Power Supply CX Series™ CX650F RGB — 650 Watt 80 Plus® Bronze Certified Fully Modular RGB PSU (UK), CP-9020217-UK",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3bzhw00sozwfg34qwhjui",
+    "name": "Corsair Power Supply RM Series™ RM850 — 850 Watt 80 PLUS Gold Fully Modular ATX, CP-9020235-UK",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bzed00sfzwfg5tdtqfz6",
+    "name": "CORSAIR POWER SUPPLY RM750 — 750 Watt 80 PLUS Gold Fully Modular ATX PSU — White # CP-9020231-UK",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3bza900sczwfgyp68tnmj",
+    "name": "CORSAIR POWER SUPPLY RM750 — 750 Watt 80 PLUS Gold Fully Modular ATX PSU # CP-9020234-UK",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3bzfd00sizwfgq5iowwqi",
+    "name": "CORSAIR POWER SUPPLY RM750 #CP-9020195-IN",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3bzgm00slzwfg9mdbw5ma",
+    "name": "CORSAIR POWER SUPPLY RM850 - 80 PLUS® Gold Certified Fully Modular PSU # CP-9020196-IN",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bztr00trzwfgqzui2l5t",
+    "name": "Corsair RM Series™ RM650 — 650 Watt 80 PLUS® Gold Certified Fully Modular PSU, CP-9020194-UK",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3bzir00srzwfguge01nif",
+    "name": "Corsair RM1000x SHIFT 80 PLUS Gold Fully Modular ATX Power Supply (UK), CP-9020253-UK",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3bzkc00sxzwfgfj0ryy38",
+    "name": "CORSAIR RM750x SHIFT 80 PLUS Gold Fully Modular ATX Power Supply (UK), CP-9020251-UK",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3bzl400t0zwfgqsf7evup",
+    "name": "CORSAIR RM750x SHIFT 80 PLUS Gold Fully Modular ATX Power Supply (WW), CP-9020251-WW",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3bzjj00suzwfgtvi8xbdn",
+    "name": "Corsair RM750x SHIFT 80 PLUS Gold Fully Modular ATX Power Supply, CP-9020251-NA",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3bzmp00t6zwfgsno1squ6",
+    "name": "Corsair RM850x SHIFT 80 PLUS Gold Fully Modular ATX Power Supply - White (UK), CP-9020274-UK",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bzm100t3zwfgpoafo706",
+    "name": "Corsair RM850x SHIFT 80 PLUS Gold Fully Modular ATX Power Supply (UK), CP-9020252-UK",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bznr00t9zwfgkq6162fv",
+    "name": "Corsair RM850x SHIFT 80 PLUS Gold Fully Modular ATX Power Supply (WW), CP-9020252-WW",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bzp900tczwfgr4i878pm",
+    "name": "Corsair RMe Series RM750e ATX 3.0 certified Fully Modular Low-Noise ATX Power Supply (UK), CP-9020262-UK",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3bzqx00tfzwfgn9jit41u",
+    "name": "Corsair RMe Series RM850e ATX 3.0 certified Fully Modular Low-Noise ATX Power Supply (UK), CP-9020263-UK",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bzsa00tlzwfga4ap2mdu",
+    "name": "Corsair RMe Series RM850e Fully Modular Low-Noise ATX Power Supply (UK), CP-9020296-UK",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bzrn00tizwfgcscno5hj",
+    "name": "Corsair RMe Series RM850e Fully Modular Low-Noise ATX Power Supply, CP-9020249-UK",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bzt000tozwfgf7dgo8qv",
+    "name": "Corsair RMe Series™ RM1000e - Fully Modular Low-Noise ATX Power Supply - White (UK), CP-9020294-UK",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3bzuf00tuzwfgc7xvo7pp",
+    "name": "CORSAIR RMx Series RM1000X SHIFT 80 plus Gold power supply - 1000 Watt 2025, CP-9020300-UK",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3bzv500txzwfgzpcwh3i8",
+    "name": "Corsair RMx Series™ RM650x 80 PLUS Gold Fully Modular ATX Power Supply, CP-9020178-UK",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3bzwm00u3zwfgp6sg4iad",
+    "name": "Corsair SF-L Series SF850L 80 PLUS Gold Fully Modular Low-Noise SFX Power Supply (UK), CP-9020245-UK",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3bzy200u9zwfgfucet1qo",
+    "name": "Corsair SF-L Series™ SF1000L Fully Modular Low-Noise SFX Power Supply (UK), CP-9020246-UK",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3bzvw00u0zwfgtjvuanwu",
+    "name": "Corsair SF1000L ATX3.0 1000W SFX Standard PC Power Supply Unit, CP-9020246-JP",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3bzym00uczwfgx610gnd5",
+    "name": "CORSAIR TX-M Series™ TX550M — 550 Watt 80 Plus® Gold Certified PSU (WW), CP-9020133-WW",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3bzz800ufzwfgzfb6gl8f",
+    "name": "CORSAIR WS3000 3000W ATX 3.1 Fully Modular Workstation Power Supply (EU), CP-9020312-EU",
+    "set": {
+      "builderTdpWatts": 3000
+    }
+  },
+  {
+    "id": "cmuq3bzzu00uizwfg14mh48q8",
+    "name": "DELUX BZ450 80 PLUS BRONZE 450WATT GAMING POWER SUPPLY 3Y WARRANTY",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3c00h00ulzwfgdgjwn0cq",
+    "name": "DELUX DLP-21MS 450W ATX POWER SUPPLY,1Y WARRANTY",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3c01u00urzwfg6y2slfs2",
+    "name": "Delux DLS-45D Real 450WATT Power Supply, RGB 120MM FAN with Power Cod, 2Y Warranty",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3c01700uozwfgbk8nrr9h",
+    "name": "DELUX DLS-45D REAL 450WATT POWER SUPPLY 120MM RGB FAN WITH POWER CORD 2Y WARRANTY",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3c04400v0zwfg19qbfgux",
+    "name": "Gigabyte GP-P550B 550 Watt 80 Plus Bronze Certified Power Supply",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3c05100v3zwfgh1rn2klz",
+    "name": "Gigabyte GP-P650B P650 Watt 80 Plus Bronze Certified Power Supply",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3c05u00v6zwfgkw314bq5",
+    "name": "GIGABYTE POWER SUPPLY # GP-GME1000GM PG5 ICE, T-Guard Active GPU Protection, 80 PLUS Gold certified",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3c06k00v9zwfg75enhu5s",
+    "name": "GIGABYTE POWER SUPPLY # GP-GME1000GM PG5, T-Guard Active GPU Protection, 80 PLUS Gold certified",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3c07a00vczwfg6z838ywm",
+    "name": "GIGABYTE POWER SUPPLY # GP-GME750GM PG5 ICE, T-Guard Active GPU Protection, 80 PLUS Gold certified",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3c08700vfzwfgia16p252",
+    "name": "GIGABYTE POWER SUPPLY # GP-GME750GM PG5, T-Guard Active GPU Protection, 80 PLUS Gold certified",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3c08y00vizwfgpitj8koi",
+    "name": "GIGABYTE POWER SUPPLY # GP-GME850GM PG5, T-Guard Active GPU Protection, 80 PLUS Gold certified",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3c0gc00w6zwfg378onwlp",
+    "name": "GIGABYTE POWER SUPPLY # GP-UD1000GM PG5 ICE, PCIe Gen 5.1 ready, Fully modular design, 80 PLUS Gold certified",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3c0fo00w3zwfgzlcyew0p",
+    "name": "GIGABYTE POWER SUPPLY # GP-UD1000GM PG5, Fully modular design, 80 PLUS Gold certified",
+    "set": {
+      "builderTdpWatts": 1000
+    }
+  },
+  {
+    "id": "cmuq3c0h100w9zwfg3qwxhzbk",
+    "name": "GIGABYTE POWER SUPPLY # GP-UD1600PM PG5, Fully modular design, 80 PLUS Platinum certified",
+    "set": {
+      "builderTdpWatts": 1600
+    }
+  },
+  {
+    "id": "cmuq3c0hp00wczwfglh93o2mq",
+    "name": "GIGABYTE POWER SUPPLY # GP-UD750GM PG5, Support PCIe Gen 5.0 graphics cards, Fully modular design, 80 PLUS Gold certified",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3c09t00vlzwfg9felg95e",
+    "name": "Gigabyte Power Supply GP-P450B 450 Watt 80 Plus Bronze Certified",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3c0b600vozwfgw10bb9ho",
+    "name": "Gigabyte Power Supply GP-P550SS 550 Watt, 80 PLUS Silver Certified",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3c0cg00vrzwfgd8y3j1jn",
+    "name": "Gigabyte Power Supply GP-P650G P650 Watt 80 Plus GOLD Certified",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3c0da00vuzwfgdkhbj87k",
+    "name": "Gigabyte Power Supply GP-P650G PG5, 80 PLUS Gold certified, ATX 3.1 and PCIe Gen 5.1 ready",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3c0e600vxzwfg679yvue0",
+    "name": "Gigabyte Power Supply GP-P650SS, 80 PLUS Silver certified",
+    "set": {
+      "builderTdpWatts": 650
+    }
+  },
+  {
+    "id": "cmuq3c0ez00w0zwfgw2g8pffm",
+    "name": "Gigabyte Power Supply GP-P750BS 750 Watt, 80 PLUS Bronze Certified",
+    "set": {
+      "builderTdpWatts": 750
+    }
+  },
+  {
+    "id": "cmuq3c0ic00wfzwfg5y69pf3l",
+    "name": "Gigabyte Power Supply GP-UD850GM PG5, Fully modular design, 80 PLUS Gold certified",
+    "set": {
+      "builderTdpWatts": 850
+    }
+  },
+  {
+    "id": "cmuq3c0io00wizwfg5xmcjb36",
+    "name": "HUNTKEY CP3000 CP SERIES REAL 300W,12CM SILENT FAN, ATX POWER SUPPLY",
+    "set": {
+      "builderTdpWatts": 300
+    }
+  },
+  {
+    "id": "cmuq3c0jc00wlzwfgq2gmw05x",
+    "name": "HUNTKEY CP5000 CP SERIES REAL 500W,12CM SILENT FAN, ATX POWER SUPPLY",
+    "set": {
+      "builderTdpWatts": 500
+    }
+  },
+  {
+    "id": "cmuq3c0jx00wozwfgc09jysto",
+    "name": "HUNTKEY CP6000 CP SERIES REAL 600W, P24+4+4, PCI 6+2, 4SATA,2HDD, 12CM SILENT FAN, \nATX POWER SUPPLY",
+    "set": {
+      "builderTdpWatts": 600
+    }
+  },
+  {
+    "id": "cmuq3c0k900wrzwfgo5sfxqa9",
+    "name": "HUNTKEY GIFT FOR CP5000, 500WATT POWER SUPPLY",
+    "set": {
+      "builderTdpWatts": 500
+    }
+  },
+  {
+    "id": "cmuq3c0kr00wuzwfg86ucm2qq",
+    "name": "HUNTKEY GIFT FOR GS800, 800WATT POWER SUPPLY",
+    "set": {
+      "builderTdpWatts": 800
+    }
+  },
+  {
+    "id": "cmuq3c0l800wxzwfgstuz9u7q",
+    "name": "HUNTKEY GS800 PRIME SERIES REAL 800W, P24+4+4, PCI 6+2, 4SATA,2HDD, 12CM HYDRAULIC BEARING FAN, 80+ BRONZE, 92% EFICIENCY ATX POWER SUPPLY",
+    "set": {
+      "builderTdpWatts": 800
+    }
+  },
+  {
+    "id": "cmuq3c0lx00x0zwfgdbksd3qh",
+    "name": "SMART XV550 VOLTFORCE 550W 80 PLUS BRONZE NON-MODULAR POWER SUPPLY WITH POWER CABLE",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3c0ma00x3zwfg8rtt557c",
+    "name": "XJOGOS JPS300G REAL 300W ATX POWER SUPPLY 24+8 PIN, P4+P8, 4 SATA WITH 12CM POWER WITH POWER CORD 2Y WARRANTY",
+    "set": {
+      "builderTdpWatts": 300
+    }
+  },
+  {
+    "id": "cmuq3c0mq00x6zwfgfw3zyigl",
+    "name": "Xtreme ATX-550W POWER SUPPLY, 24+8PIN SATA POWER  WITH 2.5M POWER CORD, 1Y WARRANTY",
+    "set": {
+      "builderTdpWatts": 550
+    }
+  },
+  {
+    "id": "cmuq3c0n600x9zwfgtbiuppew",
+    "name": "XTREME XPS200B REAL 200W 20+4PIN 650MM LONG CABLE BLACK POWER SUPPLY WITH POWER CABLE",
+    "set": {
+      "builderTdpWatts": 200
+    }
+  },
+  {
+    "id": "cmuq3c0ns00xczwfgh7hbhijm",
+    "name": "XTREME XPS200DT REAL 200W ATX POWER SUPPLY 20+4 PIN, P4, 2 SATA WITH 12CM FAN WITH POWER CORD 2Y WARRANTY",
+    "set": {
+      "builderTdpWatts": 200
+    }
+  },
+  {
+    "id": "cmuq3c0o400xfzwfgqu1epu4s",
+    "name": "XTREME XPS350R REAL 350 WATT POWER SUPPLY WITH POWER CABLE, 3Y WARRANTY",
+    "set": {
+      "builderTdpWatts": 350
+    }
+  },
+  {
+    "id": "cmuq3c0ot00xizwfgrf5igz8f",
+    "name": "XTREME XPS450R REAL 200W ATX POWER SUPPLY 20+4 PIN, P4, 2 SATA WITH 12CM FAN WITH POWER CORD 2Y WARRANTY",
+    "set": {
+      "builderTdpWatts": 200
+    }
+  },
+  {
+    "id": "cmuq3c0pg00xlzwfg3ztou9z5",
+    "name": "XTREME XPS550N REAL 200W ATX POWER SUPPLY 24+8 PIN SATA POWER WITH POWER CORD 2Y WARRANTY",
+    "set": {
+      "builderTdpWatts": 200
+    }
+  },
+  {
+    "id": "cmuq3c0q600xozwfgrc4d5fxa",
+    "name": "XTREME XWF450 WHITE FUSION REAL 450W NON-MODULAR POWER SUPPLY WITH POWER CABLE",
+    "set": {
+      "builderTdpWatts": 450
+    }
+  },
+  {
+    "id": "cmuq3a8ve016c2wfgtx9aasie",
+    "name": "GIGABYTE AMD # GV-R9060XTGAMING-16GD, GDDR6, Memory Clock-20 Gbps, Memory Bus-128 bit, Power supply requirement: 450W",
+    "set": {
+      "builderTdpWatts": 160
+    }
+  },
+  {
+    "id": "cmuq3a8vq016f2wfgcato4277",
+    "name": "GIGABYTE AMD # GV-R9060XTGAMING OC-8GD, GDDR6, Memory Clock-20 Gbps, Memory Bus-128 bit, Power supply requirement: 450W",
+    "set": {
+      "builderTdpWatts": 150
+    }
+  },
+  {
+    "id": "cmuq3a8wt016i2wfgpu29801w",
+    "name": "GIGABYTE AMD # GV-R9070GAMING-16GD, GDDR6, Memory Clock-20 Gbps, Memory Bus-256 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 220
+    }
+  },
+  {
+    "id": "cmuq3a8x9016l2wfgl4ju73rk",
+    "name": "GIGABYTE AMD # GV-R9070GAMING OC-16GD, GDDR6, Memory Clock-20 Gbps, Memory Bus-256 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 220
+    }
+  },
+  {
+    "id": "cmuq3a8yp016o2wfgmyhxfdth",
+    "name": "GIGABYTE Intel Arc A310 GV-IA310WF2-4GD WINDFORCE 4G GDDR6 Graphics Card Graphics Clock: 2000 MHz Memory: 4GB GDDR6 Memory Bandwidth (GB/sec): 124 GB/s Output: DP x2, HDMI x2",
+    "set": {
+      "builderTdpWatts": 75
+    }
+  },
+  {
+    "id": "cmuq3a8zf016r2wfggsf8w4ns",
+    "name": "GIGABYTE INTEL ARC GV-IA380GAMING OC-6GD",
+    "set": {
+      "builderTdpWatts": 75
+    }
+  },
+  {
+    "id": "cmuq3a905016u2wfg6g6zh808",
+    "name": "GIGABYTE INTEL ARC GV-IA380WF2OC-6GD",
+    "set": {
+      "builderTdpWatts": 75
+    }
+  },
+  {
+    "id": "cmuq3a90v016x2wfge5cl4d1j",
+    "name": "GIGABYTE NVIDIA # GV-N3050WF2OC-6GD",
+    "set": {
+      "builderTdpWatts": 70
+    }
+  },
+  {
+    "id": "cmuq3a91u01702wfgw4dlymnv",
+    "name": "GIGABYTE NVIDIA # GV-N3050WF2OC-8GD",
+    "set": {
+      "builderTdpWatts": 130
+    }
+  },
+  {
+    "id": "cmuq3a92i01732wfg1zit6eej",
+    "name": "GIGABYTE NVIDIA # GV-N3060GAMING OC-8GD, GDDR6, Memory Clock-15000 MHz, Memory Bus-128 bit, Output-DisplayPort & HDMI, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 170
+    }
+  },
+  {
+    "id": "cmuq3a93601762wfgiqr6rc2e",
+    "name": "GIGABYTE NVIDIA # GV-N5050GAMING OC-8GD, GDDR6, Memory Clock-20 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 130
+    }
+  },
+  {
+    "id": "cmuq3a93x01792wfg6erc06r1",
+    "name": "GIGABYTE NVIDIA # GV-N5050OC-8GL, GDDR6, Memory Clock-20 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 130
+    }
+  },
+  {
+    "id": "cmuq3a94a017c2wfgiok4j28z",
+    "name": "GIGABYTE NVIDIA # GV-N5050WF2OC-8GD, GDDR6, Memory Clock-20 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 130
+    }
+  },
+  {
+    "id": "cmuq3a955017i2wfg578sreui",
+    "name": "GIGABYTE NVIDIA # GV-N5060AERO OC-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 145
+    }
+  },
+  {
+    "id": "cmuq3a95n017l2wfgoaaxx1lo",
+    "name": "GIGABYTE NVIDIA # GV-N5060EAGLEMAX OC-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 145
+    }
+  },
+  {
+    "id": "cmuq3a96c017o2wfg5mkm933p",
+    "name": "GIGABYTE NVIDIA # GV-N5060EAGLEOC ICE-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 145
+    }
+  },
+  {
+    "id": "cmuq3a96o017r2wfg33da8jvf",
+    "name": "GIGABYTE NVIDIA # GV-N5060GAMING OC-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 145
+    }
+  },
+  {
+    "id": "cmuq3a979017u2wfghks3f604",
+    "name": "GIGABYTE NVIDIA # GV-N5060OC-8GL, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 145
+    }
+  },
+  {
+    "id": "cmuq3a97x017x2wfge81xjiip",
+    "name": "GIGABYTE NVIDIA # GV-N5060WF2MAX-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 145
+    }
+  },
+  {
+    "id": "cmuq3a98f01802wfg9x7i0129",
+    "name": "GIGABYTE NVIDIA # GV-N5060WF2MAX OC-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 145
+    }
+  },
+  {
+    "id": "cmuq3a99g01832wfgl2iifmxx",
+    "name": "GIGABYTE NVIDIA # GV-N5060WF2OC-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 145
+    }
+  },
+  {
+    "id": "cmuq3a9ae01862wfgrccsdq55",
+    "name": "GIGABYTE NVIDIA # GV-N506TAERO OC-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9b501892wfgw9yeq8uw",
+    "name": "GIGABYTE NVIDIA # GV-N506TEAGLEMAX OC-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9cc018c2wfgik16rcc9",
+    "name": "GIGABYTE NVIDIA # GV-N506TEAGLEOC ICE-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9d3018f2wfga17e4r6k",
+    "name": "GIGABYTE NVIDIA # GV-N506TGAMING OC-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9du018i2wfgs5g1i34r",
+    "name": "GIGABYTE NVIDIA # GV-N506TGAMING OC-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9ei018l2wfgeforhwt1",
+    "name": "GIGABYTE NVIDIA # GV-N506TWF2-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9f9018o2wfg8x7jopxa",
+    "name": "GIGABYTE NVIDIA # GV-N506TWF2MAX-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9fz018r2wfgdc6zgfpe",
+    "name": "GIGABYTE NVIDIA # GV-N506TWF2MAX-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9gr018u2wfgis9rmszs",
+    "name": "GIGABYTE NVIDIA # GV-N506TWF2MAX OC-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9ho018x2wfgqveafl96",
+    "name": "GIGABYTE NVIDIA # GV-N506TWF2OC-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9i101902wfg1ubsf2g0",
+    "name": "GIGABYTE NVIDIA # GV-N506TWF2OC-8GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-128 bit, Power supply requirement: 650W",
+    "set": {
+      "builderTdpWatts": 180
+    }
+  },
+  {
+    "id": "cmuq3a9jm01962wfghcmpcywx",
+    "name": "GIGABYTE NVIDIA # GV-N5070EAGLE OC SFF-12GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-192 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 250
+    }
+  },
+  {
+    "id": "cmuq3a9is01932wfgi47r3b9g",
+    "name": "GIGABYTE NVIDIA # GV-N5070EAGLEOC ICE SFF -12GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-192 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 250
+    }
+  },
+  {
+    "id": "cmuq3a9kk01992wfghnsf8xmp",
+    "name": "GIGABYTE NVIDIA # GV-N5070GAMING OC-12GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-192 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 250
+    }
+  },
+  {
+    "id": "cmuq3a9lp019f2wfgp12so26z",
+    "name": "GIGABYTE NVIDIA # GV-N5070WF3 SFF-12GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-192 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 250
+    }
+  },
+  {
+    "id": "cmuq3a9l2019c2wfgesnl8z85",
+    "name": "GIGABYTE NVIDIA # GV-N5070WF3OC SFF-12GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-192 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 250
+    }
+  },
+  {
+    "id": "cmuq3a9mg019i2wfg8cvs9xno",
+    "name": "GIGABYTE NVIDIA # GV-N507TAERO OC-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-256 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 300
+    }
+  },
+  {
+    "id": "cmuq3a9n3019l2wfgzl5oliij",
+    "name": "GIGABYTE NVIDIA # GV-N507TEAGLEOC ICE SFF -16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-256 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 300
+    }
+  },
+  {
+    "id": "cmuq3a9nq019o2wfg2bltnw5h",
+    "name": "GIGABYTE NVIDIA # GV-N507TEAGLEOC SFF -16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-256 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 300
+    }
+  },
+  {
+    "id": "cmuq3a9o3019r2wfgz23bjewm",
+    "name": "GIGABYTE NVIDIA # GV-N507TGAMING OC-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-256 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 300
+    }
+  },
+  {
+    "id": "cmuq3a9p5019x2wfg4vfmsw75",
+    "name": "GIGABYTE NVIDIA # GV-N507TWF3 SFF-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-256 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 300
+    }
+  },
+  {
+    "id": "cmuq3a9oo019u2wfg205psupl",
+    "name": "GIGABYTE NVIDIA # GV-N507TWF3OC SFF-16GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-256 bit, Power supply requirement: 750W",
+    "set": {
+      "builderTdpWatts": 300
+    }
+  },
+  {
+    "id": "cmuq3a9pw01a02wfg415mk1n2",
+    "name": "GIGABYTE NVIDIA # GV-N5080GAMING OC-16GD, GDDR7, Memory Clock-30 Gbps, Memory Bus-256 bit, Power supply requirement: 850W",
+    "set": {
+      "builderTdpWatts": 360
+    }
+  },
+  {
+    "id": "cmuq3a9r401a32wfgzvkrcz05",
+    "name": "GIGABYTE NVIDIA # GV-N5080WF3OC SFF-16GD, GDDR7, Memory Clock-30 Gbps, Memory Bus-256 bit, Power supply requirement: 850W",
+    "set": {
+      "builderTdpWatts": 360
+    }
+  },
+  {
+    "id": "cmuq3a9rw01a62wfgxnbt2f3g",
+    "name": "GIGABYTE NVIDIA # GV-N5090GAMING OC-32GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-512 bit, Power supply requirement: 1000W",
+    "set": {
+      "builderTdpWatts": 575
+    }
+  },
+  {
+    "id": "cmuq3a9ss01a92wfgj4zie8w8",
+    "name": "GIGABYTE NVIDIA # GV-N5090WF3OC-32GD, GDDR7, Memory Clock-28 Gbps, Memory Bus-512 bit, Power supply requirement: 1000W",
+    "set": {
+      "builderTdpWatts": 575
+    }
+  },
+  {
+    "id": "cmuq3a9tb01ac2wfgcz6v63bb",
+    "name": "GIGABYTE NVIDIA # GV-N730D3-2GI, DDR3, Memory Clock - 1800 MHz, Memory Bus - 64 bit, DVI-D / HDMI / D-Sub, Power supply requirement: 300W",
+    "set": {
+      "builderTdpWatts": 38
+    }
+  },
+  {
+    "id": "cmuq3a94k017f2wfge3ac9ok8",
+    "name": "GIGABYTE NVIDIA #GV-N5050WF2OC V2-8GD, GDDR6, Memory Clock-20 Gbps, Memory Bus-128 bit, Power supply requirement: 550W",
+    "set": {
+      "builderTdpWatts": 130
+    }
+  },
+  {
+    "id": "cmuq3d32b00a0n4fg1ikbjj14",
+    "name": "Intel® Arc™ A750 Graphics # # 21P02J00BAG (8GB)",
+    "set": {
+      "builderTdpWatts": 225
+    }
+  },
+  {
+    "id": "cmuq3d33a00a6n4fgzrs70z4q",
+    "name": "PNY GeForce GTX 1650 4GB GDDR6 Dual Fan #  VCG16504D6DFXPB1",
+    "set": {
+      "builderTdpWatts": 75
+    }
+  },
+  {
+    "id": "cmuq3d32z00a3n4fgme3dmvvm",
+    "name": "PNY GeForce GTX 1650 4GB GDDR6 Dual Fan # VCG165044D6DFPPB",
+    "set": {
+      "builderTdpWatts": 75
+    }
+  }
+]

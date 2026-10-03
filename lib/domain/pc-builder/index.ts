@@ -23,6 +23,12 @@ export {
   slotMetaList,
 } from "@/lib/domain/pc-builder/selection";
 export {
+  attrListsOverlap,
+  formatAttrList,
+  parseAttrList,
+  toggleAttrValue,
+} from "@/lib/domain/pc-builder/attr-values";
+export {
   evaluateCompatibility,
   rankCandidatesForSlot,
   RULE_EVALUATORS,

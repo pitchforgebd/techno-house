@@ -4,6 +4,11 @@
   BuilderSlot,
 } from "@/lib/data/types/catalog";
 import {
+  attrListsOverlap,
+  formatAttrList,
+  parseAttrList,
+} from "@/lib/domain/pc-builder/attr-values";
+import {
   isRuleTypeEnabled,
   PC_RULE_TYPES,
   type PcBuilderRuleType,
@@ -46,42 +51,50 @@ function pushWarning(
   warnings.push(warning);
 }
 
-function compareEqualField(args: {
+/** Attributes compared as value lists (see attr-values.ts). */
+type ListField = "socket" | "ramType" | "formFactor" | "storageInterface";
+
+/**
+ * Two parts fit when their value lists share at least one value (AD-346) —
+ * so a board listing "DDR4, DDR5" fits either RAM type, and a cooler listing
+ * several sockets fits any of them. A single value on each side behaves
+ * exactly as the old strict equality did. An empty list on either side is
+ * "unknown" (never a false match, never a false mismatch).
+ */
+function compareOverlapField(args: {
   left: CompatibilityPart;
   right: CompatibilityPart;
-  field: keyof BuilderAttrs;
+  field: ListField;
   code: string;
   label: string;
   warnings: CompatibilityWarning[];
 }): "ok" | "issue" {
   const { left, right, field, code, label, warnings } = args;
-  const leftValue = left.attrs?.[field];
-  const rightValue = right.attrs?.[field];
+  const leftValues = parseAttrList(left.attrs?.[field]);
+  const rightValues = parseAttrList(right.attrs?.[field]);
 
-  if (
-    leftValue === undefined ||
-    leftValue === null ||
-    leftValue === "" ||
-    rightValue === undefined ||
-    rightValue === null ||
-    rightValue === ""
-  ) {
+  if (leftValues.length === 0 || rightValues.length === 0) {
+    const missing = [
+      ...(leftValues.length === 0 ? [left] : []),
+      ...(rightValues.length === 0 ? [right] : []),
+    ];
     pushWarning(warnings, {
       status: "unknown",
       code: `${code}_unknown`,
-      message: `${label} cannot be verified — missing data on ${
-        leftValue ? right.name : left.name
-      }.`,
+      message: `${label} cannot be verified — missing data on ${missing
+        .map((part) => part.name)
+        .join(" and ")}.`,
       slotIds: [left.slotId, right.slotId],
+      missingSlotIds: missing.map((part) => part.slotId),
     });
     return "issue";
   }
 
-  if (leftValue !== rightValue) {
+  if (!attrListsOverlap(leftValues, rightValues)) {
     pushWarning(warnings, {
       status: "incompatible",
       code: `${code}_mismatch`,
-      message: `${label} mismatch: ${left.name} (${String(leftValue)}) vs ${right.name} (${String(rightValue)}).`,
+      message: `${label} mismatch: ${left.name} (${formatAttrList(leftValues)}) vs ${right.name} (${formatAttrList(rightValues)}).`,
       slotIds: [left.slotId, right.slotId],
     });
     return "issue";
@@ -99,7 +112,7 @@ function evaluateSocket(parts: CompatibilityPart[]): RuleEvaluation {
 
   if (cpu && motherboard) {
     if (
-      compareEqualField({
+      compareOverlapField({
         left: cpu,
         right: motherboard,
         field: "socket",
@@ -114,7 +127,7 @@ function evaluateSocket(parts: CompatibilityPart[]): RuleEvaluation {
 
   if (cooler && cpu) {
     if (
-      compareEqualField({
+      compareOverlapField({
         left: cooler,
         right: cpu,
         field: "socket",
@@ -127,7 +140,7 @@ function evaluateSocket(parts: CompatibilityPart[]): RuleEvaluation {
     }
   } else if (cooler && motherboard && !cpu) {
     if (
-      compareEqualField({
+      compareOverlapField({
         left: cooler,
         right: motherboard,
         field: "socket",
@@ -150,7 +163,7 @@ function evaluateRamType(parts: CompatibilityPart[]): RuleEvaluation {
   const motherboard = partBySlot(parts, "motherboard");
   if (ram && motherboard) {
     if (
-      compareEqualField({
+      compareOverlapField({
         left: ram,
         right: motherboard,
         field: "ramType",
@@ -172,7 +185,7 @@ function evaluateFormFactor(parts: CompatibilityPart[]): RuleEvaluation {
   const casePart = partBySlot(parts, "case");
   if (motherboard && casePart) {
     if (
-      compareEqualField({
+      compareOverlapField({
         left: motherboard,
         right: casePart,
         field: "formFactor",
@@ -275,7 +288,7 @@ function evaluateStorageInterface(parts: CompatibilityPart[]): RuleEvaluation {
 
   for (const drive of drives) {
     if (
-      compareEqualField({
+      compareOverlapField({
         left: drive,
         right: motherboard,
         field: "storageInterface",
@@ -340,6 +353,14 @@ export type CandidateCompatibility = {
   status: CandidateCompatibilityStatus;
   /** Only the warnings this candidate itself is party to — not the whole build's warnings. */
   warnings: CompatibilityWarning[];
+  /**
+   * True when an exact-fit check against the current build could not run
+   * because *this candidate* has no spec data for it (e.g. a RAM with no
+   * RAM type while a motherboard is picked). Distinct from `status:
+   * "unknown"` caused by the already-picked part lacking data — that one is
+   * not this candidate's fault, so a picker must not penalise it.
+   */
+  candidateMissingData: boolean;
 };
 
 /**
@@ -387,6 +408,12 @@ export function rankCandidatesForSlot(input: {
         ? "unknown"
         : "ok";
 
-    return { candidate, status, warnings: relevant };
+    const candidateMissingData = relevant.some(
+      (warning) =>
+        warning.status === "unknown" &&
+        warning.missingSlotIds?.includes(input.slot),
+    );
+
+    return { candidate, status, warnings: relevant, candidateMissingData };
   });
 }

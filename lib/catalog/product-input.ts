@@ -14,6 +14,17 @@
 
 import type { BuilderAttrs, BuilderSlot } from "@/lib/data/types/catalog";
 import type { StockStatus } from "@/lib/data/types/common";
+import {
+  FORM_FACTOR_OPTIONS,
+  RAM_TYPE_OPTIONS,
+  SOCKET_OPTIONS,
+  STORAGE_INTERFACE_OPTIONS,
+} from "@/lib/domain/pc-builder/attribute-options";
+import {
+  ATTR_LIST_MAX_VALUES,
+  formatAttrList,
+  parseAttrList,
+} from "@/lib/domain/pc-builder/attr-values";
 import { isBuilderSlotId } from "@/lib/domain/pc-builder/selection";
 import {
   ATTRIBUTE_KEY_MAX,
@@ -46,7 +57,8 @@ export const PRODUCT_OVERVIEW_PARAGRAPHS = 12;
 export const PRODUCT_CONTENT_HTML_MAX = 60_000;
 export const PRODUCT_VARIANT_MAX = 20;
 export const PRODUCT_WARRANTY_MAX = 80;
-export const BUILDER_ATTR_MAX = 40;
+/** Max length of one builder attribute's stored string — now a comma-joined list (AD-346). */
+export const BUILDER_ATTR_MAX = 120;
 export const BUILDER_TDP_MAX = 5_000;
 export const PRODUCT_ATTRIBUTE_MAX = ATTRIBUTE_VALUE_COUNT_MAX;
 export const PRODUCT_BARCODE_MAX = 40;
@@ -369,18 +381,32 @@ export function parseProductAttributes(
   return { ok: true, value: attributes };
 }
 
+/**
+ * A builder attribute that may carry several values (AD-346): "DDR4, DDR5".
+ * Values are de-duplicated and respelled to the controlled vocabulary when
+ * they match it, then re-joined — so the stored string is always canonical
+ * and a single plain value ("AM5") round-trips unchanged.
+ */
 export function parseOptionalAttr(
   value: string,
   label: string,
+  canonical?: readonly string[],
 ): { ok: true; value?: string } | { ok: false; formError: string } {
-  const trimmed = value.trim();
-  if (!trimmed) {
+  const values = parseAttrList(value, canonical);
+  if (values.length === 0) {
     return { ok: true };
   }
-  if (trimmed.length > BUILDER_ATTR_MAX) {
+  if (values.length > ATTR_LIST_MAX_VALUES) {
+    return {
+      ok: false,
+      formError: `${label} can list at most ${ATTR_LIST_MAX_VALUES} values.`,
+    };
+  }
+  const joined = formatAttrList(values);
+  if (joined.length > BUILDER_ATTR_MAX) {
     return { ok: false, formError: `${label} is too long.` };
   }
-  return { ok: true, value: trimmed };
+  return { ok: true, value: joined };
 }
 
 export function parseBuilderFields(
@@ -396,21 +422,34 @@ export function parseBuilderFields(
     return { ok: false, formError: "Choose a valid PC Builder slot." };
   }
 
-  const socket = parseOptionalAttr(input.builderSocket, "Socket");
+  const socket = parseOptionalAttr(
+    input.builderSocket,
+    "Socket",
+    SOCKET_OPTIONS,
+  );
   if (!socket.ok) {
     return socket;
   }
-  const ramType = parseOptionalAttr(input.builderRamType, "RAM type");
+  const ramType = parseOptionalAttr(
+    input.builderRamType,
+    "RAM type",
+    RAM_TYPE_OPTIONS,
+  );
   if (!ramType.ok) {
     return ramType;
   }
-  const formFactor = parseOptionalAttr(input.builderFormFactor, "Form factor");
+  const formFactor = parseOptionalAttr(
+    input.builderFormFactor,
+    "Form factor",
+    FORM_FACTOR_OPTIONS,
+  );
   if (!formFactor.ok) {
     return formFactor;
   }
   const storageInterface = parseOptionalAttr(
     input.builderStorageInterface,
     "Storage interface",
+    STORAGE_INTERFACE_OPTIONS,
   );
   if (!storageInterface.ok) {
     return storageInterface;
