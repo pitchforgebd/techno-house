@@ -84,9 +84,28 @@ const productionOnlyHeaders =
       ]
     : [];
 
+// Next streams metadata (canonical, JSON-LD, OG tags, site-verification meta
+// tags, ...) into the body and moves it into <head> client-side once any
+// metadata in the tree depends on async data — true for most pages here
+// (DB-driven SEO config). Next's own built-in bot allowlist forces a
+// blocking (non-streamed) response for crawlers that parse raw HTML instead
+// of executing JS, but it only matches Google crawler names with a "-Google"
+// suffix or "Google-" prefix (AdsBot-Google, Google-InspectionTool, ...) —
+// plain "Googlebot", and Search Console's own ownership-verification
+// fetcher, do NOT match it. That gap is exactly why a `<meta
+// name="google-site-verification">` tag can still fail Search Console's
+// check even once it is emitted correctly via `metadata.verification`: the
+// raw HTML response it reads never had the tag in <head> to begin with.
+// This extends Next's default list (reproduced below) with "Googlebot" so
+// the crawlers that actually matter for indexing/verification always get
+// the blocking render.
+const HTML_LIMITED_BOTS =
+  /[\w-]+-Google|Google-[\w-]+|Googlebot|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight/i;
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   agentRules: false,
+  htmlLimitedBots: HTML_LIMITED_BOTS,
   // The pg driver reaches for Node built-ins (net, tls, dns, fs) that the
   // bundler cannot resolve. Keep it external so it is required at runtime on
   // the server instead of being bundled.

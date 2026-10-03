@@ -22,6 +22,25 @@ function check(name: string, condition: unknown): void {
 function main(): void {
   const root = process.cwd();
 
+  const nextConfig = readFileSync(join(root, "next.config.ts"), "utf8");
+  check(
+    "next.config.ts forces blocking (non-streamed) metadata for Googlebot " +
+      "— Next's own default htmlLimitedBots list only matches suffixed/" +
+      "prefixed Google crawler names (AdsBot-Google, Google-InspectionTool, " +
+      "...), not plain Googlebot, so without this a <meta name=" +
+      '"google-site-verification"> or canonical/JSON-LD tag can be absent ' +
+      "from the raw HTML a non-JS crawler reads even though it renders " +
+      "correctly after hydration",
+    nextConfig.includes("htmlLimitedBots") && nextConfig.includes("Googlebot"),
+  );
+
+  const rootLayoutSrc = readFileSync(join(root, "app/layout.tsx"), "utf8");
+  check(
+    "root layout sets the Google Search Console verification meta tag",
+    rootLayoutSrc.includes("verification:") &&
+      rootLayoutSrc.includes("google:"),
+  );
+
   const robots = readFileSync(join(root, "app/robots.ts"), "utf8");
   check(
     "robots disallows admin/account/dev/checkout",

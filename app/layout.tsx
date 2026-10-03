@@ -46,6 +46,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(publicOrigin()),
   title: "Techno House",
   description: "Technology products for work, study, and building a PC.",
+  // Renders <meta name="google-site-verification" content="..." /> as a
+  // real child of <head> — the Admin -> Custom Script fields can't do this
+  // themselves, since both the "header" and "footer" slots there render
+  // into <body> (CustomScriptSlot), not <head>, so Google's HTML-tag
+  // verification can never pass through them.
+  verification: {
+    google: "gQ4KIysQDsv4jmS0p5-k_GH298fiDoRoy3RW__TmppA",
+  },
 };
 
 export default async function RootLayout({
