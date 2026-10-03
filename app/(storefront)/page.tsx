@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { HomePage } from "@/features/home/home-page";
+import { canonicalUrl } from "@/lib/seo/canonical";
 import { getStorefrontSeoMetadata } from "@/lib/seo/config";
 
 // No dynamic route segment here, so nothing 404s without this — but without
@@ -13,6 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: seo.title,
     description: seo.description,
     keywords: seo.keywords,
+    alternates: { canonical: canonicalUrl("/") },
   };
 }
 

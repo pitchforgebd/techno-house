@@ -283,16 +283,16 @@ export const mockCategories: Category[] = [
 ];
 
 export const mockBrands: Brand[] = [
-  { slug: "lumen", name: "Lumen", logoSrc: "/brands/lumen.svg" },
-  { slug: "ridge", name: "Ridge", logoSrc: "/brands/ridge.svg" },
-  { slug: "coreline", name: "CoreLine", logoSrc: "/brands/coreline.svg" },
-  { slug: "volt", name: "Volt", logoSrc: "/brands/volt.svg" },
-  { slug: "apex", name: "Apex", logoSrc: "/brands/apex.svg" },
-  { slug: "frame", name: "Frame", logoSrc: "/brands/frame.svg" },
-  { slug: "shell", name: "Shell", logoSrc: "/brands/shell.svg" },
-  { slug: "view", name: "View", logoSrc: "/brands/view.svg" },
-  { slug: "breeze", name: "Breeze", logoSrc: "/brands/breeze.svg" },
-  { slug: "frost", name: "Frost", logoSrc: "/brands/frost.svg" },
+  { slug: "lumen", name: "Lumen", logoSrc: "/brands/lumen.svg", description: null },
+  { slug: "ridge", name: "Ridge", logoSrc: "/brands/ridge.svg", description: null },
+  { slug: "coreline", name: "CoreLine", logoSrc: "/brands/coreline.svg", description: null },
+  { slug: "volt", name: "Volt", logoSrc: "/brands/volt.svg", description: null },
+  { slug: "apex", name: "Apex", logoSrc: "/brands/apex.svg", description: null },
+  { slug: "frame", name: "Frame", logoSrc: "/brands/frame.svg", description: null },
+  { slug: "shell", name: "Shell", logoSrc: "/brands/shell.svg", description: null },
+  { slug: "view", name: "View", logoSrc: "/brands/view.svg", description: null },
+  { slug: "breeze", name: "Breeze", logoSrc: "/brands/breeze.svg", description: null },
+  { slug: "frost", name: "Frost", logoSrc: "/brands/frost.svg", description: null },
 ];
 
 function brandName(slug: string): string {

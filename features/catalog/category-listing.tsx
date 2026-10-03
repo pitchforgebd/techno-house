@@ -1,9 +1,11 @@
 ﻿import Link from "next/link";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { JsonLd } from "@/components/seo/json-ld-script";
 import { CatalogListingBody } from "@/features/catalog/catalog-listing-body";
 import { CategoryBrandPills } from "@/features/catalog/category-brand-pills";
 import { CategoryListingBar } from "@/features/catalog/category-listing-bar";
 import { CategoryPageSeo } from "@/features/catalog/category-page-seo";
+import { categoryAncestors } from "@/lib/catalog/category-tree";
 import { getCategoryPageContent } from "@/lib/catalog/category-page-content";
 import { getCategorySeoHtml } from "@/lib/catalog/category-seo-content";
 import { listStorefrontFilterKeys } from "@/lib/catalog/filter-keys";
@@ -15,29 +17,13 @@ import {
   toListQueryFilters,
   type ListingSearchParams,
 } from "@/lib/catalog/listing-params";
-import type { Category } from "@/lib/data";
 import {
   brandRepository,
   categoryRepository,
   productRepository,
+  type Category,
 } from "@/lib/data";
-
-function ancestorsOf(
-  category: Category,
-  bySlug: Map<string, Category>,
-): Category[] {
-  const chain: Category[] = [];
-  let parentSlug = category.parentSlug;
-  while (parentSlug) {
-    const parent = bySlug.get(parentSlug);
-    if (!parent) {
-      break;
-    }
-    chain.unshift(parent);
-    parentSlug = parent.parentSlug;
-  }
-  return chain;
-}
+import { breadcrumbListJsonLd } from "@/lib/seo/json-ld";
 
 export async function CategoryListing({
   category,
@@ -73,8 +59,7 @@ export async function CategoryListing({
     }),
   ]);
 
-  const bySlug = new Map(allCategories.map((item) => [item.slug, item]));
-  const ancestors = ancestorsOf(category, bySlug);
+  const ancestors = categoryAncestors(category, allCategories);
   const children = allCategories.filter(
     (item) => item.parentSlug === category.slug,
   );
@@ -106,19 +91,20 @@ export async function CategoryListing({
   const headerTitle =
     content.priceHeaderTitle ?? `${content.listingTitle} Price in Bangladesh`;
 
+  const breadcrumbItems = [
+    { href: "/", label: "Home" },
+    { href: "/shop", label: "Shop" },
+    ...ancestors.map((item) => ({
+      href: `/category/${item.slug}`,
+      label: item.name,
+    })),
+    { label: category.name },
+  ];
+
   return (
     <div className="mx-auto max-w-catalog px-4 py-7 md:px-6 md:py-9">
-      <Breadcrumbs
-        items={[
-          { href: "/", label: "Home" },
-          { href: "/shop", label: "Shop" },
-          ...ancestors.map((item) => ({
-            href: `/category/${item.slug}`,
-            label: item.name,
-          })),
-          { label: category.name },
-        ]}
-      />
+      <JsonLd data={breadcrumbListJsonLd(breadcrumbItems)} />
+      <Breadcrumbs items={breadcrumbItems} />
 
       <CategoryBrandPills
         pathname={pathname}

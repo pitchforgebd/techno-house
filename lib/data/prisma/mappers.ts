@@ -123,6 +123,7 @@ export type BrandRow = {
   slug: string;
   name: string;
   logoSrc: string | null;
+  description: string | null;
 };
 
 export function toBrand(row: BrandRow): Brand {
@@ -130,6 +131,7 @@ export function toBrand(row: BrandRow): Brand {
     slug: row.slug,
     name: row.name,
     logoSrc: row.logoSrc ?? PLACEHOLDER_IMAGE_SRC,
+    description: row.description,
   };
 }
 

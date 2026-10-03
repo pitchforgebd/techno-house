@@ -4,6 +4,7 @@ import { CategoryListing } from "@/features/catalog/category-listing";
 import { getCategoryPageContent } from "@/lib/catalog/category-page-content";
 import type { ListingSearchParams } from "@/lib/catalog/listing-params";
 import { categoryRepository } from "@/lib/data";
+import { canonicalUrl } from "@/lib/seo/canonical";
 
 // `generateStaticParams` below still pre-renders every known category at
 // build time for a fast first hit; leaving `dynamicParams` at its default
@@ -31,6 +32,9 @@ export async function generateMetadata({
   return {
     title: `${content.listingTitle} — Techno House`,
     description: content.description,
+    // Always the clean URL — filter/sort/page query strings never get their
+    // own canonical, so they're never indexed as separate pages from this.
+    alternates: { canonical: canonicalUrl(`/category/${category.slug}`) },
   };
 }
 

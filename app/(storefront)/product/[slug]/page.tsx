@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { JsonLd } from "@/components/seo/json-ld-script";
 import { ProductDetailSections } from "@/features/product/product-detail-sections";
 import { ProductDetailsPanel } from "@/features/product/product-details-panel";
 import { ProductMediaBuy } from "@/features/product/product-media-buy";
@@ -15,8 +17,11 @@ import { ProductReviews } from "@/features/product/product-reviews";
 import { ProductSimilarSidebar } from "@/features/product/product-similar-sidebar";
 import { ProductSpecifications } from "@/features/product/product-specifications";
 import { ProductWarranty } from "@/features/product/product-warranty";
-import { productRepository, reviewRepository } from "@/lib/data";
+import { categoryAncestors } from "@/lib/catalog/category-tree";
+import { categoryRepository, productRepository, reviewRepository } from "@/lib/data";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
+import { canonicalUrl } from "@/lib/seo/canonical";
+import { breadcrumbListJsonLd, productJsonLd } from "@/lib/seo/json-ld";
 import { getStorefrontHomeBanners } from "@/lib/design/home-banners";
 import { getCustomerSession } from "@/lib/auth/customer-session";
 import { getB2BTermsForProductId } from "@/lib/b2b/product-terms";
@@ -66,9 +71,14 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: { canonical: canonicalUrl(`/product/${product.slug}`) },
     openGraph: {
       title: product.name,
       description,
+      // Next's typed OpenGraphType union has no "product" variant (only
+      // website/article/book/profile/video/music) — "website" is the
+      // accurate choice within what it actually supports. The Product
+      // JSON-LD below is the real machine-readable signal for crawlers.
       type: "website",
       images: product.image.src
         ? [{ url: product.image.src, alt: product.image.alt }]
@@ -102,6 +112,7 @@ export default async function ProductPage({
     b2bAccount,
     questionsEnabled,
     chatWidgetTag,
+    allCategories,
   ] = await Promise.all([
     reviewRepository.listReviewsByProductSlug(product.slug),
     reviewRepository.listQuestionsByProductSlug(product.slug),
@@ -126,6 +137,8 @@ export default async function ProductPage({
     session ? getMyB2BAccount(session.userId) : Promise.resolve(null),
     isFeatureFlagEnabled("product-query"),
     getStorefrontChatWidgetTag(),
+    // For the breadcrumb trail — same ancestor-walk category/brand pages use.
+    categoryRepository.list(),
   ]);
 
   const averageRating = averageProductRating(reviews);
@@ -176,8 +189,41 @@ export default async function ProductPage({
       ? liveViewerCount
       : null;
 
+  // Same ancestor-walk category/brand listing pages use, so the trail
+  // reflects the real nesting depth instead of a fixed number of levels.
+  const productCategory = allCategories.find(
+    (item) => item.slug === product.categorySlug,
+  );
+  const categoryAncestry = productCategory
+    ? categoryAncestors(productCategory, allCategories)
+    : [];
+  const breadcrumbItems = [
+    { href: "/", label: "Home" },
+    { href: "/shop", label: "Shop" },
+    ...categoryAncestry.map((item) => ({
+      href: `/category/${item.slug}`,
+      label: item.name,
+    })),
+    ...(productCategory
+      ? [{ href: `/category/${productCategory.slug}`, label: productCategory.name }]
+      : []),
+    { label: product.name },
+  ];
+
   return (
     <div className="mx-auto max-w-content px-4 py-8">
+      <JsonLd data={breadcrumbListJsonLd(breadcrumbItems)} />
+      <JsonLd
+        data={productJsonLd({
+          product,
+          path: `/product/${product.slug}`,
+          reviewCount: reviews.length,
+          averageRating,
+        })}
+      />
+      <div className="mb-4">
+        <Breadcrumbs items={breadcrumbItems} />
+      </div>
       <ProductViewTracker slug={product.slug} />
       <ProductMediaBuy
         slug={product.slug}

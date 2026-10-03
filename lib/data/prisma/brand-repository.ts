@@ -6,6 +6,7 @@ const BRAND_SELECT = {
   slug: true,
   name: true,
   logoSrc: true,
+  description: true,
 } as const;
 
 export const prismaBrandRepository: BrandRepository = {

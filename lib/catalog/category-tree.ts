@@ -73,6 +73,31 @@ export function categoryDescendantsWithDepth(
   return result;
 }
 
+/**
+ * A category's ancestor chain, root-first (immediate parent last). Used to
+ * build breadcrumb trails that reflect the real nesting depth instead of
+ * assuming a fixed number of levels.
+ */
+export function categoryAncestors(
+  category: Category,
+  categories: Category[],
+): Category[] {
+  const bySlug = new Map(categories.map((item) => [item.slug, item]));
+  const chain: Category[] = [];
+  let parentSlug = category.parentSlug;
+  const seen = new Set<string>();
+  while (parentSlug && !seen.has(parentSlug)) {
+    seen.add(parentSlug);
+    const parent = bySlug.get(parentSlug);
+    if (!parent) {
+      break;
+    }
+    chain.unshift(parent);
+    parentSlug = parent.parentSlug;
+  }
+  return chain;
+}
+
 /** Root slug plus every descendant. Used for mega-menu brand grouping. */
 export function categoryAndDescendantSlugs(
   rootSlug: string,

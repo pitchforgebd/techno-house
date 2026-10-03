@@ -50,6 +50,7 @@ export type Brand = {
   name: string;
   /** Storefront logo path under `/public`. */
   logoSrc: string;
+  description: string | null;
 };
 
 export type ProductLabelBadge = {

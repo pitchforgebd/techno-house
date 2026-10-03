@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BrandListing } from "@/features/catalog/brand-listing";
 import type { ListingSearchParams } from "@/lib/catalog/listing-params";
 import { brandRepository } from "@/lib/data";
+import { canonicalUrl } from "@/lib/seo/canonical";
 
 // See the matching comment in category/[slug]/page.tsx — same reasoning.
 export const revalidate = 300;
@@ -24,7 +25,9 @@ export async function generateMetadata({
   }
   return {
     title: `${brand.name} — Techno House`,
-    description: `Browse ${brand.name} products at Techno House.`,
+    description:
+      brand.description || `Browse ${brand.name} products at Techno House.`,
+    alternates: { canonical: canonicalUrl(`/brand/${brand.slug}`) },
   };
 }
 

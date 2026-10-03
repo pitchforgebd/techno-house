@@ -1,4 +1,5 @@
 ﻿import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { JsonLd } from "@/components/seo/json-ld-script";
 import { CatalogListingBody } from "@/features/catalog/catalog-listing-body";
 import { listStorefrontFilterKeys } from "@/lib/catalog/filter-keys";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/lib/catalog/listing-params";
 import type { Brand } from "@/lib/data";
 import { brandRepository, productRepository } from "@/lib/data";
+import { breadcrumbListJsonLd } from "@/lib/seo/json-ld";
 
 export async function BrandListing({
   brand,
@@ -39,23 +41,27 @@ export async function BrandListing({
 
   const resetHref = resetListingHref(pathname);
   const filteredEmpty = listingHasActiveFilters(listingParsed);
+  const breadcrumbItems = [
+    { href: "/", label: "Home" },
+    { href: "/shop", label: "Shop" },
+    { href: "/brands", label: "Brands" },
+    { label: brand.name },
+  ];
 
   return (
     <div className="mx-auto max-w-[90rem] px-4 py-8">
-      <Breadcrumbs
-        items={[
-          { href: "/", label: "Home" },
-          { href: "/shop", label: "Shop" },
-          { href: "/brands", label: "Brands" },
-          { label: brand.name },
-        ]}
-      />
+      <JsonLd data={breadcrumbListJsonLd(breadcrumbItems)} />
+      <Breadcrumbs items={breadcrumbItems} />
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">
         {brand.name}
       </h1>
       <p className="mt-2 text-body text-text-muted">
-        Products from this brand. Prices in ৳ are for display and are not a
-        charge.
+        {brand.description || (
+          <>
+            Products from this brand. Prices in ৳ are for display and are not
+            a charge.
+          </>
+        )}
       </p>
       <CatalogListingBody
         pathname={pathname}

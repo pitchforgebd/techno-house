@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { CategoryNav } from "@/components/layout/category-nav";
 import { MarqueeNoticeBar } from "@/components/layout/marquee-notice-bar";
+import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -125,6 +126,7 @@ export default async function StorefrontLayout({
         initial={initialCart}
       >
         <div className="flex min-h-screen flex-col">
+          <SiteJsonLd />
           {themeCss ? (
             <style
               id="th-design-theme"
