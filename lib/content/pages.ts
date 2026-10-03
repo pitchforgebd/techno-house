@@ -18,6 +18,7 @@ export const CONTENT_PAGE_SLUGS = [
   "shipping",
   "returns",
   "terms",
+  "privacy",
   "digital-commerce-guideline",
 ] as const;
 export type ContentPageSlug = (typeof CONTENT_PAGE_SLUGS)[number];
@@ -31,6 +32,7 @@ export const CONTENT_PAGE_LABELS: Record<ContentPageSlug, string> = {
   shipping: "Shipping",
   returns: "Return Policy Page",
   terms: "Terms",
+  privacy: "Privacy Policy",
   "digital-commerce-guideline": "ডিজিটাল কমার্স নির্দেশিকা ২০২১",
 };
 

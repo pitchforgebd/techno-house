@@ -11,9 +11,23 @@ import { ROBOTS_PATH, SITEMAP_PATH } from "@/lib/seo/fields";
 
 export { ROBOTS_PATH, SITEMAP_PATH };
 
-const PRODUCT_LIMIT = 500;
-const TAXONOMY_LIMIT = 200;
-const POST_LIMIT = 100;
+export type SitemapEntry = {
+  path: string;
+  /** Real `updatedAt`/`publishedAt` from the row this path came from — not
+   * set for the static marketing/legal paths, which have no such column. */
+  lastModified?: Date;
+};
+
+// Google's documented ceiling is 50,000 URLs (and 50MB) per sitemap file —
+// these are generous headroom under that single-file limit, not an
+// editorial choice about how much of the catalog to expose. The previous
+// caps (500/200/100) were well below real catalog size and were silently
+// dropping entries; a sitemap INDEX split (multiple numbered sitemap files)
+// only becomes necessary if the catalog approaches the 50,000 ceiling
+// itself, which is not close for this store.
+const PRODUCT_LIMIT = 20_000;
+const TAXONOMY_LIMIT = 5_000;
+const POST_LIMIT = 5_000;
 
 export const STATIC_SITEMAP_PATHS = [
   "/",
@@ -43,10 +57,13 @@ export function absoluteSitemapUrl(path: string): string {
   return `${publicOrigin()}${path}`;
 }
 
-export async function listSitemapPaths(): Promise<string[]> {
-  const paths = new Set<string>(STATIC_SITEMAP_PATHS);
+export async function listSitemapEntries(): Promise<SitemapEntry[]> {
+  const seen = new Set<string>(STATIC_SITEMAP_PATHS);
+  const entries: SitemapEntry[] = STATIC_SITEMAP_PATHS.map((path) => ({
+    path,
+  }));
   if (!usesDatabase()) {
-    return [...paths];
+    return entries;
   }
 
   const [categories, brands, products, posts] = await Promise.all([
@@ -54,41 +71,54 @@ export async function listSitemapPaths(): Promise<string[]> {
       where: { isActive: true },
       orderBy: { position: "asc" },
       take: TAXONOMY_LIMIT,
-      select: { slug: true },
+      select: { slug: true, updatedAt: true },
     }),
     getPrisma().brand.findMany({
       where: { isActive: true },
       orderBy: { position: "asc" },
       take: TAXONOMY_LIMIT,
-      select: { slug: true },
+      select: { slug: true, updatedAt: true },
     }),
     getPrisma().product.findMany({
       where: { isActive: true },
       orderBy: { position: "asc" },
       take: PRODUCT_LIMIT,
-      select: { slug: true },
+      select: { slug: true, updatedAt: true },
     }),
     getPrisma().blogPost.findMany({
       where: { status: "PUBLISHED" },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       take: POST_LIMIT,
-      select: { slug: true },
+      select: { slug: true, updatedAt: true, publishedAt: true },
     }),
   ]);
 
+  function add(path: string, lastModified?: Date) {
+    if (seen.has(path)) {
+      return;
+    }
+    seen.add(path);
+    entries.push({ path, lastModified });
+  }
+
   for (const row of categories) {
-    paths.add(`/category/${row.slug}`);
+    add(`/category/${row.slug}`, row.updatedAt);
   }
   for (const row of brands) {
-    paths.add(`/brand/${row.slug}`);
+    add(`/brand/${row.slug}`, row.updatedAt);
   }
   for (const row of products) {
-    paths.add(`/product/${row.slug}`);
+    add(`/product/${row.slug}`, row.updatedAt);
   }
   for (const row of posts) {
-    paths.add(`/blog/${row.slug}`);
+    add(`/blog/${row.slug}`, row.publishedAt ?? row.updatedAt);
   }
-  return [...paths];
+  return entries;
+}
+
+/** @deprecated Use `listSitemapEntries` — kept for the e2e smoke test's path-only check. */
+export async function listSitemapPaths(): Promise<string[]> {
+  return (await listSitemapEntries()).map((entry) => entry.path);
 }
 
 export async function getSitemapAdminSummary(): Promise<{
@@ -98,15 +128,15 @@ export async function getSitemapAdminSummary(): Promise<{
   if (!usesDatabase()) {
     return { urlCount: STATIC_SITEMAP_PATHS.length, updatedAt: null };
   }
-  const [paths, seo] = await Promise.all([
-    listSitemapPaths(),
+  const [entries, seo] = await Promise.all([
+    listSitemapEntries(),
     getPrisma().sEOConfiguration.findFirst({
       where: { path: null },
       select: { updatedAt: true },
     }),
   ]);
   return {
-    urlCount: paths.length,
+    urlCount: entries.length,
     updatedAt: seo?.updatedAt.toISOString() ?? null,
   };
 }

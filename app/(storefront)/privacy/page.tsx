@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
-import { ContentStub } from "@/components/layout/content-stub";
+import {
+  StorefrontContentPage,
+  storefrontContentMetadata,
+} from "@/features/content/storefront-content-page";
 
-export const metadata: Metadata = {
-  title: "Privacy — Techno House",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return storefrontContentMetadata("privacy", "Privacy — Techno House");
+}
 
 export default function PrivacyPage() {
   return (
-    <ContentStub
-      heading="Privacy"
-      title="Privacy policy"
-      description="The privacy policy will appear here."
+    <StorefrontContentPage
+      slug="privacy"
+      fallbackHeading="Privacy"
+      fallbackTitle="Privacy policy"
+      fallbackDescription="The privacy policy will appear here. This page is a placeholder, not copied from another retailer."
     />
   );
 }
