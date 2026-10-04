@@ -1,8 +1,13 @@
 # Techno House — Deployment
 
-Updated: 2026-09-14
+Updated: 2026-10-04
 Revised for the security / business-logic remediation (AD-330…AD-336).
-**No live deploy yet.**
+**No live deploy yet.** The first-deploy procedure is written and was
+rehearsed end to end on a fresh local database (migrate → bootstrap → catalogue
+import → preflight → production build served): see
+`docs/DEPLOY_VPS_RUNBOOK.md`. Target: a single VPS with a persistent disk —
+not Vercel, because admin uploads are written to local disk and `next start`
+does not serve files added after the build (Nginx serves `/uploads/` instead).
 
 ## Target
 
@@ -295,6 +300,9 @@ only after the sandbox flow is confirmed end to end.
 - [x] Database preflight implemented (`npm run db:preflight`)
 - [x] Rollback procedure written (above)
 - [x] Post-deployment smoke tests written (above)
+- [x] First-deploy runbook, Nginx/PM2 configs, deploy and backup scripts
+      (`docs/DEPLOY_VPS_RUNBOOK.md`, `deploy/`) — rehearsed locally
+- [x] A backup restored into a clean database with every row (local test)
 - [ ] `ADMIN_LOGIN_SLUG` set on the host
 - [ ] `SESSION_JWT_SECRET` set on the host
 - [ ] `GATEWAY_SECRETS_KEY` / `STORAGE_SECRETS_KEY` / `COURIER_SECRETS_KEY` set for the features in use

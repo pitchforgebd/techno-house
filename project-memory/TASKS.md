@@ -6163,3 +6163,99 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       published development default — so production MUST set its own value
       (it is on the checklist). `PROBE_ENV=production npm run test:headers`: 14/14
       including HSTS ≥ 1 year.
+
+- [x] AD-352 First-deploy preparation for a VPS — runbook, configs, catalogue-only
+      bundle, and a full rehearsal on a fresh database.
+      (Operator: "do it and finish it, we have to deploy". Decisions asked and
+      answered: target = VPS/VM with a persistent disk; production data =
+      catalogue only; push to GitHub once the build passes.) The actual server,
+      domain and credentials are the operator's, so this delivers everything up
+      to the point where a real server is needed.
+
+      **Findings that shaped the plan.**
+      - `docs/DEPLOYMENT.md` said no production exists. `vercel.json` is in the
+        repo but Vercel is the wrong target: admin media is written to local disk
+        only (the S3/Backblaze integration "isn't built yet"), and **`next start`
+        does not serve files added after the build — a file written to
+        `public/uploads` at runtime returned 404 (tested)**. Staff uploads would
+        silently break on any host that relies on Next to serve them, so on the
+        VPS Nginx serves `/uploads/` from disk (and re-adds the `nosniff` /
+        CSP `sandbox` headers the app adds, which protect against SVG script).
+      - **The five `PCCompatibilityRule` rows existed only via `prisma/seed.ts`**,
+        which refuses to run in production. With no rows `listEnabledRuleTypes()`
+        returns `[]`, every check is treated as disabled and the PC Builder shows
+        every part with no error — the whole compatibility filter would have been
+        silently off in production. New `npm run pcbuilder:bootstrap-rules`
+        (create-only, dry-run flag, never changes a rule staff already toggled);
+        defaults follow the seed (storage-interface rule off).
+      - The development catalogue is not production-clean: 25 demo seed products
+        (fictional brands) and 10 demo-only brands, reserved stock from test
+        orders, `MediaAsset.uploadedByStaffId → Staff`, and a demo Admin account
+        (`ops@techno-house.demo`) plus test customers/orders. A whole-database
+        copy would have shipped all of it.
+      - Everything in `scripts/deploy` so far wrote to whatever `DATABASE_URL`
+        pointed at — the development database. Production starts empty.
+
+      **`npm run catalog:export` / `catalog:import`.** Prisma-based, table
+      allowlist in `scripts/deploy/catalog-tables.ts` (catalogue tables only —
+      staff, customers, orders, carts, payments, reviews, promotions, analytics,
+      audit logs and every secret-bearing settings table cannot be included).
+      Export is read-only: drops the 25 demo products (matched by slug against the
+      seed's own `mockProducts`) and demo-only brands, forces `reserved` to 0,
+      nulls the staff link on media, writes JSON-lines + manifest + `uploads.tar.gz`
+      (4,304 products, 85 brands, 345 categories, 4,304 images, 1,736 attribute
+      values, 79 media assets; 11 upload references, none missing on disk).
+      Import refuses a database that already has products (`--allow-nonempty`
+      tops up and never overwrites), refuses if fewer migrations are applied than
+      the bundle was exported from, inserts parents first (categories by depth),
+      and verifies counts, one stock row per product, and nothing reserved.
+      Output is `catalog-export/` (gitignored).
+
+      **Deploy assets (`deploy/`, `docs/DEPLOY_VPS_RUNBOOK.md`).**
+      `nginx-techno-house.conf` (HTTP→HTTPS, proxy with `X-Forwarded-For`
+      overwritten so a client-supplied value cannot survive, 25 MB bodies,
+      `/uploads/` from disk), `ecosystem.config.cjs` (PM2, bound to 127.0.0.1),
+      `deploy.sh` (backup → checkout → `npm ci` → migrations → build → reload →
+      health → preflight; refuses root, a dirty tree, a missing `.env.local`;
+      prints the previous commit and rollback on failure), `backup-db.sh`
+      (`pg_dump -Fc` + uploads, retention). `public/uploads` stays where the app
+      writes it — an earlier design symlinked it, which would have made the
+      tracked `.gitkeep` show as deleted and tripped `deploy.sh`'s own clean-tree
+      check, so Nginx aliases `current/public/uploads` directly.
+
+      **Rehearsal on a fresh database (no development data touched).** Created an
+      empty database; `db:migrate:deploy` applied all 78 migrations;
+      `staff:bootstrap-owner`, `shipping:bootstrap-districts` (64 + 528),
+      `shipping:bootstrap-methods`, `pcbuilder:bootstrap-rules` (re-run → 0
+      created); `catalog:import` (every count matched; a second run refused;
+      `--allow-nonempty` inserted nothing); `db:preflight` **PASSED, 11
+      invariants, 0 violations**; then the production build served from it on a
+      second port: storefront pages, the PC Builder pickers, admin sign-in gate,
+      and an authenticated session (dashboard, products, Compatibility data,
+      rules, staff, alert bell) all worked, exactly one staff account existed,
+      the four default rules were enabled, and a DDR4 board offered only DDR4 RAM
+      while a DDR5 board offered only DDR5. Picker card counts were exactly the
+      development counts minus the demo products. `backup-db.sh` run for real;
+      its dump `pg_restore`d into a clean database with 4,304 products, 78
+      migrations, 1 staff, 194 permissions, 5 rules, 64 districts. `nginx -t` on
+      the real config reports "syntax is ok" (Windows then refused to bind port
+      80, an environment limit; a deliberately broken copy fails). Both scratch
+      databases were dropped.
+
+      **Release gate (AD-351) and push.** All suites green, `tsc` 0, `next build`
+      succeeded, production smoke and the production header probe (14/14) passed;
+      5 commits (AD-346…AD-351) pushed to `origin/main` after a scan found no
+      secret patterns and no `.env`, uploads, xlsx or CSV tracked.
+
+      **Not verified (needs the real server).** `deploy.sh` and PM2 start-up on
+      boot, certbot/TLS, Linux file permissions (`umask 077`), Cloudflare in front
+      (the `real_ip` setup is described, not included), behaviour under load, and
+      live payments / e-mail / SMS. The first real run of each should be watched.
+
+      **What the operator must do.** Provision the server, point the domain, fill
+      `.env.local` (distinct secrets; `ADMIN_LOGIN_SLUG` must not be the
+      published default — the app refuses to start the admin otherwise, seen
+      working), run `npm run catalog:export` here and copy `catalog-export/` over,
+      then follow the runbook. Afterwards, in admin: shipping methods and rates,
+      payment sandbox credentials, SMTP/SMS, staff accounts, and the PC Builder
+      Compatibility data page.

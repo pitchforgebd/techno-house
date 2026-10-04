@@ -55,3 +55,6 @@ next-env.d.ts
 
 # B2B KYC documents (trade licence / NID) — sensitive, never committed
 /private-uploads/
+
+# catalogue bundle written by `npm run catalog:export` (product data + uploads)
+/catalog-export/
