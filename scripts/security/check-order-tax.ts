@@ -258,11 +258,26 @@ function main(): void {
 
   // --- Auto-confirm ---------------------------------------------------------
   const paymentSrc = readFileSync("lib/payments/service.ts", "utf-8");
+  // The rule is about ORDER, not distance: the read must come before the
+  // transaction opens and must not appear inside its callback. (A character
+  // window broke the first time unrelated code was added in between.)
+  const settingsReadAt = paymentSrc.indexOf(
+    "(await getStoreOperationsSettings()).autoConfirmPaidOrders",
+  );
+  const transactionAt = paymentSrc.indexOf(
+    "await prisma.$transaction(async (tx) =>",
+    settingsReadAt,
+  );
+  const transactionEnd =
+    transactionAt === -1 ? -1 : paymentSrc.indexOf("\n  });", transactionAt);
   check(
     "auto-confirm reads its setting before the transaction opens",
-    /autoConfirm =[\s\S]{0,200}getStoreOperationsSettings\(\)[\s\S]{0,400}\$transaction/.test(
-      paymentSrc,
-    ),
+    settingsReadAt !== -1 &&
+      transactionAt > settingsReadAt &&
+      transactionEnd > transactionAt &&
+      !paymentSrc
+        .slice(transactionAt, transactionEnd)
+        .includes("getStoreOperationsSettings"),
     "reading inside the transaction risks the pool deadlock from AD-321",
   );
   check(

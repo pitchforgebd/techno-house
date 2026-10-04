@@ -6091,3 +6091,75 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       admin setting for hide-vs-show unverified parts (a storefront policy the
       client should ask for; today they are hidden by default, with a customer
       "Show them anyway").
+
+- [x] AD-351 Pre-deploy gate — every suite green, one real XSS hole closed, six
+      stale checks corrected, production build + production-mode smoke test.
+      (Operator: "do it and finish it, we have to deploy".)
+
+      **Why a gate pass was needed.** Running every suite before a first deploy
+      found 14 failures across 7 suites, none from the PC Builder work. Each was
+      triaged by reading the code, not by loosening the test.
+
+      **Real defect fixed — JSON-LD script breakout (stored XSS).**
+      `components/seo/json-ld-script.tsx` and the blog page wrote
+      `JSON.stringify(data)` straight into `<script type="application/ld+json">`
+      via `dangerouslySetInnerHTML`. `JSON.stringify` does not escape `<`, so a
+      product name, description or blog title containing `</script>` closes the
+      element and the rest runs as HTML on every page that emits it. New
+      `lib/seo/serialize-json-ld.ts` escapes `<` (and U+2028/2029) as JSON unicode
+      escapes — identical for any JSON parser, impossible to break out of — and
+      both sinks use it. Not exploitable today (the live catalog has 0 names or
+      overviews containing "<"), but bulk imports bring in third-party text, so
+      it was one bad row away. `test:security` now asserts the output has no "<",
+      round-trips through JSON.parse, and pins both sinks to the serializer;
+      proven load-bearing (escaping removed → 2 checks fail).
+
+      **Reviewed and allowlisted, with a guard.** `product-details-panel.tsx` and
+      `product-summary.tsx` render `Product.detailsHtml` / `overviewHtml` raw.
+      Reviewed: sanitized on save (`sanitizeRichBody`) AND again on read in
+      `app/(storefront)/product/[slug]/page.tsx`, the only caller; the
+      overview-migration script escapes before wrapping. Added to the baseline
+      allowlist with that reasoning plus a check that fails if the page ever
+      stops calling `sanitizeBlogBody` on them (the allowlist is only true while
+      it does).
+
+      **Small real improvement.** The product page's main image is a native
+      `<img>` (zoom lens) so next/image's automatic priority never applied; it
+      now carries `fetchPriority="high"` and `decoding="async"`.
+
+      **Stale checks corrected (code verified correct first).**
+      - `test:tax` — auto-confirm still reads its setting before the transaction
+        (AD-321 pool-deadlock rule intact); the check used a 400-character window
+        that unrelated code had outgrown. Now asserts the rule itself (read comes
+        before `$transaction`, and not inside it). Proven: a read placed inside
+        the transaction fails it.
+      - `test:payments` — the SSLCommerz browser-return guard flagged a *comment*
+        mentioning `processSslcommerzIpn`. It now ignores whole comment lines.
+        Proven: a real `applyPaymentTransition` call still fails it. The
+        production route was not touched.
+      - `test:theme`, `test:a11y` — the header search bar moved to
+        `header-search.tsx`; same classes, same labels.
+      - `test:bundle` — hero variable renamed (`slideIndex`); the pad-to-N gallery
+        logic was removed on purpose; the gallery check now asserts
+        `fetchPriority`; and "no heavy editor libs" became "TipTap is imported only
+        from `features/admin/`" (it backs the admin rich-text editor and never
+        reaches a storefront bundle).
+
+      **Gate results.** `tsc` 0; `eslint` 0 errors (8 old warnings); every suite
+      green (the `a11y` and `bundle` ones run inside `test:regression`): pc-builder 96, security 22, routes 16, privilege 11, hardening 63,
+      authhardening 31, clientip 23, secretcrypto 21, wallet 11, tracking 11,
+      social 12, tax 35, theme 214, env 22, orderid 51, inventory 33, staleorders
+      36, listing 45, dashboard 48, seo 25, queries 8, payments 53, regression 7/7,
+      headers 14 (production probe). `db:preflight`: 0 critical (one dev-data
+      warning — an abandoned checkout older than 24 h).
+
+      **Build and production-mode smoke (local, `next start`).** `next build`
+      succeeded (compile 65 s, TypeScript 88 s, 577 static pages). Against it:
+      `/api/health` ok; `/`, `/shop`, a category, a product, `/cart`, `/checkout`,
+      `/pc-builder` all 200; `/admin` → 307 to the secret sign-in path;
+      `/admin/login` and a wrong slug → not-found page with no sign-in form; the
+      real slug → form; signed-out API/admin routes → redirect. The
+      `ADMIN_LOGIN_SLUG` guard correctly refused to start the admin with the
+      published development default — so production MUST set its own value
+      (it is on the checklist). `PROBE_ENV=production npm run test:headers`: 14/14
+      including HSTS ≥ 1 year.

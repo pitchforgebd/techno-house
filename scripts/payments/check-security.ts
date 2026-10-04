@@ -633,9 +633,26 @@ async function main(): Promise<void> {
   // Source guards (P17-T02): browser return must never import paid transitions.
   const { readFileSync } = await import("node:fs");
   const { join } = await import("node:path");
-  const sslReturn = readFileSync(
-    join(process.cwd(), "app/api/payments/sslcommerz/return/route.ts"),
-    "utf8",
+  // Guard against calls, not mentions: a comment explaining that the browser
+  // return deliberately does NOT call the IPN processor is not a call. Only
+  // whole comment lines are dropped, so trailing comments after code still count.
+  const codeOnly = (source: string): string =>
+    source
+      .split("\n")
+      .filter((line) => {
+        const text = line.trim();
+        return !(
+          text.startsWith("//") ||
+          text.startsWith("*") ||
+          text.startsWith("/*")
+        );
+      })
+      .join("\n");
+  const sslReturn = codeOnly(
+    readFileSync(
+      join(process.cwd(), "app/api/payments/sslcommerz/return/route.ts"),
+      "utf8",
+    ),
   );
   check(
     "SSLCommerz browser return has no applyPaymentTransition",
@@ -643,9 +660,11 @@ async function main(): Promise<void> {
       !sslReturn.includes("processSslcommerzIpn") &&
       !sslReturn.includes("confirmPayment"),
   );
-  const storefrontReturn = readFileSync(
-    join(process.cwd(), "app/(storefront)/checkout/payment/return/page.tsx"),
-    "utf8",
+  const storefrontReturn = codeOnly(
+    readFileSync(
+      join(process.cwd(), "app/(storefront)/checkout/payment/return/page.tsx"),
+      "utf8",
+    ),
   );
   check(
     "storefront return page has no applyPaymentTransition",

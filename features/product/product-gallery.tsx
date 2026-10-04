@@ -149,6 +149,10 @@ export function ProductGallery({
               alt={current.alt}
               className="absolute inset-0 h-full w-full object-contain p-3 sm:p-4"
               draggable={false}
+              // This is the product page's LCP element. A native img gets no
+              // automatic priority from next/image, so ask for it explicitly.
+              fetchPriority="high"
+              decoding="async"
             />
 
             {refundStickerSrc ? (

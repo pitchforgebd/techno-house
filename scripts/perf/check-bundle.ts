@@ -76,19 +76,24 @@ function main(): void {
     join(root, "features/product/product-gallery.tsx"),
     "utf8",
   );
+  // The main image is a native <img> (keeps the stage height fixed for the
+  // zoom lens), so next/image's automatic priority does not apply; it must ask
+  // for priority itself, because it is the product page's LCP element.
   check(
-    "PDP gallery uses next/image with priority on primary",
-    gallery.includes('from "next/image"') &&
-      gallery.includes("priority={safeIndex === 0}"),
+    "PDP gallery's main image is requested with high priority",
+    gallery.includes('fetchPriority="high"'),
   );
 
   const galleryPad = readFileSync(
     join(root, "lib/product/gallery-images.ts"),
     "utf8",
   );
+  // The pad-to-N-frames logic (which appended a th= query that defeated the
+  // image cache) was removed on purpose: the gallery shows exactly what was
+  // uploaded. Guard against it coming back.
   check(
-    "gallery padding does not bust image cache with th= query",
-    !galleryPad.includes("th=") && galleryPad.includes("source.src"),
+    "gallery shows the uploaded images as-is (no padding, no cache-busting query)",
+    !galleryPad.includes("th=") && galleryPad.includes("return images;"),
   );
 
   const hero = readFileSync(
@@ -97,7 +102,9 @@ function main(): void {
   );
   check(
     "homepage hero marks first slide priority",
-    hero.includes('from "next/image"') && hero.includes("priority={index === 0}"),
+    hero.includes('from "next/image"') &&
+      (hero.includes("priority={slideIndex === 0}") ||
+        hero.includes("priority={index === 0}")),
   );
 
   const pkg = readFileSync(join(root, "package.json"), "utf8");
@@ -105,8 +112,20 @@ function main(): void {
     "no heavy chart/editor libs in dependencies",
     !pkg.includes('"recharts"') &&
       !pkg.includes('"chart.js"') &&
-      !pkg.includes('"monaco-editor"') &&
-      !pkg.includes('"@tiptap'),
+      !pkg.includes('"monaco-editor"'),
+  );
+  // The admin rich-text editor is built on TipTap. That is fine for the admin
+  // panel, but it must never reach a storefront bundle: every file importing
+  // it has to live under features/admin/.
+  const tiptapImporters = ["app", "features", "components", "lib"]
+    .flatMap((dir) => walk(join(root, dir)))
+    .filter((file) => /[.]tsx?$/.test(file))
+    .filter((file) => readFileSync(file, "utf8").includes('from "@tiptap'))
+    .map((file) => file.slice(root.length + 1).split(join("a", "b")[1]!).join("/"));
+  check(
+    "TipTap is imported only from admin code, never a storefront bundle",
+    tiptapImporters.length > 0 &&
+      tiptapImporters.every((file) => file.startsWith("features/admin/")),
   );
 
   const repoImport =

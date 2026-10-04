@@ -680,7 +680,9 @@ async function main(): Promise<void> {
     // colour in these files would have broken that, and it is invisible until
     // someone sets a dark button-text colour.
     for (const [file, line] of [
-      ["components/layout/site-header.tsx", "bg-primary px-4 text-primary-foreground"],
+      // The header search button lives in header-search.tsx since the
+      // live-search commit; same classes, new file.
+      ["components/layout/header-search.tsx", "bg-primary px-4 text-primary-foreground"],
       ["components/layout/site-footer.tsx", "bg-primary px-4 text-label font-semibold text-primary-foreground"],
     ] as [string, string][]) {
       check(

@@ -51,7 +51,8 @@ function main(): void {
   );
 
   const header = readFileSync(
-    join(root, "components/layout/site-header.tsx"),
+    // The search bar moved out of site-header.tsx in the live-search commit.
+    join(root, "components/layout/header-search.tsx"),
     "utf8",
   );
   check(

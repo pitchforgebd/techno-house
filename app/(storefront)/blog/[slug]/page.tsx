@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getPublicPost } from "@/lib/content/blog";
 import { looksLikeHtml, sanitizeBlogBody } from "@/lib/content/sanitize-html";
 import { publicOrigin } from "@/lib/seo/public-origin";
+import { serializeJsonLd } from "@/lib/seo/serialize-json-ld";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -72,7 +73,7 @@ export default async function BlogPostPage({ params }: Props) {
       <script
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <p className="text-caption font-medium text-primary">
         <Link href="/blog" className="hover:underline">

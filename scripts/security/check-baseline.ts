@@ -9,6 +9,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { originMatchesHost } from "../../lib/auth/same-origin";
+import { serializeJsonLd } from "../../lib/seo/serialize-json-ld";
 import { opaqueSessionCookieFlags } from "../../lib/auth/session-cookie";
 import {
   safeAdminReturnPath,
@@ -116,15 +117,21 @@ function main(): void {
   // and anything not listed still fails.
   const ALLOWED_HTML_SINKS: Record<string, string> = {
     "app/(storefront)/blog/[slug]/page.tsx":
-      "JSON-LD via JSON.stringify, plus sanitizeBlogBody output (tag allowlist, no style/class/on*, http/https/mailto only)",
+      "JSON-LD via serializeJsonLd (escapes < so a value cannot close the script element), plus sanitizeBlogBody output (tag allowlist, no style/class/on*, http/https/mailto only)",
     "app/(storefront)/layout.tsx":
       "theme CSS built from hex-validated colours and a fixed font lookup map",
+    "components/seo/json-ld-script.tsx":
+      "JSON-LD via serializeJsonLd: JSON.stringify with < escaped as a unicode escape, so no value can close the script element — asserted below",
     "components/analytics/custom-script-slot.tsx":
       "intentional third-party script injection, gated on custom_scripts.manage and audit-logged (F-09, accepted risk)",
     "features/catalog/category-page-seo.tsx":
       "sanitizeBlogBody output, sanitized on read as well as on write",
     "features/content/storefront-content-page.tsx": "sanitizeBlogBody output",
     "features/home/home-store-info.tsx": "sanitizeBlogBody output",
+    "features/product/product-details-panel.tsx":
+      "Product.detailsHtml: sanitizeRichBody on save, and sanitizeBlogBody again on read in the product page before it is passed here (the only caller) — asserted below",
+    "features/product/product-summary.tsx":
+      "Product.overviewHtml: sanitizeRichBody on save, and sanitizeBlogBody again on read in the product page before it is passed down (the only caller) — asserted below",
   };
 
   let unexpectedHtmlSinks = 0;
@@ -148,6 +155,54 @@ function main(): void {
   check(
     "no unreviewed dangerouslySetInnerHTML in app sources",
     unexpectedHtmlSinks === 0,
+  );
+  // The two product-page sinks above are only safe because the page sanitises
+  // on read. If that call goes, the allowlist entries become a lie, so pin it.
+  const productPage = readFileSync(
+    join(root, "app/(storefront)/product/[slug]/page.tsx"),
+    "utf8",
+  );
+  check(
+    "the product page sanitises overviewHtml and detailsHtml before the raw-HTML panels receive them",
+    productPage.includes("sanitizeBlogBody(product.overviewHtml)") &&
+      productPage.includes("sanitizeBlogBody(product.detailsHtml)"),
+  );
+  // JSON-LD: JSON.stringify alone lets a value containing the closing script
+  // tag break out of the <script> element. Both sinks must go through
+  // serializeJsonLd, and it must actually prevent the breakout.
+  const hostile = {
+    name: "</script><script>alert(1)</script>",
+    note: "<!-- x -->",
+    sep: "a\u2028b",
+  };
+  const serialized = serializeJsonLd(hostile);
+  check(
+    "serializeJsonLd leaves no < in the output, so nothing can close the script element",
+    !serialized.includes("<"),
+  );
+  check(
+    "serializeJsonLd output parses back to exactly the original data",
+    JSON.stringify(JSON.parse(serialized)) === JSON.stringify(hostile),
+  );
+  check(
+    "serializeJsonLd escapes the JS line separators and tolerates undefined",
+    !serialized.includes(String.fromCharCode(0x2028)) &&
+      serializeJsonLd(undefined) === "null",
+  );
+  const jsonLdComponent = readFileSync(
+    join(root, "components/seo/json-ld-script.tsx"),
+    "utf8",
+  );
+  const blogPage = readFileSync(
+    join(root, "app/(storefront)/blog/[slug]/page.tsx"),
+    "utf8",
+  );
+  check(
+    "both JSON-LD sinks serialise through serializeJsonLd, not raw JSON.stringify",
+    jsonLdComponent.includes("serializeJsonLd(data)") &&
+      !jsonLdComponent.includes("__html: JSON.stringify") &&
+      blogPage.includes("serializeJsonLd(jsonLd)") &&
+      !blogPage.includes("__html: JSON.stringify"),
   );
   // Keeps the allowlist honest: a sink that is removed should be removed from
   // the list too, or the list slowly becomes a record of things that no longer

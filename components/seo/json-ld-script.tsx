@@ -1,3 +1,5 @@
+import { serializeJsonLd } from "@/lib/seo/serialize-json-ld";
+
 /**
  * Shared `<script type="application/ld+json">` renderer, so every page that
  * emits structured data serializes it the same way instead of each inlining
@@ -8,7 +10,7 @@ export function JsonLd({ data }: { data: unknown }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
     />
   );
 }
