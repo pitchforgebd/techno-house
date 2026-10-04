@@ -144,6 +144,11 @@ export function CompareBody({ className }: { className?: string }) {
   const candidates = starterReady ? loaded.items : [];
   const candidateTotal = starterReady ? loaded.total : 0;
 
+  const categoryNames = useMemo(
+    () => new Map(categories.map((category) => [category.slug, category.name])),
+    [categories],
+  );
+
   const specLabels = useMemo(() => {
     const labels: string[] = [];
     for (const product of ordered) {
@@ -157,16 +162,16 @@ export function CompareBody({ className }: { className?: string }) {
   }, [ordered]);
 
   const handleAdd = useCallback(
-    (slug: string) => {
-      if (!slug) {
-        return;
-      }
-      const candidateCategory = activeCategory;
-      if (!candidateCategory) {
+    (item: CompareCandidate) => {
+      // A type chosen on the page (or locked by the first product) wins; with
+      // none chosen the product's own category decides, exactly as adding from
+      // a product card does — and from then on the comparison is locked to it.
+      const candidateCategory = activeCategory || item.categorySlug;
+      if (!item.slug || !candidateCategory) {
         return;
       }
       startAdding(async () => {
-        const result = toggleCompare(slug, candidateCategory);
+        const result = toggleCompare(item.slug, candidateCategory);
         if (!result.ok) {
           notifyError(result.reason);
           return;
@@ -241,6 +246,7 @@ export function CompareBody({ className }: { className?: string }) {
               id="compare-product-empty"
               label="Search and select a product"
               categorySlug={activeCategory}
+              categoryNames={categoryNames}
               items={candidates}
               total={candidateTotal}
               excluded={alreadyPicked}
@@ -460,6 +466,7 @@ export function CompareBody({ className }: { className?: string }) {
                       id="compare-product"
                       label="Search and select a product"
                       categorySlug={activeCategory}
+                      categoryNames={categoryNames}
                       items={candidates}
                       total={candidateTotal}
                       excluded={alreadyPicked}

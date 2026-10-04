@@ -3,9 +3,9 @@
  * server action, the picker component and the test suite.
  *
  * The picker shows a starter list for the chosen product type and lets a
- * shopper search the WHOLE type. The starter list is one repository page (at
- * most 48 products), so for a type with hundreds of products most of them are
- * only reachable by searching.
+ * shopper search the WHOLE type — or, before any type is chosen, every product.
+ * The starter list is one repository page (at most 48 products), so for a type
+ * with hundreds of products most of them are only reachable by searching.
  */
 
 /** Characters a shopper must type before the whole type is searched. */
@@ -25,6 +25,12 @@ export type CompareCandidate = {
   slug: string;
   name: string;
   sku: string;
+  /**
+   * The product's own category. With no type chosen on the page the first
+   * product picked decides the category the comparison is locked to, exactly as
+   * adding from a product card does.
+   */
+  categorySlug: string;
 };
 
 export type CompareCandidateList = {
@@ -47,7 +53,8 @@ export function normalizeCompareCategory(raw: unknown): string {
  * What the picker shows for the text typed so far:
  * - "list"   nothing typed: the starter list;
  * - "local"  1–2 characters: the starter list filtered in the browser;
- * - "remote" 3 or more: the whole type, searched on the server.
+ * - "remote" 3 or more: the whole type (or every product when no type is
+ *   chosen), searched on the server.
  */
 export type PickerMode = "list" | "local" | "remote";
 

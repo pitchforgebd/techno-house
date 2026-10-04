@@ -13,7 +13,7 @@ import {
 } from "@/lib/catalog/compare-search";
 import { cn } from "@/lib/cn";
 
-/** How long typing must pause before the whole category is searched. */
+/** How long typing must pause before the products are searched. */
 const SEARCH_DELAY_MS = 300;
 
 type RemoteResult = {
@@ -23,14 +23,18 @@ type RemoteResult = {
 };
 
 /**
- * Searchable product picker for the compare page (AD-358).
+ * Searchable product picker for the compare page (AD-358, AD-359).
  *
- * Opening it shows the starter list for the chosen type; typing filters that
- * list at once, and from three characters it searches the WHOLE type on the
- * server (the starter list is one page of at most 48 products). Picking a
- * product calls `onSelect` and clears the box. The list opens in the page flow
- * under the box, not as a floating layer, because the compare table scrolls
- * sideways and would clip a floating one.
+ * With a product type chosen, opening it shows the starter list for that type;
+ * typing filters that list at once, and from three characters it searches the
+ * WHOLE type on the server (the starter list is one page of at most 48
+ * products). With NO type chosen the box is still usable: there is no list to
+ * show, but from three characters it searches every product, each result
+ * labelled with its category — the first product picked then decides the
+ * category, as adding from a product card does. Picking a product calls
+ * `onSelect` and clears the box. The list opens in the page flow under the box,
+ * not as a floating layer, because the compare table scrolls sideways and would
+ * clip a floating one.
  *
  * Keyboard: ArrowDown/ArrowUp move, Enter picks (or the only match), Escape
  * closes. Mount it with `key={category}` so a new type starts fresh.
@@ -39,6 +43,7 @@ export function CompareProductPicker({
   id,
   label,
   categorySlug,
+  categoryNames,
   items,
   total,
   excluded,
@@ -48,8 +53,10 @@ export function CompareProductPicker({
 }: {
   id: string;
   label: string;
-  /** "" until a product type is chosen. */
+  /** "" while no product type is chosen: the box then searches every product. */
   categorySlug: string;
+  /** Category slug -> display name, to label results when no type is chosen. */
+  categoryNames: ReadonlyMap<string, string>;
   /** Starter list for the type; may include products already being compared. */
   items: CompareCandidate[];
   /** Products in the whole type. */
@@ -59,7 +66,7 @@ export function CompareProductPicker({
   /** True while an add is in progress. */
   busy: boolean;
   inputClassName: string;
-  onSelect: (slug: string) => void;
+  onSelect: (item: CompareCandidate) => void;
 }) {
   const listId = useId();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -70,7 +77,8 @@ export function CompareProductPicker({
 
   const text = query.trim();
   const mode = pickerMode(text);
-  const disabled = !categorySlug || busy;
+  const disabled = busy;
+  const scoped = Boolean(categorySlug);
 
   // The search answer is tagged with what it answers, so "searching" and the
   // visible options are worked out while rendering (no state set in the effect).
@@ -86,7 +94,7 @@ export function CompareProductPicker({
   const activeIndex = active >= 0 && active < options.length ? active : -1;
 
   useEffect(() => {
-    if (!categorySlug || pickerMode(text) !== "remote") {
+    if (pickerMode(text) !== "remote") {
       return;
     }
     let cancelled = false;
@@ -110,7 +118,7 @@ export function CompareProductPicker({
   }, [categorySlug, text]);
 
   function choose(item: CompareCandidate) {
-    onSelect(item.slug);
+    onSelect(item);
     setQuery("");
     setActive(-1);
     setOpen(false);
@@ -153,6 +161,7 @@ export function CompareProductPicker({
     }
   }
 
+  const searchAll = scoped ? `all ${total} products` : "all products";
   let status: string;
   if (mode === "remote") {
     if (searching) {
@@ -166,11 +175,14 @@ export function CompareProductPicker({
     } else {
       status = `${options.length} ${options.length === 1 ? "match" : "matches"} found.`;
     }
+  } else if (!scoped) {
+    // No type chosen: there is no starter list, only the search.
+    status = `Type ${COMPARE_SEARCH_MIN_CHARS} or more characters to search ${searchAll}, or choose a product type above.`;
   } else if (mode === "local") {
     status =
       options.length > 0
-        ? `Type ${COMPARE_SEARCH_MIN_CHARS} or more characters to search all ${total} products.`
-        : `No match in the list — type ${COMPARE_SEARCH_MIN_CHARS} or more characters to search all ${total} products.`;
+        ? `Type ${COMPARE_SEARCH_MIN_CHARS} or more characters to search ${searchAll}.`
+        : `No match in the list — type ${COMPARE_SEARCH_MIN_CHARS} or more characters to search ${searchAll}.`;
   } else if (items.length === 0) {
     status = "No products in this type yet.";
   } else if (total > items.length) {
@@ -207,7 +219,7 @@ export function CompareProductPicker({
           spellCheck={false}
           value={query}
           disabled={disabled}
-          placeholder={categorySlug ? "Type Product Name" : "Select a type first"}
+          placeholder="Type Product Name"
           className={cn(inputClassName, "pr-10")}
           onFocus={() => setOpen(true)}
           onClick={() => setOpen(true)}
@@ -248,11 +260,18 @@ export function CompareProductPicker({
                 )}
               >
                 <span className="block break-words">{item.name}</span>
-                {item.sku ? (
-                  <span className="block text-caption text-text-muted">
-                    {item.sku}
-                  </span>
-                ) : null}
+                <span className="block text-caption text-text-muted">
+                  {[
+                    item.sku,
+                    // Without a chosen type the results mix categories: say which.
+                    scoped
+                      ? null
+                      : (categoryNames.get(item.categorySlug) ??
+                        item.categorySlug),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
               </li>
             ))}
           </ul>

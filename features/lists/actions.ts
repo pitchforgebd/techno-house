@@ -33,7 +33,12 @@ export async function loadCompareCategories(): Promise<CompareCategoryOption[]> 
 }
 
 function toCandidate(product: ProductSummary): CompareCandidate {
-  return { slug: product.slug, name: product.name, sku: product.sku };
+  return {
+    slug: product.slug,
+    name: product.name,
+    sku: product.sku,
+    categorySlug: product.categorySlug,
+  };
 }
 
 /**
@@ -60,20 +65,27 @@ export async function loadCompareCandidates(
 /**
  * Searches the WHOLE category (not just the starter list): every typed word
  * must appear in the product's name, SKU, brand or category, in any order, so
- * "msi b650" finds "MSI MAG B650 Tomahawk". Needs three characters, returns at
- * most 20 published products.
+ * "msi b650" finds "MSI MAG B650 Tomahawk". With no category it searches every
+ * published product — the shopper has not chosen a type yet, and the first
+ * product picked then decides it. Needs three characters, returns at most 20.
  */
 export async function searchCompareCandidates(
   categorySlug: string,
   query: string,
 ): Promise<CompareCandidate[]> {
+  // Only a genuinely empty category means "search everything"; a malformed one
+  // (not text) is refused rather than silently widened.
+  if (typeof categorySlug !== "string") {
+    return [];
+  }
   const slug = normalizeCompareCategory(categorySlug);
   const text = normalizeCompareQuery(query);
-  if (!slug || !isSearchableText(text)) {
+  if (!isSearchableText(text)) {
     return [];
   }
   const result = await productRepository.list({
-    categorySlug: slug,
+    // An empty category means "no type chosen yet": search every product.
+    ...(slug ? { categorySlug: slug } : {}),
     q: text,
     qWords: true,
     page: 1,

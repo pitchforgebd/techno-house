@@ -6529,3 +6529,52 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       dedicated query is the follow-up if production feels slow.
       DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
       `pm2 restart techno-house`.
+
+- [x] AD-359 Compare page: the product search works before a type is chosen.
+      Operator request: the product box under "Select Product Type" was disabled
+      ("Select a type first") until a type was picked; make it active so a shopper
+      can search products without choosing a category.
+      Built (on AD-358's picker): the box is disabled only while an add is in
+      progress. With no type chosen there is no starter list, so opening it says
+      "Type 3 or more characters to search all products, or choose a product type
+      above"; from three characters (spaces do not count) it searches EVERY
+      published product, and each result is labelled with its category (name
+      looked up from the type dropdown's own list). Choosing a type afterwards
+      still scopes the search and shows the starter list, as before.
+      Compare only accepts one category, so each candidate now carries its own
+      `categorySlug`, and `handleAdd` uses the chosen type if there is one, else the
+      product's own category — exactly what the product cards do — and the first
+      product added then locks the comparison to that category (the type dropdown
+      shows and fixes it, "Add More" is scoped to it). `searchCompareCandidates`
+      now searches everything for an EMPTY category; an unknown category still
+      returns nothing and a malformed (non-text) category is refused rather than
+      widened to everything.
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:compare-search` 41
+      checks and five mutations (action refusing an empty category, picker
+      disabled until a type is chosen, page forgetting the product's category,
+      candidates losing their category, malformed category widened) each fail it;
+      all 9 regression suites, `test:listing`, `test:privilege` pass. Against the
+      development database (24 checks, then removed): a no-type search for "msi"
+      returns 20 results spanning two categories, each with its real category; a
+      product outside its type's first 48 is found with no type chosen and reports
+      its own category; with a type chosen every result stays in that type; 2
+      characters, empty text, an unknown type, `%%%`, a hostile string and 5000
+      characters are all harmless; the closed picker renders ENABLED with no type
+      and disabled only while busy; /compare serves the enabled box and no longer
+      says "Select a type first". One check in that run first failed wrongly —
+      its `disabled` pattern also matched the Tailwind classes
+      (`disabled:cursor-not-allowed`) on a perfectly enabled input; the actual tag
+      has no disabled attribute, and the check now tests the attribute and was
+      shown to catch a real one.
+      NOT verified: still not clicked through in a browser (typing, picking,
+      the page switching to the table after the first pick, mobile). A no-type
+      search is the heaviest query the picker makes (it also computes facet counts
+      over the whole catalogue): 0.5-0.9 s on development, so a lighter dedicated
+      query is the follow-up if production feels slow.
+      Known, unchanged quirk: choosing a PARENT type in the dropdown stores that
+      parent's slug for the products added through it, while product cards and the
+      new no-type search store each product's own category, so mixing the two
+      routes within one comparison can trigger "same category" even though the
+      products are in the same family.
+      DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
+      `pm2 restart techno-house`.

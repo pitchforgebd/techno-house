@@ -42,9 +42,9 @@ function source(path: string): string {
 }
 
 const items: CompareCandidate[] = [
-  { slug: "a", name: "MSI MAG B650 TOMAHAWK WIFI", sku: "MSI-B650-TW" },
-  { slug: "b", name: "Gigabyte B650M AORUS ELITE", sku: "GB-B650M-AE" },
-  { slug: "c", name: "ASUS PRIME A520M-K", sku: "ASU-A520MK" },
+  { slug: "a", name: "MSI MAG B650 TOMAHAWK WIFI", sku: "MSI-B650-TW", categorySlug: "motherboard" },
+  { slug: "b", name: "Gigabyte B650M AORUS ELITE", sku: "GB-B650M-AE", categorySlug: "motherboard" },
+  { slug: "c", name: "ASUS PRIME A520M-K", sku: "ASU-A520MK", categorySlug: "motherboard" },
 ];
 
 async function main(): Promise<void> {
@@ -168,6 +168,11 @@ async function main(): Promise<void> {
       "word search finds the product from the same words in a different order",
       words.items.some((item) => item.slug === sample.slug),
     );
+    const everywhere = await mockProductRepository.list({ q: reversed, qWords: true, page: 1, pageSize: 48 });
+    check(
+      "with no category the word search looks across every category",
+      everywhere.items.some((item) => item.slug === sample.slug),
+    );
     const miss = await mockProductRepository.list({ ...base, q: `${reversed} zzzzqqqq`, qWords: true });
     check("every word must match: an extra unmatched word finds nothing", miss.items.length === 0);
     const other = await mockProductRepository.list({
@@ -195,10 +200,20 @@ async function main(): Promise<void> {
       searchFn.indexOf("productRepository.list") > searchFn.indexOf("isSearchableText"),
   );
   check(
-    "searching is word-based, scoped to the category and capped",
+    "searching is word-based, scoped to the category when one is given, and capped",
     searchFn.includes("qWords: true") &&
-      searchFn.includes("categorySlug: slug") &&
+      searchFn.includes("...(slug ? { categorySlug: slug } : {})") &&
       searchFn.includes("pageSize: COMPARE_SEARCH_MAX_RESULTS"),
+  );
+  check(
+    "with no category the search covers every product, but a malformed category is refused",
+    !searchFn.includes("!slug ||") &&
+      searchFn.includes('typeof categorySlug !== "string"') &&
+      searchFn.indexOf('typeof categorySlug !== "string"') < searchFn.indexOf("productRepository.list"),
+  );
+  check(
+    "each candidate carries its own category (needed to lock the comparison when no type is chosen)",
+    actions.includes("categorySlug: product.categorySlug"),
   );
   check(
     "the starter list is capped and reports the category total",
@@ -239,6 +254,12 @@ async function main(): Promise<void> {
       (body.match(/key=\{activeCategory\}/g) ?? []).length === 2,
   );
   check(
+    "adding uses the chosen type, else the product's own category, never nothing",
+    body.includes("activeCategory || item.categorySlug") &&
+      body.includes("onSelect={handleAdd}") &&
+      (body.match(/categoryNames=\{categoryNames\}/g) ?? []).length === 2,
+  );
+  check(
     "the plain product dropdowns are gone",
     !body.includes('id="compare-product-empty"\n              className') &&
       !body.includes("selectable"),
@@ -254,6 +275,18 @@ async function main(): Promise<void> {
       picker.includes('role="status"'),
   );
   check(
+    "the picker is usable before any type is chosen: only an add in progress disables it",
+    picker.includes("const disabled = busy;") &&
+      !picker.includes("Select a type first") &&
+      !picker.includes("!categorySlug ||") &&
+      picker.includes('placeholder="Type Product Name"'),
+  );
+  check(
+    "with no type chosen the results say which category each product is in",
+    picker.includes("categoryNames.get(item.categorySlug)") &&
+      picker.includes("or choose a product type above"),
+  );
+  check(
     "the picker waits for typing to pause and ignores stale answers",
     picker.includes("SEARCH_DELAY_MS") &&
       picker.includes("clearTimeout") &&
@@ -261,7 +294,7 @@ async function main(): Promise<void> {
   );
   check(
     "the picker hands a chosen product to the page and clears itself",
-    picker.includes("onSelect(item.slug)") && picker.includes('setQuery("")'),
+    picker.includes("onSelect(item)") && picker.includes('setQuery("")'),
   );
 
   console.log(
