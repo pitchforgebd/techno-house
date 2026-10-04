@@ -10,6 +10,7 @@ import {
   toStockStatus,
 } from "@/lib/data/prisma/mappers";
 import type { ProductRepository } from "@/lib/data/repositories/product-repository";
+import { isPickerEligible } from "@/lib/domain/pc-builder/picker-eligibility";
 import type {
   Facet,
   ProductListQuery,
@@ -446,14 +447,25 @@ export const prismaProductRepository: ProductRepository = {
   },
 
   async listByBuilderSlot(slot) {
+    // The picker offers only parts a customer can actually buy for a desktop
+    // (AD-356): in stock in SQL, then laptop parts dropped by the shared rule.
+    // Fetch a bit more than the cap so dropping laptop parts cannot leave the
+    // list short, then cut to the cap.
     const rows = await getPrisma().product.findMany({
-      where: { builderSlot: toDbBuilderSlot(slot), isActive: true },
+      where: {
+        builderSlot: toDbBuilderSlot(slot),
+        isActive: true,
+        stockStatus: IN_STOCK,
+      },
       select: CANDIDATE_SELECT,
       orderBy: [{ position: "asc" }, { id: "asc" }],
-      take: MAX_SLOT_CANDIDATES,
+      take: MAX_SLOT_CANDIDATES * 2,
     });
     const presets = await loadProductPresetLookup();
-    return rows.map((row) => toBuilderCandidate(row, presets));
+    return rows
+      .map((row) => toBuilderCandidate(row, presets))
+      .filter(isPickerEligible)
+      .slice(0, MAX_SLOT_CANDIDATES);
   },
 
   async listBuilderCandidatesBySlugs(slugs) {

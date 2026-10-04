@@ -14,6 +14,20 @@ each product (socket, RAM type, board size, drive type, wattage).
 So filling in the data is what makes a part appear. The product is still on the
 shop either way — only the PC Builder hides it.
 
+**The builder only offers parts that are in stock, and only desktop parts.**
+This is automatic — there is nothing to switch on:
+
+- A part that is **out of stock** does not appear. It comes back the moment its
+  stock is above zero (the picker reads live stock on every visit).
+- A **laptop part** never appears, even if it has a slot and data: SO-DIMM /
+  "Laptop RAM", anything filed under a laptop category, and parts whose name says
+  "Laptop" or "Notebook" without also saying Desktop / PC / Computer (so
+  "SSD for Desktop & Laptop" still shows). If a desktop part is wrongly hidden
+  because its name says "Laptop", add "Desktop" or "PC" to the product name.
+- A customer who already picked a part that later went out of stock keeps it in
+  their build; it is shown with an "Out of stock" badge and "Add to cart" is
+  blocked until they swap it for another part.
+
 ## What each part needs
 
 | Part | Fill in |

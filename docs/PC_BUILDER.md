@@ -74,6 +74,17 @@ evaluator.
   check needs; it never penalises a part because the *already-picked* part
   lacks data (`candidateMissingData` in `rankCandidatesForSlot`). Slot loader
   cap is 500 parts (`MAX_SLOT_CANDIDATES`) — filtering is client-side.
+- What a picker may OFFER (AD-356): only in-stock (`IN_STOCK`/`LOW_STOCK`),
+  non-laptop parts. `listByBuilderSlot` filters stock in SQL and then applies
+  `isPickerEligible` (`lib/domain/pc-builder/picker-eligibility.ts`), shared with
+  the mock repository. Laptop = a laptop/notebook category slug, SO-DIMM (name or
+  `formFactor`), or "laptop"/"notebook" in the name of an internal part; a name
+  that also says desktop/PC/computer is kept ("SSD for Desktop & Laptop"), and
+  peripherals count only when "for laptop/notebook". This filters what is
+  offered, not what is loaded: `listBuilderCandidatesBySlugs` (saved builds,
+  compatibility of picked parts) is unfiltered so an old build still opens and
+  shows "Out of stock". The select page is rendered per request
+  (`Cache-Control: no-store` in production), so stock changes show immediately.
 - Staff supply data in Admin → PC Builder → **Compatibility data**
   (`pc_builder.manage`): coverage per slot, inline edit, bulk apply,
   "Auto-fill from product names" (`lib/domain/pc-builder/infer-attrs.ts`,

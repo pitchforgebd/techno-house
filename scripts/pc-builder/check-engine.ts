@@ -37,6 +37,10 @@ import {
   SLOT_REQUIRED_FIELDS,
 } from "@/lib/domain/pc-builder/attribute-options";
 import { inferBuilderAttrs } from "@/lib/domain/pc-builder/infer-attrs";
+import {
+  isLaptopPart,
+  isPickerEligible,
+} from "@/lib/domain/pc-builder/picker-eligibility";
 import type { BuilderCandidate, BuilderSlot } from "@/lib/data/types/catalog";
 
 let checks = 0;
@@ -900,6 +904,99 @@ function main(): void {
     "a new imported product in an unmapped category gets no slot",
     defaultBuilderFieldsForNewProduct("desktop").builderSlot === "" &&
       defaultBuilderFieldsForNewProduct("").builderSlot === "",
+  );
+
+  // --- picker eligibility: desktop parts that are in stock (AD-356) ------------
+  const laptop = (
+    slot: BuilderSlot | null,
+    name: string,
+    categorySlug = "x",
+    formFactor?: string,
+  ) => isLaptopPart({ slot, name, categorySlug, formFactor });
+  check(
+    "SO-DIMM memory is a laptop part however it is spelled or filed",
+    laptop("ram", "Corsair Vengeance DDR5 SODIMM 16GB", "ram-desktop") &&
+      laptop("ram", "Crucial 8GB DDR4 SO-DIMM", "ram-desktop") &&
+      laptop("ram", "Kingston 8GB DDR4 SO DIMM", "ram-desktop") &&
+      laptop("ram", "Some 16GB DDR5 5600", "ram-desktop", "SODIMM"),
+  );
+  check(
+    "'Laptop RAM' / notebook memory is a laptop part",
+    laptop("ram", "SAMSUNG 8GB DDR5 5600MHz Laptop RAM", "ram-desktop") &&
+      laptop("ram", "Kingston 8GB DDR4 Notebook Memory", "ram-desktop"),
+  );
+  check(
+    "anything filed under a laptop category is a laptop part, in any slot",
+    laptop("ram", "Plain 8GB", "ram-laptop") &&
+      laptop("keyboard", "Plain keyboard", "laptop-keyboard") &&
+      laptop("cpu_cooler", "Plain cooler", "laptop-cooler") &&
+      laptop("monitor", "Plain thing", "all-laptop"),
+  );
+  check(
+    "a desktop DIMM and ordinary desktop parts are kept",
+    !laptop("ram", "Corsair Vengeance LPX DDR4 16GB 3200", "ram-desktop") &&
+      !laptop("ram", "Kingston Fury Beast DDR5 DIMM 32GB", "ram-desktop") &&
+      !laptop("motherboard", "MSI PRO B760M-E DDR4", "motherboard") &&
+      !laptop("gpu", "ASUS Dual RTX 4060 8GB", "graphics-card") &&
+      !laptop("psu", "Corsair RM850e 850W", "power-supply"),
+  );
+  check(
+    "a storage part that fits both desktop and laptop is kept",
+    !laptop("ssd", "Samsung 870 EVO 1TB SATA SSD for Desktop & Laptop", "ssd") &&
+      !laptop("ssd", "Kingston NV2 NVMe SSD for PC and Laptop", "nvme-ssd") &&
+      !laptop("hdd", "WD Blue 2TB Desktop / Laptop HDD", "hard-disk-drive"),
+  );
+  check(
+    "an internal part whose name only says laptop is a laptop part",
+    laptop("ssd", "Laptop SSD 512GB", "ssd") &&
+      laptop("psu", "Universal Laptop Charger 65W", "power-supply") &&
+      laptop("cpu_cooler", "Laptop Cooling Pad", "cpu-cooler"),
+  );
+  check(
+    "a peripheral is a laptop part only when made FOR a laptop, never for 'PC & Laptop'",
+    laptop("keyboard", "HP SPS-KEYBOARD W/POINT STICK FOR NOTEBOOK", "keyboard") &&
+      !laptop("keyboard", "Wireless Keyboard for PC and Laptop", "keyboard") &&
+      !laptop("mouse", "Bluetooth Mouse for Laptop & Desktop", "mouse") &&
+      !laptop("headphone", "Headphone with mic, works with Laptop and PC", "headphone") &&
+      !laptop("mouse", "Gaming Mouse 7200 DPI", "mouse"),
+  );
+  check(
+    "'PC4-25600' on a laptop module is not mistaken for the word PC",
+    laptop("ram", "Kingston 8GB DDR4 PC4-25600 Laptop RAM", "ram-desktop") &&
+      !/\bpcs?\b/i.test("PC4-25600"),
+  );
+  const pickerCandidate = (
+    over: Partial<BuilderCandidate> & { name: string },
+  ): BuilderCandidate =>
+    ({
+      stockStatus: "in_stock",
+      categorySlug: "ram-desktop",
+      builderSlot: "ram",
+      builderAttrs: null,
+      ...over,
+    }) as BuilderCandidate;
+  check(
+    "an in-stock desktop part is offered, a low-stock one too",
+    isPickerEligible(pickerCandidate({ name: "Corsair Vengeance 16GB DDR5" })) &&
+      isPickerEligible(
+        pickerCandidate({ name: "Corsair Vengeance 16GB DDR5", stockStatus: "low_stock" }),
+      ),
+  );
+  check(
+    "an out-of-stock part is never offered",
+    !isPickerEligible(
+      pickerCandidate({ name: "Corsair Vengeance 16GB DDR5", stockStatus: "out_of_stock" }),
+    ),
+  );
+  check(
+    "an in-stock laptop part is never offered",
+    !isPickerEligible(pickerCandidate({ name: "Samsung 8GB DDR5 Laptop RAM" })) &&
+      !isPickerEligible(
+        pickerCandidate({
+          name: "Plain 16GB DDR5",
+          builderAttrs: { formFactor: "SODIMM" },
+        }),
+      ),
   );
 
   console.log(

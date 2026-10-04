@@ -1,4 +1,5 @@
 ﻿import type { ProductRepository } from "@/lib/data/repositories/product-repository";
+import { isPickerEligible } from "@/lib/domain/pc-builder/picker-eligibility";
 import {
   BRAND_FACET_KEY,
   CATALOG_ATTRIBUTE_KEYS,
@@ -58,10 +59,12 @@ export const mockProductRepository: ProductRepository = {
   },
 
   async listByBuilderSlot(slot: BuilderSlot) {
+    // Same rule as the Prisma repository: in stock, and not a laptop part.
     return mockProducts
       .filter((product) => product.builderSlot === slot)
-      .slice(0, MAX_SLOT_CANDIDATES)
-      .map(toCandidate);
+      .map(toCandidate)
+      .filter(isPickerEligible)
+      .slice(0, MAX_SLOT_CANDIDATES);
   },
 
   async listBuilderCandidatesBySlugs(slugs) {

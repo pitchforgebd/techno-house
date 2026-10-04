@@ -74,7 +74,6 @@ export function PcBuilderSelectView({
   const { selection, selectPart } = useBuilderStore();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SelectSort>("default");
-  const [inStockOnly, setInStockOnly] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [compat, setCompat] = useState<{
     key: string;
@@ -151,9 +150,6 @@ export function PcBuilderSelectView({
 
   const filtered = useMemo(() => {
     let list = products;
-    if (inStockOnly) {
-      list = list.filter((product) => product.stockStatus !== "out_of_stock");
-    }
     const trimmed = query.trim().toLowerCase();
     if (trimmed) {
       list = list.filter((product) => {
@@ -166,7 +162,7 @@ export function PcBuilderSelectView({
       list = list.filter((product) => hiddenReason(product.slug) === null);
     }
     return sortProducts(list, sort);
-  }, [products, query, sort, inStockOnly, showHidden, hiddenReason]);
+  }, [products, query, sort, showHidden, hiddenReason]);
 
   const hiddenCounts = useMemo(() => {
     let incompatible = 0;
@@ -228,7 +224,7 @@ export function PcBuilderSelectView({
           </h1>
           <p className="mt-2 max-w-prose text-body text-text-muted">
             {slot.description}. Choose a part and it will be added to your
-            build.
+            build. Only in-stock desktop parts are listed.
           </p>
         </div>
       </header>
@@ -273,16 +269,6 @@ export function PcBuilderSelectView({
                   ))}
                 </Select>
               </label>
-
-              <label className="flex cursor-pointer items-center gap-2 text-caption text-text">
-                <input
-                  type="checkbox"
-                  checked={inStockOnly}
-                  onChange={(event) => setInStockOnly(event.target.checked)}
-                  className="size-4 rounded border-border text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-primary"
-                />
-                In stock only
-              </label>
             </div>
           </div>
 
@@ -314,8 +300,8 @@ export function PcBuilderSelectView({
 
           {products.length === 0 ? (
             <EmptyState
-              title="No parts for this slot"
-              description="The catalog has no products mapped to this builder slot yet."
+              title="Nothing in stock for this slot"
+              description="We have no in-stock desktop parts for this slot right now. Please check back soon."
             />
           ) : checking ? (
             <p

@@ -6343,3 +6343,54 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       The step that would act on the worksheet (a dry-run-first script with an undo
       log that switches off the rows the operator confirms) is NOT built; it needs
       the operator's decision on which stock figure is true (hand CSV vs POS).
+
+- [x] AD-356 PC Builder offers only in-stock, desktop parts.
+      Operator report: the builder is for a desktop, so no laptop component may
+      appear, and out-of-stock products must not show — only what is in stock.
+      Before: the picker listed every active part tagged for the slot; an
+      out-of-stock part was just a disabled card, hidden only by an unticked "In
+      stock only" box, and the catalogue holds laptop memory under the desktop
+      RAM category (the development database has 15 SO-DIMM / "Laptop RAM"
+      products in `ram-desktop`, plus a notebook keyboard and adapters in other
+      slots), so a category rule alone cannot keep them out.
+      After: `listByBuilderSlot` (Prisma) filters `stockStatus IN (IN_STOCK,
+      LOW_STOCK)` in SQL, then drops laptop parts with one shared rule,
+      `isPickerEligible` / `isLaptopPart` (`lib/domain/pc-builder/picker-eligibility.ts`),
+      which the mock repository uses too. Laptop = a laptop/notebook category
+      slug (any slot); SO-DIMM in the name or in the part's `formFactor`; or
+      "laptop"/"notebook"/"macbook"… in the name of an INTERNAL part (cpu, cooler,
+      board, ram, gpu, ssd, hdd, psu, case, fans). A name that also says desktop /
+      PC / computer is kept ("SATA SSD for Desktop & Laptop" is a real desktop
+      part — excluding on the bare word would have hidden good SSDs), and for
+      peripherals only "for laptop/notebook" counts, never "for PC & Laptop".
+      `PC4-25600` is not mistaken for the word PC. The "In stock only" box was
+      removed (always on); the empty state now says nothing is in stock; the
+      header says only in-stock desktop parts are listed.
+      What is deliberately NOT filtered: `listBuilderCandidatesBySlugs` and
+      `listBySlugs` (saved builds, compatibility of already-picked parts), so an
+      old build still opens, shows an "Out of stock" badge, and "Add to cart" stays
+      blocked until the part is swapped (existing behaviour, read from the code).
+      Verified: `npm run test:pc-builder` 96 → 107 checks; four mutations (desktop
+      exception, SO-DIMM rule, stock check, laptop-category rule) each fail it.
+      On the development database the real Prisma repository returned exactly the
+      in-stock subset for all 18 slots with no out-of-stock leak (motherboard 187
+      tagged → 27 offered, RAM 138 → 2, mouse/headphone/speaker/UPS/antivirus/
+      network adapter 0), and the rendered pages matched (27 / 2 / empty-state
+      cards, no "Out of stock" badge, no toggle). Laptop-dropped was 0 there because
+      every laptop part is already out of stock, so the laptop rule is proven by
+      unit tests, not by data. `npm run db:parity` reports 99 of 172 checks differ on
+      this development database; the mismatches shown are metadata drift unrelated
+      to this change (mock `categorySlug` "monitors"/"case-fans" vs the rebuilt
+      taxonomy's "monitor"/"casing-cooler", time-based `isNewArrival`) on a database
+      of 4,329 products against 25 mock ones. I did NOT run it before the change, so
+      "no new mismatches" is not proven by a baseline; what was checked directly is
+      that the mock and Prisma repositories offer the identical demo-product set in
+      all 18 slots. Production serves the page `no-store` (checked with
+      a HEAD request), so stock changes show at once. `tsc` and `eslint` clean on
+      the changed files; docs/PC_BUILDER.md and the staff guide updated.
+      Consequence to watch: with only in-stock parts, a slot can be nearly empty.
+      The development catalogue shows it plainly (see counts above); production
+      depends on real stock, which is also why the GB- (hand CSV, stock 3-20) vs
+      GIG- (POS, mostly 0) stock question from AD-355 now matters to customers.
+      Not done: staff-side Compatibility data page still lists laptop/out-of-stock
+      parts (they are invisible to customers, so it is only noise).
