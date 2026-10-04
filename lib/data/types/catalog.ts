@@ -158,6 +158,12 @@ export type ProductListQuery = {
   /** Multi-select brand filter on shop/category/search. */
   brandSlugs?: string[];
   q?: string;
+  /**
+   * Match `q` word by word (every word must appear somewhere in the product's
+   * name, SKU, brand or category) instead of as one phrase. Off by default so
+   * the shop and search pages behave as before.
+   */
+  qWords?: boolean;
   sort?: ProductSort;
   inStockOnly?: boolean;
   onSaleOnly?: boolean;

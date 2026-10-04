@@ -15,6 +15,7 @@ import {
   type CompareCandidate,
   type CompareCategoryOption,
 } from "@/features/lists/actions";
+import { CompareProductPicker } from "@/features/lists/compare-product-picker";
 import { useListsStore } from "@/features/lists/use-lists-store";
 import { MAX_COMPARE } from "@/lib/catalog/lists";
 import { cn } from "@/lib/cn";
@@ -40,7 +41,8 @@ export function CompareBody({ className }: { className?: string }) {
   const [loaded, setLoaded] = useState<{
     category: string;
     items: CompareCandidate[];
-  }>({ category: "", items: [] });
+    total: number;
+  }>({ category: "", items: [], total: 0 });
   const [pickedCategory, setPickedCategory] = useState("");
   const [adding, startAdding] = useTransition();
 
@@ -124,9 +126,13 @@ export function CompareBody({ className }: { className?: string }) {
       return;
     }
     let cancelled = false;
-    void loadCompareCandidates(activeCategory).then((items) => {
+    void loadCompareCandidates(activeCategory).then((list) => {
       if (!cancelled) {
-        setLoaded({ category: activeCategory, items });
+        setLoaded({
+          category: activeCategory,
+          items: list.items,
+          total: list.total,
+        });
       }
     });
     return () => {
@@ -134,8 +140,9 @@ export function CompareBody({ className }: { className?: string }) {
     };
   }, [activeCategory]);
 
-  const candidates =
-    loaded.category === activeCategory && activeCategory ? loaded.items : [];
+  const starterReady = loaded.category === activeCategory && activeCategory;
+  const candidates = starterReady ? loaded.items : [];
+  const candidateTotal = starterReady ? loaded.total : 0;
 
   const specLabels = useMemo(() => {
     const labels: string[] = [];
@@ -200,9 +207,6 @@ export function CompareBody({ className }: { className?: string }) {
 
   const remaining = MAX_COMPARE - ordered.length;
   const alreadyPicked = new Set(ordered.map((product) => product.slug));
-  const selectable = candidates.filter(
-    (item) => !alreadyPicked.has(item.slug),
-  );
 
   if (state.compare.length === 0) {
     return (
@@ -232,29 +236,18 @@ export function CompareBody({ className }: { className?: string }) {
               ))}
             </select>
 
-            <label className="sr-only" htmlFor="compare-product-empty">
-              Select product
-            </label>
-            <select
+            <CompareProductPicker
+              key={activeCategory}
               id="compare-product-empty"
-              className={selectClass}
-              value=""
-              disabled={!activeCategory || adding}
-              onChange={(event) => handleAdd(event.target.value)}
-            >
-              <option value="">
-                {activeCategory
-                  ? selectable.length > 0
-                    ? "Type Product Name"
-                    : "No products here yet"
-                  : "Select a type first"}
-              </option>
-              {selectable.map((item) => (
-                <option key={item.slug} value={item.slug}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              label="Search and select a product"
+              categorySlug={activeCategory}
+              items={candidates}
+              total={candidateTotal}
+              excluded={alreadyPicked}
+              busy={adding}
+              inputClassName={selectClass}
+              onSelect={handleAdd}
+            />
           </div>
           <p className="mt-5 text-caption text-text-muted">
             Or pick{" "}
@@ -462,29 +455,18 @@ export function CompareBody({ className }: { className?: string }) {
                       ))}
                     </select>
 
-                    <label className="sr-only" htmlFor="compare-product">
-                      Select product
-                    </label>
-                    <select
+                    <CompareProductPicker
+                      key={activeCategory}
                       id="compare-product"
-                      className={selectClass}
-                      value=""
-                      disabled={!activeCategory || adding}
-                      onChange={(event) => handleAdd(event.target.value)}
-                    >
-                      <option value="">
-                        {activeCategory
-                          ? selectable.length > 0
-                            ? "Type Product Name"
-                            : "No other products here"
-                          : "Select a type first"}
-                      </option>
-                      {selectable.map((item) => (
-                        <option key={item.slug} value={item.slug}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
+                      label="Search and select a product"
+                      categorySlug={activeCategory}
+                      items={candidates}
+                      total={candidateTotal}
+                      excluded={alreadyPicked}
+                      busy={adding}
+                      inputClassName={selectClass}
+                      onSelect={handleAdd}
+                    />
                     <p className="text-caption text-text-muted">
                       {lockedCategory
                         ? `${remaining} more can be added from this category.`

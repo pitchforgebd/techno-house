@@ -20,7 +20,11 @@ import type {
 import { getPrisma } from "@/lib/db/prisma";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { CURRENCY_CODE } from "@/lib/format/currency";
-import { normalizeSearchNeedle } from "@/lib/search/query";
+import {
+  escapeLikePattern,
+  normalizeSearchNeedle,
+  splitSearchWords,
+} from "@/lib/search/query";
 
 /**
  * Upper bound on parts loaded for one PC Builder slot. The slot picker ranks
@@ -219,16 +223,24 @@ function composeWhere(
     };
   }
 
+  const textMatches = (text: string): Prisma.ProductWhereInput[] => [
+    { name: { contains: text, mode: "insensitive" } },
+    { sku: { contains: text, mode: "insensitive" } },
+    { brand: { name: { contains: text, mode: "insensitive" } } },
+    { brand: { slug: { contains: text, mode: "insensitive" } } },
+    { category: { name: { contains: text, mode: "insensitive" } } },
+    { category: { slug: { contains: text, mode: "insensitive" } } },
+  ];
+  // Word mode (compare picker): each word must match somewhere, in any order.
+  const searchWords = query.qWords ? splitSearchWords(query.q) : [];
   const needle = normalizeSearchNeedle(query.q);
-  if (needle) {
-    where.OR = [
-      { name: { contains: needle, mode: "insensitive" } },
-      { sku: { contains: needle, mode: "insensitive" } },
-      { brand: { name: { contains: needle, mode: "insensitive" } } },
-      { brand: { slug: { contains: needle, mode: "insensitive" } } },
-      { category: { name: { contains: needle, mode: "insensitive" } } },
-      { category: { slug: { contains: needle, mode: "insensitive" } } },
-    ];
+  if (searchWords.length > 0) {
+    // `%` and `_` are escaped so a typed character matches itself, not "anything".
+    where.AND = searchWords.map((word) => ({
+      OR: textMatches(escapeLikePattern(word)),
+    }));
+  } else if (needle) {
+    where.OR = textMatches(needle);
   }
 
   // Each active filter must match, so they are separate `some` clauses rather
@@ -237,11 +249,14 @@ function composeWhere(
     ([key, values]) => values.length > 0 && key !== exclude.attributeKey,
   );
   if (attributeFilters.length > 0) {
-    where.AND = attributeFilters.map(([key, values]) => ({
-      attributeValues: {
-        some: { attribute: { key }, value: { in: values } },
-      },
-    }));
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      ...attributeFilters.map(([key, values]) => ({
+        attributeValues: {
+          some: { attribute: { key }, value: { in: values } },
+        },
+      })),
+    ];
   }
 
   return where;

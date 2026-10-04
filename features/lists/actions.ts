@@ -2,6 +2,17 @@
 
 import { categoryRepository, productRepository } from "@/lib/data";
 import type { ProductSummary } from "@/lib/data";
+import {
+  COMPARE_LIST_SIZE,
+  COMPARE_SEARCH_MAX_RESULTS,
+  isSearchableText,
+  normalizeCompareCategory,
+  normalizeCompareQuery,
+  type CompareCandidate,
+  type CompareCandidateList,
+} from "@/lib/catalog/compare-search";
+
+export type { CompareCandidate, CompareCandidateList };
 
 export async function loadListProducts(
   slugs: string[],
@@ -21,32 +32,53 @@ export async function loadCompareCategories(): Promise<CompareCategoryOption[]> 
   }));
 }
 
-export type CompareCandidate = {
-  slug: string;
-  name: string;
-  sku: string;
-};
+function toCandidate(product: ProductSummary): CompareCandidate {
+  return { slug: product.slug, name: product.name, sku: product.sku };
+}
 
 /**
- * "Type Product Name" options — one category at a time, because compare only
- * accepts products that share a category.
+ * The picker's starter list — one category at a time, because compare only
+ * accepts products that share a category. It is one page (at most 48), so
+ * `total` lets the picker say how many more are only reachable by searching.
  */
 export async function loadCompareCandidates(
   categorySlug: string,
-): Promise<CompareCandidate[]> {
-  const slug = categorySlug.trim();
+): Promise<CompareCandidateList> {
+  const slug = normalizeCompareCategory(categorySlug);
   if (!slug) {
-    return [];
+    return { items: [], total: 0 };
   }
   const result = await productRepository.list({
     categorySlug: slug,
     page: 1,
-    pageSize: 100,
+    pageSize: COMPARE_LIST_SIZE,
     sort: "featured",
   });
-  return result.items.map((product) => ({
-    slug: product.slug,
-    name: product.name,
-    sku: product.sku,
-  }));
+  return { items: result.items.map(toCandidate), total: result.total };
+}
+
+/**
+ * Searches the WHOLE category (not just the starter list): every typed word
+ * must appear in the product's name, SKU, brand or category, in any order, so
+ * "msi b650" finds "MSI MAG B650 Tomahawk". Needs three characters, returns at
+ * most 20 published products.
+ */
+export async function searchCompareCandidates(
+  categorySlug: string,
+  query: string,
+): Promise<CompareCandidate[]> {
+  const slug = normalizeCompareCategory(categorySlug);
+  const text = normalizeCompareQuery(query);
+  if (!slug || !isSearchableText(text)) {
+    return [];
+  }
+  const result = await productRepository.list({
+    categorySlug: slug,
+    q: text,
+    qWords: true,
+    page: 1,
+    pageSize: COMPARE_SEARCH_MAX_RESULTS,
+    sort: "featured",
+  });
+  return result.items.map(toCandidate);
 }

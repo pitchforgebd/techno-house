@@ -2380,5 +2380,5 @@ Idle. Manual testing support.
 None. Do not start Phase 18. Continue mock retirement only if operator asks.
 
 ## Last Updated
-2026-10-05 (AD-357 — homepage Featured / Best deals are chosen by staff;
-see TASKS.md. AD-344 to AD-356 are recorded in TASKS.md only.)
+2026-10-05 (AD-358 — compare page product picker is searchable; AD-357
+homepage sections chosen by staff. AD-344 to AD-358 are recorded in TASKS.md only.)

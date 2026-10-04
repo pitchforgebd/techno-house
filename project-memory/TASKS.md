@@ -6460,3 +6460,72 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `npm run build`, `pm2 restart techno-house` (take a pg_dump first as usual).
       Until staff pick products, the homepage looks exactly as before (automatic
       lists).
+
+- [x] AD-358 Compare page: searchable product picker.
+      Operator request (with screenshots of the current page and of another
+      site's searchable dropdown): after choosing a product type on /compare, the
+      product dropdown must also be searchable by typing a name, while the
+      products stay listed.
+      Found on the way (read from the code): the product dropdown listed only the
+      FIRST 48 products of the type. `loadCompareCandidates` asked the repository
+      for 100 per page, but the repository caps a page at 48 (`MAX_PAGE_SIZE`),
+      so in a type like Motherboard (187 products in development) most products
+      could not be reached at all — which is why a real search, over the whole
+      type, was needed and not just a filter on the loaded list.
+      Built: `CompareProductPicker` (features/lists/compare-product-picker.tsx),
+      an accessible combobox (role=combobox/listbox/option, aria-activedescendant,
+      ArrowUp/ArrowDown, Enter picks — or the only match —, Escape closes, a
+      status line) used in BOTH places the page had a product dropdown (the empty
+      state card and the "Add More" header of the table), remounted per type.
+      Opening shows the starter list ("Showing 48 of 187 — type to search all");
+      1-2 characters filter that list at once in the browser; three or more
+      (spaces do not count) search the WHOLE type on the server after a 300 ms
+      pause, stale answers ignored, at most 20 results with a "type more to
+      narrow down" note. Already-compared products are never offered. The list
+      opens in the page flow under the box rather than floating, because the
+      compare table is `overflow-x-auto` and would clip a floating one.
+      Server: `loadCompareCandidates` now returns `{items, total}` (explicit 48);
+      new action `searchCompareCandidates(category, query)` — inputs trimmed and
+      capped (80 / 120), nothing below three characters, scoped to the chosen
+      category (sub-types included, as the type dropdown already worked), word
+      based: every typed word must appear in the name, SKU, brand or category in
+      any order, so "x870m 6gb/s" finds a board whose title has them the other
+      way round. That needed an OPT-IN `qWords` flag on `ProductListQuery`
+      (Prisma and mock); the shop, search and category pages do not use it and
+      behave exactly as before (a test guards that). Pure rules live in
+      `lib/catalog/compare-search.ts`.
+      Pre-existing issue found and handled only for the new path: Prisma's
+      `contains` does not escape LIKE wildcards, so on the existing shop/search
+      `q` a lone `%` or `_` matches EVERY product (4,309 of 4,309 in development,
+      though only 17 / 183 names really contain them). The new word mode escapes
+      `\ % _` (`escapeLikePattern`) and was proven to match literally (`%%%` and
+      `___` -> 0; a real name containing `99%` is still found). The shop/search
+      behaviour was NOT changed (not asked); it is a small follow-up if wanted.
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:compare-search`
+      35 checks and seven mutations (spaces counted, picked product re-offered,
+      arrow keys wrapping, action not word-based, word mode overwriting attribute
+      filters, mock ignoring word mode, a picker losing its per-type key) each
+      fail it; all 9 regression suites, `test:listing`, `test:privilege`,
+      `test:routes` pass. Against the development database a 27-check run (then
+      removed) proved: starter list 48 of 187; a product outside the first 48 is
+      found by two of its model words in reversed order (174 ms); every result
+      really contains every word and belongs to the chosen category; a generic
+      word returns the first 20 only; 2 characters / "a b" / empty category /
+      unknown category / no match / non-text / a 5000-character string / a SQL
+      injection string are all harmless and the Product table is intact; another
+      category's product is not offered; searching a parent type finds a product of
+      its sub-type; the closed picker renders disabled with "Select a type first"
+      and, with a type, enabled and collapsed; /compare serves the combobox and no
+      longer the plain product select. (An early version of that run contained a
+      check made vacuous by a stray `|| true` and another that used the very
+      wildcard bug above to find its own data; both were found on re-reading and
+      replaced with real checks.)
+      NOT verified: the picker was not clicked through in a browser (opening,
+      typing, highlighting, choosing, the list closing on blur, mobile) — only its
+      server-rendered markup, the keyboard/filter rules as pure functions and the
+      server actions. Search is ordered by catalogue order and capped at 20, so a
+      very generic word shows the first 20 matches (the picker says so). Each
+      search also computes facet counts (about 0.2-0.4 s on development); a lighter
+      dedicated query is the follow-up if production feels slow.
+      DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
+      `pm2 restart techno-house`.

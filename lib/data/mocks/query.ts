@@ -8,7 +8,7 @@
 } from "@/lib/data/types/catalog";
 import type { StockStatus } from "@/lib/data/types/common";
 import { BRAND_FACET_KEY } from "@/lib/catalog/listing-params";
-import { normalizeSearchNeedle } from "@/lib/search/query";
+import { normalizeSearchNeedle, splitSearchWords } from "@/lib/search/query";
 
 const IN_STOCK: StockStatus[] = ["in_stock", "low_stock"];
 
@@ -122,7 +122,15 @@ export function matchesQuery(
     ]
       .join(" ")
       .toLowerCase();
-    if (!haystack.includes(needle)) {
+    // Word mode (compare picker): every word must appear, in any order.
+    const words = query.qWords
+      ? splitSearchWords(query.q).map((word) => word.toLowerCase())
+      : [];
+    const matches =
+      words.length > 0
+        ? words.every((word) => haystack.includes(word))
+        : haystack.includes(needle);
+    if (!matches) {
       return false;
     }
   }
