@@ -24,7 +24,10 @@ import {
   type BuildValidateCandidate,
   type CompatibilityPart,
 } from "@/lib/domain/pc-builder";
-import { carryForwardBuilderFields } from "@/lib/catalog/bulk-builder-carry-forward";
+import {
+  carryForwardBuilderFields,
+  defaultBuilderFieldsForNewProduct,
+} from "@/lib/catalog/bulk-builder-carry-forward";
 import {
   parseBuilderFields,
   type ProductInputFields,
@@ -882,6 +885,21 @@ function main(): void {
         }),
       );
     })(),
+  );
+
+  // New bulk-imported products start in their category's slot (AD-348).
+  const motherboardDefaults = defaultBuilderFieldsForNewProduct("motherboard");
+  check(
+    "a new imported motherboard starts in the motherboard slot with empty values",
+    motherboardDefaults.builderSlot === "motherboard" &&
+      motherboardDefaults.builderSocket === "" &&
+      motherboardDefaults.builderRamType === "" &&
+      motherboardDefaults.builderTdpWatts === "",
+  );
+  check(
+    "a new imported product in an unmapped category gets no slot",
+    defaultBuilderFieldsForNewProduct("desktop").builderSlot === "" &&
+      defaultBuilderFieldsForNewProduct("").builderSlot === "",
   );
 
   console.log(

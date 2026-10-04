@@ -1,5 +1,6 @@
 import type { ProductInputFields } from "@/lib/catalog/product-input";
 import { toBuilderSlot } from "@/lib/data/prisma/mappers";
+import { defaultSlotForCategory } from "@/lib/domain/pc-builder/slot-categories";
 
 /**
  * The bulk CSV has no PC Builder columns, but saving a product overwrites its
@@ -49,5 +50,27 @@ export function carryForwardBuilderFields(
     builderTdpWatts:
       row.builderTdpWatts != null ? String(row.builderTdpWatts) : "",
     builderStorageInterface: row.builderStorageInterface ?? "",
+  };
+}
+
+/**
+ * A brand-new bulk-imported product has no CSV column for the PC Builder, so
+ * it would otherwise land with no slot — invisible to the storefront builder
+ * AND to the admin Compatibility data page, which only lists slotted parts.
+ * Give it its category's slot (compatibility values start empty; staff fill
+ * them in, or use "Auto-fill from product names"). Only for NEW rows: a CSV
+ * cannot express "deliberately not a builder part", so there is no explicit
+ * choice to override, and existing products keep what they have.
+ */
+export function defaultBuilderFieldsForNewProduct(
+  categorySlug: string,
+): ReturnType<typeof carryForwardBuilderFields> {
+  return {
+    builderSlot: defaultSlotForCategory(categorySlug) ?? "",
+    builderSocket: "",
+    builderRamType: "",
+    builderFormFactor: "",
+    builderTdpWatts: "",
+    builderStorageInterface: "",
   };
 }

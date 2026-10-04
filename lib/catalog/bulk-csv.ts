@@ -20,6 +20,7 @@ import {
 } from "@/lib/catalog/admin-products";
 import {
   carryForwardBuilderFields,
+  defaultBuilderFieldsForNewProduct,
   EXISTING_BUILDER_SELECT,
 } from "@/lib/catalog/bulk-builder-carry-forward";
 import {
@@ -218,6 +219,12 @@ export async function importProductsFromCsvText(
         // No CSV column covers the PC Builder slot/compatibility values, and
         // an empty value would wipe them on update — keep what's there.
         Object.assign(fields, carryForwardBuilderFields(existing));
+      } else {
+        // New product: start in its category's PC Builder slot.
+        Object.assign(
+          fields,
+          defaultBuilderFieldsForNewProduct(fields.categorySlug),
+        );
       }
       const result = await saveAdminProduct({
         currentId: existing?.id,

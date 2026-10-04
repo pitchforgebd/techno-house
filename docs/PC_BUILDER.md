@@ -59,8 +59,33 @@ Unknown data → `unknown` warning, never a false “compatible” claim.
 
 The engine is a pure `evaluateCompatibility(parts, enabledTypes?)` that
 walks `PC_RULE_TYPES`. Run `npm run test:pc-builder` after changing an
-evaluator. `storageInterface` is a domain field only until product rows
-store it.
+evaluator.
+
+### Compatibility data (AD-346 – AD-350)
+
+- Each product stores `builderSocket`, `builderRamType`, `builderFormFactor`,
+  `builderStorageInterface` (text) and `builderTdpWatts` (int). The four text
+  columns hold a **comma-separated list** ("DDR4, DDR5"); one value is simply a
+  one-item list. Two parts fit when their lists **overlap**
+  (`lib/domain/pc-builder/attr-values.ts`, case/space/hyphen-insensitive).
+- Which fields a slot uses: `SLOT_ATTRIBUTE_FIELDS`; which must be set for a
+  part to be "ready": `SLOT_REQUIRED_FIELDS` (`attribute-options.ts`).
+- The storefront picker hides incompatible parts and parts missing data a
+  check needs; it never penalises a part because the *already-picked* part
+  lacks data (`candidateMissingData` in `rankCandidatesForSlot`). Slot loader
+  cap is 500 parts (`MAX_SLOT_CANDIDATES`) — filtering is client-side.
+- Staff supply data in Admin → PC Builder → **Compatibility data**
+  (`pc_builder.manage`): coverage per slot, inline edit, bulk apply,
+  "Auto-fill from product names" (`lib/domain/pc-builder/infer-attrs.ts`,
+  fills only empty values), unlink wrongly categorised parts. Staff guide:
+  `docs/PC_BUILDER_STAFF_GUIDE.md`.
+- New products take their slot from the category (`slot-categories.ts`): the
+  product form on create, and bulk import for new rows. Bulk CSV has no builder
+  columns; re-importing an existing SKU carries its builder values forward
+  (`bulk-builder-carry-forward.ts`) — never remove that, or a re-import wipes
+  every tag.
+- One-off developer scripts (`npm run catalog:*builder*`) exist for bulk data
+  operations; they are dry-run by default and write an undo log.
 
 ## Architecture
 

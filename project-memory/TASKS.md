@@ -6037,3 +6037,57 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `tsc` 0, `eslint` 0, `test:privilege` 11/11, `test:hardening` 63/63.
       Not a PC Builder change — recorded here because the PC Builder work
       surfaced it.
+
+- [x] AD-350 Client-ready PC Builder data workflow — slot for new imports,
+      "Auto-fill from product names", staff guide.
+      (Operator: the client will supply the data, our job is the system; "do
+      whatever you think is better".) Closes the gaps that still needed a
+      developer after AD-348.
+
+      **Gap 1 — bulk-imported products landed with no slot.** They were
+      invisible to the storefront builder *and* to the Compatibility data page
+      (which lists only slotted parts), so staff could not even find them.
+      `importProductsFromCsvText` now gives a **new** row its category's slot
+      (`defaultBuilderFieldsForNewProduct`, same map as the product form and the
+      tagger script). Only new rows: a CSV cannot say "deliberately not a
+      builder part", and existing SKUs still carry their own values forward
+      (AD-346). Values start empty.
+
+      **Gap 2 — the backfill logic was developer-only.** New button on the
+      Compatibility data page, "Auto-fill from product names": runs the same
+      conservative inference as the one-off backfill over the active parts of
+      the current slot and fills **only empty values** (never overwrites; a
+      name that contradicts itself, like the Ryzen 7900X "AM4" listing, is
+      counted as a conflict and left for a person). Result toast reports how
+      many parts were filled and how many still need data. Server action
+      `autoFillCompatibilityAction` (`pc_builder.manage`, same-origin check),
+      audit action `pc_builder.compat.autofill` listing the exact columns set
+      per product, so a run can be reversed.
+
+      **Documentation.** New `docs/PC_BUILDER_STAFF_GUIDE.md` (plain-language,
+      for the client's staff: what the builder does with the data, what each
+      slot needs, adding a product, after a bulk import, the Compatibility
+      data page, "a customer can't find a part"). `docs/PC_BUILDER.md` brought
+      up to date — it still said `storageInterface` was "a domain field only",
+      and now documents multi-value overlap, the data sources, and the rule
+      that the bulk-import carry-forward must not be removed.
+
+      **Verification.** `test:pc-builder` 94 → **96**. Live end-to-end on the
+      real database with four throwaway products (16 checks, then cleaned up —
+      4 products, 4 test audit rows): new RAM / PSU rows get RAM / PSU slots
+      from their category; a row in an unmapped category gets none; re-import
+      keeps a hand-set slot; autofill reads "DDR5" from a RAM name and "650 Watt"
+      from a PSU name, leaves an unreadable name alone, is idempotent, never
+      overwrites a stored value, and is audited; the page renders with the
+      button. The real catalog was untouched (the backfill dry run stayed at 0
+      before and after). `tsc` 0, `eslint` 0, `test:routes` 16/16,
+      `test:privilege` 11/11, `test:hardening` 63/63.
+
+      **Decided not to build (yet).** A "fill from product name" button inside
+      the product form (the Compatibility page's autofill covers the same need
+      for a whole slot); builder columns in the admin bulk import/export (new
+      rows get a slot, re-imports keep values, so the risky part is handled —
+      add columns only if the client wants to supply values in the CSV); an
+      admin setting for hide-vs-show unverified parts (a storefront policy the
+      client should ask for; today they are hidden by default, with a customer
+      "Show them anyway").

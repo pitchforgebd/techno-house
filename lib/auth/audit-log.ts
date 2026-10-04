@@ -82,6 +82,7 @@ export const AUDIT_ACTIONS = {
   PC_COMPAT_UPDATE: "pc_builder.compat.update",
   PC_COMPAT_BULK_UPDATE: "pc_builder.compat.bulk_update",
   PC_SLOT_CLEAR: "pc_builder.slot.clear",
+  PC_COMPAT_AUTOFILL: "pc_builder.compat.autofill",
   PROMOTION_CREATE: "promotion.create",
   PROMOTION_UPDATE: "promotion.update",
   PROMOTION_PRODUCTS_UPDATE: "promotion_products.update",

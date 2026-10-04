@@ -25,6 +25,7 @@ import {
   SLOT_REQUIRED_FIELDS,
   type BuilderAttrField,
 } from "@/lib/domain/pc-builder/attribute-options";
+import { inferBuilderAttrs } from "@/lib/domain/pc-builder/infer-attrs";
 import { BUILDER_SLOTS } from "@/lib/domain/pc-builder/slots";
 
 export const COMPATIBILITY_DB_REQUIRED =
@@ -424,4 +425,109 @@ export async function clearProductBuilderSlot(input: {
     previousValues: attrsOf(product),
   });
   return { ok: true, updated: 1 };
+}
+
+export type AutoFillResult =
+  | { ok: true; updated: number; stillMissing: number; conflicts: number }
+  | { ok: false; formError: string };
+
+/**
+ * "Auto-fill from product names": runs the same conservative inference the
+ * one-off backfill used (explicit tokens in the name / overview / extracted
+ * attributes — AM5, DDR5, "650 Watt", NVMe …) over every active part of one
+ * slot and fills ONLY values that are still empty. Never overwrites, never
+ * guesses when the text is ambiguous (a CPU whose name contradicts its model
+ * series is counted as a conflict and left for a person). Audited; the audit
+ * row lists exactly which columns were set on which product, so it can be
+ * undone by clearing them.
+ */
+export async function autoFillCompatibility(input: {
+  slot: BuilderSlot;
+  actor: CompatibilityActor;
+}): Promise<AutoFillResult> {
+  if (!usesDatabase()) {
+    return { ok: false, formError: COMPATIBILITY_DB_REQUIRED };
+  }
+  const allowed = SLOT_ATTRIBUTE_FIELDS[input.slot] ?? [];
+  const prisma = getPrisma();
+  const products = await prisma.product.findMany({
+    where: { isActive: true, builderSlot: toDbBuilderSlot(input.slot) },
+    select: {
+      ...ROW_SELECT,
+      overview: true,
+      attributeValues: {
+        where: {
+          attribute: { key: { in: ["socket", "ramType", "formFactor"] } },
+        },
+        select: { value: true, attribute: { select: { key: true } } },
+      },
+    },
+  });
+
+  const updates: {
+    id: string;
+    data: Record<string, string | number>;
+  }[] = [];
+  let conflicts = 0;
+  for (const product of products) {
+    const attributes: Record<string, string> = {};
+    for (const row of product.attributeValues) {
+      attributes[row.attribute.key] = row.value;
+    }
+    const result = inferBuilderAttrs({
+      slot: input.slot,
+      name: product.name,
+      overview: product.overview,
+      attributes,
+    });
+    conflicts += result.conflicts.length;
+    const current = product as unknown as Record<string, unknown>;
+    const data: Record<string, string | number> = {};
+    for (const field of allowed) {
+      const inferred = result.values[field];
+      if (!inferred) continue;
+      const column = COLUMN[field];
+      if (current[column] != null && current[column] !== "") continue;
+      data[column] =
+        field === "tdpWatts" ? Number(inferred.value) : inferred.value;
+    }
+    if (Object.keys(data).length > 0) updates.push({ id: product.id, data });
+  }
+
+  if (updates.length > 0) {
+    await prisma.$transaction(
+      updates.map((update) =>
+        prisma.product.update({ where: { id: update.id }, data: update.data }),
+      ),
+    );
+  }
+
+  const filled = new Map(updates.map((update) => [update.id, update.data]));
+  const stillMissing = products.filter((product) => {
+    const merged = {
+      ...attrsOf(product),
+    } as BuilderAttrs;
+    const data = filled.get(product.id) ?? {};
+    if (data[COLUMN.socket] !== undefined) merged.socket = String(data[COLUMN.socket]);
+    if (data[COLUMN.ramType] !== undefined) merged.ramType = String(data[COLUMN.ramType]);
+    if (data[COLUMN.formFactor] !== undefined) merged.formFactor = String(data[COLUMN.formFactor]);
+    if (data[COLUMN.storageInterface] !== undefined) {
+      merged.storageInterface = String(data[COLUMN.storageInterface]);
+    }
+    if (data[COLUMN.tdpWatts] !== undefined) merged.tdpWatts = Number(data[COLUMN.tdpWatts]);
+    return missingRequiredFields(input.slot, merged).length > 0;
+  }).length;
+
+  await audit(input.actor, AUDIT_ACTIONS.PC_COMPAT_AUTOFILL, null, {
+    slot: input.slot,
+    scanned: products.length,
+    updated: updates.length,
+    conflicts,
+    // Exactly what was set, so a run can be reversed (these were all empty).
+    set: updates.slice(0, 200).map((update) => ({
+      id: update.id,
+      columns: Object.keys(update.data),
+    })),
+  });
+  return { ok: true, updated: updates.length, stillMissing, conflicts };
 }

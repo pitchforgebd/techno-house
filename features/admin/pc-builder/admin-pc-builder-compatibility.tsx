@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { CheckCircle2, ExternalLink, Pencil, Search, Unlink } from "lucide-react";
+import {
+  CheckCircle2,
+  ExternalLink,
+  Pencil,
+  Search,
+  Sparkles,
+  Unlink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -24,6 +31,7 @@ import {
 import { AdminPcBuilderSubnav } from "@/features/admin/pc-builder/admin-pc-builder-subnav";
 import {
   applyBulkCompatibilityAction,
+  autoFillCompatibilityAction,
   clearProductBuilderSlotAction,
   saveProductCompatibilityAction,
 } from "@/features/admin/pc-builder/compatibility-actions";
@@ -250,6 +258,22 @@ export function AdminPcBuilderCompatibility({
     });
   }
 
+  function autoFill() {
+    startTransition(async () => {
+      const result = await autoFillCompatibilityAction({ slot });
+      if (!result.ok) {
+        notifyError(result.formError);
+        return;
+      }
+      notifySuccess(
+        result.updated === 0
+          ? "Nothing more could be read from the product names — fill the rest in by hand."
+          : `Filled ${result.updated} part${result.updated === 1 ? "" : "s"} from their names. ${result.stillMissing} in this slot still need data.`,
+      );
+      router.refresh();
+    });
+  }
+
   function removeFromBuilder(row: CompatibilityProductRow) {
     if (
       !window.confirm(
@@ -372,12 +396,25 @@ export function AdminPcBuilderCompatibility({
               Apply
             </Button>
           </form>
-          <p className="text-sm text-neutral-500">
-            <span className="font-semibold text-neutral-800">
-              {slotCoverage?.label ?? slot}
-            </span>{" "}
-            · {list.total} part{list.total === 1 ? "" : "s"} shown
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-neutral-500">
+              <span className="font-semibold text-neutral-800">
+                {slotCoverage?.label ?? slot}
+              </span>{" "}
+              · {list.total} part{list.total === 1 ? "" : "s"} shown
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={autoFill}
+              disabled={pending}
+              title="Reads values written in the product names (AM5, DDR5, 650 Watt, NVMe…) and fills only the empty ones. Never overwrites."
+              className="gap-1.5 border border-neutral-200"
+            >
+              <Sparkles className="size-3.5" aria-hidden />
+              Auto-fill from product names
+            </Button>
+          </div>
         </div>
 
         {selected.size > 0 ? (
@@ -599,6 +636,14 @@ export function AdminPcBuilderCompatibility({
           the storefront builder never loads inactive ones. Tick several parts
           to give them the same values at once (for example every Corsair
           cooler that fits the same sockets).
+        </p>
+        <p>
+          <span className="font-medium">Auto-fill from product names</span>{" "}
+          reads what the product names already say (AM5, DDR5, &ldquo;650
+          Watt&rdquo;, NVMe) and fills only empty values for this slot — it
+          never overwrites, and it leaves a part alone when the name is
+          unclear. Check the result afterwards; everything it sets can be
+          edited here.
         </p>
         <p>
           A part can support more than one value — tick every one that applies

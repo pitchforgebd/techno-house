@@ -9,9 +9,11 @@ import {
 } from "@/lib/auth/same-origin";
 import {
   applyBulkCompatibility,
+  autoFillCompatibility,
   clearProductBuilderSlot,
   isCompatibilitySlot,
   saveProductCompatibility,
+  type AutoFillResult,
   type CompatibilityMutationResult,
   type CompatibilityValues,
 } from "@/lib/pc-builder/admin-compatibility";
@@ -131,6 +133,26 @@ export async function clearProductBuilderSlotAction(input: {
   }
   const result = await clearProductBuilderSlot({
     productId: input.productId,
+    actor: auth.actor,
+  });
+  if (result.ok) {
+    revalidatePath(PAGE);
+  }
+  return result;
+}
+
+export async function autoFillCompatibilityAction(input: {
+  slot: string;
+}): Promise<AutoFillResult> {
+  const auth = await authorise();
+  if (!auth.ok) {
+    return auth;
+  }
+  if (typeof input?.slot !== "string" || !isCompatibilitySlot(input.slot)) {
+    return { ok: false, formError: "Choose a valid slot." };
+  }
+  const result = await autoFillCompatibility({
+    slot: input.slot,
     actor: auth.actor,
   });
   if (result.ok) {
