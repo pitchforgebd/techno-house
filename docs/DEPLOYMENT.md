@@ -2,12 +2,20 @@
 
 Updated: 2026-10-04
 Revised for the security / business-logic remediation (AD-330…AD-336).
-**No live deploy yet.** The first-deploy procedure is written and was
-rehearsed end to end on a fresh local database (migrate → bootstrap → catalogue
-import → preflight → production build served): see
-`docs/DEPLOY_VPS_RUNBOOK.md`. Target: a single VPS with a persistent disk —
-not Vercel, because admin uploads are written to local disk and `next start`
-does not serve files added after the build (Nginx serves `/uploads/` instead).
+**The site is live** at https://technohouse.com.bd on a single VPS (Ubuntu,
+Nginx, local PostgreSQL, the app in `/home/deploy/techno-house` run as the
+`deploy` user, configuration in `.env`; DNS via Cloudflare; mail on the same
+box). It has been live since 2026-09-18 and is updated by `git pull` on the
+server. The production database is **separate from the development one**
+(different catalogue, real orders): anything run against `techno_house_dev`
+has NOT happened on production. (An earlier revision of this file said "no live
+deploy yet"; that was stale and has been corrected.)
+
+`docs/DEPLOY_VPS_RUNBOOK.md` is a from-scratch build for a NEW server, a
+staging copy or disaster recovery — it is not how the live site is updated.
+Why a persistent-disk VPS and not Vercel still holds: admin uploads are written
+to local disk and `next start` does not serve files added after the build
+(Nginx serves `/uploads/`; it is already doing so on the live server).
 
 ## Target
 

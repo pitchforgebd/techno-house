@@ -1,5 +1,10 @@
 # Techno House — VPS deploy runbook
 
+> **Scope.** The live site (technohouse.com.bd) is already running on a VPS and
+> is updated by `git pull` there. This runbook is for building a **new** server,
+> a staging copy or a disaster-recovery rebuild from scratch — it assumes an
+> empty database. It does not describe how to update the live site.
+
 First deploy and routine releases on a single Linux VPS (Nginx + PM2 +
 PostgreSQL). Companion to `docs/DEPLOYMENT.md`, which holds the policy,
 environment inventory and the smoke-test list; this file is the step-by-step.
