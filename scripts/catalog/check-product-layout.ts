@@ -127,7 +127,7 @@ function main(): void {
     "the delivery cards are their own component that adapts to its own width",
     existsSync(cardsPath) &&
       source(cardsPath).includes('"@container"') &&
-      source(cardsPath).includes("@xl:grid-cols-3"),
+      source(cardsPath).includes("@md:grid-cols-3"),
   );
 
   // --- single-column reading order below lg ------------------------------------------------
@@ -143,7 +143,22 @@ function main(): void {
   check(
     "below xl the colours stay in the buy box, before the cart controls",
     summary.includes('<div className="xl:hidden">{colorVariations}</div>') &&
-      at(summary, "{colorVariations ? <div") < at(summary, "Check availability"),
+      at(summary, "{colorVariations ? <div") < at(summary, 'id="product-qty"'),
+  );
+  check(
+    "the buy controls (qty, add to cart) come BEFORE check-availability and the quick overview, so the cart button stays beside the image however long the overview is",
+    at(summary, 'id="product-qty"') > -1 &&
+      at(summary, 'id="product-qty"') < at(summary, "Check availability") &&
+      at(summary, 'id="product-qty"') < at(summary, "Quick overview") &&
+      // the price block is above the controls
+      at(summary, "Special price") < at(summary, 'id="product-qty"'),
+  );
+  check(
+    "the buy column is compact: a 2xl title, rating and product id on one row, a tight price block",
+    summary.includes("text-xl font-semibold leading-snug tracking-tight text-text sm:text-2xl") &&
+      summary.includes("mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1") &&
+      summary.includes("px-4 py-2.5") &&
+      summary.includes("space-y-4"),
   );
 
   check(
@@ -163,7 +178,7 @@ function main(): void {
     "the Compare label drops out of a narrow buy column but keeps its accessible name",
     summary.includes("hidden @[27rem]:inline") &&
       summary.includes('aria-label={onCompare ? "In compare" : "Compare"}') &&
-      summary.includes("@container space-y-5"),
+      summary.includes("@container space-y-4"),
   );
   check(
     "the summary renders two sibling boxes (buy information, colour options) for the page grid",

@@ -9,7 +9,7 @@ import { ClipboardList, CreditCard, Truck } from "lucide-react";
 export function ProductServiceCards() {
   return (
     <div className="@container">
-      <div className="grid gap-2 @xl:grid-cols-3">
+      <div className="grid gap-2 @md:grid-cols-3">
         {[
           {
             label: "Payment method",

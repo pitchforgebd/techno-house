@@ -351,37 +351,37 @@ export function ProductSummary({
 
   return (
     <>
-      <div className={cn("@container space-y-5", infoClassName)}>
+      <div className={cn("@container space-y-4", infoClassName)}>
         <div>
-          <h1 className="text-balance text-2xl font-semibold leading-snug tracking-tight text-text sm:text-3xl">
+          <h1 className="text-balance text-xl font-semibold leading-snug tracking-tight text-text sm:text-2xl">
             {name}
           </h1>
-          <div className="mt-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <RatingStars rating={averageRating} reviewCount={reviewCount} />
+            <p className="text-caption text-text-muted">
+              Product ID: <span className="font-mono text-text">{sku}</span>
+              <span className="mx-2 text-border">·</span>
+              {brandName}
+            </p>
           </div>
-          <p className="mt-2 text-caption text-text-muted">
-            Product ID: <span className="font-mono text-text">{sku}</span>
-            <span className="mx-2 text-border">·</span>
-            {brandName}
-          </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {/* Special price sits in its own panel and the regular price on a
               plain line beneath it, rather than struck through beside it —
               the two figures read as separate facts that way, which is how
               a shopper compares them. */}
-          <div className="inline-flex min-w-[13rem] flex-col gap-1 rounded-lg border border-border bg-surface-muted/60 px-5 py-4">
+          <div className="inline-flex min-w-[11rem] flex-col gap-0.5 rounded-lg border border-border bg-surface-muted/60 px-4 py-2.5">
             <span className="text-[0.7rem] font-bold tracking-[0.14em] text-text-muted uppercase">
               {b2bActive ? "Wholesale price" : "Special price"}
             </span>
-            <span className="text-[2rem] leading-none font-bold tabular-nums tracking-tight text-text">
+            <span className="text-[1.75rem] leading-none font-bold tabular-nums tracking-tight text-text">
               {formatMoney(displayPrice)}
             </span>
           </div>
 
           {retailReference && retailReference.amount > displayPrice.amount ? (
-            <div className="space-y-0.5">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <p className="text-caption font-medium text-text-muted">
                 Regular price
               </p>
@@ -522,33 +522,6 @@ export function ProductSummary({
             controls; from `xl` they move to their own column (see below). */}
         {colorVariations ? <div className="xl:hidden">{colorVariations}</div> : null}
 
-        <Button
-          type="button"
-          variant="secondary"
-          size="md"
-          className="w-full sm:w-auto sm:min-w-[12rem]"
-          onClick={() =>
-            notifySuccess({
-              title: STOCK_LABEL[stockStatus],
-              description: `${warrantyLabel}. Branch stock checks are display-only in this build.`,
-            })
-          }
-        >
-          Check availability
-        </Button>
-
-        {overviewHtml ? (
-          <div>
-            <h2 className="text-label font-semibold uppercase tracking-wide text-text">
-              Quick overview
-            </h2>
-            <div
-              className="th-rich-text mt-2 text-label text-text-muted"
-              dangerouslySetInnerHTML={{ __html: overviewHtml }}
-            />
-          </div>
-        ) : null}
-
         {minQuantity > 1 ? (
           <p className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-caption font-medium text-text">
             Wholesale minimum order:{" "}
@@ -556,7 +529,7 @@ export function ProductSummary({
           </p>
         ) : null}
 
-        <div className="flex flex-wrap items-end gap-2 border-t border-border pt-5">
+        <div className="flex flex-wrap items-end gap-2 border-t border-border pt-4">
           <div className="w-20">
             <label
               htmlFor="product-qty"
@@ -663,6 +636,35 @@ export function ProductSummary({
               </span>
             ) : null}
           </p>
+        ) : null}
+
+        {/* Check availability and the quick overview come AFTER the buy controls,
+            so the cart button stays beside the image however long the overview is. */}
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="w-full sm:w-auto sm:min-w-[10rem]"
+          onClick={() =>
+            notifySuccess({
+              title: STOCK_LABEL[stockStatus],
+              description: `${warrantyLabel}. Branch stock checks are display-only in this build.`,
+            })
+          }
+        >
+          Check availability
+        </Button>
+
+        {overviewHtml ? (
+          <div>
+            <h2 className="text-label font-semibold uppercase tracking-wide text-text">
+              Quick overview
+            </h2>
+            <div
+              className="th-rich-text mt-2 text-label text-text-muted"
+              dangerouslySetInnerHTML={{ __html: overviewHtml }}
+            />
+          </div>
         ) : null}
 
         {emiVisible ? (

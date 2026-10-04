@@ -6694,3 +6694,47 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `ProductMediaBuy`.
       DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
       `pm2 restart techno-house`.
+
+- [x] AD-362 Product page: Add to cart beside the image, like the Ryans pages.
+      Operator request (two full-page Ryans screenshots): on our page the Add to
+      cart button is far below the image; on Ryans everything is in its place.
+      Measured on our page before the change (headless Chrome): the qty / Add to
+      cart row sat 529 px below the title and at 108% of the image's height — below
+      the image — and on a 1280x720 screen it was not on the first screen at all
+      (y=803 > 720). On Ryans the row sits inside the image's height (about 84%)
+      because their buy column is compact.
+      Changes in `ProductSummary`: (1) the buy controls (wholesale-minimum note, qty,
+      Add to cart, Compare, wishlist, the "View cart" line) now come right after the
+      price / badges / colours and BEFORE "Check availability" and "Quick overview",
+      so the cart button stays beside the image however long the overview is (the
+      overview used to push it down; a long real overview would have undone any
+      spacing fix); (2) the column is compact: title 24 px instead of 30 px, rating
+      and product id/brand on one row, a tighter price panel (28 px figure) with
+      "Regular price / strike-through / Save" on one line, the Check availability
+      button one size smaller, 16 px instead of 20 px between blocks. Nothing was
+      removed. The delivery cards now sit three across when their container is at
+      least 448 px (it was 576), which shortens the gallery column's cards from
+      ~224 px to ~100 px and keeps the gallery and buy columns level.
+      Measured in headless Chrome after (viewport 1024-1920, the user's product
+      type and a colour product): the cart row is 280 px below the title, at 57-69%
+      of the image's height, inside the image, and on the first screen at 1920x1080,
+      1440x900, 1280x720 and 1024x768; identical (280 px) with the overview replaced
+      by nine bullets (set temporarily on a development product, original restored).
+      Column balance (blank space before the details): no-colour product 53 px under
+      the gallery and 107-121 px under the buy column at 1280-1920 (142 px at 1024);
+      colour product 53-56 px / 124-193 px; the 7-notes product 53 px / 436-511 px
+      (long notes make the gallery column the tall one). No horizontal overflow; the
+      phone order is unchanged and the cart row is 319 px below the title there.
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:product-layout` 27
+      checks (new: controls before overview, compact column; mutation-checked), all
+      10 regression suites, `test:listing`, `test:privilege`, `test:routes` pass.
+      Honest notes: making the buy column compact moved the imbalance — the first
+      measurement after compaction showed 211 px blank under the buy column — and the
+      card threshold was tuned twice (576, 512, 448 px) from measurements until it
+      settled at 107-121 px. The sizes are display-only choices; the placement of the
+      controls is the structural fix. Ryans' own look (fonts, colours, buttons) was
+      not copied.
+      Known limits: a product with notes still leaves several hundred px under the
+      buy column; storage variations are still not built (see AD-361).
+      DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
+      `pm2 restart techno-house`.
