@@ -36,6 +36,9 @@ const ROUTE_RULES: readonly RouteRule[] = [
   { prefix: "/admin/refunds/settings", anyOf: ["refunds.settings"] },
   { prefix: "/admin/refunds", anyOf: ["refunds.view"] },
   { prefix: "/admin/customers/b2b", anyOf: ["customer.b2b.view"] },
+  // KYC document stream: the handler checks the same key itself; without a
+  // rule here the middleware denied it for every staff member.
+  { prefix: "/admin/api/b2b-documents", anyOf: ["customer.b2b.view"] },
   { prefix: "/admin/customers", anyOf: ["customer.view"] },
   { prefix: "/admin/promotions", anyOf: ["promotion.view"] },
   { prefix: "/admin/flash-sales", anyOf: ["flash_deals.view"] },
@@ -175,6 +178,13 @@ export function permissionKeysForAdminPath(
     return "allow";
   }
   if (path === "/admin/profile" || path.startsWith("/admin/profile/")) {
+    return "allow";
+  }
+  // The topbar alert bell polls this. The handler requires a staff session
+  // and only ever returns / marks the signed-in staff member's own alerts, so
+  // "signed-in staff" is the right gate. It was unmapped — and so denied to
+  // everyone — from the moment enforcement moved into the middleware.
+  if (path === "/admin/api/order-alerts") {
     return "allow";
   }
   if (path === "/admin") {

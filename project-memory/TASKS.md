@@ -6001,3 +6001,39 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       product name" button in the product form, builder columns in the admin
       bulk import/export, an admin setting for hide-vs-show-unverified parts in
       the storefront builder, and a short client guide.
+
+- [x] AD-349 Admin alert bell and B2B document viewer were dead for every
+      staff member since 2026-09-20 — two admin API routes had no
+      route-permission rule.
+      Found while verifying AD-348 (`test:routes` had 4 of 12 live checks
+      failing). Enforcement moved into the middleware on 2026-09-20
+      (73db46b) with "an empty match is deny", but `/admin/api/order-alerts`
+      and `/admin/api/b2b-documents` (both written before that) were never
+      given a rule, so even the Admin role got `307 /admin/forbidden`. The
+      topbar bell (`admin-order-alert-bell.tsx` polls that URL) therefore
+      showed nothing, and B2B trade-licence / NID documents could not be
+      opened. An audit of all 168 admin pages and routes against the
+      permission map found exactly these two (plus the `[...path]` 404
+      catch-all, which is harmless).
+
+      **Fix (`lib/auth/admin-route-permissions.ts`, no widening beyond what
+      each handler already enforced).** `/admin/api/order-alerts` → any
+      signed-in staff: the handler requires a session and only reads / marks
+      the caller's own alerts (`session.staffId`). `/admin/api/b2b-documents`
+      → `customer.b2b.view`, the same key the handler checks itself.
+
+      **Regression guard (`scripts/security/check-route-security.ts`).** A
+      static walk of every `page.tsx` / `route.ts` under `app/(admin)/admin`
+      now fails the suite if any is unmapped (the catch-all is exempt), plus
+      explicit checks that order-alerts is open to a staff member with no
+      permissions and that b2b-documents needs exactly `customer.b2b.view`.
+      Proven load-bearing: with the fix removed 7 of 16 checks fail (3 new
+      static + the 4 live ones), restored 16 of 16 pass. `test:routes` went
+      from 4/12 failing to **16/16**.
+
+      **Verified live with a temporary staff session:** GET order-alerts →
+      200 `{unreadCount, items}`; GET b2b-documents with no params → 400 (it
+      reaches the handler and is authorised); signed-out → login redirect.
+      `tsc` 0, `eslint` 0, `test:privilege` 11/11, `test:hardening` 63/63.
+      Not a PC Builder change — recorded here because the PC Builder work
+      surfaced it.

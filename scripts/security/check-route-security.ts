@@ -24,9 +24,14 @@
  * way, and a skipped check that looks like a pass is worse than no check.
  */
 import { config as loadEnvFiles } from "dotenv";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 import { execSync } from "node:child_process";
 import { getPrisma } from "../../lib/db/prisma";
+import {
+  canAccessAdminPath,
+  permissionKeysForAdminPath,
+} from "../../lib/auth/admin-route-permissions";
 import { createSessionToken, hashSessionToken } from "../../lib/auth/session-token";
 import { signSessionJwt } from "../../lib/auth/session-jwt";
 import {
@@ -123,6 +128,57 @@ async function main(): Promise<void> {
     "every admin route handler with a POST checks the request origin",
     routeGaps.length === 0,
     routeGaps.join(", "),
+  );
+
+  // --- Static: every admin page and route is mapped ------------------------
+  // An unmapped admin path is denied to *everyone*, Admin included ("an empty
+  // match is deny"), and nothing fails loudly: `/admin/api/order-alerts` and
+  // `/admin/api/b2b-documents` were silently dead for weeks that way.
+  const adminRoot = "app/(admin)/admin";
+  const adminPaths: { url: string; file: string }[] = [];
+  const walkAdmin = (dir: string): void => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) {
+        walkAdmin(full);
+      } else if (entry === "page.tsx" || entry === "route.ts") {
+        const segments = relative("app/(admin)", dir)
+          .split(/[\\/]/)
+          .filter((s) => s && !(s.startsWith("(") && s.endsWith(")")))
+          .map((s) => (s.startsWith("[") ? "sample" : s));
+        adminPaths.push({
+          url: "/" + segments.join("/"),
+          file: full.replace(/\\/g, "/"),
+        });
+      }
+    }
+  };
+  walkAdmin(adminRoot);
+  check(
+    "admin pages and routes were found to scan",
+    adminPaths.length > 100,
+    `found ${adminPaths.length}`,
+  );
+  const unmapped = adminPaths.filter(({ url, file }) => {
+    // The catch-all only renders notFound(); denying it is harmless.
+    if (file.includes("[...path]")) return false;
+    const need = permissionKeysForAdminPath(url);
+    return need !== "allow" && need.length === 0;
+  });
+  check(
+    "every admin page and route handler has a route-permission rule",
+    unmapped.length === 0,
+    unmapped.map((u) => u.url).join(", "),
+  );
+  check(
+    "order-alerts is open to any signed-in staff member (the bell depends on it)",
+    canAccessAdminPath("/admin/api/order-alerts", []),
+  );
+  check(
+    "b2b-documents needs customer.b2b.view, no more and no less",
+    !canAccessAdminPath("/admin/api/b2b-documents", []) &&
+      !canAccessAdminPath("/admin/api/b2b-documents", ["orders.view_all"]) &&
+      canAccessAdminPath("/admin/api/b2b-documents", ["customer.b2b.view"]),
   );
 
   // --- Live: the DSA-08 endpoint itself -----------------------------------
