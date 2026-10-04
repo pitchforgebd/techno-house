@@ -6305,3 +6305,41 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       version grouped any contained name with no differences shown and read like a
       list of duplicates when most hits were variants; the labels and `adds:` lines
       were added for that reason. `tsc` and `eslint` clean.
+
+- [x] AD-355 Duplicate-listing worksheet: `catalog:find-duplicates --csv=<file>`.
+      Why: the production run of AD-354 (motherboards) found 76 groups / 85 extra
+      listings — about 55 are the same Gigabyte board loaded twice (a hand-made
+      `GB-…` title and the SMART `GIG-…` title) and the rest are real variants
+      (WIFI/PZ/II/AX/WF6E/DDR4), which must never be merged. Reading 76 groups by
+      eye to tell the two apart is error-prone, so the finder can now write a
+      worksheet (read-only; the file is created, never overwritten; empty
+      `your_decision` column). Inside a group, listings that differ only by spec
+      filler (AMD, SOCKET, AM5, LGA1700, DIMM, ATX, MOTHERBOARD, "12th/13th gen"…)
+      are TWINS with a suggested KEEP (active, priced, in stock, oldest) and
+      DEACTIVATE; any other extra word makes a VARIANT, marked LEAVE. Notes call
+      out ৳0 price, stock that differs between twins, stock ≥ 500 ("verify": POS
+      exports can carry a placeholder) and price differences.
+      Memory type is the dangerous word: "MSI PRO Z790-P WIFI" next to "… WIFI
+      DDR4" are the DDR5 and the DDR4 board. A DEACTIVATE is therefore only
+      suggested when both twins agree on memory (the `builderRamType` tag, else
+      the title); if one names none or they differ the rows are REVIEW with "if
+      these are the same board, keep <sku>" and nothing is suggested for
+      deactivation. A first version suggested deactivating the DDR4 listing in
+      exactly that case — caught by reading its output on the development
+      database and fixed before commit. Grouping also gained "same model words
+      once filler and memory are dropped", because filler in the MIDDLE of a title
+      ("B650M GAMING X DDR5" vs "B650M GAMING X AM5 DDR5 MOTHERBOARD") meant
+      neither name contained the other and the pair was never grouped — so the
+      AD-354 run may have missed some real duplicates; re-running finds them.
+      Cells beginning `= + - @` are defused so a spreadsheet cannot run them as
+      formulas. Logic is pure (`scripts/deploy/duplicate-listings.ts`), tested by
+      `npm run test:duplicates` (34 checks; mutation-checked: emptying the filler
+      list, removing the memory REVIEW guard, ignoring the tag and removing the
+      formula guard each fail it). `tsc` and `eslint` clean on the three files.
+      Development database: 16 groups, 0 twin sets, 0 suggested deactivations,
+      14 REVIEW (the DDR4/DDR5 pairs), 19 LEAVE — it has no GB-/GIG- duplicates, so
+      detecting real twins is proven by the unit tests only; the first real
+      result will be the production run. Nothing was changed in any database.
+      The step that would act on the worksheet (a dry-run-first script with an undo
+      log that switches off the rows the operator confirms) is NOT built; it needs
+      the operator's decision on which stock figure is true (hand CSV vs POS).
