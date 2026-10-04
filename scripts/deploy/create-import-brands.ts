@@ -65,6 +65,7 @@ const IMPORT_BRANDS: { slug: string; name: string }[] = [
   { slug: "logitech", name: "Logitech" },
   { slug: "microlab", name: "Microlab" },
   { slug: "microsoft", name: "Microsoft" },
+  { slug: "msi", name: "MSI" },
   { slug: "netac", name: "Netac" },
   { slug: "netis", name: "Netis" },
   { slug: "panduit", name: "Panduit" },

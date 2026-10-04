@@ -23,6 +23,16 @@ export {
   slotMetaList,
 } from "@/lib/domain/pc-builder/selection";
 export {
+  isCompatibilityReady,
+  missingRequiredFields,
+  type CompatibilityCoverageRow,
+  type CompatibilityProductRow,
+} from "@/lib/domain/pc-builder/compat-status";
+export {
+  BUILDER_SLOT_CATEGORY_SLUGS,
+  defaultSlotForCategory,
+} from "@/lib/domain/pc-builder/slot-categories";
+export {
   attrListsOverlap,
   formatAttrList,
   parseAttrList,

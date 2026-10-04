@@ -9,7 +9,12 @@
  */
 import {
   assembleValidatedBuild,
+  BUILDER_SLOTS,
+  BUILDER_SLOT_CATEGORY_SLUGS,
+  defaultSlotForCategory,
   evaluateCompatibility,
+  isCompatibilityReady,
+  missingRequiredFields,
   parseAttrList,
   planValidatedBuildToCart,
   rankCandidatesForSlot,
@@ -24,8 +29,12 @@ import {
   parseBuilderFields,
   type ProductInputFields,
 } from "@/lib/catalog/product-input";
+import {
+  SLOT_ATTRIBUTE_FIELDS,
+  SLOT_REQUIRED_FIELDS,
+} from "@/lib/domain/pc-builder/attribute-options";
 import { inferBuilderAttrs } from "@/lib/domain/pc-builder/infer-attrs";
-import type { BuilderCandidate } from "@/lib/data/types/catalog";
+import type { BuilderCandidate, BuilderSlot } from "@/lib/data/types/catalog";
 
 let checks = 0;
 let failures = 0;
@@ -811,6 +820,68 @@ function main(): void {
         builderTdpWatts: null,
         builderStorageInterface: null,
       }).builderSlot === "",
+  );
+
+  // Compatibility-data page + category defaults (AD-348).
+  check(
+    "ready means every required field is set: a bare RAM is missing its type",
+    JSON.stringify(missingRequiredFields("ram", null)) ===
+      JSON.stringify(["ramType"]) &&
+      missingRequiredFields("ram", { ramType: "DDR5" }).length === 0,
+  );
+  check(
+    "a motherboard needs socket + RAM type + form factor, not drive interface",
+    JSON.stringify(missingRequiredFields("motherboard", { socket: "AM5" })) ===
+      JSON.stringify(["ramType", "formFactor"]) &&
+      isCompatibilityReady("motherboard", {
+        socket: "AM5",
+        ramType: "DDR5",
+        formFactor: "ATX",
+      }),
+  );
+  check(
+    "CPU, GPU and PSU need a positive wattage to be ready; blank list values do not count",
+    missingRequiredFields("psu", {}).includes("tdpWatts") &&
+      !missingRequiredFields("psu", { tdpWatts: 650 }).length &&
+      missingRequiredFields("gpu", { tdpWatts: 0 }).includes("tdpWatts") &&
+      missingRequiredFields("cpu_cooler", { socket: " , " }).includes("socket"),
+  );
+  check(
+    "slots without fit rules (monitor, mouse…) are always ready",
+    isCompatibilityReady("monitor", null) && isCompatibilityReady("mouse", null),
+  );
+  check(
+    "every required field is also an editable field for that slot",
+    (Object.keys(SLOT_REQUIRED_FIELDS) as BuilderSlot[]).every((slot) =>
+      (SLOT_REQUIRED_FIELDS[slot] ?? []).every((field) =>
+        (SLOT_ATTRIBUTE_FIELDS[slot] ?? []).includes(field),
+      ),
+    ),
+  );
+  check(
+    "category → slot defaults: leaf categories map, unknown ones do not",
+    defaultSlotForCategory("processor") === "cpu" &&
+      defaultSlotForCategory("nvme-ssd") === "ssd" &&
+      defaultSlotForCategory("casing-cooler") === "case_fans" &&
+      defaultSlotForCategory("wifi-adapter") === "network_adapter" &&
+      defaultSlotForCategory("desktop") === null &&
+      defaultSlotForCategory("") === null &&
+      defaultSlotForCategory(undefined) === null,
+  );
+  check(
+    "the category map only names real slots and never lists a category twice",
+    (() => {
+      const slotIds = new Set(BUILDER_SLOTS.map((slot) => slot.id));
+      const seen = new Set<string>();
+      return BUILDER_SLOT_CATEGORY_SLUGS.every(({ slot, categorySlugs }) =>
+        slotIds.has(slot) &&
+        categorySlugs.every((slug) => {
+          if (seen.has(slug)) return false;
+          seen.add(slug);
+          return true;
+        }),
+      );
+    })(),
   );
 
   console.log(

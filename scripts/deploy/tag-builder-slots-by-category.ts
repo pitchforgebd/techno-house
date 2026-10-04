@@ -20,27 +20,15 @@ loadEnvFiles({ path: [".env.local", ".env"], quiet: true });
 
 import { getPrisma } from "../../lib/db/prisma";
 import type { BuilderSlot } from "../../lib/generated/prisma/enums";
+import { BUILDER_SLOT_CATEGORY_SLUGS } from "../../lib/domain/pc-builder/slot-categories";
 
-const SLOT_CATEGORY_SLUGS: { slot: BuilderSlot; categorySlugs: string[] }[] = [
-  { slot: "CPU", categorySlugs: ["processor"] },
-  { slot: "CPU_COOLER", categorySlugs: ["cpu-cooler"] },
-  { slot: "MOTHERBOARD", categorySlugs: ["motherboard"] },
-  { slot: "RAM", categorySlugs: ["ram-desktop"] },
-  { slot: "GPU", categorySlugs: ["graphics-card"] },
-  { slot: "SSD", categorySlugs: ["ssd", "nvme-ssd"] },
-  { slot: "HDD", categorySlugs: ["hard-disk-drive"] },
-  { slot: "PSU", categorySlugs: ["power-supply"] },
-  { slot: "CASE", categorySlugs: ["casing"] },
-  { slot: "CASE_FANS", categorySlugs: ["casing-cooler"] },
-  { slot: "MONITOR", categorySlugs: ["monitor"] },
-  { slot: "KEYBOARD", categorySlugs: ["keyboard"] },
-  { slot: "MOUSE", categorySlugs: ["mouse"] },
-  { slot: "UPS", categorySlugs: ["ups"] },
-  { slot: "SPEAKER", categorySlugs: ["speaker-and-home-theater"] },
-  { slot: "HEADPHONE", categorySlugs: ["headphone"] },
-  { slot: "NETWORK_ADAPTER", categorySlugs: ["wifi-adapter", "lan-card"] },
-  { slot: "ANTIVIRUS", categorySlugs: ["antivirus"] },
-];
+// Single source of truth shared with the admin product form's automatic slot
+// default (lib/domain/pc-builder/slot-categories.ts).
+const SLOT_CATEGORY_SLUGS: { slot: BuilderSlot; categorySlugs: string[] }[] =
+  BUILDER_SLOT_CATEGORY_SLUGS.map(({ slot, categorySlugs }) => ({
+    slot: slot.toUpperCase() as BuilderSlot,
+    categorySlugs: [...categorySlugs],
+  }));
 
 async function main(): Promise<void> {
   const dryRun = process.argv.includes("--dry-run");

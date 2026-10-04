@@ -5861,3 +5861,143 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
         unknown SKU reported; the unfilled file changes nothing (0 of 80).
       Nothing from this file has been applied — it is waiting to be filled in.
       `tsc` 0, `eslint` 0, select/admin routes 200/307.
+
+- [x] AD-347 Import of `techno-house-product-import-fixed.csv` (operator: "bulk
+      import part 3 theke baki gula ekhn dorkar e nai, amar hate jeta ace ota
+      tmr end theke kore daw" — read, after an explicit question, as: import the
+      172-row fixed file; operator chose "MSI + Gigabyte's genuinely new ones"
+      and "do not change prices").
+
+      **Not run blindly — the file could not be imported as-is.** (1) Parts 1–5
+      of the SMART export (4,218 rows) were already fully in the database, so
+      nothing remained there. (2) `bulk-import-needs-review.csv` (248 rows) has
+      a blank category on every row, so every row would fail. (3) The fixed file
+      (172: 85 MSI + 84 Gigabyte motherboards + 3 Gigabyte desktops) used
+      category slugs that do not exist (`motherboards` → real `motherboard`;
+      `desktops` is only a parent) and the brand `msi`, which was not in the
+      database. (4) **Most of the Gigabyte rows were already in the catalog**
+      under `GIG-…` SKUs (the file uses `GB-…`): 80 of 87 matched by exact model
+      phrase, including all 3 AORUS PRIME desktops, H110M-M.2 and the H610M/
+      Z790 D variants — importing them would have listed ~80 boards twice. The
+      file's prices were mostly higher than the catalog's (62 of 70 matched
+      rows), i.e. it looks like a newer price list; the operator chose not to
+      apply them. One MSI row looked like a match to a Gigabyte board of the
+      same model name (different brand) — a false match, imported as new.
+
+      **What was imported (86 rows, 0 failed):** all 85 MSI boards + Gigabyte
+      GA-H81M-S2PH. Done from a mapped copy (`import-ready-msi-plus-new.csv`;
+      category → `motherboard`); the operator's file was not edited. `msi` brand
+      added to `create-import-brands.ts` and created through
+      `catalog:bootstrap-import-brands` (create-only; dry-run showed exactly 1).
+      Imported through the established `run-bulk-import.ts` path: a 3-row canary
+      first (checked in the database), then the other 83. The file's own
+      `is_active` was honoured: 66 active, 20 inactive. Prices untouched on
+      every existing product.
+
+      **PC Builder tagging of the new boards** (each step dry-run first and
+      confirmed to touch only the new boards): `catalog:populate-attributes` set
+      195 attribute values (motherboard only; 0 elsewhere); the slot tagger set
+      `MOTHERBOARD` on the 66 *active* new boards (it only tags active products
+      — the 20 inactive ones get a slot when activated and the tagger is re-run);
+      `catalog:backfill-builder-compat` set socket/RAM type/form factor on those
+      66 (undo log `project-memory/backfill-logs/builder-compat-2026-10-04-step3-
+      new-msi-boards.json`). LGA1700 boards got DDR4 or DDR5 only where the name
+      or the overview says so. Re-running every script afterwards changes nothing.
+      Verified on real data: the motherboard picker now loads 187 boards (was
+      121); picking MSI PRO B760M-E DDR4 shows 59 RAM (all DDR4), the DDR5
+      variant 56 (all DDR5); picking a DDR5 RAM leaves 52 of 66 MSI boards and
+      hides 14.
+
+      **Disclosed.** (a) The 3 Z790 DDR5 variants (AORUS ELITE AX, UD AX, UD) were
+      left out: the catalog has `Z790 UD` / `Z790 AORUS ELITE AX` without a DDR
+      type in the name, so they may be the same boards. (b) By my own product
+      knowledge MSI MEG X870E GODLIKE and MEG X870E ACE MAX are E-ATX, but the
+      catalog text says "ATX" and that is what was stored — worth a check, since
+      an ATX-only case would be offered with them. (c) The 20 inactive boards are
+      untagged until activated. (d) `needs-review.csv` still needs categories
+      assigned by hand before it can be imported. (e) New rows carry no images
+      (the file has none). Nothing was committed for this task.
+
+- [x] AD-348 Admin "Compatibility data" page + automatic slot for new products
+      (operator: the shop owner's staff will supply the missing compatibility
+      data, so the system — not scripts or CSV — must let them do it; approved:
+      build item 1 of the plan with permission `pc_builder.manage`, plus the
+      category-to-slot default).
+
+      **Why.** Everything built so far for data (backfill, import, leftovers
+      CSV) was a developer terminal script; the staff UI could only edit one
+      product at a time, and parts with no data were silently hidden from the
+      storefront builder with no way to see which. This makes the system usable
+      by the client without a developer.
+
+      **`/admin/pc-builder/compatibility`** (new tab "Compatibility data").
+      - Coverage cards per slot (CPU, cooler, motherboard, RAM, GPU, SSD, HDD,
+        PSU, case): "N of M ready · K need data" with a progress bar; click a
+        card to work that slot.
+      - Filter: Needs data / Ready / All, name-or-SKU search, 25 per page,
+        page number clamped. Only active products (the storefront never loads
+        inactive ones — stated on the page).
+      - Per row: current values as chips, a "Missing" badge on required fields,
+        an inline editor using the same tick-chips as the product form, and an
+        unlink button that takes a wrongly categorised part (a charger in the
+        PSU slot) out of the builder — it stays in the shop.
+      - Bulk: tick many rows, tick values once, apply — "only fill empty" (the
+        default) or "replace existing". Blank inputs never clear anything. All
+        selected parts must belong to the page's slot.
+      - "Ready" = every required field set (`SLOT_REQUIRED_FIELDS`): CPU socket
+        + wattage; cooler socket; motherboard socket + RAM type + form factor
+        (drive interface stays optional — a board missing it is never hidden);
+        RAM type; GPU/PSU wattage; case sizes; SSD/HDD interface.
+      - Permission: route rule `/admin/pc-builder/compatibility` and every
+        server action require `pc_builder.manage`. Each action checks
+        same-origin first, validates through the product form's own parser
+        (`parseBuilderFields` — canonical spelling, 12-value cap, wattage
+        range), accepts only fields the slot actually uses, and writes an audit
+        row (`pc_builder.compat.update`, `.bulk_update`, `pc_builder.slot.clear`).
+      Files: `lib/domain/pc-builder/compat-status.ts` (pure ready/missing
+      logic + row types), `lib/pc-builder/admin-compatibility.ts` (loaders and
+      mutations), `features/admin/pc-builder/compatibility-actions.ts`,
+      `admin-pc-builder-compatibility.tsx`, the page, nav/subnav/route rule.
+
+      **Automatic slot for new products.** `slot-categories.ts` is now the one
+      category-to-slot map; the product form uses it (create mode only) to
+      fill the PC Builder slot when a category is picked, never overriding a
+      slot the admin chose themselves (including "Not a builder part") and
+      never touching an existing product. The category tagger script was
+      switched to the same map — its dry-run is unchanged (0 to update).
+
+      **Verification.** `test:pc-builder` 87 → **94**. A live end-to-end run on
+      the real database with three throwaway products (28 checks): single save
+      canonicalises ("ddr4 , DDR5 ,ddr4" → "DDR4, DDR5"); a socket on a RAM, a
+      wattage on a RAM and 14 values are all refused and change nothing; an
+      empty value clears; bulk fill-empty updates only the empty part, overwrite
+      updates both, a cross-slot selection is refused, blank-only input is
+      refused; case sizes canonicalise; coverage/missing/ready/page-clamp
+      loaders; clearing a slot removes slot and values and a later save is
+      refused; the three audit actions are written; and — with a temporary staff
+      session, the repo's own technique — the real page renders 200 with
+      coverage cards, the cooler list shows "Missing", search finds a part,
+      bad query params fall back, and a signed-out request redirects. Cleaned up
+      afterwards (3 products, 6 test audit rows). The new/edit product pages
+      render 200 and an existing multi-value product (6 cooler sockets) comes
+      back as 6 ticked chips. `tsc` 0, `eslint` 0, `test:privilege` 11/11,
+      `test:hardening` 63/63; `test:routes` static checks pass, including that
+      the new action file calls `isSameOriginRequest`.
+
+      **Found, not fixed — not caused by this task (HEAD is identical).**
+      (1) **The admin alert bell looks broken for every staff member.**
+      `/admin/api/order-alerts` has no entry in `ROUTE_RULES`; since "an empty
+      match is deny" (commit 73db46b moved enforcement to middleware) a valid
+      Admin session gets `307 /admin/forbidden` for GET and POST, and
+      `admin-order-alert-bell.tsx` polls exactly that URL. Probably a small fix
+      (an "allow signed-in staff" entry — the route is self-scoped by staffId
+      per DSA-08) but it is permission code, so it was left for a decision.
+      It is also why 4 of the 12 `test:routes` checks (the live ones) fail.
+      (2) `test:security` fails on two `dangerouslySetInnerHTML` uses in
+      `features/product/product-details-panel.tsx` and `product-summary.tsx`
+      (from the EMI-panel commits; files untouched here).
+
+      **Still planned from the same design (not built):** a "fill from the
+      product name" button in the product form, builder columns in the admin
+      bulk import/export, an admin setting for hide-vs-show-unverified parts in
+      the storefront builder, and a short client guide.

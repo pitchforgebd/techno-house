@@ -59,6 +59,37 @@ export const SLOT_ATTRIBUTE_FIELDS: Partial<
   case: ["formFactor"],
 };
 
+/**
+ * What a part needs before every PC Builder check can use it ("ready").
+ * Core fit data per slot, plus wattage for the slots the PSU estimate reads.
+ * The motherboard's drive interface is optional on purpose: a drive missing
+ * its interface is hidden from the picker, but a board missing it is not.
+ */
+export const SLOT_REQUIRED_FIELDS: Partial<
+  Record<BuilderSlot, readonly BuilderAttrField[]>
+> = {
+  cpu: ["socket", "tdpWatts"],
+  cpu_cooler: ["socket"],
+  motherboard: ["socket", "ramType", "formFactor"],
+  ram: ["ramType"],
+  gpu: ["tdpWatts"],
+  ssd: ["storageInterface"],
+  hdd: ["storageInterface"],
+  psu: ["tdpWatts"],
+  case: ["formFactor"],
+};
+
+/** Controlled vocabulary for each multi-value text field. */
+export const BUILDER_ATTR_VOCAB: Record<
+  Exclude<BuilderAttrField, "tdpWatts">,
+  readonly string[]
+> = {
+  socket: SOCKET_OPTIONS,
+  ramType: RAM_TYPE_OPTIONS,
+  formFactor: FORM_FACTOR_OPTIONS,
+  storageInterface: STORAGE_INTERFACE_OPTIONS,
+};
+
 type AttributeCopy = { label: string; hint?: string };
 
 const DEFAULT_COPY: Record<BuilderAttrField, AttributeCopy> = {

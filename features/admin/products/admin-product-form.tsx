@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,11 @@ import {
   type ProductVariantInputFields,
 } from "@/lib/catalog/product-input";
 import { AdminBuilderMultiSelect } from "@/features/admin/products/admin-builder-multi-select";
-import { BUILDER_SLOTS, isBuilderSlotId } from "@/lib/domain/pc-builder";
+import {
+  BUILDER_SLOTS,
+  defaultSlotForCategory,
+  isBuilderSlotId,
+} from "@/lib/domain/pc-builder";
 import {
   builderAttributeCopy,
   FORM_FACTOR_OPTIONS,
@@ -329,6 +333,18 @@ export function AdminProductForm({
   const [builderStorageInterface, setBuilderStorageInterface] = useState(
     product?.builderAttrs?.storageInterface ?? "",
   );
+  // New products: picking a category fills in its PC Builder slot, so staff
+  // don't have to remember to tag it. Never overrides a slot the admin chose
+  // themselves (including "Not a builder part"), and never runs when editing.
+  const slotTouchedRef = useRef(
+    mode !== "create" || Boolean(product?.builderSlot),
+  );
+  function applyCategorySlotDefault(effectiveCategorySlug: string) {
+    if (slotTouchedRef.current) {
+      return;
+    }
+    setBuilderSlot(defaultSlotForCategory(effectiveCategorySlug) ?? "");
+  }
   // Which compatibility fields the chosen slot actually checks (AD-346).
   const builderPicker = isBuilderSlotId(builderSlot)
     ? {
@@ -614,6 +630,7 @@ export function AdminProductForm({
                   onChange={(event) => {
                     setCategorySlug(event.target.value);
                     setSubcategorySlug("");
+                    applyCategorySlotDefault(event.target.value);
                   }}
                   className={adminFormControlClass}
                   disabled={pending}
@@ -657,7 +674,10 @@ export function AdminProductForm({
                 <Select
                   id="product-subcategory"
                   value={subcategorySlug}
-                  onChange={(event) => setSubcategorySlug(event.target.value)}
+                  onChange={(event) => {
+                    setSubcategorySlug(event.target.value);
+                    applyCategorySlotDefault(event.target.value || categorySlug);
+                  }}
                   className={adminFormControlClass}
                   disabled={pending}
                 >
@@ -1159,6 +1179,7 @@ export function AdminProductForm({
                 value={builderSlot}
                 onChange={(event) => {
                   const next = event.target.value;
+                  slotTouchedRef.current = true;
                   setBuilderSlot(next);
                   // Drop values the new slot never checks, so nothing hidden
                   // is silently saved against the wrong kind of part.
@@ -1516,6 +1537,7 @@ export function AdminProductForm({
           ]);
           setCategorySlug(category.slug);
           setSubcategorySlug("");
+          applyCategorySlotDefault(category.slug);
         }}
       />
       <AdminQuickCreateBrandModal

@@ -29,6 +29,7 @@ const ROUTE_RULES: readonly RouteRule[] = [
   { prefix: "/admin/product-requests", anyOf: ["product_requests.view"] },
   { prefix: "/admin/pc-builder/rules", anyOf: ["pc_builder.rules"] },
   { prefix: "/admin/pc-builder/builds", anyOf: ["pc_builder.builds"] },
+  { prefix: "/admin/pc-builder/compatibility", anyOf: ["pc_builder.manage"] },
   { prefix: "/admin/pc-builder", anyOf: ["pc_builder.view"] },
   { prefix: "/admin/orders/unpaid", anyOf: ["orders.view_unpaid"] },
   { prefix: "/admin/orders", anyOf: ["orders.view_all"] },

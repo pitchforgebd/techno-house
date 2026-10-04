@@ -50,6 +50,10 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
             href: "/admin/pc-builder/rules",
             label: "Compatibility rules",
           },
+          {
+            href: "/admin/pc-builder/compatibility",
+            label: "Compatibility data",
+          },
           { href: "/admin/pc-builder/builds", label: "Saved builds" },
         ],
       },

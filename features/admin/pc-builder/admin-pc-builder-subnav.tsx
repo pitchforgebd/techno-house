@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 const LINKS = [
   { href: "/admin/pc-builder", label: "Overview" },
   { href: "/admin/pc-builder/rules", label: "Compatibility rules" },
+  { href: "/admin/pc-builder/compatibility", label: "Compatibility data" },
   { href: "/admin/pc-builder/builds", label: "Saved builds" },
 ] as const;
 

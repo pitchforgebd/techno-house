@@ -1,0 +1,596 @@
+[
+  {
+    "id": "cmut1rxa60095acfgjourcfo5",
+    "name": "MSI A520M-A PRO",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx9a0091acfge1xkk9y2",
+    "name": "MSI B550M-A PRO",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx60008dacfgfq6tqbzw",
+    "name": "MSI B550M GAMING PLUS WIFI6E",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx34007pacfg5md2y9yw",
+    "name": "MSI B650M GAMING WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx1j007hacfgrxxkqeuq",
+    "name": "MSI B650M PROJECT ZERO",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rvxk002xacfg2jbnbo54",
+    "name": "MSI B760 GAMING PLUS WIFI",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvyi0031acfgir5bk4eq",
+    "name": "MSI B760M GAMING PLUS WIFI",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwlw005tacfgpd0aduv9",
+    "name": "MSI B840M GAMING WIFI6E",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwqy006dacfgoc4mq0zk",
+    "name": "MSI B850 GAMING PLUS WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwq10069acfgotwy1q7f",
+    "name": "MSI B850 GAMING PLUS WIFI PZ",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwrt006hacfg5tjpm6bo",
+    "name": "MSI B850 GAMING PLUS WIFI6E",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwsm006lacfg1fk4ei9w",
+    "name": "MSI B850M GAMING PLUS WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwth006pacfgas3uwgwn",
+    "name": "MSI B850M GAMING PLUS WIFI6E",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwbm004lacfgebtiylxr",
+    "name": "MSI H410M-A PRO",
+    "set": {
+      "builderSocket": "LGA1200",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rvvc002pacfg4rit4hee",
+    "name": "MSI MAG B760 TOMAHAWK WIFI",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwop0065acfgmdbuck8v",
+    "name": "MSI MAG B850 TOMAHAWK WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvk20015acfgs1ru9k00",
+    "name": "MSI MAG B860 TOMAHAWK WIFI",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvky0019acfgtkzq2u7f",
+    "name": "MSI MAG B860M MORTAR WIFI",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwev0051acfg184sy5p3",
+    "name": "MSI MAG X870 TOMAHAWK WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwfz0055acfgg29qopby",
+    "name": "MSI MAG X870E TOMAHAWK WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvtn002hacfgbuz2cmhu",
+    "name": "MSI MAG Z790 TOMAHAWK  WIFI",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvsv002dacfgtmjiyizd",
+    "name": "MSI MAG Z790 TOMAHAWK MAX WIFI",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwe1004xacfgq6j0qkqa",
+    "name": "MSI MEG X870E ACE MAX",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwd9004tacfg4gsoprsx",
+    "name": "MSI MEG X870E GODLIKE",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1qwbp0008acfgapsawmf9",
+    "name": "MSI MEG Z890 UNIFY-X",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwnt0061acfguh3l9tti",
+    "name": "MSI MPG B850 EDGE TI WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwiy005hacfgxc22jv4j",
+    "name": "MSI MPG X870E EDGE TI WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rv7u0001acfg7guqmz0g",
+    "name": "MSI MPG Z890 EDGE TI WIFI",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rx5m0089acfglx7pt0us",
+    "name": "MSI PRO A620M-B",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx570085acfg2q3hpe3e",
+    "name": "MSI PRO A620M-E",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx8b008xacfgdmeorhrb",
+    "name": "MSI PRO B550M-B",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx6s008lacfgvq50kj5g",
+    "name": "MSI PRO B550M-P",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx6e008hacfg1neqaak7",
+    "name": "MSI PRO B550M-P WIFI6E",
+    "set": {
+      "builderSocket": "AM4",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx2c007lacfgasazbnn5",
+    "name": "MSI PRO B650-S WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rx3z007xacfg5wf2j3rr",
+    "name": "MSI PRO B650M-B",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx3j007tacfg0dhjrpgi",
+    "name": "MSI PRO B650M-P",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw4m003pacfg9hrpy9jr",
+    "name": "MSI PRO B760M-A DDR4 II",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw0p0039acfg5fhnb1ms",
+    "name": "MSI PRO B760M-A WIFI",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw2s003hacfg4e5wxfbt",
+    "name": "MSI PRO B760M-E",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw3q003lacfg1px7g9ip",
+    "name": "MSI PRO B760M-E DDR4",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw1m003dacfgfylwcw3n",
+    "name": "MSI PRO B760M-P",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwkt005pacfgm588u8tb",
+    "name": "MSI PRO B840-P WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwn0005xacfgeh6ywhju",
+    "name": "MSI PRO B840M-B",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rx0l007dacfgjkc5onld",
+    "name": "MSI PRO B850-S WIFI6E",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwvm006xacfg3t83uh9u",
+    "name": "MSI PRO B850M-A WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwxp0075acfgt9i3t964",
+    "name": "MSI PRO B850M-A WIFI PZ",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwwq0071acfgm1o2pj6r",
+    "name": "MSI PRO B850M-B GEN4",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwzb0079acfgkkxjfqrt",
+    "name": "MSI PRO B850M-G",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rvmf001hacfgzaapog85",
+    "name": "MSI PRO B860-P",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvlq001dacfgr16r7360",
+    "name": "MSI PRO B860-P WIFI",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvn8001lacfg05astp7x",
+    "name": "MSI PRO B860M-E",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw6f003xacfgvfz9p4jm",
+    "name": "MSI PRO H610M-E DDR4",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw5n003tacfgkppaborx",
+    "name": "MSI PRO H610M-E DDR5",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw9a0049acfg3555m5wx",
+    "name": "MSI PRO H610M-G DDR4",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw7c0041acfgen0z27xs",
+    "name": "MSI PRO H610M-S DDR4",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rw830045acfgmnteipot",
+    "name": "MSI PRO H610M-S DDR4 II",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rvnx001pacfgap94l3o7",
+    "name": "MSI PRO H810M-B",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rvoj001tacfgxzyd8i2y",
+    "name": "MSI PRO H810M-E",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "Micro-ATX"
+    }
+  },
+  {
+    "id": "cmut1rwht005dacfgnwypfqd0",
+    "name": "MSI PRO X870-P WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwgy0059acfgtgvuy8s8",
+    "name": "MSI PRO X870E-P WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvpn001xacfgte8i8bpn",
+    "name": "MSI PRO Z790-A MAX WIFI",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvqh0021acfgnz5o7zow",
+    "name": "MSI PRO Z790-P WIFI",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvrb0025acfgjdwakdtr",
+    "name": "MSI PRO Z790-P WIFI DDR4",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR4",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rwjv005lacfgx9vquy3b",
+    "name": "MSI X870E GAMING PLUS WIFI",
+    "set": {
+      "builderSocket": "AM5",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvs10029acfgs0vit4gr",
+    "name": "MSI Z790 GAMING PLUS WIFI",
+    "set": {
+      "builderSocket": "LGA1700",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  },
+  {
+    "id": "cmut1rvb30009acfgap40cf24",
+    "name": "MSI Z890 GAMING WIFI6E",
+    "set": {
+      "builderSocket": "LGA1851",
+      "builderRamType": "DDR5",
+      "builderFormFactor": "ATX"
+    }
+  }
+]
