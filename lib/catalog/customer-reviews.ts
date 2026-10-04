@@ -15,6 +15,11 @@ import {
   type CustomerQuestionInputFields,
   type CustomerQuestionView,
 } from "@/lib/catalog/question-input";
+import {
+  parseGuestEmail,
+  parseGuestName,
+  parseGuestReviewText,
+} from "@/lib/catalog/guest-feedback-input";
 import { getPrisma } from "@/lib/db/prisma";
 import {
   notifyStaffSafe,
@@ -135,6 +140,144 @@ export async function createCustomerQuestion(input: {
     type: STAFF_ALERT_TYPES.QUESTION_PENDING,
     title: "New product question",
     body: `${input.actor.fullName} · ${product.name}`,
+    href: `/admin/questions/${created.id}`,
+  });
+  return { ok: true, id: created.id };
+}
+
+/** The same text sent again by the same guest within this window is one submission, not two. */
+const GUEST_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * A review from someone WITHOUT an account (AD-363). It is always stored as
+ * PENDING with no linked user — staff approve it before it is shown, exactly as
+ * for a signed-in customer; nothing a guest sends can publish itself. The caller
+ * (the server action) has already checked the origin and applied the rate limit.
+ * Sending the same text again within a day returns the first submission's id
+ * instead of a second row, so a double click or a retry does not fill the queue.
+ */
+export async function createGuestReview(input: {
+  fields: CustomerReviewInputFields;
+  name: unknown;
+}): Promise<CustomerMutationResult> {
+  if (!usesCatalogDatabase()) {
+    return { ok: false, formError: CUSTOMER_REVIEW_DB_REQUIRED };
+  }
+  const name = parseGuestName(input.name);
+  if (!name.ok) {
+    return name;
+  }
+  const parsed = parseCustomerReviewInput(input.fields);
+  if (!parsed.ok) {
+    return parsed;
+  }
+  const text = parseGuestReviewText(parsed.value.body);
+  if (!text.ok) {
+    return text;
+  }
+
+  const product = await findActiveProduct(parsed.value.productSlug);
+  if (!product) {
+    return { ok: false, formError: "That product is not available." };
+  }
+
+  const duplicate = await getPrisma().productReview.findFirst({
+    where: {
+      productId: product.id,
+      userId: null,
+      isStaffEntry: false,
+      authorName: name.value,
+      body: parsed.value.body,
+      createdAt: { gte: new Date(Date.now() - GUEST_DUPLICATE_WINDOW_MS) },
+    },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return { ok: true, id: duplicate.id };
+  }
+
+  const created = await getPrisma().productReview.create({
+    data: {
+      productId: product.id,
+      userId: null,
+      authorName: name.value,
+      rating: parsed.value.rating,
+      title: parsed.value.title,
+      body: parsed.value.body,
+      status: "PENDING",
+      isStaffEntry: false,
+    },
+    select: { id: true },
+  });
+  notifyStaffSafe({
+    type: STAFF_ALERT_TYPES.REVIEW_PENDING,
+    title: "New product review (guest)",
+    body: `${name.value} · ${product.name} · ${parsed.value.rating}★`,
+    href: `/admin/reviews/${product.slug}`,
+  });
+  return { ok: true, id: created.id };
+}
+
+/**
+ * A question from someone WITHOUT an account (AD-363). Always PENDING, no linked
+ * user; the optional email is kept only so staff can reach the asker and is never
+ * shown on the storefront. Same duplicate rule as `createGuestReview`.
+ */
+export async function createGuestQuestion(input: {
+  fields: CustomerQuestionInputFields;
+  name: unknown;
+  email?: unknown;
+}): Promise<CustomerMutationResult> {
+  if (!usesCatalogDatabase()) {
+    return { ok: false, formError: CUSTOMER_REVIEW_DB_REQUIRED };
+  }
+  const name = parseGuestName(input.name);
+  if (!name.ok) {
+    return name;
+  }
+  const email = parseGuestEmail(input.email);
+  if (!email.ok) {
+    return email;
+  }
+  const parsed = parseCustomerQuestionInput(input.fields);
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  const product = await findActiveProduct(parsed.value.productSlug);
+  if (!product) {
+    return { ok: false, formError: "That product is not available." };
+  }
+
+  const duplicate = await getPrisma().productQuestion.findFirst({
+    where: {
+      productId: product.id,
+      userId: null,
+      askerName: name.value,
+      question: parsed.value.question,
+      createdAt: { gte: new Date(Date.now() - GUEST_DUPLICATE_WINDOW_MS) },
+    },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return { ok: true, id: duplicate.id };
+  }
+
+  const created = await getPrisma().productQuestion.create({
+    data: {
+      productId: product.id,
+      userId: null,
+      askerName: name.value,
+      askerEmail: email.value,
+      question: parsed.value.question,
+      status: "PENDING",
+    },
+    select: { id: true },
+  });
+  notifyStaffSafe({
+    type: STAFF_ALERT_TYPES.QUESTION_PENDING,
+    title: "New product question (guest)",
+    body: `${name.value} · ${product.name}`,
     href: `/admin/questions/${created.id}`,
   });
   return { ok: true, id: created.id };

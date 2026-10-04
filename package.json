@@ -38,6 +38,7 @@
     "test:home-sections": "tsx scripts/marketing/check-home-sections.ts",
     "test:compare-search": "tsx scripts/catalog/check-compare-search.ts",
     "test:product-layout": "tsx scripts/catalog/check-product-layout.ts",
+    "test:guest-feedback": "tsx scripts/catalog/check-guest-feedback.ts",
     "catalog:export": "tsx scripts/deploy/export-catalog.ts",
     "catalog:import": "tsx scripts/deploy/import-catalog.ts",
     "pcbuilder:bootstrap-rules": "tsx scripts/deploy/create-pc-builder-rules.ts",

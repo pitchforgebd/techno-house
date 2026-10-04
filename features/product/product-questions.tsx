@@ -6,11 +6,19 @@ import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import { createCustomerQuestionAction } from "@/features/account/conversation-actions";
 import { useCustomerSession } from "@/features/account/customer-session-provider";
+import { createGuestQuestionAction } from "@/features/product/guest-feedback-actions";
+import { HoneypotField } from "@/features/product/honeypot-field";
 import { validatePdpQuestionInput } from "@/lib/account/mock-conversations";
+import {
+  GUEST_EMAIL_MAX,
+  GUEST_NAME_MAX,
+  validateGuestIdentity,
+} from "@/lib/catalog/guest-feedback-input";
 import { QUESTION_MAX } from "@/lib/catalog/question-input";
 import type { CustomerQuestionView } from "@/lib/catalog/question-input";
 import type { ProductQuestion } from "@/lib/data";
@@ -37,6 +45,13 @@ export function ProductQuestions({
   const router = useRouter();
   const session = useCustomerSession();
   const [question, setQuestion] = useState("");
+  // Visitors without an account: a name, an optional email (so staff can reach
+  // them), a hidden honeypot, and a thank-you note (they have no "my questions"
+  // list to see the pending question in).
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [sentAsGuest, setSentAsGuest] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
@@ -64,30 +79,43 @@ export function ProductQuestions({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session) {
-      return;
-    }
     const nextErrors = validatePdpQuestionInput({ question });
+    if (!session) {
+      Object.assign(nextErrors, validateGuestIdentity({ name, email }));
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       return;
     }
     startTransition(async () => {
-      const result = await createCustomerQuestionAction({
-        productSlug,
-        question,
-      });
+      const result = session
+        ? await createCustomerQuestionAction({ productSlug, question })
+        : await createGuestQuestionAction({
+            productSlug,
+            question,
+            name,
+            email,
+            website,
+          });
       if (!result.ok) {
         notifyError(result.formError ?? "Could not submit the question.");
         return;
       }
       setQuestion("");
       setErrors({});
-      notifySuccess({
-        title: "Question submitted",
-        description: "It stays private until staff answers it.",
-      });
-      router.refresh();
+      if (session) {
+        notifySuccess({
+          title: "Question submitted",
+          description: "It stays private until staff answers it.",
+        });
+        router.refresh();
+      } else {
+        setSentAsGuest(true);
+        notifySuccess({
+          title: "Question received",
+          description: "Thank you! It stays private until staff answers it.",
+        });
+      }
     });
   }
 
@@ -151,44 +179,99 @@ export function ProductQuestions({
             (Please don&apos;t use any links, &amp;, (, ), /, +, $, # symbols)
           </span>
         </h3>
-        {!session ? (
-          <p className="text-body text-text-muted">
+        {sentAsGuest ? (
+          <p
+            role="status"
+            className="rounded-md border border-success/30 bg-success/10 px-4 py-3 text-body text-text"
+          >
+            Thank you! Your question was received. It stays private until staff
+            answers it.
+          </p>
+        ) : null}
+        <form
+          className="space-y-4 border border-border bg-surface px-4 py-4 sm:px-5"
+          onSubmit={handleSubmit}
+          noValidate
+        >
+          {session ? (
+            <p className="text-caption text-text-muted">
+              Signed in as{" "}
+              <span className="font-medium text-text">{session.fullName}</span>
+            </p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Your name"
+                htmlFor="pdp-question-name"
+                error={errors.name}
+              >
+                <Input
+                  id="pdp-question-name"
+                  value={name}
+                  placeholder="Your name"
+                  maxLength={GUEST_NAME_MAX}
+                  autoComplete="name"
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setSentAsGuest(false);
+                  }}
+                />
+              </Field>
+              <Field
+                label="Email (optional)"
+                htmlFor="pdp-question-email"
+                error={errors.email}
+              >
+                <Input
+                  id="pdp-question-email"
+                  type="email"
+                  value={email}
+                  placeholder="So we can reach you"
+                  maxLength={GUEST_EMAIL_MAX}
+                  autoComplete="email"
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setSentAsGuest(false);
+                  }}
+                />
+              </Field>
+            </div>
+          )}
+          <Field
+            label="Question"
+            htmlFor="pdp-question"
+            error={errors.question}
+          >
+            <Textarea
+              id="pdp-question"
+              value={question}
+              placeholder="Question"
+              maxLength={QUESTION_MAX}
+              onChange={(event) => {
+                setQuestion(event.target.value);
+                setSentAsGuest(false);
+              }}
+              rows={4}
+            />
+          </Field>
+          {session ? null : (
+            <HoneypotField value={website} onChange={setWebsite} />
+          )}
+          <Button type="submit" size="sm" disabled={pending}>
+            {pending ? "Submitting…" : "Submit question"}
+          </Button>
+        </form>
+        {session ? null : (
+          <p className="text-caption text-text-muted">
+            Have an account?{" "}
             <Link
               href={`/account/login?next=${encodeURIComponent(pathname)}`}
               className="font-medium text-primary underline-offset-2 hover:underline"
             >
               Sign in
             </Link>{" "}
-            to ask a question about this product.
+            to keep track of your questions.
           </p>
-        ) : (
-          <form
-            className="space-y-4 border border-border bg-surface px-4 py-4 sm:px-5"
-            onSubmit={handleSubmit}
-            noValidate
-          >
-            <p className="text-caption text-text-muted">
-              Signed in as{" "}
-              <span className="font-medium text-text">{session.fullName}</span>
-            </p>
-            <Field
-              label="Question"
-              htmlFor="pdp-question"
-              error={errors.question}
-            >
-              <Textarea
-                id="pdp-question"
-                value={question}
-                placeholder="Question"
-                maxLength={QUESTION_MAX}
-                onChange={(event) => setQuestion(event.target.value)}
-                rows={4}
-              />
-            </Field>
-            <Button type="submit" size="sm" disabled={pending}>
-              {pending ? "Submitting…" : "Submit question"}
-            </Button>
-          </form>
         )}
       </div>
     </div>

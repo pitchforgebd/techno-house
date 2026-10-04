@@ -36,6 +36,13 @@ export const AUTH_RATE_LIMITS = {
    * someone who mistypes twice.
    */
   publicFormIp: { limit: 8, windowMs: 15 * 60 * 1000 },
+  /**
+   * Reviews and questions left without an account (AD-363). Tighter than the
+   * other public forms: a script posting here is aiming at the moderation queue
+   * and, once approved, the product page. A real customer leaves one or two a
+   * session, so five an hour per caller is generous.
+   */
+  guestContentIp: { limit: 5, windowMs: 60 * 60 * 1000 },
 } as const;
 
 const STALE_MS = 24 * 60 * 60 * 1000;
@@ -208,6 +215,20 @@ export async function limitPublicForm(
     {
       key: bucket("public.form.ip", fingerprint(ip)),
       ...AUTH_RATE_LIMITS.publicFormIp,
+    },
+  ]);
+  void pruneStale();
+  return result;
+}
+
+/** Caps reviews and questions a caller without an account can send (AD-363). */
+export async function limitGuestContent(
+  ip: string | null | undefined,
+): Promise<RateLimitResult> {
+  const result = await consumeAll([
+    {
+      key: bucket("guest.content.ip", fingerprint(ip)),
+      ...AUTH_RATE_LIMITS.guestContentIp,
     },
   ]);
   void pruneStale();

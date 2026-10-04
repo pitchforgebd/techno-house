@@ -6,13 +6,21 @@ import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import { createCustomerReviewAction } from "@/features/account/conversation-actions";
 import { useCustomerSession } from "@/features/account/customer-session-provider";
+import { createGuestReviewAction } from "@/features/product/guest-feedback-actions";
+import { HoneypotField } from "@/features/product/honeypot-field";
 import { InteractiveRatingPicker } from "@/features/product/interactive-rating-picker";
 import { RatingStars } from "@/features/product/rating-stars";
 import { validatePdpReviewInput } from "@/lib/account/mock-conversations";
+import {
+  GUEST_NAME_MAX,
+  parseGuestReviewText,
+  validateGuestIdentity,
+} from "@/lib/catalog/guest-feedback-input";
 import { REVIEW_BODY_MAX } from "@/lib/catalog/review-input";
 import type { CustomerReviewView } from "@/lib/catalog/review-input";
 import type { ProductReview } from "@/lib/data";
@@ -40,6 +48,11 @@ export function ProductReviews({
   const session = useCustomerSession();
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
+  // Visitors without an account: a name, a hidden honeypot, and a thank-you note
+  // (they have no "my reviews" list to see the pending review in).
+  const [name, setName] = useState("");
+  const [website, setWebsite] = useState("");
+  const [sentAsGuest, setSentAsGuest] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
@@ -74,21 +87,35 @@ export function ProductReviews({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session) {
-      return;
-    }
     const nextErrors = validatePdpReviewInput({ rating, body });
+    if (!session) {
+      Object.assign(nextErrors, validateGuestIdentity({ name }));
+      if (!nextErrors.body) {
+        const text = parseGuestReviewText(body);
+        if (!text.ok) {
+          nextErrors.body = text.formError;
+        }
+      }
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       return;
     }
     startTransition(async () => {
-      const result = await createCustomerReviewAction({
-        productSlug,
-        rating,
-        title: "",
-        body,
-      });
+      const result = session
+        ? await createCustomerReviewAction({
+            productSlug,
+            rating,
+            title: "",
+            body,
+          })
+        : await createGuestReviewAction({
+            productSlug,
+            rating,
+            body,
+            name,
+            website,
+          });
       if (!result.ok) {
         notifyError(result.formError ?? "Could not submit the review.");
         return;
@@ -96,11 +123,19 @@ export function ProductReviews({
       setBody("");
       setRating(0);
       setErrors({});
-      notifySuccess({
-        title: "Review submitted",
-        description: "Staff will publish it after moderation.",
-      });
-      router.refresh();
+      if (session) {
+        notifySuccess({
+          title: "Review submitted",
+          description: "Staff will publish it after moderation.",
+        });
+        router.refresh();
+      } else {
+        setSentAsGuest(true);
+        notifySuccess({
+          title: "Review received",
+          description: "Thank you! It will appear once staff approve it.",
+        });
+      }
     });
   }
 
@@ -165,47 +200,81 @@ export function ProductReviews({
 
       <div className="space-y-3">
         <h3 className="text-label font-semibold text-text">Your review</h3>
-        {!session ? (
-          <p className="text-body text-text-muted">
+        {sentAsGuest ? (
+          <p
+            role="status"
+            className="rounded-md border border-success/30 bg-success/10 px-4 py-3 text-body text-text"
+          >
+            Thank you! Your review was received and will appear once staff
+            approve it.
+          </p>
+        ) : null}
+        <form
+          className="space-y-4 border border-border bg-surface px-4 py-4 sm:px-5"
+          onSubmit={handleSubmit}
+          noValidate
+        >
+          <Field label="Rating" htmlFor="pdp-review-rating">
+            <InteractiveRatingPicker
+              value={rating}
+              onChange={(next) => {
+                setRating(next);
+                setSentAsGuest(false);
+              }}
+              error={errors.rating}
+            />
+          </Field>
+          {session ? (
+            <p className="text-caption text-text-muted">
+              Signed in as{" "}
+              <span className="font-medium text-text">{session.fullName}</span>
+            </p>
+          ) : (
+            <Field label="Your name" htmlFor="pdp-review-name" error={errors.name}>
+              <Input
+                id="pdp-review-name"
+                value={name}
+                placeholder="Your name"
+                maxLength={GUEST_NAME_MAX}
+                autoComplete="name"
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setSentAsGuest(false);
+                }}
+              />
+            </Field>
+          )}
+          <Field label="Review" htmlFor="pdp-review-body" error={errors.body}>
+            <Textarea
+              id="pdp-review-body"
+              value={body}
+              placeholder="Review"
+              maxLength={REVIEW_BODY_MAX}
+              onChange={(event) => {
+                setBody(event.target.value);
+                setSentAsGuest(false);
+              }}
+              rows={5}
+            />
+          </Field>
+          {session ? null : (
+            <HoneypotField value={website} onChange={setWebsite} />
+          )}
+          <Button type="submit" size="sm" disabled={pending}>
+            {pending ? "Submitting…" : "Submit review"}
+          </Button>
+        </form>
+        {session ? null : (
+          <p className="text-caption text-text-muted">
+            Have an account?{" "}
             <Link
               href={`/account/login?next=${encodeURIComponent(pathname)}`}
               className="font-medium text-primary underline-offset-2 hover:underline"
             >
               Sign in
             </Link>{" "}
-            to submit a review for this product.
+            to keep track of your reviews.
           </p>
-        ) : (
-          <form
-            className="space-y-4 border border-border bg-surface px-4 py-4 sm:px-5"
-            onSubmit={handleSubmit}
-            noValidate
-          >
-            <Field label="Rating" htmlFor="pdp-review-rating">
-              <InteractiveRatingPicker
-                value={rating}
-                onChange={setRating}
-                error={errors.rating}
-              />
-            </Field>
-            <p className="text-caption text-text-muted">
-              Signed in as{" "}
-              <span className="font-medium text-text">{session.fullName}</span>
-            </p>
-            <Field label="Review" htmlFor="pdp-review-body" error={errors.body}>
-              <Textarea
-                id="pdp-review-body"
-                value={body}
-                placeholder="Review"
-                maxLength={REVIEW_BODY_MAX}
-                onChange={(event) => setBody(event.target.value)}
-                rows={5}
-              />
-            </Field>
-            <Button type="submit" size="sm" disabled={pending}>
-              {pending ? "Submitting…" : "Submit review"}
-            </Button>
-          </form>
         )}
       </div>
     </div>

@@ -6738,3 +6738,64 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       buy column; storage variations are still not built (see AD-361).
       DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
       `pm2 restart techno-house`.
+
+- [x] AD-363 Product page: Review and Q&A usable without signing in.
+      Operator request (screenshot of the product page): the Review and Q&A
+      sections showed only "Sign in to submit a review / ask a question"; they
+      should work without an account.
+      Changes: both forms are always shown. A visitor without an account enters a
+      name (and, for a question, an optional email), writes the text and sends; a
+      signed-in customer sees no new fields and keeps the old path
+      (`createCustomerReviewAction` / `createCustomerQuestionAction`, linked to the
+      account). After a guest sends, the form shows "Thank you! ... will appear once
+      staff approve it" (a `role="status"` note) instead of a refresh, because a
+      guest has no "my reviews" list to see the pending item in. A small "Have an
+      account? Sign in to keep track" line replaces the old gate.
+      Nothing a guest sends goes live by itself: every guest row is stored as
+      PENDING with no user, and staff approve it in the same admin screens as
+      before. No schema change (`ProductReview.userId`/`authorName` and
+      `ProductQuestion.userId`/`askerName`/`askerEmail` were already optional).
+      Server order for each guest action (`features/product/guest-feedback-actions.ts`):
+      same-origin check -> honeypot (a bot that fills the hidden field is told
+      "received", nothing is stored) -> input validation -> per-caller rate limit
+      (`limitGuestContent`, 5 an hour by hashed IP, bucket `guest.content.ip`) ->
+      write (`createGuestReview` / `createGuestQuestion` in
+      `lib/catalog/customer-reviews.ts`). Validation runs before the rate limit so
+      a typo never burns an attempt. Guest rules are in the pure module
+      `lib/catalog/guest-feedback-input.ts` (shared by the form, the action and the
+      tests): name 2-80 characters with no links/markup/control characters; email
+      optional, validated and lowercased; review text may not contain links or < >.
+      The same text from the same name on the same product within 24 hours returns
+      the first row instead of a second one (double click / retry). Staff get a
+      notification titled "... (guest)". An asker's email is stored only so staff
+      can reach them and is read only by the admin questions screen.
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:guest-feedback` 68
+      checks (new; mutation-checked: 22 deliberate breakages of the real source files
+      — honeypot, origin check, rate limit removed or moved before validation, rows
+      published or linked to a user, duplicate guard, alert, name/link/email rules,
+      budget 5 -> 50, raw IP as key, honeypot reachable, sign-in gate back, askerEmail
+      read by storefront code — were all caught), all 11 regression suites,
+      `test:listing`, `test:privilege`, `test:routes` pass. Real browser test
+      (headless Chrome against the dev server, temporary rows removed afterwards, the
+      Q&A flag put back): 18/18 checks — forms visible when signed out, gate gone,
+      empty/link/markup/invalid-email input refused with messages, a valid review and
+      question show the thank-you note and are NOT listed publicly, resending is
+      accepted, filled honeypots look like success, the 6th submission in an hour is
+      refused; database after: guest rows PENDING with userId null, email lowercased,
+      0 rows from honeypot submissions, 4 staff alerts, 1 rate-limit bucket at 5.
+      Honest notes / limits: (1) nothing here stops a human from posting fake reviews
+      — moderation is the control; staff must approve what they can believe. (2) No
+      CAPTCHA (reCAPTCHA is not wired); the honeypot and rate limit stop casual bots
+      only, and a shared office/mobile IP shares one 5-an-hour budget. (3) Some
+      password managers autofill hidden fields; the honeypot is named `website` and
+      has `autocomplete="off"`, but a real person whose browser fills it would see a
+      thank-you and have nothing stored. (4) A guest never sees their pending item
+      (only the thank-you note). (5) Not tested in a browser: the signed-in flow (its
+      code path is unchanged) and `test:routes`'s live cross-origin checks (they
+      skipped — no dev server running); the same-origin refusal is pinned as a source
+      guard. (6) While testing, a storefront marketing popup (`dialog.th-popup`)
+      stole keyboard focus mid-typing now and then; it is older than this task and
+      was closed by the test script, but a real visitor typing a review can be
+      interrupted by it. Not changed.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.
