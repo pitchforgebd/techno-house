@@ -35,6 +35,7 @@
     "catalog:import-builder-compat": "tsx scripts/deploy/import-builder-compat-csv.ts",
     "catalog:find-duplicates": "tsx scripts/deploy/find-duplicate-products.ts",
     "test:duplicates": "tsx scripts/deploy/check-duplicate-listings.ts",
+    "test:home-sections": "tsx scripts/marketing/check-home-sections.ts",
     "catalog:export": "tsx scripts/deploy/export-catalog.ts",
     "catalog:import": "tsx scripts/deploy/import-catalog.ts",
     "pcbuilder:bootstrap-rules": "tsx scripts/deploy/create-pc-builder-rules.ts",

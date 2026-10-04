@@ -561,6 +561,7 @@ model Product {
   buildItems      PCBuildItem[]
   viewEvents      ProductViewEvent[]
   b2bPrice        B2BProductPrice?
+  homeSections    HomeSectionProduct[]
 
   relatedTo   Product[] @relation("RelatedProducts")
   relatedFrom Product[] @relation("RelatedProducts")
@@ -1969,6 +1970,30 @@ model HomeBanner {
   updatedAt DateTime @updatedAt
 
   @@index([slot, isActive, position])
+}
+
+/// The two product sections on the storefront homepage (AD-357).
+enum HomeSection {
+  FEATURED
+  DEALS
+}
+
+/// A hand-picked product in a homepage section (Admin → Design Studio →
+/// Homepage products). `position` is the display order. Deliberately separate
+/// from `Product.isSale` (Today's Deal, which feeds the whole /deals page) so
+/// the homepage can show a short chosen list while /deals holds many more.
+/// A section with no rows falls back to the automatic list.
+model HomeSectionProduct {
+  id        String      @id @default(cuid())
+  section   HomeSection
+  productId String
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([section, productId])
+  @@index([section, position])
 }
 
 /// Global refund policy (AD-233). Category-day map is JSON keyed by category slug.

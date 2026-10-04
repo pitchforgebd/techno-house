@@ -197,7 +197,7 @@ export function AdminProductTable({
                 Published
               </TableHeader>
               <TableHeader className="w-24 text-center text-[0.65rem] font-semibold uppercase tracking-wide text-text-muted">
-                Featured
+                New badge
               </TableHeader>
               <TableHeader className="w-28 text-center text-[0.65rem] font-semibold uppercase tracking-wide text-text-muted">
                 Today&apos;s deal
@@ -323,13 +323,13 @@ export function AdminProductTable({
                   </TableCell>
                   <TableCell className="text-center">
                     <AdminToggleSwitch
-                      label={`Featured: ${product.name}`}
+                      label={`New badge: ${product.name}`}
                       checked={rowFlags.featured}
                       onChange={(value) => {
                         if (pending) {
                           return;
                         }
-                        updateFlag(product.id, "featured", value, "Featured");
+                        updateFlag(product.id, "featured", value, "New badge");
                       }}
                     />
                   </TableCell>

@@ -10,6 +10,7 @@ import {
   PanelsTopLeft,
   Share2,
   SlidersHorizontal,
+  Star,
   Type,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -57,6 +58,13 @@ const GROUPS: { label: string; cards: StudioCard[] }[] = [
         title: "Banners & sliders",
         description: "Flash deal, category, and promo banners",
         icon: SlidersHorizontal,
+        iconClass: "bg-amber-100 text-amber-700",
+      },
+      {
+        href: "/admin/design-studio/home-products",
+        title: "Homepage products",
+        description: "Choose the products in Featured and Best deals",
+        icon: Star,
         iconClass: "bg-amber-100 text-amber-700",
       },
       {

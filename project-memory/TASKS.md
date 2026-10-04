@@ -6394,3 +6394,69 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       GIG- (POS, mostly 0) stock question from AD-355 now matters to customers.
       Not done: staff-side Compatibility data page still lists laptop/out-of-stock
       parts (they are invisible to customers, so it is only noise).
+
+- [x] AD-357 Homepage Featured / Best deals: staff choose the exact products.
+      Operator report: the two homepage sections show 10 products each, but the
+      admin toggles do not control them properly; the same flags also feed the
+      shop and Deals pages, so flagging 50 deals changes the Deals page but the
+      homepage sections cannot be managed ("I want specific products there,
+      otherwise random ones appear").
+      Root cause (read from the code, confirmed on the live site): `HomeFeatured`
+      was the first ten products of the WHOLE catalogue ordered by `position`,
+      ignoring the Featured switch (live showed an SSD and Hikvision
+      fingerprint terminals); the admin "Featured" toggle actually writes
+      `Product.isNew`, which only puts a "New" badge on the card. `HomeDeals` used
+      the Today's Deal flag (`isSale`) but took the ten DEEPEST DISCOUNTS among
+      all flagged, so flagging 50 gave the homepage the wrong ten. `/deals` used
+      the same query capped at 40 with no paging (50 flagged showed 40).
+      Built (operator approved the recommended design and defaults: max 10 per
+      section; empty list falls back to the automatic list; rename the toggle;
+      page the Deals page): table `HomeSectionProduct` (additive migration
+      `20261005120000_add_home_section_products`, FK to Product with cascade),
+      admin screen Design Studio → Homepage products (search by name/SKU words,
+      add, up/down, remove, save; unpublished and out-of-stock items are
+      flagged), server actions guarded by same-origin + `design_studio.manage`,
+      audit action `home_section.update`, storefront loader
+      (`features/home/load-home-section.ts`) used by both sections. Exactly the
+      chosen products are shown, in order, never padded; unpublished ones drop out;
+      if nothing chosen is published the automatic list returns. The storefront
+      read never throws (a missing table, e.g. a deploy that skipped the
+      migration, shows the old automatic lists instead of a broken homepage).
+      `/deals` now has paging and redirects a page past the end to the last
+      page. The product-list column and form switch labelled "Featured" are now
+      "New badge" (labels only; CSV columns untouched). Docs:
+      `docs/HOMEPAGE_PRODUCTS.md`.
+      Verified: `tsc` 0; `eslint` clean on every changed file (it caught a
+      setState-in-effect, fixed); `npm run test:home-sections` 28 checks, six
+      mutations (over-max silently accepted, duplicates kept, same-origin check
+      removed, storefront read no longer catching, Featured ignoring the list,
+      loader never falling back) each fail it; `test:routes` 16/16 with the dev
+      server up (the new admin page is covered by the existing design-studio
+      route rule); `test:security`, `test:privilege`, `test:listing`,
+      `test:pc-builder` and the full `test:regression` (8 suites) pass;
+      `next build` succeeds. Against the development database and dev server an
+      integration run (28 checks, then removed) proved: chosen 5 and 3 products
+      appear in exactly the chosen order and are not padded; re-ordering is
+      reflected; an unpublished chosen product is hidden; 11 products, an unknown
+      product and an unknown section are rejected and change nothing; a duplicate
+      collapses; clearing falls back to the baseline automatic list; /deals shows
+      40 then the remaining 28 of 68 flagged, with Next/Page 1 of 2; the admin page
+      renders for staff and not without a session and lists the saved products;
+      the hub links to it; the product list shows "New badge". Cleanup verified
+      (no rows left, temporary session removed).
+      NOT verified: the admin screen was checked by its server-rendered HTML and
+      the library calls, not by clicking in a browser (search-as-you-type, add,
+      arrows, save toast); the server actions are covered by the source guards and
+      the library, not by an end-to-end action call. A page past the end of
+      /deals redirects via the streamed meta-refresh (HTTP 200), not a 307.
+      Out-of-stock chosen products are still shown on the homepage (with their
+      badge); say so if they should be hidden.
+      Found, not fixed: the Today's Deal / Promotional product pickers in admin
+      (`loadPromoCatalogProducts`) ask for 500 products but the repository caps a
+      page at 48 (`MAX_PAGE_SIZE`), so those pickers only offer 48 products; the
+      product-list toggles are unaffected. Also the admin product list's Sort
+      option "Featured" means catalogue order, unrelated to the old toggle.
+      DEPLOY: needs the migration. `git pull`, `npm run db:migrate:deploy`,
+      `npm run build`, `pm2 restart techno-house` (take a pg_dump first as usual).
+      Until staff pick products, the homepage looks exactly as before (automatic
+      lists).

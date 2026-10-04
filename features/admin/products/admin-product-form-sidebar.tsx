@@ -247,7 +247,7 @@ export function AdminProductFormSidebar(props: SidebarProps) {
           onChange={props.setPublished}
         />
         <AdminToggleRow
-          label="Featured"
+          label="New badge"
           checked={props.featured}
           onChange={props.setFeatured}
         />

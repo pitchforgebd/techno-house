@@ -107,6 +107,7 @@ export const AUDIT_ACTIONS = {
   CONTENT_PAGE_UPDATE: "content_page.update",
   HOME_BANNER_UPDATE: "home_banner.update",
   HOME_BANNER_DELETE: "home_banner.delete",
+  HOME_SECTION_UPDATE: "home_section.update",
   SEO_UPDATE: "seo.update",
   SHIPPING_METHOD_UPDATE: "shipping_method.update",
   SHIPPING_ZONE_UPDATE: "shipping_zone.update",
