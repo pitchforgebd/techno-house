@@ -180,6 +180,14 @@ export default async function ProductPage({
   const productPageBanner =
     (await getStorefrontHomeBanners("product-page"))[0] ?? null;
 
+  // The strip under the gallery exists only when there is something to put in
+  // it, so a product with no labels, warranty or notes leaves no empty block
+  // (and the details rise to sit right under the image).
+  const hasBelowGallery =
+    product.labels.length > 0 ||
+    Boolean(product.warrantyLabel) ||
+    product.notes.length > 0;
+
   const visitorWidgetSettings = await getVisitorWidgetSettings();
   const liveViewerCount = visitorWidgetSettings.enabled
     ? await getLiveViewerCount(product.slug, visitorWidgetSettings.windowMinutes)
@@ -261,73 +269,73 @@ export default async function ProductPage({
         b2bTerms={b2bTerms}
         viewerCount={viewerCount}
         belowGallery={
-          <div className="space-y-4">
-            {product.labels.length > 0 ? (
-              <ProductLabelsRow labels={product.labels} />
-            ) : null}
-            {product.warrantyLabel ? (
-              <ProductWarranty
-                warrantyLabel={product.warrantyLabel}
-                warrantyBadge={product.warrantyBadge}
-                warrantyLogoSrc={product.warrantyLogoSrc}
-              />
-            ) : null}
-            <ProductNotesPanel notes={product.notes} />
-          </div>
+          hasBelowGallery ? (
+            <div className="space-y-4">
+              {product.labels.length > 0 ? (
+                <ProductLabelsRow labels={product.labels} />
+              ) : null}
+              {product.warrantyLabel ? (
+                <ProductWarranty
+                  warrantyLabel={product.warrantyLabel}
+                  warrantyBadge={product.warrantyBadge}
+                  warrantyLogoSrc={product.warrantyLogoSrc}
+                />
+              ) : null}
+              <ProductNotesPanel notes={product.notes} />
+            </div>
+          ) : null
         }
-      />
-
-      <ProductPageBanner banner={productPageBanner} />
-
-      <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] xl:grid-cols-[minmax(0,1fr)_22rem]">
-        <div>
-          <ProductDetailSections
-            specifications={
-              <ProductSpecifications
-                groups={product.specGroups}
-                productName={product.name}
-              />
-            }
-            details={
-              <ProductDetailsPanel
-                productName={product.name}
-                brandName={product.brandName}
-                warrantyLabel={product.warrantyLabel}
-                warrantyBadge={product.warrantyBadge}
-                warrantyLogoSrc={product.warrantyLogoSrc}
-                detailsHtml={detailsHtml}
-              />
-            }
-            reviews={
-              <ProductReviews
-                catalogReviews={reviews}
-                ownReviews={ownReviews}
-                productSlug={product.slug}
-              />
-            }
-            showQuestions={questionsEnabled}
-            questions={
-              questionsEnabled ? (
-                <ProductQuestions
-                  catalogQuestions={questions}
-                  ownQuestions={ownQuestions}
+        banner={
+          productPageBanner ? (
+            <ProductPageBanner banner={productPageBanner} />
+          ) : null
+        }
+        detail={
+          <>
+            <ProductDetailSections
+              specifications={
+                <ProductSpecifications
+                  groups={product.specGroups}
+                  productName={product.name}
+                />
+              }
+              details={
+                <ProductDetailsPanel
+                  productName={product.name}
+                  brandName={product.brandName}
+                  warrantyLabel={product.warrantyLabel}
+                  warrantyBadge={product.warrantyBadge}
+                  warrantyLogoSrc={product.warrantyLogoSrc}
+                  detailsHtml={detailsHtml}
+                />
+              }
+              reviews={
+                <ProductReviews
+                  catalogReviews={reviews}
+                  ownReviews={ownReviews}
                   productSlug={product.slug}
                 />
-              ) : null
-            }
-          />
-          <ProductMediaExtras
-            productName={product.name}
-            youtubeUrl={product.youtubeUrl}
-            pdfSpecificationSrc={product.pdfSpecificationSrc}
-          />
-        </div>
-        {/* Sticky so the rail keeps pace with the long specs/reviews column
-            instead of leaving dead space beside it. */}
-        <div className="lg:sticky lg:top-4">
-          <ProductSimilarSidebar products={similarProducts} />
-        </div>
-      </div>
+              }
+              showQuestions={questionsEnabled}
+              questions={
+                questionsEnabled ? (
+                  <ProductQuestions
+                    catalogQuestions={questions}
+                    ownQuestions={ownQuestions}
+                    productSlug={product.slug}
+                  />
+                ) : null
+              }
+            />
+            <ProductMediaExtras
+              productName={product.name}
+              youtubeUrl={product.youtubeUrl}
+              pdfSpecificationSrc={product.pdfSpecificationSrc}
+            />
+          </>
+        }
+        similar={<ProductSimilarSidebar products={similarProducts} />}
+      />
 
       <ProductRelated products={relatedProducts} productName={product.name} />
     </div>

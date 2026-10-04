@@ -6578,3 +6578,57 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       products are in the same family.
       DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
       `pm2 restart techno-house`.
+
+- [x] AD-360 Product page: no empty block under the gallery.
+      Operator report (screenshot): on a product page a very tall empty area sits
+      under the image (the strip where Notes and other extras appear). It should
+      fill when notes are added, and otherwise not exist — the empty block spoils
+      the design.
+      Cause (read from the code and measured in Chrome): the top row was a
+      two-column grid, gallery (+ labels/warranty/notes) on the left, buy box on
+      the right, and the Specifications/Details/Q&A/Review section started in a
+      separate full-width row BELOW both. A buy box taller than the gallery plus
+      its extras therefore left blank space on the left until the buy box ended.
+      Measured on the live site at 1440 px (the user's product): the left column's
+      last content ends at y=764 and Specifications starts at y=1477 — a 714 px gap.
+      Fix: one grid with two independent columns. Left: gallery, then (only when
+      present) labels/warranty/notes, then Specifications/Details/Q&A/Review.
+      Right: buy box, then the campaign banner, then the similar-products rail
+      (still sticky). The right column spans all rows and the last left row is
+      flexible, so whatever height the buy box needs beyond the gallery is added at
+      the BOTTOM of the left column, never as a gap under the image: with no
+      notes the details rise to sit under the gallery, and notes added later slot
+      in between. Below `lg` the right-column wrapper dissolves (`display:
+      contents`) and `order` keeps the old single-column reading order (gallery,
+      notes, buy box, banner, details, similar products). The strip under the gallery
+      is rendered only when there are labels, warranty or notes (it was an empty
+      block with a margin before). `ProductMediaBuy` now owns the whole grid and
+      takes `banner`, `detail` and `similar` slots from the page; the banner image
+      size hint became 50vw (it now sits in a half-width column).
+      Verified in headless Chrome (real rendering, desktop and mobile): the gap
+      above Specifications is 42 px (the intended spacing) at 1440, 1920 and 1024
+      px, versus 714 px before; no horizontal overflow at 1920/1440/1024/1023/390;
+      with notes (a product with 7) the notes panel sits under the gallery and
+      Specifications follows it, the similar rail is in the right column; a
+      temporarily added product-page banner (removed again, 0 left) lands under the
+      buy box above the similar rail and moves only the right column; single-column
+      order at 390 and 1023 px is gallery, buy box, details, similar products. Also
+      `tsc` 0, `eslint` clean, `next build` ok, `test:product-layout` 16 checks and
+      six mutations (right column not spanning, items-start back, gallery order,
+      sticky rail lost, strip reserved when empty, details moved) each fail it, all
+      10 regression suites, `test:listing`, `test:privilege`, `test:routes` pass.
+      Honest notes: the first two attempts of the layout test failed for reasons in
+      the test (Windows line endings; picking the first instead of the nearest
+      order class) and the first banner script edit deleted the new props — caught
+      at once by re-reading and fixed; none reached the commit. Mobile screenshots
+      show the fixed bottom navigation bar mid-page: that is how a full-page capture
+      renders a fixed element, not a layout fault.
+      Trade-offs to know: the detail sections are now as wide as the left column
+      (about half the page) instead of two-thirds, and the similar-products rail
+      is as wide as the buy box; in DOM order the buy box now comes after the
+      detail sections' wrapper on large screens (it is visually unchanged). The
+      right column stays shorter than the left on long pages; the similar rail is
+      sticky so it follows while scrolling. Easily reverted with git if the
+      narrower detail column is not liked.
+      DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
+      `pm2 restart techno-house`.

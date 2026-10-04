@@ -18,6 +18,7 @@ const SUITES: { name: string; script: string }[] = [
   { name: "pc-builder", script: "test:pc-builder" },
   { name: "home-sections", script: "test:home-sections" },
   { name: "compare-search", script: "test:compare-search" },
+  { name: "product-layout", script: "test:product-layout" },
 ];
 
 function main(): void {
