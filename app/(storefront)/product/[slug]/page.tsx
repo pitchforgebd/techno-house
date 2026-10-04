@@ -268,6 +268,7 @@ export default async function ProductPage({
         }
         b2bTerms={b2bTerms}
         viewerCount={viewerCount}
+        hasNotes={product.notes.length > 0}
         belowGallery={
           hasBelowGallery ? (
             <div className="space-y-4">

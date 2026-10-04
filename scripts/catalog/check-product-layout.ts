@@ -1,16 +1,18 @@
 /**
- * Product page layout contract (AD-360).
+ * Product page layout contract (AD-360, reworked in AD-361).
  *
  *   npm run test:product-layout
  *
- * The product page used to leave a tall empty block under the gallery whenever
- * the buy box was longer than the media column and the product had no labels,
- * warranty or notes. The cure is structural, so these checks pin the structure
- * (and the single-column reading order on small screens) as source guards. The
- * real rendering was checked in headless Chrome when the change was made — see
- * AD-360 in project-memory/TASKS.md. No database, no network.
+ * The product page is laid out like a classic storefront page on one flat
+ * 12-column grid: gallery | buy information | colour options on top, wide
+ * specifications / details beside a narrow similar-products rail below. The
+ * structure keeps three things true that a unit test cannot see — no tall empty
+ * block under the gallery, the same single-column reading order on phones, and
+ * nothing reserved for content that is not there — so these checks pin it as
+ * source guards. The real rendering was checked in headless Chrome when the
+ * layout was made (see AD-361 in project-memory/TASKS.md). No database, no network.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 let checks = 0;
 let failures = 0;
@@ -32,50 +34,57 @@ function source(path: string): string {
 
 function main(): void {
   const media = source("features/product/product-media-buy.tsx");
+  const summary = source("features/product/product-summary.tsx");
   const page = source("app/(storefront)/product/[slug]/page.tsx");
   const banner = source("features/product/product-page-banner.tsx");
+  const cardsPath = "features/product/product-service-cards.tsx";
 
-  // --- one grid, two independent columns ---------------------------------------------
+  // --- one flat 12-column grid ---------------------------------------------------------
   check(
-    "one grid holds both columns, with a flexible last row",
-    media.includes("lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]") &&
-      media.includes("lg:grid-rows-[auto_auto_1fr]"),
+    "one flat 12-column grid, with a flexible second row",
+    media.includes("lg:grid-cols-12") && media.includes("lg:grid-rows-[auto_1fr_auto_auto]"),
   );
   check(
-    "the right column spans every row, so the buy box never sets the height of a left row",
-    media.includes("lg:col-start-2") &&
-      media.includes("lg:row-span-3") &&
-      media.includes("lg:row-start-1"),
+    "the gallery column is 5 wide and spans the first two rows",
+    media.includes("lg:col-span-5 lg:col-start-1 lg:row-span-2 lg:row-start-1"),
   );
   check(
-    "the columns are not top-aligned boxes that leave a gap (no items-start)",
+    "the buy information is 7 wide (lg) and 4 wide from xl when colour options take the rest",
+    media.includes("lg:col-span-7 lg:col-start-6") && media.includes('hasOptions && "xl:col-span-4"'),
+  );
+  check(
+    "the colour-options column is 3 wide, only from xl, in the top row",
+    media.includes("xl:col-span-3 xl:col-start-10 xl:row-start-1"),
+  );
+  check(
+    "the banner sits under the buy area, not under the gallery",
+    media.includes("lg:col-span-7 lg:col-start-6 lg:row-start-2"),
+  );
+  check(
+    "specifications / details are wide and the similar rail narrow, in the last row (one lower under a full-width banner)",
+    media.includes("lg:col-span-8 lg:col-start-1 xl:col-span-9") &&
+      media.includes("lg:col-span-4 lg:col-start-9") &&
+      media.includes("xl:col-span-3 xl:col-start-10") &&
+      // one row lower when a full-width banner sits between the top and the details:
+      // BOTH the details and the similar rail must move, or one overlaps the banner
+      media.split('bannerFull ? "lg:row-start-4" : "lg:row-start-3"').length - 1 === 2,
+  );
+  check(
+    "the similar-products rail follows the long column (sticky on large screens)",
+    media.includes("lg:sticky lg:top-4"),
+  );
+  check(
+    "the columns are not top-aligned boxes (no items-start on the grid)",
     !media.includes("lg:items-start"),
   );
-  check(
-    "the details sit in the LEFT column under the gallery (and notes), in the flexible last row",
-    media.includes("lg:col-start-1 lg:row-start-3") && media.includes("{detail}"),
-  );
-  check(
-    "the right column holds the buy box, then the banner, then the similar-products rail",
-    media.indexOf("<ProductSummary") > -1 &&
-      media.indexOf("{banner}") > media.indexOf("<ProductSummary") &&
-      media.indexOf("{similar}") > media.indexOf("{banner}"),
-  );
-  check(
-    "the similar-products rail still follows the long column (sticky on large screens)",
-    media.includes("lg:sticky lg:top-4") && media.indexOf("lg:sticky") < media.indexOf("{similar}"),
-  );
 
-  // --- nothing is reserved for empty content -------------------------------------------
+  // --- nothing reserved for content that is not there -----------------------------------
   check(
-    "the strip under the gallery renders only when there is something in it",
-    media.includes("{belowGallery ? (") &&
-      media.includes("{banner ? (") === false && // banner uses the inline form below
-      media.includes("{banner ? <div"),
-  );
-  check(
-    "the detail and similar slots are skipped when absent",
-    media.includes("{detail ? (") && media.includes("{similar ? ("),
+    "the strip under the gallery renders only when it has content",
+    media.includes("{belowGallery ? <div") &&
+      media.includes("{banner ? (") &&
+      media.includes("{detail ? (") &&
+      media.includes("{similar ? ("),
   );
   check(
     "the page passes nothing for the gallery strip when there are no labels, warranty or notes",
@@ -88,34 +97,80 @@ function main(): void {
   );
   check(
     "the page passes the banner only when one exists",
-    page.includes("productPageBanner ? (") && page.includes("<ProductPageBanner banner={productPageBanner} />"),
+    page.includes("productPageBanner ? (") &&
+      page.includes("<ProductPageBanner banner={productPageBanner} />"),
+  );
+  check(
+    "the colour options column exists only when the product has colours",
+    summary.includes("{colorVariations ? (") && summary.includes("xl:block"),
   );
 
-  // --- single-column reading order below `lg` ------------------------------------------
+  // --- where the delivery cards go keeps the columns level -------------------------------
   check(
-    "below lg the right column dissolves, so each part takes its own place in one column",
-    media.includes('className="contents lg:col-start-2') && media.includes("lg:block"),
+    "delivery cards: under the colours when there are colours, in the buy box when there are notes under the gallery, otherwise under the gallery",
+    media.includes('hasOptions\n    ? "options"') &&
+      media.includes('hasNotes\n      ? "info"') &&
+      media.includes('"gallery"'),
   );
-  const orderOf = (marker: string): number | null => {
-    const at = media.indexOf(marker);
-    if (at < 0) return null;
-    // The order class sits on the wrapper just BEFORE the marker: take the last one.
-    const found = [...media.slice(Math.max(0, at - 160), at).matchAll(/order-(\d)/g)];
-    const last = found[found.length - 1];
-    return last ? Number(last[1]) : null;
-  };
-  const gallery = orderOf("<ProductGallery");
-  const notes = orderOf("{belowGallery}");
-  const summary = orderOf("<ProductSummary");
-  const bannerOrder = orderOf("{banner}");
-  const detail = orderOf("{detail}");
-  const similar = orderOf("{similar}");
   check(
-    "small-screen order is gallery, notes, buy box, banner, details, similar products",
-    gallery === 1 && notes === 2 && summary === 3 && bannerOrder === 4 && detail === 5 && similar === 6,
+    "each placement shows the cards exactly once per screen size",
+    // gallery copy: lg+ (and xl:hidden when the options column has them)
+    media.includes('serviceCardsAt === "options" && "xl:hidden"') &&
+      media.includes('serviceCardsAt !== "info"') &&
+      // buy-box copy: always for "info", below lg otherwise
+      summary.includes('serviceCardsAt === "info"') &&
+      summary.includes('"lg:hidden"') &&
+      // options-column copy
+      summary.includes('serviceCardsAt === "options" ? <ProductServiceCards />'),
+  );
+  check(
+    "the delivery cards are their own component that adapts to its own width",
+    existsSync(cardsPath) &&
+      source(cardsPath).includes('"@container"') &&
+      source(cardsPath).includes("@xl:grid-cols-3"),
   );
 
-  // --- the page no longer lays the sections out itself ---------------------------------
+  // --- single-column reading order below lg ------------------------------------------------
+  const at = (haystack: string, marker: string) => haystack.indexOf(marker);
+  check(
+    "DOM order is gallery, buy information (with colours), banner, details, similar products",
+    at(media, "<ProductGallery") > -1 &&
+      at(media, "<ProductSummary") > at(media, "<ProductGallery") &&
+      media.lastIndexOf("{banner}") > at(media, "<ProductSummary") &&
+      at(media, "{detail}") > media.lastIndexOf("{banner}") &&
+      at(media, "{similar}") > at(media, "{detail}"),
+  );
+  check(
+    "below xl the colours stay in the buy box, before the cart controls",
+    summary.includes('<div className="xl:hidden">{colorVariations}</div>') &&
+      at(summary, "{colorVariations ? <div") < at(summary, "Check availability"),
+  );
+
+  check(
+    "the banner spans both columns as a strip under them, except with notes, when it sits under the buy information; small screens always get it after the buy box",
+    media.includes('hasNotes ? "info" : "full"') &&
+      media.includes('bannerAt === "info"') &&
+      media.includes("lg:col-span-7 lg:col-start-6 lg:row-start-2") &&
+      media.includes("lg:col-span-12 lg:col-start-1 lg:row-start-3"),
+  );
+  check(
+    "the page tells the grid whether notes are present",
+    page.includes("hasNotes={product.notes.length > 0}"),
+  );
+
+  // --- the buy row fits a narrow column -------------------------------------------------------
+  check(
+    "the Compare label drops out of a narrow buy column but keeps its accessible name",
+    summary.includes("hidden @[27rem]:inline") &&
+      summary.includes('aria-label={onCompare ? "In compare" : "Compare"}') &&
+      summary.includes("@container space-y-5"),
+  );
+  check(
+    "the summary renders two sibling boxes (buy information, colour options) for the page grid",
+    summary.includes("infoClassName") && summary.includes("optionsClassName"),
+  );
+
+  // --- the page no longer lays the sections out itself -----------------------------------------
   const uses = (tag: string) => (page.match(new RegExp(`<${tag}[ \\n/>]`, "g")) ?? []).length;
   check(
     "each section is rendered once, inside the shared grid",
@@ -136,8 +191,8 @@ function main(): void {
     page.indexOf("<ProductRelated") > page.indexOf("similar="),
   );
   check(
-    "the banner image is sized for a half-width column",
-    banner.includes('sizes="(min-width: 1024px) 50vw, 100vw"'),
+    "the banner image is sized for its 7-of-12 column",
+    banner.includes('sizes="(min-width: 1024px) 58vw, 100vw"'),
   );
 
   console.log(

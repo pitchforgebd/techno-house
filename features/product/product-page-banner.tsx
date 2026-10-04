@@ -23,7 +23,7 @@ export function ProductPageBanner({
       width={1200}
       height={260}
       className="h-auto w-full object-cover"
-      sizes="(min-width: 1024px) 50vw, 100vw"
+      sizes="(min-width: 1024px) 58vw, 100vw"
     />
   );
 

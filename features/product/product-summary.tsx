@@ -3,15 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import {
-  ArrowLeftRight,
-  Check,
-  ClipboardList,
-  CreditCard,
-  Heart,
-  ShoppingCart,
-  Truck,
-} from "lucide-react";
+import { ArrowLeftRight, Check, Heart, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClassName } from "@/components/ui/button";
 import {
@@ -25,6 +17,7 @@ import { B2BApplyDialog } from "@/features/b2b/b2b-apply-dialog";
 import { useCartStore } from "@/features/cart/use-cart-store";
 import { useListsStore } from "@/features/lists/use-lists-store";
 import { ProductEmiTooltip } from "@/features/product/product-emi-tooltip";
+import { ProductServiceCards } from "@/features/product/product-service-cards";
 import { ProductShareBar } from "@/features/product/product-share-bar";
 import { RatingStars } from "@/features/product/rating-stars";
 import {
@@ -77,6 +70,22 @@ type ProductSummaryProps = {
   /** Per-product wholesale terms — only passed for a verified account. */
   b2bTerms?: B2BProductTerms | null;
   viewerCount?: number | null;
+  /**
+   * The summary renders as TWO sibling boxes — the buy information and, on large
+   * screens, the colour options — so the page grid can place them in separate
+   * columns. These classes position the boxes in that grid.
+   */
+  infoClassName?: string;
+  optionsClassName?: string;
+  /**
+   * Where the delivery cards sit on large screens: "info" keeps them in the buy
+   * box, "options" puts them under the colours in the right-hand column (from
+   * `xl`, where that column exists; between `lg` and `xl` the page shows them
+   * under the gallery instead), "gallery" leaves them to the page, which renders
+   * them under the gallery (from `lg`). Below `lg` they are always in the buy box.
+   * The page picks whichever keeps its columns about the same height.
+   */
+  serviceCardsAt?: "info" | "options" | "gallery";
 };
 
 /**
@@ -146,6 +155,9 @@ export function ProductSummary({
   b2bAccount = null,
   b2bTerms = null,
   viewerCount = null,
+  infoClassName,
+  optionsClassName,
+  serviceCardsAt = "info",
 }: ProductSummaryProps) {
   const router = useRouter();
   const { state: cartState, addItem } = useCartStore();
@@ -276,9 +288,70 @@ export function ProductSummary({
     });
   }
 
+  // One element, rendered in two places (see `lg:hidden` / `hidden lg:block`
+  // below); only one of them is ever displayed, and both share this state.
+  const colorVariations =
+    colors.length > 0 ? (
+      <div className="space-y-2">
+        <h2 className="text-label font-semibold text-text">
+          Color variations
+        </h2>
+        <div
+          className="space-y-2"
+          role="listbox"
+          aria-label="Product colour"
+        >
+          {colors.map((color) => {
+            const selected = color.id === selectedColorId;
+            const swatch = color.hex ?? "#d4d4d4";
+            return (
+              <button
+                key={color.id}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                title={color.name}
+                className={cn(
+                  "flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors",
+                  selected
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-surface hover:border-primary/40",
+                )}
+                onClick={() => {
+                  setSelectedColorId(color.id);
+                  setJustAdded(false);
+                }}
+              >
+                <span
+                  aria-hidden
+                  className="size-8 shrink-0 rounded-full border border-black/10"
+                  style={{ backgroundColor: swatch }}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-label font-medium text-text">
+                    {color.name}
+                  </span>
+                  <span className="block text-caption tabular-nums text-text-muted">
+                    {formatMoney(displayPrice)}
+                  </span>
+                </span>
+                {selected ? (
+                  <Check
+                    aria-hidden
+                    className="size-4 shrink-0 text-primary"
+                    strokeWidth={2.5}
+                  />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    ) : null;
+
   return (
     <>
-      <div className="space-y-5">
+      <div className={cn("@container space-y-5", infoClassName)}>
         <div>
           <h1 className="text-balance text-2xl font-semibold leading-snug tracking-tight text-text sm:text-3xl">
             {name}
@@ -445,63 +518,9 @@ export function ProductSummary({
           </p>
         ) : null}
 
-        {colors.length > 0 ? (
-          <div className="space-y-2">
-            <h2 className="text-label font-semibold text-text">
-              Color variations
-            </h2>
-            <div
-              className="space-y-2"
-              role="listbox"
-              aria-label="Product colour"
-            >
-              {colors.map((color) => {
-                const selected = color.id === selectedColorId;
-                const swatch = color.hex ?? "#d4d4d4";
-                return (
-                  <button
-                    key={color.id}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    title={color.name}
-                    className={cn(
-                      "flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors",
-                      selected
-                        ? "border-primary bg-primary/5"
-                        : "border-border bg-surface hover:border-primary/40",
-                    )}
-                    onClick={() => {
-                      setSelectedColorId(color.id);
-                      setJustAdded(false);
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      className="size-8 shrink-0 rounded-full border border-black/10"
-                      style={{ backgroundColor: swatch }}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-label font-medium text-text">
-                        {color.name}
-                      </span>
-                      <span className="block text-caption tabular-nums text-text-muted">
-                        {formatMoney(displayPrice)}
-                      </span>
-                    </span>
-                    {selected ? (
-                      <Check
-                        aria-hidden
-                        className="size-4 shrink-0 text-primary"
-                        strokeWidth={2.5}
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
+        {/* Below `xl` the colour options stay in the buy box, before the cart
+            controls; from `xl` they move to their own column (see below). */}
+        {colorVariations ? <div className="xl:hidden">{colorVariations}</div> : null}
 
         <Button
           type="button"
@@ -537,7 +556,7 @@ export function ProductSummary({
           </p>
         ) : null}
 
-        <div className="flex flex-wrap items-end gap-3 border-t border-border pt-5">
+        <div className="flex flex-wrap items-end gap-2 border-t border-border pt-5">
           <div className="w-20">
             <label
               htmlFor="product-qty"
@@ -562,7 +581,7 @@ export function ProductSummary({
             disabled={unavailable}
             className={buttonClassName({
               size: "md",
-              className: "min-h-11 min-w-[10rem] flex-1 gap-2 sm:flex-none",
+              className: "min-h-11 min-w-[7rem] flex-1 gap-2 sm:flex-none",
             })}
             onClick={handleAddToCart}
           >
@@ -576,10 +595,12 @@ export function ProductSummary({
           <button
             type="button"
             aria-pressed={onCompare}
+            aria-label={onCompare ? "In compare" : "Compare"}
+            title={onCompare ? "In compare" : "Compare"}
             className={buttonClassName({
               variant: "ghost",
               size: "md",
-              className: "min-h-11 gap-2 border border-border px-5",
+              className: "min-h-11 gap-2 border border-border px-3",
             })}
             onClick={() => {
               const result = toggleCompare(slug, categorySlug);
@@ -594,7 +615,11 @@ export function ProductSummary({
             }}
           >
             <ArrowLeftRight aria-hidden className="size-4" strokeWidth={1.75} />
-            {onCompare ? "In compare" : "Compare"}
+            {/* The label drops out when the buy column is too narrow to fit the
+                whole row (it keeps its accessible name via aria-label). */}
+            <span className="hidden @[27rem]:inline">
+              {onCompare ? "In compare" : "Compare"}
+            </span>
           </button>
           <button
             type="button"
@@ -673,51 +698,16 @@ export function ProductSummary({
           </div>
         ) : null}
 
-        <div className="grid gap-2 sm:grid-cols-3">
-          {[
-            {
-              label: "Payment method",
-              href: "/checkout",
-              note: "SSLCommerz, bKash, Nagad, and cash on delivery.",
-              Icon: CreditCard,
-            },
-            {
-              label: "Shipping & charge",
-              href: "/shipping",
-              note: "Dhaka delivery, nationwide courier, and store pickup zones.",
-              Icon: Truck,
-            },
-            {
-              label: "Order procedure",
-              href: "/faq",
-              note: "Browse, cart, checkout, and confirmation — display-only flow.",
-              Icon: ClipboardList,
-            },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="group/info flex gap-2.5 rounded-lg border border-border bg-surface p-3 transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-sm"
-            >
-              <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary transition-colors group-hover/info:bg-primary group-hover/info:text-primary-foreground">
-                <item.Icon
-                  aria-hidden
-                  className="size-4"
-                  strokeWidth={1.75}
-                />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-caption font-bold text-text">
-                  {item.label}
-                </span>
-                {/* The note used to live in a `title` tooltip — invisible on
-                    touch and to most people. */}
-                <span className="mt-0.5 block text-[0.7rem] leading-snug text-text-muted">
-                  {item.note}
-                </span>
-              </span>
-            </Link>
-          ))}
+        {/* The delivery cards: in the buy box below `lg`, and from `lg` wherever
+            `serviceCardsAt` says (here, under the colours, or under the gallery). */}
+        <div
+          className={
+            serviceCardsAt === "info"
+              ? undefined
+              : "lg:hidden"
+          }
+        >
+          <ProductServiceCards />
         </div>
 
         <ProductShareBar productName={name} />
@@ -726,6 +716,15 @@ export function ProductSummary({
           {warrantyLabel}. Prices in ৳ are display-only and are not a charge.
         </p>
       </div>
+
+      {colorVariations ? (
+        // With colours the right-hand column is otherwise short, so the page may
+        // put the delivery cards under them (`serviceCardsAt="options"`).
+        <div className={cn("hidden space-y-5 xl:block", optionsClassName)}>
+          {colorVariations}
+          {serviceCardsAt === "options" ? <ProductServiceCards /> : null}
+        </div>
+      ) : null}
 
       <B2BApplyDialog open={b2bOpen} onClose={() => setB2bOpen(false)} />
     </>

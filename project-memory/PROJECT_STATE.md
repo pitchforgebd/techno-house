@@ -2380,6 +2380,7 @@ Idle. Manual testing support.
 None. Do not start Phase 18. Continue mock retirement only if operator asks.
 
 ## Last Updated
-2026-10-05 (AD-360 — product page: no empty block under the gallery; AD-359
-compare search before a type is chosen; AD-358 searchable compare picker; AD-357
-homepage sections chosen by staff. AD-344 to AD-360 are recorded in TASKS.md only.)
+2026-10-05 (AD-361 — product page laid out like the Ryans structure, supersedes
+AD-360; AD-359 compare search before a type is chosen; AD-358 searchable compare
+picker; AD-357 homepage sections chosen by staff. AD-344 to AD-361 are recorded in
+TASKS.md only.)

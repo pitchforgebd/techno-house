@@ -6632,3 +6632,65 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       narrower detail column is not liked.
       DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
       `pm2 restart techno-house`.
+
+- [x] AD-361 Product page like the Ryans layout (structure only).
+      Operator request, with a screenshot of a Ryans product page: "make it like
+      Ryans". Taken as the STRUCTURE of that page only — project rule 14: a
+      reference site is UX inspiration, no code, assets, content, branding or exact
+      look — and confirmed with the operator before building (the question showed
+      two ASCII layouts; "Ryans-style three columns" was chosen over keeping the
+      AD-360 layout). Reworks AD-360, which it supersedes.
+      Layout (one flat 12-column grid, `ProductMediaBuy`): from `xl` (1280 px)
+      gallery (5) | buy information (4) | colour options (3, only when the product
+      has colours — otherwise the buy information takes 7); below that the wide
+      Specifications / Details / Q&A / Review (9) beside the narrow sticky Similar
+      products rail (3). Between `lg` (1024) and `xl` it is two columns (gallery 5
+      | buy information 7, with colours inside it) and details 8 | similar 4.
+      Below `lg`: one column in the same order as before (gallery, buy box with its
+      colours before the cart controls, banner, details, similar). `ProductSummary`
+      now renders two sibling boxes (buy information, colour options) that the page
+      grid places, with the colour block built once and shown in whichever place
+      the screen size calls for. The delivery cards became their own component
+      (`ProductServiceCards`, sizes itself to its container) and are placed to keep
+      the columns level: under the colours when the product has colours, in the
+      buy column when it has notes, otherwise under the gallery. The campaign
+      banner is a strip across both columns under the top block (where it always
+      sat), except with notes, when the gallery column is the tall one and the banner
+      goes under the buy information. The Compare button shows only its icon when
+      the buy column is under ~432 px (accessible name kept), so Qty / Add to cart /
+      Compare / wishlist stay on one row at every width (on a 390 px phone too, which
+      wrapped before).
+      Measured in headless Chrome (puppeteer-core + the installed Chrome) —
+      blank space under each column before the details, 1024-1920 px: the user's
+      type of product (no colours, no notes) 53-61 px under the gallery and 40-68 px
+      under the buy information (it was 714 px under the gallery on the live site);
+      a colour product 53-56 px / 59-87 px, 129 px at exactly 1280; a product with 7
+      notes 53 px under the gallery and 322-397 px under the buy information (long
+      notes make the gallery column the tall one — the notes themselves fill it);
+      no horizontal overflow from 390 to 1920; at 390 and 1023 px the order is
+      gallery, buy box, details, similar, with colours before the cart button; a
+      temporary banner (removed, 0 left) renders as a full-width strip, and under
+      the buy information for the notes product.
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:product-layout` 25
+      checks and fourteen mutations across its two rounds each fail it, all 10
+      regression suites, `test:listing`, `test:privilege`, `test:routes` pass.
+      Honest notes: the first design (delivery cards in the right column) was
+      measured and DID NOT balance the columns, and my first blank-space metric
+      mis-assigned the buy column's text to the gallery side (it reported 90 px
+      where the truth was ~300) — both found by looking at the screenshots and
+      fixed before commit; a colour-heavy 3-column layout at 1024 px gave a 309 px
+      buy column, hence the `xl` threshold; one mutation went uncaught at first
+      (the check accepted either of two matching places) and the check now counts
+      both. Several scripted edits misfired and were reverted or redone.
+      NOT built: Ryans' "Storage variations" (e.g. 8GB/128GB with their own price).
+      `ProductVariant` exists in the database but nothing on the storefront, cart,
+      pricing or admin uses it, so that is a separate feature (price, stock, cart,
+      admin), not layout — needs its own decision. Also not copied: Ryans' visual
+      styling, green buttons, imagery or text. Per-colour prices are not shown
+      (colours share the product's price).
+      Known limits: a product with many notes leaves ~320-400 px under the buy
+      information; a product page with a very long overview makes the buy column the
+      tall one. Easily tuned: the placement rules are three constants at the top of
+      `ProductMediaBuy`.
+      DEPLOY: no schema change, no migration. `git pull`, `npm run build`,
+      `pm2 restart techno-house`.
