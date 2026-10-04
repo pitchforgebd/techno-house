@@ -6286,3 +6286,22 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       earlier the same day: the first-deploy runbook/catalogue tools (AD-352)
       assumed no production existed; they are kept only for a new server,
       staging or disaster recovery.
+
+- [x] AD-354 Read-only duplicate-listing finder (`npm run catalog:find-duplicates`).
+      Why: production was loaded from two lists with different SKU schemes (a
+      hand-made `GB-…` list and the SMART export's `GIG-…`), so the same board may
+      be on sale twice; SKUs cannot show that, names can. Within the same brand
+      and category it groups names that match after normalising (upper-case,
+      punctuation and the brand's own name removed): "SAME NAME" (identical — a
+      real duplicate) or "similar names" (one inside the other's longer title).
+      Each listing in a similar-names group shows the words it adds to the shortest
+      name (`+WIFI6E`, `+DDR4`, `+AX …`) so a variant (different board) can be told
+      from a longer title for the same board; `--category=…`, `--exact-only`,
+      `--active-only`. Different brands never group. Read-only — a person switches
+      the unwanted listing off in Admin → Products. Tested on the development
+      database (4,329 products in 3.4 s): it correctly separated variants such as
+      MSI PRO Z890-P / -P WIFI / -P WIFI6E from a plain duplicate title, and found
+      no same-name duplicates among motherboards. Not run on production yet. A first
+      version grouped any contained name with no differences shown and read like a
+      list of duplicates when most hits were variants; the labels and `adds:` lines
+      were added for that reason. `tsc` and `eslint` clean.

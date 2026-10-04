@@ -33,6 +33,7 @@
     "catalog:backfill-builder-compat": "tsx scripts/deploy/backfill-builder-compat.ts",
     "catalog:export-untagged-builder": "tsx scripts/deploy/export-untagged-builder-parts.ts",
     "catalog:import-builder-compat": "tsx scripts/deploy/import-builder-compat-csv.ts",
+    "catalog:find-duplicates": "tsx scripts/deploy/find-duplicate-products.ts",
     "catalog:export": "tsx scripts/deploy/export-catalog.ts",
     "catalog:import": "tsx scripts/deploy/import-catalog.ts",
     "pcbuilder:bootstrap-rules": "tsx scripts/deploy/create-pc-builder-rules.ts",
