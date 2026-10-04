@@ -6259,3 +6259,30 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       then follow the runbook. Afterwards, in admin: shipping methods and rates,
       payment sandbox credentials, SMTP/SMS, staff accounts, and the PC Builder
       Compatibility data page.
+
+- [x] AD-353 PC Builder rolled out to the live site (technohouse.com.bd).
+      Production (a separate database from development, ~2,160 products) was at
+      5322ff2; updated with `git pull origin main && npm run build && pm2 restart
+      techno-house` — no migrations in this release, new build confirmed live
+      (BUILD_ID newer than the pull), health ok, PM2 online with no restart loop
+      (the one 502 was the few seconds after restart). Data steps, each preceded
+      by a dry-run and a pg_dump (`~/backups/before-pcbuilder-20261004-0802.sql`,
+      16 MB): `tag-builder-slots-by-category` (~1,100 active products got a
+      slot; before this only a handful of production products had one, so most
+      PC Builder slots were empty), `catalog:populate-attributes` (+6 values),
+      `catalog:backfill-builder-compat --apply` (461 products; undo log
+      `~/backups/backfill-prod-20261004-0806.json`; no conflicts), and last
+      `pcbuilder:bootstrap-rules` (5 rules created; the production database had
+      none, so compatibility filtering had been entirely off). Rules went last on
+      purpose: with rules on and no data, parts missing data are hidden.
+      Production-only findings: 9 non-PSU items (UGREEN chargers/adapters, a
+      Zebra part) sit in the PSU slot; 35 coolers and 27 cases carry no
+      socket/size and are hidden by default once a CPU/board is picked; only 3
+      RAM, 2 SSD and 10 PSU exist because SMART parts 3-5 were never imported
+      there (the operator said they are not needed now). Not yet checked:
+      possible duplicate Gigabyte boards (the 172-row fixed CSV uses `GB-` SKUs,
+      SMART uses `GIG-`). Emergency off-switch for the filter: disable the rules
+      in Admin → PC Builder → Compatibility rules (no deploy). Correction made
+      earlier the same day: the first-deploy runbook/catalogue tools (AD-352)
+      assumed no production existed; they are kept only for a new server,
+      staging or disaster recovery.
