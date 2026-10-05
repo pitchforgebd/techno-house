@@ -10,6 +10,7 @@
  */
 import { cache } from "react";
 import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/auth/audit-log";
+import { isHoverUnreadable } from "@/lib/design/contrast";
 import { getPrisma } from "@/lib/db/prisma";
 import { usesDatabase } from "@/lib/runtime/data-source";
 
@@ -486,6 +487,17 @@ const THEME_FONT_TOKENS = [
  * hardcoded fallback here would duplicate those defaults in a second place and
  * let the two drift.
  *
+ * ## A hover colour the button text cannot be read on (AD-366)
+ *
+ * "Button hover" is the background of every primary button on hover, and the
+ * middle of the header PC Builder button's gradient, so it has to keep the
+ * button's label readable. A valid `#rrggbb` that does not — the live theme had
+ * #f9fafb, 1.04:1 against white text — is omitted like an invalid one: the
+ * default hover applies instead, and the Appearance screen says so. Only the
+ * plainly unreadable case (below 3:1) is dropped; a low-but-legible hover is the
+ * operator's call and is emitted. The label colour is the operator's "Button
+ * text" if set, else its default, so a pale hover with dark button text is fine.
+ *
  * Fonts are not pattern-matched because the database never supplies a font
  * value — it supplies a KEY, which `FONT_VAR` turns into a constant from this
  * module. `isFontChoice` re-checks that the key is one of the three known
@@ -495,9 +507,22 @@ const THEME_FONT_TOKENS = [
 export function buildStorefrontThemeCss(settings: AdminThemeSettings): string {
   const lines: string[] = [];
 
+  const onPrimary = settings.themeOnPrimaryColor;
+  const buttonText =
+    typeof onPrimary === "string" && HEX_COLOR.test(onPrimary)
+      ? onPrimary
+      : (THEME_COLOR_TOKENS.find((token) => token.field === "themeOnPrimaryColor")
+          ?.defaultValue ?? "#ffffff");
+
   for (const token of THEME_COLOR_TOKENS) {
     const stored = settings[token.field];
     if (typeof stored === "string" && HEX_COLOR.test(stored)) {
+      if (
+        token.field === "themeHoverColor" &&
+        isHoverUnreadable(buttonText, stored)
+      ) {
+        continue;
+      }
       lines.push(`${token.cssVariable}: ${stored};`);
     }
   }

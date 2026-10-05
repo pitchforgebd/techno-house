@@ -32,7 +32,11 @@ import {
   THEME_COLOR_TOKEN_LIST,
   type AdminThemeSettings,
 } from "../../lib/design/theme-settings";
-import { contrastRatio, judgeContrast } from "../../lib/design/contrast";
+import {
+  contrastRatio,
+  isHoverUnreadable,
+  judgeContrast,
+} from "../../lib/design/contrast";
 import { canAccessAdminPath } from "../../lib/auth/admin-route-permissions";
 
 loadEnvFiles({ path: [".env.local", ".env"], quiet: true });
@@ -561,6 +565,86 @@ async function main(): Promise<void> {
         "a brand change could disguise a status colour",
       );
     }
+
+    // --- A hover colour the button text cannot be read on (AD-366) -----------
+    // The live theme had "Button hover" = #f9fafb: 1.04:1 against the default
+    // white button text, so every primary button went blank on hover and the
+    // header PC Builder button (its gradient runs through the hover colour)
+    // showed a pale patch over its label.
+    const withHover = (hover: string, buttonText = ""): AdminThemeSettings => ({
+      ...EMPTY_SETTINGS,
+      themeHoverColor: hover,
+      themeOnPrimaryColor: buttonText,
+    });
+    check(
+      "a near-white hover colour is not emitted when the button text is the default white",
+      buildStorefrontThemeCss(withHover("#f9fafb")) === "",
+      `got ${JSON.stringify(buildStorefrontThemeCss(withHover("#f9fafb")))}`,
+    );
+    check(
+      "the other colours saved with it still are (the exact values found on the live site)",
+      buildStorefrontThemeCss({
+        ...EMPTY_SETTINGS,
+        themeAccentColor: "#010913",
+        themeSoftColor: "#f1f4f8",
+        themeBorderColor: "#edeff3",
+        themeHoverColor: "#f9fafb",
+      }) ===
+        ":root{--color-secondary: #010913;--color-primary-soft: #f1f4f8;--color-border: #edeff3;}",
+    );
+    for (const pale of ["#ffffff", "#fefefe", "#f4f7fb", "#e8f0fe", "#ffe066", "#cccccc"]) {
+      check(
+        `${pale} is too pale to be a hover colour under white button text`,
+        buildStorefrontThemeCss(withHover(pale)) === "",
+      );
+    }
+    check(
+      "the shipped default hover and other dark hover colours are emitted",
+      buildStorefrontThemeCss(withHover("#0947a8")) === ":root{--color-primary-hover: #0947a8;}" &&
+        buildStorefrontThemeCss(withHover("#654321")) === ":root{--color-primary-hover: #654321;}" &&
+        buildStorefrontThemeCss(withHover("#000000")) === ":root{--color-primary-hover: #000000;}",
+    );
+    check(
+      "a hover colour that is low but still legible (about 3.4:1, above the unreadable line, below AA) is the operator's call and is emitted",
+      buildStorefrontThemeCss(withHover("#8a8a8a")) === ":root{--color-primary-hover: #8a8a8a;}" &&
+        (contrastRatio("#ffffff", "#8a8a8a") ?? 0) > 3 &&
+        (contrastRatio("#ffffff", "#8a8a8a") ?? 99) < 4.5,
+      `ratio ${contrastRatio("#ffffff", "#8a8a8a")?.toFixed(2)}`,
+    );
+    check(
+      "a pale hover is fine when the button text is dark (the label colour is the operator's, not assumed white)",
+      buildStorefrontThemeCss(withHover("#f9fafb", "#051c39")) ===
+        ":root{--color-primary-foreground: #051c39;--color-primary-hover: #f9fafb;}",
+      `got ${JSON.stringify(buildStorefrontThemeCss(withHover("#f9fafb", "#051c39")))}`,
+    );
+    check(
+      "a dark hover is dropped when the button text is also dark",
+      buildStorefrontThemeCss(withHover("#051c39", "#051c39")) ===
+        ":root{--color-primary-foreground: #051c39;}",
+    );
+    check(
+      "an invalid button-text value falls back to white for the check, so the pale hover is still dropped",
+      buildStorefrontThemeCss(withHover("#f9fafb", "white")) === "",
+    );
+    check(
+      "the guard only concerns the hover token (a pale Soft tint or Border is still emitted)",
+      buildStorefrontThemeCss({ ...EMPTY_SETTINGS, themeSoftColor: "#ffffff", themeBorderColor: "#fefefe" }) ===
+        ":root{--color-primary-soft: #ffffff;--color-border: #fefefe;}",
+    );
+    check(
+      "the shared rule agrees: pale is unreadable, dark is not, malformed gives no opinion",
+      isHoverUnreadable("#ffffff", "#f9fafb") &&
+        !isHoverUnreadable("#ffffff", "#0947a8") &&
+        !isHoverUnreadable("#ffffff", "nope") &&
+        !isHoverUnreadable("nope", "#f9fafb"),
+    );
+    const screen = readFileSync("features/admin/design-studio/admin-appearance-colors.tsx", "utf8");
+    check(
+      "the Appearance screen warns about button text on the hover colour and previews the same rule",
+      screen.includes('context="Button text on button hover"') &&
+        screen.includes("isHoverUnreadable(onPrimary, hover)") &&
+        screen.includes('token.field === "themeHoverColor" && hoverIgnored'),
+    );
 
     // --- Contrast maths -----------------------------------------------------
     check(

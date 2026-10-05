@@ -68,6 +68,24 @@ export function contrastRatio(
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+/**
+ * True when a button's own text cannot be read on its hover background — the
+ * ratio is below the "hard to read" line (3:1, `AA_LARGE_TEXT`). A malformed
+ * colour gives no opinion (false), like `contrastRatio`.
+ *
+ * Why this exists (AD-366): the live theme had "Button hover" set to #f9fafb,
+ * which is 1.04:1 against white button text. Every primary button went blank on
+ * hover, and the header PC Builder button — whose gradient runs through the
+ * hover colour — showed a pale patch across its label. The Appearance screen
+ * warned about "button text on button" but not about this pair. The storefront
+ * emitter (`buildStorefrontThemeCss`) and the Appearance screen share this rule
+ * so they cannot disagree about what counts as unreadable.
+ */
+export function isHoverUnreadable(buttonText: string, hover: string): boolean {
+  const ratio = contrastRatio(buttonText, hover);
+  return ratio !== null && ratio < AA_LARGE_TEXT;
+}
+
 export type ContrastVerdict = {
   ratio: number;
   /** Passes AA for body text. */

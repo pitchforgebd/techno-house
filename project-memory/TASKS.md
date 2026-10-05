@@ -6906,3 +6906,62 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       idle sweep on touch screens; that no longer happens.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-366 Buttons that go white on hover (header PC Builder button, builder page, others).
+      Operator report: the header PC Builder button should be like before; on many
+      buttons, hovering turns the background white so the text cannot be read; the
+      PC Builder page buttons do the same. "Check everything and fix."
+      Cause (not the jump-up animation of AD-364/AD-365): the live site's Design
+      Studio theme, read from the public homepage (`<style id="th-design-theme">`),
+      is `:root{--color-secondary:#010913;--color-primary-soft:#f1f4f8;
+      --color-border:#edeff3;--color-primary-hover:#f9fafb;}`. "Button hover"
+      (`--color-primary-hover`) = #f9fafb is 1.04:1 against the white button text,
+      so every primary button — the builder's Select / Add build / Save buttons, the
+      home and product buttons — goes blank on hover; and the header PC Builder
+      button's gradient runs primary -> primary-hover -> text, so its middle is a
+      pale patch over the label even at rest. The Appearance screen warned about
+      "button text on button" but had no warning for the hover pair, and the
+      emitter only checked that a colour is a valid `#rrggbb`.
+      Reproduced before changing anything: the live theme applied to the local pages
+      gave a hovered builder button of rgb(249,250,251) with white text and the pale
+      patch on the header button (screenshots); with no theme the same button
+      hovers rgb(9,71,168). A first scan that found nothing was wrong (it could not
+      read `color-mix` colours); the corrected scan, run on 12 pages, found no other
+      button that loses contrast on hover without the live theme.
+      Fix (code): `isHoverUnreadable(buttonText, hover)` in `lib/design/contrast.ts`
+      (below 3:1, the existing "fails AA, hard to read" line; malformed = no
+      opinion). `buildStorefrontThemeCss` omits the hover override when it is
+      unreadable against the effective button text (the operator's "Button text",
+      else the default white), so the default hover (#0947a8) applies, exactly as
+      for an unset value; a low-but-legible hover and a pale hover with dark button
+      text are still emitted; no other token is touched. The Appearance screen now
+      shows "Button text on button hover: 1.04:1 — fails AA, hard to read. The
+      storefront ignores this hover colour and keeps the default until it is
+      darker." and its preview follows the same rule; the token's description says
+      so. The save still does not block (the screen warns, as before).
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:theme` 230 checks
+      (about 22 new, including the live site's exact theme; 8 deliberate breakages
+      of the guard, the rule and the screen all caught), all 12 regression suites,
+      `test:listing`, `test:privilege`, `test:routes` pass. End to end on the dev
+      DB: the live theme was written to the dev row, the page's theme tag then
+      carried secondary / soft tint / border but no hover, a hovered builder button
+      was rgb(9,71,168) with white text, the header button looked normal, and the
+      scan found nothing; the dev row was then restored to its original all-empty
+      state.
+      NOT done by this change, and needs the operator: the stored value on the live
+      site is unchanged. After deploying, the pale value is ignored; to remove it,
+      Admin -> Design Studio -> Appearance -> "Button hover" -> Reset, Save (a
+      deployed build is not needed for that, only to make the bad value harmless
+      if it is saved again). If a light hover look is wanted on primary buttons it
+      needs the label to turn dark on hover — not built.
+      Honest notes: (1) AD-365 was a misreading of the same complaint (I took it as
+      the jump animation); that exemption of the PC Builder from the hop is still in
+      place. (2) I could not see the operator's screen; the cause was found by
+      reading the live theme and reproducing it locally, so a different cause on
+      some page would not have shown up in the scan (12 pages, desktop width, no
+      logged-in pages, no touch). (3) The stored theme was read from the live site's
+      public HTML; nothing on the server was changed. (4) `--color-border: #edeff3`
+      and `--color-primary-soft: #f1f4f8` from the same theme are very light but do
+      not hide any text; left alone.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

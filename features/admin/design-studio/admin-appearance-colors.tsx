@@ -6,7 +6,7 @@ import { RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import { saveAppearanceSettingsAction } from "@/features/admin/design-studio/theme-actions";
-import { judgeContrast } from "@/lib/design/contrast";
+import { isHoverUnreadable, judgeContrast } from "@/lib/design/contrast";
 import {
   THEME_COLOR_TOKEN_LIST,
   type ThemeColorGroup,
@@ -89,10 +89,13 @@ function ContrastNote({
   foreground,
   background,
   context,
+  ignoredNote,
 }: {
   foreground: string;
   background: string;
   context: string;
+  /** Extra sentence shown when the pair fails outright, e.g. what the storefront does about it. */
+  ignoredNote?: string;
 }) {
   const verdict = judgeContrast(foreground, background);
   if (!verdict) {
@@ -110,6 +113,7 @@ function ContrastNote({
       )}
     >
       {context}: {verdict.label}
+      {!verdict.passesLarge && ignoredNote ? ` ${ignoredNote}` : ""}
     </p>
   );
 }
@@ -158,17 +162,25 @@ export function AdminAppearanceColors({
     });
   }
 
+  const primary = effective(draft, "themeBaseColor", "#0b5ed7");
+  const onPrimary = effective(draft, "themeOnPrimaryColor", "#ffffff");
+  const hover = effective(draft, "themeHoverColor", "#0947a8");
+  // The storefront drops a hover colour the button text cannot be read on
+  // (lib/design/theme-settings.ts, AD-366), so the preview and the note below
+  // follow the same rule instead of showing a colour that will not be used.
+  const hoverIgnored = isHoverUnreadable(onPrimary, hover);
+
   // Live preview values, all resolved through the same fallback the storefront
   // uses, so an unset or half-typed colour previews as its default.
   const previewVars = Object.fromEntries(
     THEME_COLOR_TOKEN_LIST.map((token) => [
       token.cssVariable,
-      effective(draft, token.field, token.defaultValue),
+      token.field === "themeHoverColor" && hoverIgnored
+        ? token.defaultValue
+        : effective(draft, token.field, token.defaultValue),
     ]),
   ) as React.CSSProperties;
 
-  const primary = effective(draft, "themeBaseColor", "#0b5ed7");
-  const onPrimary = effective(draft, "themeOnPrimaryColor", "#ffffff");
   const bodyText = effective(draft, "themeTextColor", "#051c39");
   const surface = effective(draft, "themeSurfaceColor", "#ffffff");
   const background = effective(draft, "themeBackgroundColor", "#f4f7fb");
@@ -368,6 +380,12 @@ export function AdminAppearanceColors({
               foreground={onPrimary}
               background={primary}
               context="Button text on button"
+            />
+            <ContrastNote
+              foreground={onPrimary}
+              background={hover}
+              context="Button text on button hover"
+              ignoredNote="The storefront ignores this hover colour and keeps the default until it is darker."
             />
             <ContrastNote
               foreground={bodyText}

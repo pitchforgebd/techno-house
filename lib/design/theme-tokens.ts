@@ -129,7 +129,8 @@ export const THEME_COLOR_TOKENS = [
     field: "themeHoverColor",
     cssVariable: "--color-primary-hover",
     label: "Button hover",
-    description: "Primary button and link background on hover.",
+    description:
+      "Primary button and link background on hover. Keep it dark enough for the button text to stay readable — a pale colour is ignored.",
     group: "button",
     defaultValue: "#0947a8",
   },
