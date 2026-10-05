@@ -1,6 +1,12 @@
 "use client";
 
-import { ToastContainer, toast, type ToastOptions } from "react-toastify";
+import { usePathname } from "next/navigation";
+import {
+  ToastContainer,
+  cssTransition,
+  toast,
+  type ToastOptions,
+} from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { ConfirmProvider } from "@/components/ui/confirm-provider";
 import type { ReactNode } from "react";
@@ -15,7 +21,22 @@ const defaultOptions: ToastOptions = {
   theme: "light",
 };
 
+/**
+ * The customer storefront's alert entrance: pops up into place with a small
+ * overshoot and lifts away on exit (`th-toast-jump-in` / `th-toast-jump-out` in
+ * globals.css). Staff screens keep the library's default transition (AD-364).
+ */
+const JumpUp = cssTransition({
+  enter: "th-toast-jump-in",
+  exit: "th-toast-jump-out",
+});
+
 export function FeedbackProvider({ children }: { children: ReactNode }) {
+  // The container sits in the root layout, above both the storefront and the
+  // admin panel, so the route decides which transition the alerts get.
+  const pathname = usePathname();
+  const inAdmin = pathname === "/admin" || pathname?.startsWith("/admin/");
+
   return (
     <ConfirmProvider>
       {children}
@@ -25,6 +46,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         limit={4}
         toastClassName="th-toast"
         progressClassName="th-toast-progress"
+        transition={inAdmin ? undefined : JumpUp}
       />
     </ConfirmProvider>
   );

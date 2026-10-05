@@ -45,7 +45,9 @@ export function buttonClassName({
   className?: string;
 } = {}): string {
   return cn(
-    "inline-flex items-center justify-center rounded-md font-medium",
+    // `th-btn` marks link-style buttons too, so the storefront's jump-up click
+    // feedback reaches them (components/storefront/jump-up-effects.tsx).
+    "th-btn inline-flex items-center justify-center rounded-md font-medium",
     "transition-[background-color,box-shadow,transform,color] duration-200 ease-out",
     "active:translate-y-px",
     "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",

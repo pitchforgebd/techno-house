@@ -21,10 +21,10 @@ const POSITION_CLASS: Record<StorefrontAlert["location"], string> = {
 };
 
 /**
- * How far the alert travels on entry, and in which direction. Each corner
- * animates away from its own screen edge — top alerts drop in, bottom alerts
- * rise — so the motion reads as the alert arriving from off-screen. Consumed
- * by the `th-alert-in` / `th-alert-out` keyframes in globals.css.
+ * Which way the alert leaves. Each corner exits toward its own screen edge —
+ * top alerts lift away, bottom alerts sink — consumed by the `th-alert-out`
+ * keyframes in globals.css. The entrance is the shared `th-jump-in` hop, which
+ * is the same for every corner and needs no offset (AD-364).
  */
 const ENTER_OFFSET: Record<StorefrontAlert["location"], string> = {
   "bottom-left": "16px",

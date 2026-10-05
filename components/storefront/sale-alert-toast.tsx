@@ -84,7 +84,7 @@ export function SaleAlertToast({
     // Fixed bottom-left, matching the conventional sale-alert widget
     // position. Can visually stack with a Custom Alert also set to
     // bottom-left — a known, minor limitation (see AD-260 notes).
-    <div className="fixed bottom-4 left-4 z-90 w-full max-w-xs">
+    <div className="th-jump-in fixed bottom-4 left-4 z-90 w-full max-w-xs">
       {event.productSlug ? (
         <Link href={`/product/${event.productSlug}`}>{content}</Link>
       ) : (

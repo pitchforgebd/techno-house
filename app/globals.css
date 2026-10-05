@@ -531,20 +531,10 @@ h6 {
   animation: th-popup-out 190ms ease-in both;
 }
 
-/* Corner alert. `--th-alert-from` is set per position by the component so one
-   keyframe pair serves all four corners — top alerts drop in, bottom alerts
-   rise, each moving away from its own screen edge. */
-@keyframes th-alert-in {
-  from {
-    opacity: 0;
-    transform: translateY(var(--th-alert-from, 16px)) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
+/* Corner alert. It arrives with the storefront's jump-up entrance (`th-jump-in`,
+   below). `--th-alert-from` is still set per position by the component so one
+   exit keyframe serves all four corners, each moving away from its own screen
+   edge. */
 @keyframes th-alert-out {
   from {
     opacity: 1;
@@ -557,7 +547,7 @@ h6 {
 }
 
 .th-alert {
-  animation: th-alert-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: th-jump-in 560ms linear both;
 }
 
 .th-alert[data-exiting="true"] {
@@ -611,6 +601,112 @@ h6 {
 @media (prefers-reduced-motion: reduce) {
   .th-alert-timer {
     display: none;
+  }
+}
+
+/* Jump up (AD-364) — the customer storefront's feedback motion: a control hops a
+   few pixels and settles, an alert pops up into place with a small overshoot.
+   Each keyframe sets its own easing (out going up, in coming down) so the hop
+   reads as a jump rather than a wobble. All of it animates `transform`, never the
+   `translate` / `scale` / `rotate` properties that Tailwind's utilities use, so
+   a control that is already lifted on hover or centred with `-translate-x-1/2`
+   keeps that position while it hops.
+
+   The storefront alone ever starts these: `th-jump-in` is used by the toast
+   transition (feedback-provider.tsx, not applied on /admin), the corner alert and
+   the sale alert; `[data-th-jump]` is set by components/storefront/
+   jump-up-effects.tsx, which only the storefront layout mounts; `.th-icon-hop`
+   is a class on storefront icon controls. */
+@keyframes th-jump-up {
+  0% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  32% {
+    transform: translateY(-9px);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4);
+  }
+  56% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  74% {
+    transform: translateY(-3px);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes th-jump-in {
+  0% {
+    opacity: 0;
+    transform: translateY(26px) scale(0.96);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-9px) scale(1.01);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4);
+  }
+  76% {
+    transform: translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  90% {
+    transform: translateY(-2px) scale(1);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes th-jump-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.97);
+  }
+}
+
+.th-jump-in {
+  animation: th-jump-in 560ms linear both;
+}
+
+/* react-toastify alerts. The two classes are the container's custom transition
+   (see feedback-provider.tsx); two class names in the selector so they win over
+   the library's own `.Toastify--animate` duration whatever the stylesheet order.
+   Unlike the hop below these are NOT switched off for reduced motion: the
+   library removes a toast on `animationend`, and the global reduced-motion rule
+   already shrinks the duration to ~0ms while still firing it. */
+.Toastify__toast.th-toast-jump-in {
+  animation: th-jump-in 560ms linear both;
+}
+
+.Toastify__toast.th-toast-jump-out {
+  animation: th-jump-out 220ms ease-in both;
+}
+
+[data-th-jump] {
+  animation: th-jump-up 520ms linear;
+}
+
+.th-icon-hop:hover svg,
+.th-icon-hop:focus-visible svg {
+  animation: th-jump-up 520ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-th-jump],
+  .th-icon-hop:hover svg,
+  .th-icon-hop:focus-visible svg {
+    animation: none;
   }
 }
 

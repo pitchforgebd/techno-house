@@ -6799,3 +6799,73 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       interrupted by it. Not changed.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-364 Storefront "jump up" animation: buttons, icons, add to cart, alerts.
+      Operator request: a "jump up" animation on add to cart, on clicking any
+      button, on the icons, and for the alerts — customer storefront only.
+      Interpretation (no reference was attached): the control hops about 9 px up
+      and settles (520 ms, a small second bounce); an alert pops up into place from
+      below with a small overshoot (560 ms). Nothing was copied from a library.
+      What was built:
+      - Click hop: `components/storefront/jump-up-effects.tsx` (mounted ONLY in
+        `app/(storefront)/layout.tsx`, inside the cart provider) listens once on the
+        document, in the capture phase, and sets `data-th-jump` on the clicked
+        `button`, `[role=button]`, `input[type=button|submit]`, link-style button
+        (`th-btn`, now part of `buttonClassName()`) or icon control (`th-icon-hop`).
+        Disabled / aria-disabled controls, anything under `data-no-jump`, and
+        card- or row-sized controls (wider than 480 px or taller than 96 px) do not
+        hop. A second click restarts the hop; the attribute is cleared after 800 ms.
+      - Icons: `th-icon-hop` is on the header icon buttons (`HEADER_ACTION_CLASS`),
+        the mobile bottom-nav tabs and the product-card wishlist/compare/quick-view
+        buttons: the glyph also hops on hover and on keyboard focus.
+      - Add to cart: besides the button's own hop, the header cart button and the
+        mobile Cart tab (`data-cart-jump`) hop when the cart count goes up within
+        4 s of a click or key press — the cart is also filled in after page load,
+        and that must not make the icon jump (checked: 0 hops on reload with an item
+        in the cart).
+      - Alerts: the react-toastify container gets a custom `cssTransition`
+        (`th-toast-jump-in` / `-out`) on every route except `/admin` and `/admin/*`,
+        which keep the library's default; the corner Custom Alert (`th-alert`) and the
+        sale alert use the same entrance (`th-jump-in`). The corner alert's old
+        private entrance keyframes (`th-alert-in`) were removed; its exit is unchanged.
+      - Everything animates `transform` only (Tailwind's translate/scale/rotate
+        utilities are separate CSS properties), so a header icon that lifts on hover
+        keeps its place while it hops. Reduced motion: the click and icon hops are
+        switched off completely; the toast transitions are NOT (the library removes
+        a toast on `animationend`), the global reduced-motion rule makes them ~0 ms.
+      - Pure rules in `lib/ui/jump-up.ts` (`isJumpEligible`, `cartGrew`), tested.
+      Verified: `tsc` 0, `eslint` clean (one old warning in sale-alert-toast.tsx),
+      `next build` ok, `test:jump-up` 48 checks (new; mutation-checked: 27 deliberate
+      breakages of the real files — capture phase, size/disabled/opt-out rules, page-
+      load fill, admin toast, reduced motion for the hop and for the toast, translate
+      property, hop height, markers, extra importer, admin marker — all caught),
+      all 12 regression suites, `test:listing`, `test:privilege`, `test:routes` pass.
+      Real browser (headless Chrome, dev server, a product in stock; 21 checks): a
+      header icon's glyph is still, then hops while hovered; clicking Add to cart
+      moved the button 9 px up and back to 0 and moved the header cart icon 9 px up
+      and back to 0; the added-to-cart alert started 29 px below its place and
+      overshot 10 px above it before settling; a plain button and a `th-btn` link
+      hop, `data-no-jump` (own and parent), a 640x120 role=button and plain text do
+      not; a second click mid-hop keeps it running and it is cleared afterwards;
+      with reduced motion emulated a click and an icon hover play nothing; the
+      corner and sale alert classes resolve to `th-jump-in`; reloading with an item in
+      the cart makes nothing jump; on the admin login page a button click sets no
+      jump attribute and there is no storefront cart icon.
+      Honest notes / limits: (1) the size, speed and the hover hop on icons are my
+      choices — they are constants in `lib/ui/jump-up.ts` and the `th-jump-*`
+      keyframes in `app/globals.css`; the hover hop can be dropped by removing
+      `th-icon-hop` from the three places. (2) Not exercised live: a real admin toast
+      (needs a staff login — the `/admin` rule is a source guard plus the admin login
+      page showing no click hop), the sale alert and the Custom Alert as they arrive
+      on a timer (only their computed animation was checked; the Custom Alert was
+      visible in a screenshot and unclipped), phone width / touch, and any browser
+      other than Chrome. (3) The cart icon hops only when the count rises within 4 s
+      of a click; an add that the server takes longer than that to confirm skips the
+      icon hop (the button's own hop and the alert still play). (4) A hop is clipped
+      by an ancestor with `overflow: hidden` when the control sits at its top edge;
+      none was seen in the checked pages, others were not looked at. (5) The header
+      renders the cart button twice (one hidden); both are marked, the hidden copy
+      hops invisibly. (6) The marketing Popup (`dialog.th-popup`) keeps its own
+      entrance and was not changed.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

@@ -80,6 +80,7 @@ export function HeaderCart() {
       <button
         type="button"
         className={HEADER_ACTION_CLASS}
+        data-cart-jump
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls="header-cart"

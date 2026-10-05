@@ -2380,8 +2380,9 @@ Idle. Manual testing support.
 None. Do not start Phase 18. Continue mock retirement only if operator asks.
 
 ## Last Updated
-2026-10-05 (AD-363 — product Review and Q&A usable without signing in (guest
+2026-10-05 (AD-364 — storefront jump-up animation on buttons, icons, add to cart
+and alerts (storefront only); AD-363 — product Review and Q&A usable without signing in (guest
 rows stay PENDING until staff approve); AD-362 — Add to cart beside the product image; AD-361 product page in
 the Ryans structure; AD-359 compare search before a type is chosen; AD-358
 searchable compare picker; AD-357 homepage sections chosen by staff. AD-344 to
-AD-363 are recorded in TASKS.md only.)
+AD-364 are recorded in TASKS.md only.)

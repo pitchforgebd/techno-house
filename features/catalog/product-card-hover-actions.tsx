@@ -10,7 +10,7 @@ import { useListsStore } from "@/features/lists/use-lists-store";
 import { cn } from "@/lib/cn";
 
 const iconButtonClass =
-  "inline-flex size-9 items-center justify-center rounded-full border border-border/70 bg-surface text-text-muted shadow-sm shadow-black/5 transition-colors duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-primary";
+  "th-icon-hop inline-flex size-9 items-center justify-center rounded-full border border-border/70 bg-surface text-text-muted shadow-sm shadow-black/5 transition-colors duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-primary";
 
 export function ProductCardHoverActions({
   slug,

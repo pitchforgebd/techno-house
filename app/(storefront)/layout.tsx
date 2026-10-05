@@ -11,6 +11,7 @@ import { StorefrontAnalytics } from "@/components/analytics/storefront-analytics
 import { CustomScriptSlot } from "@/components/analytics/custom-script-slot";
 import { StorefrontChatWidget } from "@/components/chat/storefront-chat-widget";
 import { DynamicPopup } from "@/components/storefront/dynamic-popup";
+import { JumpUpEffects } from "@/components/storefront/jump-up-effects";
 import { SaleAlertToast } from "@/components/storefront/sale-alert-toast";
 import { SiteAlert } from "@/components/storefront/site-alert";
 import { CustomerSessionProvider } from "@/features/account/customer-session-provider";
@@ -163,6 +164,8 @@ export default async function StorefrontLayout({
             <MobileBottomNav />
           </div>
           <StorefrontAnalytics />
+          {/* Jump-up click feedback for the customer storefront only (AD-364). */}
+          <JumpUpEffects />
           <StorefrontChatWidget pushedUpForMarquee={hasMarquee} />
           <DynamicPopup popup={popup} />
           <SiteAlert alert={alert} />
