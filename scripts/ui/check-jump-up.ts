@@ -28,6 +28,8 @@ import {
   JUMP_TARGET_SELECTOR,
   cartGrew,
   isJumpEligible,
+  isJumpOptedOutHref,
+  isJumpOptedOutPath,
 } from "../../lib/ui/jump-up";
 
 let checks = 0;
@@ -133,6 +135,34 @@ function rules(): void {
   check("the cart icon does not hop when the count stays or drops", !cartGrew(3, 3, 100) && !cartGrew(3, 2, 100));
   check("a click in the future (clock skew) does not count", !cartGrew(1, 2, -50));
   check("the add window is inclusive of its limit and ends right after", cartGrew(1, 2, CART_JUMP_WINDOW_MS) && !cartGrew(1, 2, CART_JUMP_WINDOW_MS + 1));
+
+  check(
+    "the PC Builder's pages are opted out, nothing look-alike is",
+    isJumpOptedOutPath("/pc-builder") &&
+      isJumpOptedOutPath("/pc-builder/select/cpu") &&
+      isJumpOptedOutPath("/pc-builder/share/abc123") &&
+      !isJumpOptedOutPath("/") &&
+      !isJumpOptedOutPath("/shop") &&
+      !isJumpOptedOutPath("/pc-builder-guide") &&
+      !isJumpOptedOutPath("/product/pc-builder-case") &&
+      !isJumpOptedOutPath("") &&
+      !isJumpOptedOutPath(null) &&
+      !isJumpOptedOutPath(undefined),
+  );
+  check(
+    "a link that opens the PC Builder is opted out, with or without a query or hash",
+    isJumpOptedOutHref("/pc-builder") &&
+      isJumpOptedOutHref("/pc-builder?from=home") &&
+      isJumpOptedOutHref("/pc-builder#slots") &&
+      isJumpOptedOutHref("/pc-builder/select/ram?x=1") &&
+      !isJumpOptedOutHref("/pc-builders") &&
+      !isJumpOptedOutHref("/cart") &&
+      !isJumpOptedOutHref("/shop?next=/pc-builder") &&
+      !isJumpOptedOutHref("https://example.com/pc-builder") &&
+      !isJumpOptedOutHref("#top") &&
+      !isJumpOptedOutHref(null) &&
+      !isJumpOptedOutHref(""),
+  );
 
   for (const part of ["button", '[role="button"]', ".th-btn", ".th-icon-hop"]) {
     check(`the click target selector covers ${part}`, JUMP_TARGET_SELECTOR.includes(part));
@@ -257,9 +287,24 @@ function wiring(): void {
   );
   const mobile = source("components/layout/mobile-bottom-nav.tsx");
   check(
-    "the mobile cart tab is a cart-jump target and its tabs are icon controls",
-    mobile.includes('data-cart-jump={item.href === "/cart" ? "" : undefined}') && mobile.includes('"th-icon-hop flex'),
+    "the mobile cart tab is a cart-jump target and its tabs are icon controls, except the PC Builder tab",
+    mobile.includes('data-cart-jump={item.href === "/cart" ? "" : undefined}') &&
+      mobile.includes('item.href !== "/pc-builder" && "th-icon-hop"') &&
+      !mobile.includes('"th-icon-hop flex'),
   );
+  check(
+    "the click handler skips the PC Builder's pages and every link that opens it",
+    effects.includes("isJumpOptedOutPath(window.location.pathname)") &&
+      effects.includes('isJumpOptedOutHref(control.closest("a[href]")?.getAttribute("href"))'),
+  );
+  const builderLink = source("components/layout/header-builder-link.tsx");
+  check(
+    "the header PC Builder button carries no jump marker of its own, so its sheen and hover lift are untouched",
+    !builderLink.includes("th-icon-hop") && !builderLink.includes("data-cart-jump") && !builderLink.includes("data-th-jump"),
+  );
+  const builderFiles = [...sourceFiles("features/pc-builder"), ...sourceFiles("app/(storefront)/pc-builder")];
+  const builderHits = builderFiles.filter((path) => /th-icon-hop|data-cart-jump|data-th-jump/.test(source(path)));
+  check(`no PC Builder file uses a jump marker (found: ${builderHits.join(", ") || "none"})`, builderHits.length === 0);
   check("the product-card icon buttons carry th-icon-hop", source("features/catalog/product-card-hover-actions.tsx").includes('"th-icon-hop inline-flex'));
   check("the sale alert pops up with the shared entrance", source("components/storefront/sale-alert-toast.tsx").includes('className="th-jump-in fixed'));
 }

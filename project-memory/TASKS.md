@@ -6869,3 +6869,40 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       entrance and was not changed.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-365 PC Builder buttons back to how they were (no jump-up).
+      Operator request: "pc builder er button ta ager moto kore daw" (make the PC
+      Builder button like before). No screenshot, so the reading is: the PC Builder
+      controls must look and behave as they did before AD-364's jump-up.
+      Measured first (headless Chrome, dev server, before the fix): the header call
+      to action (blue, with the idle highlight sweep) did not visibly hop on desktop
+      — its own hover rule (`.th-cta-sheen:hover { animation: none }`) out-ranks the
+      hop — but it did get the jump attribute on every click; every other PC Builder
+      control hopped 9 px: the "Open PC Builder" button on the home page, the PC
+      Builder tab in the mobile bottom bar, and the buttons inside the /pc-builder
+      pages. Before AD-364 none of them did.
+      Change: the click handler (`components/storefront/jump-up-effects.tsx`) now
+      skips (a) any control on a `/pc-builder` page and (b) any control inside a
+      link to `/pc-builder` (header button, home button, mobile tab, store-info link,
+      whatever is added later), through two pure rules in `lib/ui/jump-up.ts`
+      (`isJumpOptedOutPath`, `isJumpOptedOutHref`; "/pc-builder-guide" and
+      "/shop?next=/pc-builder" do not match). The mobile PC Builder tab also no
+      longer carries `th-icon-hop`, so its icon does not hop on hover either. The
+      header button's own classes are untouched.
+      Verified: same probe after the change — header button (hover and not), home
+      button, mobile tab and a PC Builder page button: 0 jump attributes set, no
+      rise; the header button still shows its sweep and 2 px hover lift as before;
+      the header cart button still hops. `tsc` 0, `eslint` clean (same one old
+      warning), `next build` ok, `test:jump-up` 53 checks (5 new, 8 deliberate
+      breakages caught), all 12 regression suites, `test:listing`, `test:privilege`,
+      `test:routes` pass.
+      Honest notes: (1) I could not tell which PC Builder button was meant, so all of
+      them are covered; if a button inside the builder pages should hop after all,
+      that is one line (drop the path rule in the click handler). (2) Add-to-cart
+      from the builder still makes the header cart icon hop and the "Build added to
+      cart" alert pop up — those belong to the cart and alert requests of AD-364, not
+      to the PC Builder button. (3) Not checked on a phone-sized screen or outside
+      Chrome. (4) Before this change a click on the header button also restarted its
+      idle sweep on touch screens; that no longer happens.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

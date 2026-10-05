@@ -44,6 +44,31 @@ export const JUMP_MAX_WIDTH = 480;
 /** How long after a click or key press a growing cart still counts as that person's add. */
 export const CART_JUMP_WINDOW_MS = 4000;
 
+/**
+ * The PC Builder keeps its own look and feel: no hop on its buttons, on the
+ * buttons inside the builder pages, or on any link that opens it (the header
+ * call to action, the home page button, the mobile tab). Added after the first
+ * version made them jump (AD-365).
+ */
+const OPT_OUT_PATH = "/pc-builder";
+
+/** True for the PC Builder's own pages: /pc-builder and everything under it. */
+export function isJumpOptedOutPath(pathname: string | null | undefined): boolean {
+  if (!pathname) {
+    return false;
+  }
+  return pathname === OPT_OUT_PATH || pathname.startsWith(`${OPT_OUT_PATH}/`);
+}
+
+/** True for a link that opens the PC Builder (a relative `href`; a query or hash is ignored). */
+export function isJumpOptedOutHref(href: string | null | undefined): boolean {
+  if (!href) {
+    return false;
+  }
+  const path = href.split("#")[0]?.split("?")[0];
+  return isJumpOptedOutPath(path);
+}
+
 export function isJumpEligible(target: {
   disabled: boolean;
   ariaDisabled: boolean;

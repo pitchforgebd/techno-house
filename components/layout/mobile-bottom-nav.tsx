@@ -101,7 +101,9 @@ export function MobileBottomNav() {
                 aria-current={active ? "page" : undefined}
                 data-cart-jump={item.href === "/cart" ? "" : undefined}
                 className={cn(
-                  "th-icon-hop flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-2 text-center transition-colors",
+                  "flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-2 text-center transition-colors",
+                  // Every tab's icon hops, except the PC Builder's (AD-365).
+                  item.href !== "/pc-builder" && "th-icon-hop",
                   active
                     ? "text-white"
                     : "text-white/75 hover:text-white",

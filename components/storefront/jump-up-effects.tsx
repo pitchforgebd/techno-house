@@ -11,6 +11,8 @@ import {
   JUMP_TARGET_SELECTOR,
   cartGrew,
   isJumpEligible,
+  isJumpOptedOutHref,
+  isJumpOptedOutPath,
 } from "@/lib/ui/jump-up";
 
 const clearTimers = new WeakMap<Element, number>();
@@ -64,7 +66,11 @@ export function JumpUpEffects() {
       const eligible = isJumpEligible({
         disabled: (control as HTMLButtonElement).disabled === true,
         ariaDisabled: control.getAttribute("aria-disabled") === "true",
-        optedOut: control.closest(`[${JUMP_OPT_OUT_ATTRIBUTE}]`) !== null,
+        optedOut:
+          control.closest(`[${JUMP_OPT_OUT_ATTRIBUTE}]`) !== null ||
+          // The PC Builder keeps its own look: its pages and every link to it.
+          isJumpOptedOutPath(window.location.pathname) ||
+          isJumpOptedOutHref(control.closest("a[href]")?.getAttribute("href")),
         width: box.width,
         height: box.height,
       });
