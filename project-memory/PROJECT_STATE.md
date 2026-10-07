@@ -2380,11 +2380,11 @@ Idle. Manual testing support.
 None. Do not start Phase 18. Continue mock retirement only if operator asks.
 
 ## Last Updated
-2026-10-07 (AD-368 — banner links must lead to a real page, banner links no longer prefetch; AD-367 — admin saves no longer crash with the global error page (my AD-364 toast
+2026-10-07 (AD-369 — wrong-case URLs/links like /About redirect or are corrected, /favicon.ico never 404s; AD-368 — banner links must lead to a real page, banner links no longer prefetch; AD-367 — admin saves no longer crash with the global error page (my AD-364 toast
 bug); full-site check; AD-366 — a pale saved "Button hover" colour no longer blanks button text;
 AD-365 — PC Builder buttons no longer jump; AD-364 — storefront jump-up animation on buttons, icons, add to cart
 and alerts (storefront only); AD-363 — product Review and Q&A usable without signing in (guest
 rows stay PENDING until staff approve); AD-362 — Add to cart beside the product image; AD-361 product page in
 the Ryans structure; AD-359 compare search before a type is chosen; AD-358
 searchable compare picker; AD-357 homepage sections chosen by staff. AD-344 to
-AD-368 are recorded in TASKS.md only.)
+AD-369 are recorded in TASKS.md only.)

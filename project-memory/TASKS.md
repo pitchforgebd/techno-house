@@ -7075,3 +7075,56 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       until it is). Not tested on the live server.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-369 Footer "About us" went to "Page not found"; /favicon.ico 404.
+      Operator report (live site, three console screenshots): clicking a footer page
+      shows "Page not found"; the console logged `GET /About?_rsc=... 404`,
+      `GET /About 404` and `GET /favicon.ico 404`; "fast, also when opening some
+      tabs".
+      Cause: the footer's "About us" link is stored in the Design Studio footer data as
+      `/About`. The router is case-sensitive: `/about` is the page (200 on the live
+      site), `/About` is a 404. Checked every internal link on 14 live pages (503
+      distinct paths): `/About` is the only broken one apart from the three gibberish
+      test banners (AD-368). The browser's own `/favicon.ico` request (made on pages
+      without a <link rel=icon>, notably the bare "Page not found" page) answered 404
+      too although a favicon is set in the head of normal pages.
+      Fix (nothing needs editing on the live site; deploy is enough):
+      1. `lib/design/storefront-link.ts`: `canonicalStorefrontPath()` (the correctly
+         cased path when a storefront page differs only in capitals; a product slug
+         keeps its case; null for admin, unknown pages, anything already right) and
+         `normalizeStorefrontHref()` (same for an operator-typed link, keeping query
+         and hash; external URLs, anchors and mailto untouched).
+      2. Footer: `sanitizeInternalOrHttpHref` applies it, and that runs when the
+         footer is READ as well as saved, so the stored "/About" renders as "/about"
+         (verified by storing "/About" in the local database and reading the page's
+         HTML).
+      3. `middleware.ts`: a GET/HEAD to a wrong-case storefront URL gets a permanent
+         308 to the right one, query kept (old bookmarks, shared links, anything typed
+         by hand). Matcher gained `/((?=.*[A-Z]).*)` so it only runs for paths with a
+         capital letter: the dev log shows no middleware step for lowercase pages.
+         /admin is excluded by construction (its secret login address is
+         case-sensitive); POST is not redirected.
+      4. `app/favicon.ico/route.ts`: redirects to the favicon (else the logo) set in
+         Admin -> Settings, else answers an empty 204 — never 404.
+      5. Banner save (AD-368) now says "Did you mean /about?" for a wrong-case link.
+      Verified: `tsc` 0, `eslint` clean, `test:storefront-links` 95 checks (37 new, 11
+      deliberate breakages caught), production build served locally: /About, /ABOUT,
+      /About?x=1&y=2, /Shop, /Pc-Builder, /PC-BUILDER/select/cpu,
+      /Product/MSI-PRO-B860M-E, /Category/desktop, /Checkout/Payment/Return all 308 to
+      the lowercase page (query kept, slug case kept); /about and /shop untouched
+      (200); /DHFH, /Admin, /ADMIN/orders, /Product/a/b, /uploads/..., /_next/... stay
+      404; POST /About stays 404; /favicon.ico answers 302 to the uploaded image;
+      real browser: a click on the footer link lands on /about (real About page, no
+      404 request), opening /About directly ends on /about, and /DHFH is a 404 page
+      whose only 404 is the page itself. The local footer data was restored afterwards.
+      Honest notes: (1) my first browser test of the footer click read the address too
+      early and failed; a second run clicking the link at its measured position
+      navigated to /about with no page errors. (2) "also when opening some tabs" was
+      not reproducible from the live links; the likely cause is the favicon request,
+      which is fixed, and wrong-case addresses, which now redirect. (3) The stored
+      "/About" in the live database is unchanged (it is now harmless); fixing it in
+      Admin -> Design Studio -> Footer widgets is optional. (4) A wrong-case
+      address for an unknown page (e.g. /DHFH) stays a 404 on purpose. (5) Not tested
+      on the live server.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

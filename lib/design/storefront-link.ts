@@ -135,7 +135,62 @@ export function checkStorefrontLink(href: string): StorefrontLinkCheck {
       return { ok: true, path: trimmed, kind, slug: kind ? decodeSlug(rest) : null };
     }
   }
+  const corrected = canonicalStorefrontPath(trimmed);
+  if (corrected) {
+    return { ok: false, message: `There is no page at ${trimmed} — web addresses are case-sensitive. Did you mean ${corrected}?` };
+  }
   return { ok: false, message: `There is no page at ${trimmed}. Use a link to a page that exists, ${EXAMPLES}.` };
+}
+
+/**
+ * The storefront's router is case-sensitive: `/about` is a page and `/About` is a
+ * 404. A link typed with the wrong capitals (the live footer had "/About") is a
+ * dead link, and so is a bookmark or an old campaign URL. This returns the
+ * correctly cased path when `path` (no query or hash) is a storefront page apart
+ * from the capitals of its fixed part — the slug at the end of `/product/<slug>`
+ * keeps its own case — and null when it is already right or is not a storefront
+ * page at all. A trailing slash is dropped.
+ */
+export function canonicalStorefrontPath(path: string): string | null {
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    return null;
+  }
+  const trimmed = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+  const relative = trimmed.slice(1);
+  if (relative === "") {
+    return null;
+  }
+  const lower = relative.toLowerCase();
+  if (STOREFRONT_STATIC_PATHS.includes(lower)) {
+    const canonical = `/${lower}`;
+    return canonical === path ? null : canonical;
+  }
+  for (const prefix of STOREFRONT_DYNAMIC_PREFIXES) {
+    if (!lower.startsWith(`${prefix}/`)) {
+      continue;
+    }
+    const rest = relative.slice(prefix.length + 1);
+    if (rest !== "" && !rest.includes("/")) {
+      const canonical = `/${prefix}/${rest}`;
+      return canonical === path ? null : canonical;
+    }
+  }
+  return null;
+}
+
+/**
+ * Fixes the capitals of an operator-typed internal link (`/About?x=1` becomes
+ * `/about?x=1`). External URLs, anchors and links that are already right come
+ * back unchanged.
+ */
+export function normalizeStorefrontHref(href: string): string {
+  if (!href.startsWith("/") || href.startsWith("//")) {
+    return href;
+  }
+  const cut = href.search(/[?#]/);
+  const path = cut < 0 ? href : href.slice(0, cut);
+  const tail = cut < 0 ? "" : href.slice(cut);
+  return (canonicalStorefrontPath(path) ?? path) + tail;
 }
 
 function decodeSlug(raw: string): string {

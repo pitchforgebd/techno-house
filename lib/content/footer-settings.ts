@@ -12,6 +12,7 @@ import {
   type FooterWidgetsConfig,
 } from "@/lib/content/footer-types";
 import { getPrisma } from "@/lib/db/prisma";
+import { normalizeStorefrontHref } from "@/lib/design/storefront-link";
 import { usesDatabase } from "@/lib/runtime/data-source";
 
 export type { FooterWidgetsConfig } from "@/lib/content/footer-types";
@@ -56,7 +57,11 @@ function sanitizeInternalOrHttpHref(raw: string): string | null {
     return null;
   }
   if (href.startsWith("/") && !href.startsWith("//") && !href.includes(":")) {
-    return href;
+    // Fix the capitals of a link to one of our own pages ("/About" -> "/about"):
+    // this runs when the footer is read as well as when it is saved, so a link
+    // already stored with the wrong case stops being a dead link without anyone
+    // having to edit it (AD-369).
+    return normalizeStorefrontHref(href);
   }
   try {
     const url = new URL(href);

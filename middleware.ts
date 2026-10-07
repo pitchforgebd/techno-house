@@ -10,6 +10,7 @@ import { CUSTOMER_SESSION_COOKIE } from "@/lib/auth/customer-session-constants";
 import { verifySessionJwt } from "@/lib/auth/session-jwt";
 import { resolveStaffSessionByToken } from "@/lib/auth/staff-session-core";
 import { STAFF_SESSION_COOKIE } from "@/lib/auth/staff-session-constants";
+import { canonicalStorefrontPath } from "@/lib/design/storefront-link";
 
 /**
  * Node.js runtime, not the Edge default — this is what actually closes the
@@ -30,7 +31,14 @@ import { STAFF_SESSION_COOKIE } from "@/lib/auth/staff-session-constants";
  * layout always did, just somewhere that cannot be skipped.
  */
 export const config = {
-  matcher: ["/account/:path*", "/admin/:path*", "/b2b/:path*"],
+  matcher: [
+    "/account/:path*",
+    "/admin/:path*",
+    "/b2b/:path*",
+    // Any other path containing a capital letter, so wrong-case storefront URLs
+    // can be redirected without running this on every request (AD-369).
+    "/((?=.*[A-Z]).*)",
+  ],
   runtime: "nodejs",
 } as const;
 
@@ -56,6 +64,21 @@ const B2B_PUBLIC = new Set(["/b2b/login", "/b2b/register"]);
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Wrong-case storefront URLs (AD-369). The router is case-sensitive, so
+  // `/About` is a 404 while `/about` is the page; a link typed with the wrong
+  // capitals, an old bookmark or a shared URL all land on "Page not found".
+  // Only a path that IS a storefront page apart from its capitals is redirected
+  // (permanently, query string kept); anything else — including /admin, whose
+  // secret login address is case-sensitive on purpose — is left alone.
+  if (request.method === "GET" || request.method === "HEAD") {
+    const canonical = canonicalStorefrontPath(pathname);
+    if (canonical) {
+      const target = request.nextUrl.clone();
+      target.pathname = canonical;
+      return NextResponse.redirect(target, 308);
+    }
+  }
 
   if (pathname.startsWith("/admin")) {
     // Real gate is public. Wrong / legacy login URLs fall through to
