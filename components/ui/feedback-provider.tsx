@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import {
+  Bounce,
   ToastContainer,
   cssTransition,
   toast,
@@ -36,6 +37,12 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   // admin panel, so the route decides which transition the alerts get.
   const pathname = usePathname();
   const inAdmin = pathname === "/admin" || pathname?.startsWith("/admin/");
+  // Staff screens get the library's default, `Bounce`, named explicitly. Never
+  // pass `transition={undefined}` to mean "the default": the container merges
+  // its props over its defaults, so an explicit undefined REPLACES Bounce, the
+  // next toast fails to render ("Element type is invalid ... got: undefined")
+  // and the app drops into the global error page — which is what every admin
+  // save did after AD-364 until this was fixed (AD-367).
 
   return (
     <ConfirmProvider>
@@ -46,7 +53,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         limit={4}
         toastClassName="th-toast"
         progressClassName="th-toast-progress"
-        transition={inAdmin ? undefined : JumpUp}
+        transition={inAdmin ? Bounce : JumpUp}
       />
     </ConfirmProvider>
   );

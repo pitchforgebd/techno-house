@@ -598,9 +598,14 @@ export function AdminFacebookCatalogSettingsPage({
           <p className="mt-1 text-sm text-neutral-500">
             Stores the public catalog ID only. Graph API tokens are not saved.
             The product feed is{" "}
-            <Link href="/feeds/facebook.xml" className="text-[#3897f0]">
+            <a
+              href="/feeds/facebook.xml"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#3897f0]"
+            >
               /feeds/facebook.xml
-            </Link>{" "}
+            </a>{" "}
             when Meta Pixel is enabled.
           </p>
           {formError ? (
@@ -697,9 +702,14 @@ export function AdminMerchantCenterSettingsPage({
           </h1>
           <p className="mt-1 text-sm text-neutral-500">
             Stores the public Merchant ID. Enabling this publishes{" "}
-            <Link href="/feeds/google.xml" className="text-[#3897f0]">
+            <a
+              href="/feeds/google.xml"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#3897f0]"
+            >
               /feeds/google.xml
-            </Link>
+            </a>
             .
           </p>
           {formError ? (

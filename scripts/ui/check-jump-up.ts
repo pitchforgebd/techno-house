@@ -269,10 +269,22 @@ function wiring(): void {
   check("the effects component draws nothing", effects.includes("return null;"));
 
   check(
-    "the toast container uses the jump-up transition everywhere except /admin",
+    "the toast container uses the jump-up transition everywhere except /admin, where it uses Bounce",
     feedback.includes('const pathname = usePathname()') &&
       feedback.includes('pathname === "/admin" || pathname?.startsWith("/admin/")') &&
-      feedback.includes("transition={inAdmin ? undefined : JumpUp}"),
+      feedback.includes("transition={inAdmin ? Bounce : JumpUp}") &&
+      /import \{[^}]*\bBounce\b[^}]*\} from "react-toastify"/.test(feedback),
+  );
+  // react-toastify merges the container's props over its defaults, so an explicit
+  // `transition={undefined}` replaces the default Bounce with nothing: the next
+  // toast fails to render and the app falls into the global error page. This is
+  // exactly what every admin save did after AD-364 (fixed in AD-367) — and the
+  // check that used to pin the `undefined` line is how it was missed.
+  const containerStart = feedback.indexOf("<ToastContainer");
+  const container = containerStart < 0 ? "" : feedback.slice(containerStart, feedback.indexOf("/>", containerStart) + 2);
+  check(
+    "no prop of the toast container is ever undefined (an explicit undefined erases the library's default)",
+    container.length > 0 && !container.includes("undefined"),
   );
   check(
     "the toast transition's class names match the stylesheet",

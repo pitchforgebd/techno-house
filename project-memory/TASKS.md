@@ -6965,3 +6965,69 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       not hide any text; left alone.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-367 Admin saves crashed with "The site could not load"; full-site check.
+      Operator report (two screenshots from the live site): every save or update in
+      Admin ended in the "The site could not load / Try again" page; the browser
+      console showed three 404s (`/DHFH`, `/BCBB`, `/hfufjfu`) and "[Violation]
+      handler took Nms" lines; "check the whole site and fix the bugs".
+      Cause of the crash — MY BUG from AD-364: `FeedbackProvider` (root layout, so
+      it wraps admin too) passed `transition={inAdmin ? undefined : JumpUp}` to
+      react-toastify's container to mean "use the default on /admin". The container
+      merges its props OVER its defaults (`{...defaults, ...props}`), so an explicit
+      `undefined` erased the default `Bounce`; the first toast on any /admin page
+      then threw "Element type is invalid ... got: undefined" while rendering and
+      the app fell into `app/global-error.tsx`. Every admin save/update raises a
+      toast, so every one crashed — the data was saved, the success message broke
+      the page. The storefront was unaffected (it always had a real transition).
+      Reproduced first: signed in to the local admin with the demo staff account
+      from `prisma/seed.ts`, clicked a save, got the global error page and exactly
+      that page error. After the fix the same save shows its alert.
+      Why it shipped: AD-364's notes said a real admin toast "was not exercised
+      live (needs a staff login)" — it was reachable locally all along via the demo
+      staff account — and the test I wrote pinned the buggy line
+      (`transition={inAdmin ? undefined : JumpUp}`), so the suite passed.
+      Fix: `transition={inAdmin ? Bounce : JumpUp}` (the library's own default,
+      named). Tests: `test:jump-up` (54 checks) now pins `Bounce` and fails if any
+      prop of the `<ToastContainer>` element contains `undefined`; NEW
+      `npm run test:toast-live` (`scripts/ui/check-toast-live.mjs`, needs
+      `npm run dev` on localhost; skips loudly otherwise, never runs against a
+      non-localhost URL, sign-in uses the documented local demo staff account):
+      saves on Admin -> Appearance and expects the alert and no error page, then
+      raises a storefront alert and expects the jump-up class and the alert leaving
+      again. Proven both ways on the dev server: with the bug put back it fails 3 of
+      8 (error page shown, no alert, the exact page error); with the fix 8 of 8.
+      The first version of that check skipped instead of failing when the dev server
+      was slow or the demo sign-in was rate-limited; the probe is now patient and the
+      skip message names the rate limit.
+      Full-site check (production build served locally, because a dev server
+      compiles every page on first visit): storefront — 64 pages (static pages plus a
+      sample product, category, brand, blog post, the 7 builder select pages) and 31
+      signed-in customer pages incl. an order and a ticket: no failed requests, page
+      errors or error pages. Admin — 141 pages plus 23 detail pages (blog, brands,
+      categories, contacts, coupons, customers, labels, orders, products, ...; no
+      deals existed to sample) and the order invoice: no errors. Save sweep — Save or
+      Update clicked on 70 admin pages: 0 crashes, 0 page errors; 4 alerts were
+      ordinary validation/config replies (required fields on Notifications, empty
+      SMTP host, and "Set GATEWAY_SECRETS_KEY in .env.local" on Payments).
+      Other findings: (1) four admin pages (Facebook catalog, Merchant Center, their
+      feed pages) linked to `/feeds/facebook.xml` and `/feeds/google.xml` with
+      `<Link>`, which prefetched the XML file as a page and logged a 404; now plain
+      `<a target="_blank">`. (2) The three 404s in the screenshot come from three
+      hero banners on the LIVE homepage with gibberish test content (eyebrows
+      "DDGDG", "VXVX", "VBBVBB,,"; titles "DGDH", "CBBBCXBC", "BB VBVHJ"; links
+      `/DHFH`, `/BCBB`, `/hfufjfu`, which do not exist) — data, not code; the operator
+      has to edit or delete them in Admin -> Design Studio -> Banners (likely
+      created while the saves appeared to fail). (3) The "[Violation] handler took"
+      lines are Chrome advisories from third-party scripts (Google Analytics is in
+      the screenshot), browser extensions and DevTools overhead; the site's own code
+      only listens to `visibilitychange` in the admin order bell. Live public pages
+      (25 URLs) all answer 200; `/feeds/facebook.xml` is 404 while the Meta feed is off.
+      (4) An "Invalid URL //" error seen in the dev log during the check was my
+      crawler requesting `//`, not a site bug.
+      Honest notes: not covered — checkout payment/placing real orders, pages that
+      need data the dev database lacks, mobile width, browsers other than Chrome, and
+      the live server's own logs (no access). The live site keeps crashing on admin
+      saves until this is deployed. The 4 feed-link 404s are fixed in source only.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`; then reload open admin tabs.

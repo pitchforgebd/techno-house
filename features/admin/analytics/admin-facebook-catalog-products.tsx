@@ -71,9 +71,16 @@ export function AdminFacebookCatalogProductsPage({
             </h1>
             <p className="mt-2 text-sm text-neutral-500">
               These are the real products currently in your live feed —{" "}
-              <Link href="/feeds/facebook.xml" className="text-[#3897f0]">
+              {/* A plain link, not <Link>: the feed is an XML file, not a page, so
+                  <Link> would prefetch it as a page and log a 404 in the console. */}
+              <a
+                href="/feeds/facebook.xml"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#3897f0]"
+              >
                 /feeds/facebook.xml
-              </Link>{" "}
+              </a>{" "}
               {feedLive
                 ? `publishes all ${products.length} active product${products.length === 1 ? "" : "s"} shown below.`
                 : "returns 404 until Meta Pixel is enabled on the Meta Pixel page."}{" "}
