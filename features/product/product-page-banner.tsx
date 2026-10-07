@@ -30,7 +30,7 @@ export function ProductPageBanner({
   return (
     <div className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
       {banner.href ? (
-        <Link href={banner.href} className="block">
+        <Link href={banner.href} prefetch={false} className="block">
           {image}
         </Link>
       ) : (

@@ -6,6 +6,7 @@
  */
 import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/auth/audit-log";
 import { getPrisma } from "@/lib/db/prisma";
+import { checkStorefrontLink } from "@/lib/design/storefront-link";
 import { usesDatabase } from "@/lib/runtime/data-source";
 
 export const HOME_BANNER_DB_REQUIRED =
@@ -132,6 +133,23 @@ function sanitizeText(value: string, max: number): string {
   return value.trim().replace(/[<>]/g, "").slice(0, max);
 }
 
+/** Whether the product, category or brand a banner link names exists. */
+async function storefrontSlugExists(
+  kind: "product" | "category" | "brand",
+  slug: string,
+): Promise<boolean> {
+  const prisma = getPrisma();
+  const where = { slug };
+  const select = { id: true } as const;
+  const row =
+    kind === "product"
+      ? await prisma.product.findFirst({ where, select })
+      : kind === "category"
+        ? await prisma.category.findFirst({ where, select })
+        : await prisma.brand.findFirst({ where, select });
+  return row !== null;
+}
+
 export async function saveHomeBanner(input: {
   id?: string;
   slot: string;
@@ -162,7 +180,14 @@ export async function saveHomeBanner(input: {
 
   if (!title) return fail("Enter a title.");
   if (!cta) return fail("Enter a call-to-action label.");
-  if (!href || !href.startsWith("/")) return fail("Link must be a real storefront path starting with /.");
+  if (!href) return fail("Enter a link, like /shop or /category/laptops.");
+  // The link must lead to a page that exists. Three banners were once saved with
+  // links like "/DHFH"; every visitor's browser then logged a 404 for each (AD-368).
+  const link = checkStorefrontLink(href);
+  if (!link.ok) return fail(link.message);
+  if (link.kind && link.slug && !(await storefrontSlugExists(link.kind, link.slug))) {
+    return fail(`There is no ${link.kind} "${link.slug}" on the store — check the link.`);
+  }
   if (!imageSrc) return fail("Upload an image first.");
 
   const data = {

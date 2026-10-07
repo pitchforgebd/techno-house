@@ -20,6 +20,7 @@ function PromoBanner({
   return (
     <Link
       href={banner.href}
+      prefetch={false}
       className={cn(
         "group relative block overflow-hidden rounded-sm border border-border bg-text transition-[border-color,box-shadow] duration-300 hover:border-text/40 hover:shadow-[0_10px_30px_-18px_rgb(14_26_36/0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
         className,

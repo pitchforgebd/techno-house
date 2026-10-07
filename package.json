@@ -41,6 +41,7 @@
     "test:guest-feedback": "tsx scripts/catalog/check-guest-feedback.ts",
     "test:jump-up": "tsx scripts/ui/check-jump-up.ts",
     "test:toast-live": "node scripts/ui/check-toast-live.mjs",
+    "test:storefront-links": "tsx scripts/ui/check-storefront-links.ts",
     "catalog:export": "tsx scripts/deploy/export-catalog.ts",
     "catalog:import": "tsx scripts/deploy/import-catalog.ts",
     "pcbuilder:bootstrap-rules": "tsx scripts/deploy/create-pc-builder-rules.ts",

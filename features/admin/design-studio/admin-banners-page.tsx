@@ -159,7 +159,7 @@ function BannerForm({
           className={controlClass}
         />
       </Field>
-      <Field label="Link" required hint="A real storefront path, e.g. /flash-sale">
+      <Field label="Link" required hint="A page that exists on this store, e.g. /shop, /deals, /category/laptops or /product/your-product-slug. A link to a page that does not exist is refused.">
         <Input
           value={draft.href}
           onChange={(e) => setDraft((prev) => ({ ...prev, href: e.target.value }))}

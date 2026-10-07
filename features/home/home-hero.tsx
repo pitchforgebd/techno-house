@@ -41,6 +41,7 @@ export function HomeHero({
               <li key={promo.id} className="min-h-0">
                 <Link
                   href={promo.href}
+                  prefetch={false}
                   aria-label={promo.title}
                   className="group relative flex min-h-44 overflow-hidden rounded-sm bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-bright sm:min-h-48 lg:h-full lg:min-h-0"
                 >

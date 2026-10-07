@@ -63,8 +63,12 @@ export function HomeHeroSlider({
             link instead of a button inside it — `aria-label` carries the
             accessible name that the removed heading used to provide.
           */}
+          {/* `prefetch={false}`: the link is operator-typed, and every slide's link is
+              in the page at once; a mistyped one would otherwise log a 404 in every
+              visitor's console, and hidden slides would be fetched for nothing. */}
           <Link
             href={slide.href}
+            prefetch={false}
             aria-label={slide.title}
             tabIndex={slideIndex === index ? undefined : -1}
             className="block h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-bright"

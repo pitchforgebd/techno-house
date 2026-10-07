@@ -7031,3 +7031,47 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       saves until this is deployed. The 4 feed-link 404s are fixed in source only.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`; then reload open admin tabs.
+
+- [x] AD-368 The three 404s in the console: nonsense banner links.
+      Operator sent the console screenshot again (three `GET /DHFH, /BCBB, /hfufjfu
+      ?_rsc=... 404`) with no text, after AD-367 had explained them as data. Reading
+      it as: still showing, please make them stop. Checked the live homepage again:
+      the three test hero banners (links /DHFH, /BCBB, /hfufjfu) are still published.
+      The data itself can only be removed by the operator; the code allowed it and
+      amplified it:
+      1. `saveHomeBanner` accepted any link that started with "/". New pure module
+         `lib/design/storefront-link.ts` (`checkStorefrontLink`) knows the storefront's
+         real pages (52 fixed paths, 12 one-segment prefixes such as /product/<slug>,
+         mirrored from `app/(storefront)`); a link must be a single-slash path to one
+         of them (query and hash allowed, trailing slash ignored, case-sensitive like
+         the router). For product / category / brand links the save also checks that
+         the slug exists. The refusal names the link and gives examples ("There is no
+         page at /DHFH. Use a link to a page that exists, like /shop, /deals,
+         /category/laptops or /product/your-product-slug."). The form hint says the
+         same. Existing banners are not touched.
+      2. Every component showing an operator-typed banner link now has
+         `prefetch={false}` (hero slides, side promos, promo banners, product-page
+         banner): all slides' links sit in the page at once, so a bad link logged a
+         404 in every visitor's console and hidden slides were fetched for nothing.
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:storefront-links` 58
+      checks (new; compares the two page lists with the real folders so a new page
+      cannot be added unlisted; 14 deliberate breakages caught, 1 equivalent mutant —
+      `//host` is refused by the later page check anyway), all 13 regression suites,
+      `test:listing`, `test:privilege`, `test:theme`, `test:home-sections` pass. Real
+      browser on a production build with the three junk banners put into the local
+      database: on the home page (73 other prefetch requests going out) none of the
+      three links is requested and no page request answers 404; in the real admin
+      form, /DHFH, an external URL, a missing product slug and a missing category
+      slug are each refused with their message, while /shop?brand=msi and
+      /category/desktop pass the link check (next message: "Upload an image first").
+      The temporary banners were removed afterwards (0 left).
+      STILL NEEDS THE OPERATOR: delete or deactivate the three test banners in Admin
+      -> Design Studio -> Banners (eyebrows DDGDG / VXVX / VBBVBB,,; titles DGDH /
+      CBBBCXBC / BB VBVHJ) — customers can see them on the homepage. Until then they
+      stay visible even after this deploy, only the console 404s stop.
+      Honest notes: only banner links are checked; other operator-typed links
+      (popups, alerts, menus, footer widgets) have their own checks and were not
+      changed. A new storefront page must be added to the two lists (the test fails
+      until it is). Not tested on the live server.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.
