@@ -41,10 +41,15 @@ function main(): void {
   const banner = source("features/product/product-page-banner.tsx");
   const cardsPath = "features/product/product-service-cards.tsx";
 
-  // --- one flat 12-column grid ---------------------------------------------------------
+  // --- one flat 12-column grid for the card, a second one below it for detail/similar ---
   check(
-    "one flat 12-column grid, with a flexible second row",
-    media.includes("lg:grid-cols-12") && media.includes("lg:grid-rows-[auto_1fr_auto_auto]"),
+    "the card (gallery + buy box + colour options) is a flat 12-column grid with a flexible second row",
+    media.includes("lg:grid-cols-12") && media.includes("lg:grid-rows-[auto_1fr]"),
+  );
+  check(
+    "the card wraps the gallery/buy/options grid in a bordered, shadowed surface (AD-374)",
+    media.includes("rounded-2xl border border-border bg-surface") &&
+      media.includes("shadow-lg"),
   );
   check(
     "the gallery column is 5 wide and spans the first two rows",
@@ -63,13 +68,15 @@ function main(): void {
     media.includes("lg:col-span-7 lg:col-start-6 lg:row-start-2"),
   );
   check(
-    "specifications / details are wide and the similar rail narrow, in the last row (one lower under a full-width banner)",
+    "specifications / details are wide and the similar rail narrow, below the card (AD-374: a fresh grid, not sharing the card's row state)",
     media.includes("lg:col-span-8 lg:col-start-1 xl:col-span-9") &&
       media.includes("lg:col-span-4 lg:col-start-9") &&
       media.includes("xl:col-span-3 xl:col-start-10") &&
-      // one row lower when a full-width banner sits between the top and the details:
-      // BOTH the details and the similar rail must move, or one overlaps the banner
-      media.split('bannerFull ? "lg:row-start-4" : "lg:row-start-3"').length - 1 === 2,
+      // No explicit row-start on either: a full-width banner (col-span-12)
+      // occupies every column of row 1 when present, so grid auto-placement
+      // alone pushes detail/similar to row 2 — nothing can overlap the banner
+      // without it.
+      media.includes("lg:col-span-12 lg:col-start-1"),
   );
   check(
     "the similar-products rail follows the long column (sticky on large screens)",
@@ -84,7 +91,8 @@ function main(): void {
   check(
     "the strip under the gallery renders only when it has content",
     media.includes("{belowGallery ? <div") &&
-      media.includes("{banner ? (") &&
+      media.includes('{banner && bannerAt === "info" ? (') &&
+      media.includes("{bannerFull ? (") &&
       media.includes("{detail ? (") &&
       media.includes("{similar ? ("),
   );
@@ -156,19 +164,19 @@ function main(): void {
       at(summary, 'id="product-qty"') < at(summary, "Check availability"),
   );
   check(
-    "the buy column is compact: a 1xl/xl title, rating and product id on one row, a tight one-line price",
+    "the buy column is compact: a 1xl/xl title, rating/stock/model/SKU/brand merged into one meta row (AD-374), a tight one-line price",
     summary.includes("text-lg leading-snug font-semibold tracking-tight text-text sm:text-xl") &&
-      summary.includes("mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1") &&
+      summary.includes("mt-2 flex flex-wrap items-center gap-2") &&
       summary.includes("text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]") &&
       summary.includes("space-y-4"),
   );
 
   check(
-    "the banner spans both columns as a strip under them, except with notes, when it sits under the buy information; small screens always get it after the buy box",
+    "the banner spans both columns as a strip under the card, except with notes, when it sits inside the card under the buy information; small screens always get it after the buy box",
     media.includes('hasNotes ? "info" : "full"') &&
       media.includes('bannerAt === "info"') &&
       media.includes("lg:col-span-7 lg:col-start-6 lg:row-start-2") &&
-      media.includes("lg:col-span-12 lg:col-start-1 lg:row-start-3"),
+      media.includes("lg:col-span-12 lg:col-start-1"),
   );
   check(
     "the page tells the grid whether notes are present",

@@ -2380,19 +2380,32 @@ Idle. Manual testing support.
 None. Do not start Phase 18. Continue mock retirement only if operator asks.
 
 ## Last Updated
-2026-10-14 (AD-373 — single product page gets a new chip row under the title (Stock /
-Model / SKU / Brand; "Out Of Stock" bold red in the Stock chip), a "Coming Soon"
-label above Add to cart (new admin "Coming soon / Upcoming" toggle + "Model number"
-field on the product form, both new Product columns — SCHEMA CHANGE, migration
-applied), a "View More Info" link under Quick overview that jumps to Specifications,
-and every button sitewide is less rounded (8px, matching the existing toast
-buttons, not a new value); AD-372 — Admin -> Products: no more visible horizontal
-scrollbar under the table (a shared-component fix covering every admin list page,
-plus a defensive html/body overflow-x:hidden), and a "Quick edit" option on each row
-for price/regular price/stock without opening the full form; AD-371 — single
-product page made more minimal: price and regular price on one bold line, Quick
-overview moved to right under the price, the title a size smaller. AD-344 to AD-370
-recorded 2026-10-05 to 2026-10-14: AD-370 admin product gallery is a real
+2026-10-15 (AD-374 — single product page's "first container" (gallery + buy box)
+redesigned to match a competitor reference the operator shared: the whole thing now
+sits in one bordered/shadowed card; the title/rating/AD-373 chip row merged into one
+row of coloured pills; the price got its own gradient card with a "Limited Time
+Offer" pill (only when a real discountEndsAt exists) and a computed "% OFF"; Quick
+overview's header now carries "View More Info" inline with an arrow icon (body still
+plain rich text, per the operator's explicit instruction, not the reference's
+spec-grid); EMI + B2B merged into one slim bar; "Check availability" folded into the
+same row as Add to cart on desktop, with its own full-width copy on mobile; no
+schema change. Found and fixed a real bug along the way (not caught by tsc/eslint):
+a `hidden ... sm:inline-flex` override lost to `buttonClassName()`'s own hardcoded
+`inline-flex` with no tailwind-merge, showing BOTH the desktop and mobile Check
+availability buttons at once — only caught via an actual mobile screenshot. AD-373 —
+single product page gets a new chip row under the title (Stock / Model / SKU /
+Brand; "Out Of Stock" bold red in the Stock chip), a "Coming Soon" label above Add
+to cart (new admin "Coming soon / Upcoming" toggle + "Model number" field on the
+product form, both new Product columns — SCHEMA CHANGE, migration applied), a "View
+More Info" link under Quick overview that jumps to Specifications, and every button
+sitewide is less rounded (8px, matching the existing toast buttons, not a new
+value); AD-372 — Admin -> Products: no more visible horizontal scrollbar under the
+table (a shared-component fix covering every admin list page, plus a defensive
+html/body overflow-x:hidden), and a "Quick edit" option on each row for price/
+regular price/stock without opening the full form. AD-344 to AD-371 recorded
+2026-10-05 to 2026-10-14: AD-371 single product page made more minimal: price and
+regular price on one bold line, Quick overview moved to right under the price, the
+title a size smaller; AD-370 admin product gallery is a real
 multi-image uploader (add several at once, reorder, remove), cloning a product now
 carries every gallery image, and the product form has a second "Save & publish"
 button at the top; AD-369 wrong-case URLs/links like /About redirect or are
@@ -2404,4 +2417,4 @@ storefront jump-up animation on buttons/icons/add to cart/alerts (storefront onl
 AD-363 product Review and Q&A usable without signing in; AD-362 Add to cart beside
 the product image; AD-361 product page in the Ryans structure; AD-359 compare
 search before a type is chosen; AD-358 searchable compare picker; AD-357 homepage
-sections chosen by staff. AD-344 to AD-373 are recorded in TASKS.md only.)
+sections chosen by staff. AD-344 to AD-374 are recorded in TASKS.md only.)

@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeftRight, Check, Heart, ShoppingCart } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  Check,
+  Heart,
+  ShieldCheck,
+  ShoppingCart,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClassName } from "@/components/ui/button";
 import {
@@ -224,6 +231,10 @@ export function ProductSummary({
     retailReference && retailReference.amount > displayPrice.amount
       ? retailReference.amount - displayPrice.amount
       : null;
+  const discountPercent =
+    savings !== null && retailReference
+      ? Math.round((savings / retailReference.amount) * 100)
+      : null;
   // One monthly figure per configured tenure, longest first — the longest
   // tenure is the smallest monthly, which is the figure quoted in the buy
   // box ("EMI ৳X/month") and the one a shopper compares on. This used to
@@ -291,6 +302,13 @@ export function ProductSummary({
       }
       setJustAdded(true);
       notifyAddedToCart(() => router.push("/cart"));
+    });
+  }
+
+  function checkAvailability() {
+    notifySuccess({
+      title: STOCK_LABEL[stockStatus],
+      description: `${warrantyLabel}. Branch stock checks are display-only in this build.`,
     });
   }
 
@@ -366,51 +384,72 @@ export function ProductSummary({
           <h1 className="text-balance text-lg leading-snug font-semibold tracking-tight text-text sm:text-xl">
             {name}
           </h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {/* One merged meta row — rating, stock, model, SKU, brand — rather
+              than a rating line followed by a second row of plain grey boxes.
+              The Stock pill turns bold red when out of stock, which is also
+              what covers the user's separate "Out Of Stock likha ta... show
+              korbe" ask — one prominent place for it rather than a second
+              standalone banner. */}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <RatingStars rating={averageRating} reviewCount={reviewCount} />
-          </div>
-          {/* Info chip row — Stock / Model / SKU / Brand, grey rounded boxes.
-              Replaces the old plain "Product ID: X · brand" caption so SKU/brand
-              aren't shown twice. The Stock chip's value turns bold red when out
-              of stock, which is also what covers the user's separate "Out Of
-              Stock likha ta... show korbe" ask — one prominent place for it
-              rather than a second standalone banner. */}
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-2.5 py-1 text-caption text-text-muted">
-              Stock:
-              <span
-                className={cn(
-                  "font-semibold",
-                  unavailable ? "text-danger" : "text-text",
-                )}
-              >
-                {unavailable ? "Out Of Stock" : STOCK_LABEL[stockStatus]}
-              </span>
-            </span>
+            <span className="h-3.5 w-px bg-border" aria-hidden />
+            <Badge
+              tone={
+                unavailable
+                  ? "sale"
+                  : stockStatus === "in_stock"
+                    ? "stock"
+                    : "neutral"
+              }
+              size="sm"
+              className={unavailable ? "font-bold" : undefined}
+            >
+              {unavailable ? "Out Of Stock" : STOCK_LABEL[stockStatus]}
+            </Badge>
             {modelNumber ? (
-              <span className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-2.5 py-1 text-caption text-text-muted">
-                Model:
-                <span className="font-semibold text-text">{modelNumber}</span>
-              </span>
+              <Badge tone="neutral" size="sm">
+                Model:{" "}
+                <span className="ml-1 font-semibold text-text">
+                  {modelNumber}
+                </span>
+              </Badge>
             ) : null}
-            <span className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-2.5 py-1 text-caption text-text-muted">
-              SKU:
-              <span className="font-mono font-semibold text-text">{sku}</span>
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-2.5 py-1 text-caption text-text-muted">
-              Brand:
-              <span className="font-semibold text-text">{brandName}</span>
-            </span>
+            <Badge tone="neutral" size="sm">
+              SKU:{" "}
+              <span className="ml-1 font-mono font-semibold text-text">
+                {sku}
+              </span>
+            </Badge>
+            <Badge tone="warranty" size="sm">
+              Brand: <span className="ml-1 font-semibold">{brandName}</span>
+            </Badge>
           </div>
         </div>
 
-        <div className="space-y-1">
-          {/* Special and regular price now sit on one line, both bold, the
-              special price a size larger — no bordered panel, which is what
-              made the old version feel boxed-in rather than minimal. */}
-          <span className="text-[0.7rem] font-bold tracking-[0.14em] text-text-muted uppercase">
-            {b2bActive ? "Wholesale price" : "Special price"}
-          </span>
+        <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-r from-surface-muted/70 via-primary-soft/20 to-surface p-4 shadow-sm sm:p-5">
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+            {/* Special and regular price sit on one line, both bold, the
+                special price a size larger — no bordered panel is what made
+                the old version feel boxed-in rather than minimal; this one
+                keeps that single-line price but gives it a card so the offer
+                badge and the pulsing dot have somewhere to sit. */}
+            <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-extrabold tracking-[0.14em] text-primary uppercase">
+              <span
+                className="size-2 animate-pulse rounded-full bg-primary"
+                aria-hidden
+              />
+              {b2bActive ? "Wholesale price" : "Special price"}
+            </span>
+            {discountEndsAt ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-danger/25 bg-danger/10 px-2.5 py-1 text-[0.65rem] font-bold text-danger">
+                <span
+                  className="size-1.5 animate-ping rounded-full bg-danger"
+                  aria-hidden
+                />
+                Limited Time Offer
+              </span>
+            ) : null}
+          </div>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]">
               {formatMoney(displayPrice)}
@@ -421,9 +460,10 @@ export function ProductSummary({
               </span>
             ) : null}
             {savings !== null ? (
-              <span className="inline-flex items-center rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
+              <span className="inline-flex items-center gap-1 rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
                 Save {formatMoney({ amount: savings })}
-                {b2bActive ? " (B2B)" : ""}
+                {discountPercent !== null ? ` (${discountPercent}% OFF)` : ""}
+                {b2bActive ? " · B2B" : ""}
               </span>
             ) : null}
           </div>
@@ -436,34 +476,46 @@ export function ProductSummary({
             (the admin field says so: "Keep it short"), so this is a deliberate
             trade — a product with an unusually long overview will push the
             cart row down, which AD-362's own notes already flagged as a
-            standing limit of a flexible-height buy column. */}
-        {overviewHtml ? (
-          <div>
-            <h2 className="text-label font-semibold uppercase tracking-wide text-text">
-              Quick overview
-            </h2>
+            standing limit of a flexible-height buy column. The body stays
+            rich text (our system), not the reference's spec-grid layout —
+            only the header/card treatment follows the reference. */}
+        <div className="border-y border-border py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="h-4 w-1.5 rounded-full bg-primary" aria-hidden />
+              <h2 className="text-label font-bold uppercase tracking-wide text-text">
+                Quick Overview
+              </h2>
+            </div>
+            {/* Jumps to the Specifications section — ProductDetailSections
+                marks it with data-product-section="specifications" and
+                already tracks scroll position via its own
+                IntersectionObserver, so this needs no wiring beyond a plain
+                scrollIntoView. */}
+            <button
+              type="button"
+              onClick={() => {
+                document
+                  .querySelector('[data-product-section="specifications"]')
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="group inline-flex items-center gap-1 text-label font-semibold text-danger underline-offset-2 hover:underline"
+            >
+              View More Info
+              <ArrowRight
+                aria-hidden
+                className="size-3.5 transition-transform group-hover:translate-x-0.5"
+                strokeWidth={2}
+              />
+            </button>
+          </div>
+          {overviewHtml ? (
             <div
-              className="th-rich-text mt-2 text-label text-text-muted"
+              className="th-rich-text mt-3 text-label text-text-muted"
               dangerouslySetInnerHTML={{ __html: overviewHtml }}
             />
-          </div>
-        ) : null}
-
-        {/* Jumps to the Specifications section — ProductDetailSections marks
-            it with data-product-section="specifications" and already tracks
-            scroll position via its own IntersectionObserver, so this needs no
-            wiring beyond a plain scrollIntoView. */}
-        <button
-          type="button"
-          onClick={() => {
-            document
-              .querySelector('[data-product-section="specifications"]')
-              ?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-          className="text-label font-semibold text-danger underline-offset-2 hover:underline"
-        >
-          View More Info
-        </button>
+          ) : null}
+        </div>
 
         <div className="space-y-2">
           {discountEndsAt ? (
@@ -488,95 +540,100 @@ export function ProductSummary({
             </p>
           ) : null}
 
-          {emiVisible ? (
-            <p className="flex flex-wrap items-baseline gap-x-2">
-              <ProductEmiTooltip
-                label={`EMI ${formatMoney({ amount: emiLowestMonthly })}/month`}
-                plans={emiPlans}
-                note={emiConfig.interestNote || undefined}
-              />
-              {emiConfig.partnerName ? (
-                <span className="text-caption text-text-muted">
-                  via {emiConfig.partnerName}
-                </span>
-              ) : null}
-            </p>
-          ) : null}
+          {/* EMI + B2B as one slim bar rather than two separate paragraphs —
+              each side keeps its own existing logic/links untouched, only
+              the wrapper is new. */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-border bg-surface-muted px-3.5 py-2.5 text-caption">
+            {emiVisible ? (
+              <span className="flex flex-wrap items-baseline gap-x-2">
+                <ProductEmiTooltip
+                  label={`EMI ${formatMoney({ amount: emiLowestMonthly })}/month`}
+                  plans={emiPlans}
+                  note={emiConfig.interestNote || undefined}
+                  triggerClassName="text-label font-semibold text-text underline underline-offset-4 decoration-dotted hover:text-primary"
+                />
+                {emiConfig.partnerName ? (
+                  <span className="text-text-muted">
+                    via {emiConfig.partnerName}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
 
-          <div className="pt-1">
-            {b2bActive ? (
-              <span className="text-label font-bold text-primary">
-                Wholesale pricing active — {b2bAccount?.company}
-              </span>
-            ) : b2bAccount?.status === "PENDING" ? (
-              <span className="text-label font-bold text-text-muted">
-                Your wholesale application is under review.
-              </span>
-            ) : !isSignedIn ? (
-              // Wholesale has its own entry point — the customer login sent
-              // B2B buyers to a retail form with no way to register a business.
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-body font-bold text-text-muted">
-                  <Link
-                    href="/b2b/register"
-                    className="text-primary underline-offset-2 hover:underline"
-                  >
-                    For B2B — register for wholesale price
-                  </Link>
-                  {" · "}
-                  <Link
-                    href="/b2b/login"
-                    className="text-primary underline-offset-2 hover:underline"
-                  >
-                    Sign in
-                  </Link>
+            <span className="ml-auto flex flex-wrap items-center gap-2">
+              {b2bActive ? (
+                <span className="text-label font-bold text-primary">
+                  Wholesale pricing active — {b2bAccount?.company}
                 </span>
-                {whatsappNumber ? (
-                  <WhatsAppInlineLink number={whatsappNumber} />
-                ) : null}
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setB2bOpen(true)}
-                  className="text-body font-bold text-primary underline-offset-2 hover:underline"
-                >
-                  {b2bAccount?.status === "SUSPENDED"
-                    ? "Wholesale account suspended — re-apply"
-                    : "For B2B — apply for wholesale price"}
-                </button>
-                {whatsappNumber ? (
-                  <WhatsAppInlineLink number={whatsappNumber} />
-                ) : null}
-              </div>
-            )}
+              ) : b2bAccount?.status === "PENDING" ? (
+                <span className="text-label font-bold text-text-muted">
+                  Your wholesale application is under review.
+                </span>
+              ) : !isSignedIn ? (
+                // Wholesale has its own entry point — the customer login sent
+                // B2B buyers to a retail form with no way to register a business.
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-label font-bold text-text-muted">
+                    <Link
+                      href="/b2b/register"
+                      className="text-primary underline-offset-2 hover:underline"
+                    >
+                      For B2B — register for wholesale price
+                    </Link>
+                    {" · "}
+                    <Link
+                      href="/b2b/login"
+                      className="text-primary underline-offset-2 hover:underline"
+                    >
+                      Sign in
+                    </Link>
+                  </span>
+                  {whatsappNumber ? (
+                    <WhatsAppInlineLink number={whatsappNumber} />
+                  ) : null}
+                </span>
+              ) : (
+                <span className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setB2bOpen(true)}
+                    className="text-label font-bold text-primary underline-offset-2 hover:underline"
+                  >
+                    {b2bAccount?.status === "SUSPENDED"
+                      ? "Wholesale account suspended — re-apply"
+                      : "For B2B — apply for wholesale price"}
+                  </button>
+                  {whatsappNumber ? (
+                    <WhatsAppInlineLink number={whatsappNumber} />
+                  ) : null}
+                </span>
+              )}
+            </span>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {isNew ? (
-            <Badge tone="new" size="md">
-              New
-            </Badge>
-          ) : null}
-          {isSale || savings !== null ? (
-            <Badge tone="sale" size="md">
-              Sale
-            </Badge>
-          ) : null}
-          {b2bActive ? (
-            <Badge tone="neutral" size="md">
-              Wholesale
-            </Badge>
-          ) : null}
-          <Badge
-            tone={stockStatus === "in_stock" ? "stock" : "neutral"}
-            size="md"
-          >
-            {STOCK_LABEL[stockStatus]}
-          </Badge>
-        </div>
+        {/* Stock status already has its own pill in the merged meta row
+            under the title — showing it a second time here would be
+            clutter, so this row is just the merchandising flags. */}
+        {isNew || isSale || savings !== null || b2bActive ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {isNew ? (
+              <Badge tone="new" size="md">
+                New
+              </Badge>
+            ) : null}
+            {isSale || savings !== null ? (
+              <Badge tone="sale" size="md">
+                Sale
+              </Badge>
+            ) : null}
+            {b2bActive ? (
+              <Badge tone="neutral" size="md">
+                Wholesale
+              </Badge>
+            ) : null}
+          </div>
+        ) : null}
 
         {viewerCount != null ? (
           <p className="flex items-center gap-1.5 text-caption text-text-muted">
@@ -638,6 +695,27 @@ export function ProductSummary({
                 ? "Added to cart"
                 : "Add to cart"}
           </button>
+          {/* Desktop-only: folded into the same row as the cart controls so
+              it stops being a second, separate full-width button below (the
+              mobile fallback right after this row keeps it reachable there). */}
+          {/* The visibility toggle lives on this wrapper, not on the Button's
+              own className — buttonClassName() already hardcodes `inline-flex`
+              with no breakpoint, and `cn()` has no tailwind-merge, so a
+              `hidden sm:inline-flex` passed alongside it is not guaranteed to
+              win the cascade (the exact pitfall the `light` variant comment
+              above warns about). */}
+          <div className="hidden sm:block">
+            <Button
+              type="button"
+              variant="ink"
+              size="md"
+              className="min-h-11 gap-1.5"
+              onClick={checkAvailability}
+            >
+              <ShieldCheck aria-hidden className="size-4" strokeWidth={1.75} />
+              Check availability
+            </Button>
+          </div>
           <button
             type="button"
             aria-pressed={onCompare}
@@ -688,6 +766,18 @@ export function ProductSummary({
           </button>
         </div>
 
+        {/* Mobile fallback for the same action, hidden on the row above from `sm`. */}
+        <Button
+          type="button"
+          variant="ink"
+          size="md"
+          className="w-full gap-1.5 sm:hidden"
+          onClick={checkAvailability}
+        >
+          <ShieldCheck aria-hidden className="size-4" strokeWidth={1.75} />
+          Check availability
+        </Button>
+
         {compareMessage ? (
           <p className="text-caption text-danger" role="status">
             {compareMessage}
@@ -710,24 +800,6 @@ export function ProductSummary({
             ) : null}
           </p>
         ) : null}
-
-        {/* Check availability comes AFTER the buy controls, so the cart button
-            stays beside the image regardless (AD-362); Quick overview itself
-            moved up to right under the price (AD-371), see the comment there. */}
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="w-full sm:w-auto sm:min-w-[10rem]"
-          onClick={() =>
-            notifySuccess({
-              title: STOCK_LABEL[stockStatus],
-              description: `${warrantyLabel}. Branch stock checks are display-only in this build.`,
-            })
-          }
-        >
-          Check availability
-        </Button>
 
         {emiVisible ? (
           <div className="space-y-1.5 rounded-lg border border-border bg-surface px-3.5 py-3">

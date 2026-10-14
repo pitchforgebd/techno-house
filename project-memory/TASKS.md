@@ -7479,3 +7479,139 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       main`, `npx prisma generate`, `npm run db:migrate:deploy`,
       `npm run build`, `pm2 restart techno-house` (pg_dump first, per the
       standing rule).
+
+- [x] AD-374 Single product page: redesign the "first container" (gallery +
+      buy box) to match a competitor reference the operator shared, with the
+      card now wrapped in a bordered/shadowed white surface like the
+      reference. No schema change.
+      Operator request: a full HTML reference (a Deli ET016 paper-shredder
+      product page, Tailwind markup) with the instruction to follow it for
+      "single page 1st container" only — not the whole page — and two
+      explicit constraints: Quick Overview stays our system's rich-text
+      format (not the reference's icon/label spec-grid), and the result
+      needs to be genuinely polished/professional ("onk shundor",
+      "professional", read as "clutter-free" from the reference's own
+      wording, which the operator's message echoed with a likely typo).
+      Touched: `features/product/product-gallery.tsx`,
+      `product-service-cards.tsx`, `product-warranty.tsx`,
+      `product-share-bar.tsx`, `product-summary.tsx` (the large one),
+      `product-media-buy.tsx`. No new Prisma fields, no new props beyond
+      AD-373's.
+      What changed, by piece:
+      - Gallery: the existing real hover-zoom lens (functionally ahead of the
+        reference's CSS-scale zoom, so kept as-is) now sits in a
+        rounded-2xl, gradient, shadow-inner stage with an "Official Store"
+        pill (top-left) and a "Hover to zoom" pill (bottom-right, desktop
+        only) replacing the old plain figcaption hint.
+      - Warranty card: gradient amber background, the warranty badge gets a
+        ring, and a coverage pill next to the heading uses the product's own
+        `warrantyLabel` text (not a hardcoded "1 Year") so it is never wrong
+        for a 2-year or 6-month warranty.
+      - Trust badges (`ProductServiceCards`, already payment/shipping/order-
+        procedure — effectively the same content the reference's own trust
+        grid has): light polish only (rounded-xl, shadow-sm by default).
+      - Share bar: compact circular icons in one row next to a "Share:"
+        label, same 7 targets as before (WhatsApp/Mail/Facebook/Messenger/
+        X/Print/Copy link — kept Facebook over the reference's generic
+        "share network" icon, since it is a real, more useful target).
+      - Title/meta row: the rating line and the AD-373 chip row are now ONE
+        merged row — rating, a divider, then Stock/Model/SKU/Brand as
+        `Badge` pills (rounded-full, tone-coloured) instead of plain grey
+        boxes; the Stock pill alone covers "Out Of Stock" in bold red
+        (`tone="sale"`, the danger-tinted tone), so the separate Stock
+        `Badge` further down (next to New/Sale/Wholesale) was REMOVED to
+        stop showing stock status twice — that row now only renders at all
+        when it actually has a New/Sale/Wholesale flag to show.
+      - Price: wrapped in a card (gradient background, border) with a
+        pulsing-dot "Special/Wholesale price" label and a new "Limited Time
+        Offer" pill — shown ONLY when `discountEndsAt` is actually set, not
+        unconditionally like the reference, so it never claims urgency that
+        is not real. The "Save X" pill now also shows a computed "(Y% OFF)"
+        — a new `discountPercent` value derived the same way `savings`
+        already was.
+      - Quick overview: the header is now a small bar (accent mark + label)
+        with "View More Info" moved INTO it, top-right, with an arrow icon —
+        previously a separate button below the whole block (AD-373). The
+        body is UNCHANGED: still `overviewHtml` rendered as sanitized rich
+        text via `dangerouslySetInnerHTML`, never restructured into the
+        reference's label/value spec grid — the operator's own instruction.
+      - EMI + B2B: previously two separate paragraphs, now one slim bordered
+        bar (EMI tooltip trigger on the left when visible, the B2B
+        register/sign-in/apply/wholesale-active text block pinned right via
+        `ml-auto`) — all four B2B states and the EMI tooltip's own behaviour
+        are untouched, only the wrapping elements changed.
+      - Purchase actions: "Check availability" used to be its own full-width
+        button below the cart row. It is now a dark (`variant="ink"`)
+        button WITH the qty/Add to cart/Compare/Wishlist row from `sm`
+        upward, plus a separate full-width copy below for mobile — matching
+        the reference's own responsive split.
+      - Card wrapper (`product-media-buy.tsx`): the gallery/buy-box/options
+        grid (plus the campaign banner when it sits under the buy box, i.e.
+        `bannerAt === "info"`) now lives inside a `rounded-2xl border
+        bg-surface shadow-lg` card. Specifications/Details/Q&A/Review and the
+        similar-products rail stay OUTSIDE it, in their own grid below — the
+        operator's scope was explicitly the first container, not the whole
+        page, and `ProductDetailSections` has no card chrome of its own, so
+        folding it into the same box would have made one very tall card
+        rather than matching the reference's actual scope. The old single
+        4-row grid (`row-start-2/3/4` juggling a `bannerFull` conditional) is
+        now two grids: the card's own 2-row grid, and a second, plain
+        12-column grid below it that needs no explicit row-start at all —
+        a full-width banner (`col-span-12`) occupies every column of its
+        row 1 when present, so CSS grid auto-placement alone pushes
+        detail/similar to row 2 without any JS deciding it.
+      Deliberately NOT changed: button corner radius (stayed at AD-373's
+      8px `rounded-sm` sitewide, not the reference's much rounder
+      `rounded-xl` — the operator explicitly asked for LESS rounded buttons
+      one task earlier in this same conversation, so the reference's own
+      roundness was not followed here); the page-level `<Breadcrumbs>` trail
+      above the card (untouched, already does what the reference's tiny
+      in-card category subtitle does, just more completely — adding a second
+      one would be redundant).
+      Verified: `tsc` 0, `eslint` clean, `next build` ok twice (once before,
+      once after the bug fix below). `test:product-layout` (28 checks, 6
+      updated to the new reality — the 4-row single grid, the old
+      `bannerFull ? row-start-4 : row-start-3` string, the old grey "Stock:"
+      chip markup, and the old `mt-1.5` meta-row class all legitimately
+      changed, same as AD-371 updating this same file for its own redesign)
+      and `test:product-coming-soon` (23 checks, 2 updated — the Stock pill
+      lost its "Stock:" text prefix and moved from an inline className
+      ternary to `Badge tone="sale"`) both still pass, now inside the usual
+      17-suite regression run. Real browser (headless Chrome, a production
+      build, three different products): screenshots at 1440px/1080px/390px
+      of a discounted laptop with a real Quick overview and a 2-year
+      warranty — card wrapper, chip pills, pricing card, Quick overview
+      header, EMI/B2B bar, and the merged purchase row all rendered as
+      designed; a second pass set a real `discountEndsAt` and confirmed the
+      "Limited Time Offer" pill (otherwise absent, as designed); a third
+      pass reused the AD-373 Coming Soon/out-of-stock test product and
+      confirmed the red "Out Of Stock" pill, the "Coming Soon" label, and
+      the disabled "Out of stock" cart button all still render correctly
+      with the new merged meta row. Found and fixed one real bug this way,
+      not caught by source checks or `tsc`: the desktop-only "Check
+      availability" button used `className: "hidden ... sm:inline-flex"` on
+      a `Button`, but `buttonClassName()` already hardcodes `inline-flex`
+      unconditionally and `cn()` has no tailwind-merge (the exact pitfall
+      the `light` variant's own comment in `button.tsx` warns about) — on a
+      real mobile screenshot BOTH the desktop and the mobile "Check
+      availability" buttons showed at once. Fixed by moving the
+      `hidden`/`sm:block` responsive toggle onto a plain wrapper `<div>`
+      around the `Button` instead of into its own `className`, confirmed
+      gone in both a mobile screenshot and a script-driven count of visible
+      "Check availability" buttons at 1440px (1) and 390px (1). All test
+      products were restored to their original database values afterward.
+      Honest notes: (1) the reference's "Official Store" pill text is
+      generic site-identity copy (Techno House selling its own catalogue
+      directly), not a specific claim about any one product or supplier —
+      flagging the wording in case the operator wants something else there.
+      (2) the EMI+B2B combined bar was only screenshotted with EMI OFF (the
+      test products available did not have EMI configured) — the B2B half
+      alone was confirmed right-aligned via a DOM measurement, not a second
+      screenshot with both halves visible together; the EMI tooltip's own
+      popover behaviour is unchanged from before, just re-wrapped. (3) the
+      same pre-existing local admin-login issue from AD-373 (see
+      `project_local_admin_login_broken.md` in long-term memory) meant the
+      admin side was not touched by this task at all, so it needed no new
+      verification there.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

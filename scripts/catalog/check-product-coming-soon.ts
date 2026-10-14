@@ -230,17 +230,17 @@ function main(): void {
 
   // --- ProductSummary UI: chip row, Out Of Stock, Coming Soon, View More Info -------------
   check(
-    "the info chip row shows Stock / Model / SKU / Brand",
-    summary.includes("Stock:") &&
+    "the merged meta row shows a Stock pill plus Model / SKU / Brand (AD-374: pills via Badge, not grey boxes with a Stock label)",
+    summary.includes('{unavailable ? "Out Of Stock" : STOCK_LABEL[stockStatus]}') &&
       summary.includes("Model:") &&
       summary.includes("SKU:") &&
       summary.includes("Brand:") &&
       summary.includes("{modelNumber ? ("),
   );
   check(
-    "the Stock chip renders a bold, danger-coloured \"Out Of Stock\" when unavailable",
-    summary.includes('unavailable ? "Out Of Stock" : STOCK_LABEL[stockStatus]') &&
-      /unavailable \? "text-danger" : "text-text"/.test(summary),
+    "the Stock pill renders bold and danger-toned (Badge tone=\"sale\") when unavailable",
+    /tone=\{\s*unavailable\s*\?\s*"sale"/.test(summary) &&
+      summary.includes('className={unavailable ? "font-bold" : undefined}'),
   );
   check(
     "a View More Info control scrolls to the specifications section",

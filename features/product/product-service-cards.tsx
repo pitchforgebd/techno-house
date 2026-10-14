@@ -33,7 +33,7 @@ export function ProductServiceCards() {
           <Link
             key={item.label}
             href={item.href}
-            className="group/info flex gap-2.5 rounded-lg border border-border bg-surface p-3 transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-sm"
+            className="group/info flex gap-2.5 rounded-xl border border-border bg-surface p-3.5 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-md"
           >
             <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary transition-colors group-hover/info:bg-primary group-hover/info:text-primary-foreground">
               <item.Icon

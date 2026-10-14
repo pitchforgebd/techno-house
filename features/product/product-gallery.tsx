@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Image from "next/image";
+import { ZoomIn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ProductImage } from "@/lib/data";
 import { cn } from "@/lib/cn";
@@ -126,7 +127,7 @@ export function ProductGallery({
           <div
             ref={stageRef}
             className={cn(
-              "relative aspect-square w-full overflow-hidden rounded-lg border border-border bg-surface",
+              "relative aspect-square w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-surface-muted/50 to-surface shadow-inner",
               hoverZoomEnabled ? "lg:cursor-crosshair" : null,
             )}
             onMouseEnter={(event) => {
@@ -141,6 +142,10 @@ export function ProductGallery({
             }}
             onMouseLeave={() => setZoom(null)}
           >
+            <span className="absolute left-3 top-3 z-10 inline-flex items-center rounded-full border border-border bg-surface/90 px-2.5 py-1 text-[0.65rem] font-semibold text-text-muted shadow-sm backdrop-blur">
+              Official Store
+            </span>
+
             {/* Native img keeps the stage height fixed; next/image fill was
                 expanding below the square frame on this layout. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -164,6 +169,13 @@ export function ProductGallery({
                 className="pointer-events-none absolute right-2 top-2 z-10 size-14 object-contain sm:size-16"
                 unoptimized
               />
+            ) : null}
+
+            {hoverZoomEnabled ? (
+              <span className="pointer-events-none absolute bottom-3 right-3 z-10 hidden items-center gap-1.5 rounded-full border border-border bg-surface/90 px-2.5 py-1 text-[0.65rem] font-medium text-text-muted shadow-sm backdrop-blur lg:flex">
+                <ZoomIn aria-hidden className="size-3" strokeWidth={2} />
+                Hover to zoom
+              </span>
             ) : null}
 
             {zoom && hoverZoomEnabled ? (

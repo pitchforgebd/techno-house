@@ -116,9 +116,9 @@ export function ProductShareBar({ productName, className }: ProductShareBarProps
   ];
 
   return (
-    <div className={cn("space-y-2.5", className)}>
-      <p className="text-caption font-medium text-text-muted">Share this product</p>
-      <ul className="flex flex-wrap gap-2" role="list">
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+      <span className="text-caption font-medium text-text-muted">Share:</span>
+      <ul className="flex flex-wrap items-center gap-1.5" role="list">
         {items.map((item) => (
           <li key={item.label}>
             <button
@@ -127,13 +127,13 @@ export function ProductShareBar({ productName, className }: ProductShareBarProps
               title={item.label}
               onClick={item.onClick}
               className={cn(
-                "inline-flex size-10 items-center justify-center rounded-lg shadow-sm transition-colors",
+                "inline-flex size-7 items-center justify-center rounded-full shadow-sm transition-transform hover:scale-105",
                 item.className,
               )}
             >
               <item.Icon
                 aria-hidden
-                className={cn("size-[1.125rem]", item.iconClassName)}
+                className={cn("size-3.5", item.iconClassName)}
                 strokeWidth={2}
               />
             </button>
