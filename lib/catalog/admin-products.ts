@@ -134,6 +134,8 @@ const DETAIL_SELECT = {
   youtubeUrl: true,
   pdfSpecificationSrc: true,
   barcode: true,
+  modelNumber: true,
+  isComingSoon: true,
   builderSlot: true,
   builderSocket: true,
   builderRamType: true,
@@ -720,6 +722,7 @@ function productData(
     stockStatus: toDbStockStatus(parsed.stockStatus),
     isNew: parsed.isNew,
     isSale: parsed.isSale,
+    isComingSoon: parsed.isComingSoon,
     isActive: parsed.isActive,
     position: parsed.position,
     weightGrams: parsed.weightGrams,
@@ -737,6 +740,7 @@ function productData(
     noteIds: parsed.noteIds,
     labelIds: parsed.labelIds,
     barcode: parsed.barcode,
+    modelNumber: parsed.modelNumber,
     // `relatedTo` is an implicit self-relation, not a scalar column, so it
     // must go through relation syntax even in an "Unchecked" update input.
     // `set` replaces the full list — correct for a form that submits the
@@ -962,6 +966,7 @@ async function persistParsed(
           stockStatus: toDbStockStatus(parsed.stockStatus),
           isNew: parsed.isNew,
           isSale: parsed.isSale,
+          isComingSoon: parsed.isComingSoon,
           isActive: parsed.isActive,
           position: parsed.position,
           weightGrams: parsed.weightGrams,
@@ -980,6 +985,7 @@ async function persistParsed(
           noteIds: parsed.noteIds,
           labelIds: parsed.labelIds,
           barcode: parsed.barcode,
+          modelNumber: parsed.modelNumber,
           relatedTo: {
             connect: parsed.relatedProductIds.map((id) => ({ id })),
           },
@@ -1227,6 +1233,8 @@ const CLONE_SELECT = {
   detailsHtml: true,
   isNew: true,
   isSale: true,
+  isComingSoon: true,
+  modelNumber: true,
   warranty: { select: { label: true, logoSrc: true } },
   noteIds: true,
   labelIds: true,
@@ -1351,6 +1359,8 @@ export async function cloneAdminProduct(
     isActive: false,
     isNew: source.isNew,
     isSale: false,
+    isComingSoon: source.isComingSoon,
+    modelNumber: source.modelNumber,
     warrantyLabel: source.warranty?.label ?? null,
     noteIds: source.noteIds,
     labelIds: source.labelIds,

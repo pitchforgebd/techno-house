@@ -140,6 +140,10 @@ export type ProductDetail = ProductSummary & {
   pdfSpecificationSrc: string | null;
   /** Preset notes attached in admin (shipping, warranty, COD, …). */
   notes: ProductNoteItem[];
+  /** Manufacturer model number, shown in the product page's info chip row. */
+  modelNumber: string | null;
+  /** Not yet stocked but launching soon — shows "Coming Soon" on the product page. */
+  isComingSoon: boolean;
 };
 
 /** One slot candidate — catalogue card plus builder fields. Never a full catalog. */

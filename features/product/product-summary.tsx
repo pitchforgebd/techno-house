@@ -60,6 +60,10 @@ type ProductSummaryProps = {
   discountEndsAt?: string | null;
   /** Digits only, wa.me-ready — same source as the floating chat widget. */
   whatsappNumber?: string | null;
+  /** Manufacturer model number, shown in the info chip row under the title. */
+  modelNumber?: string | null;
+  /** Not yet stocked but launching soon — shows "Coming Soon" above Add to cart. */
+  isComingSoon?: boolean;
   emiConfig?: AdminEmiConfig;
   isSignedIn?: boolean;
   b2bAccount?: {
@@ -143,6 +147,8 @@ export function ProductSummary({
   discountStartsAt = null,
   discountEndsAt = null,
   whatsappNumber = null,
+  modelNumber = null,
+  isComingSoon = false,
   emiConfig = {
     enabled: false,
     tenureMonths: [],
@@ -362,11 +368,39 @@ export function ProductSummary({
           </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <RatingStars rating={averageRating} reviewCount={reviewCount} />
-            <p className="text-caption text-text-muted">
-              Product ID: <span className="font-mono text-text">{sku}</span>
-              <span className="mx-2 text-border">·</span>
-              {brandName}
-            </p>
+          </div>
+          {/* Info chip row — Stock / Model / SKU / Brand, grey rounded boxes.
+              Replaces the old plain "Product ID: X · brand" caption so SKU/brand
+              aren't shown twice. The Stock chip's value turns bold red when out
+              of stock, which is also what covers the user's separate "Out Of
+              Stock likha ta... show korbe" ask — one prominent place for it
+              rather than a second standalone banner. */}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-2.5 py-1 text-caption text-text-muted">
+              Stock:
+              <span
+                className={cn(
+                  "font-semibold",
+                  unavailable ? "text-danger" : "text-text",
+                )}
+              >
+                {unavailable ? "Out Of Stock" : STOCK_LABEL[stockStatus]}
+              </span>
+            </span>
+            {modelNumber ? (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-2.5 py-1 text-caption text-text-muted">
+                Model:
+                <span className="font-semibold text-text">{modelNumber}</span>
+              </span>
+            ) : null}
+            <span className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-2.5 py-1 text-caption text-text-muted">
+              SKU:
+              <span className="font-mono font-semibold text-text">{sku}</span>
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-2.5 py-1 text-caption text-text-muted">
+              Brand:
+              <span className="font-semibold text-text">{brandName}</span>
+            </span>
           </div>
         </div>
 
@@ -414,6 +448,22 @@ export function ProductSummary({
             />
           </div>
         ) : null}
+
+        {/* Jumps to the Specifications section — ProductDetailSections marks
+            it with data-product-section="specifications" and already tracks
+            scroll position via its own IntersectionObserver, so this needs no
+            wiring beyond a plain scrollIntoView. */}
+        <button
+          type="button"
+          onClick={() => {
+            document
+              .querySelector('[data-product-section="specifications"]')
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          className="text-label font-semibold text-danger underline-offset-2 hover:underline"
+        >
+          View More Info
+        </button>
 
         <div className="space-y-2">
           {discountEndsAt ? (
@@ -543,6 +593,12 @@ export function ProductSummary({
           <p className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-caption font-medium text-text">
             Wholesale minimum order:{" "}
             <span className="tabular-nums">{minQuantity}</span> pieces
+          </p>
+        ) : null}
+
+        {isComingSoon ? (
+          <p className="inline-flex w-fit items-center gap-1.5 rounded-sm bg-warning/12 px-2.5 py-1 text-label font-bold text-warning">
+            Coming Soon
           </p>
         ) : null}
 

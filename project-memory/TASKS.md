@@ -7361,3 +7361,121 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       every other product-write action uses.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-373 Single product page: Coming Soon flag, info chip row, Out Of Stock
+      text, "View More Info" link; buttons get a smaller corner radius.
+      Operator request (dense message, 3 reference screenshots of a
+      competitor's product page): (1) a new "Coming Soon / Upcoming" option on
+      Add new product, for not-yet-stocked products launching soon — shows
+      "Coming Soon" on the product page, right above Add to cart, only when the
+      flag is on; (2) a "View More Info" link under Quick overview that jumps
+      to Specifications; (3) a new chip row under the title — Stock / Model /
+      SKU / Brand, grey rounded boxes like the screenshot — with the "Out Of
+      Stock" text itself shown bold and red, also like the screenshot; (4) the
+      site's buttons are "onk beshi" (way too) rounded — reduce to a
+      "professional" radius.
+      New Prisma fields on Product: `modelNumber String?` (display-only, not
+      unique — several SKUs/variants can share one model number) and
+      `isComingSoon Boolean @default(false)`; migration
+      `20261014072848_add_product_model_number_coming_soon`. Both wired through
+      the full stack: `ProductDetail` type -> `toProductDetail()` mapper ->
+      BOTH Prisma selects that build a `ProductDetail` (the storefront's
+      `DETAIL_SELECT` in `lib/data/prisma/product-repository.ts` AND the
+      admin's own, separate `DETAIL_SELECT` in `lib/catalog/admin-products.ts`
+      — these two have been a separate, parallel select since AD-370; both
+      needed the two new columns) -> `ProductInputFields`/`ParsedProductInput`
+      (`lib/catalog/product-input.ts`) -> the server parser
+      (`product-input-server.ts`, same trim/cap pattern as `barcode`) ->
+      `admin-products.ts` persistence (the update path's `productData()`, the
+      create path's `prisma.product.create`, and `cloneAdminProduct` — a clone
+      carries `modelNumber` forward like `isNew`, not reset like `barcode`
+      (unique) or `isSale`) -> the admin product form (new "Model number" text
+      input next to Barcode; a "Coming soon / Upcoming" toggle next to New
+      badge / Today's deal in the sidebar) -> `ProductMediaBuy` ->
+      `ProductSummary`. The bulk CSV importer's `ProductInputFields` builder
+      also got `isComingSoon: toBool(row.is_coming_soon)` (now a required
+      field on the type; no CSV column yet, so it defaults false until one is
+      added).
+      On the product page (`features/product/product-summary.tsx`): the old
+      plain "Product ID: X · brand" caption line is replaced by a chip row
+      (Stock / Model (only if set) / SKU / Brand) — grey rounded boxes; the
+      Stock chip's value renders bold and red ("Out Of Stock") when
+      `stockStatus` is out of stock, which is also how the operator's separate
+      "Out Of Stock likha ta... show korbe" ask is covered — one place, not a
+      second standalone banner (interpretation call — if a separate big banner
+      was actually wanted, say so). A "View More Info" button sits right after
+      Quick overview and calls `scrollIntoView` on
+      `[data-product-section="specifications"]`; needs no wiring to
+      `ProductDetailSections`'s own active-section tracking, since that
+      already runs an `IntersectionObserver` that reacts to any scroll,
+      external or not. A "Coming Soon" label (amber chip) renders directly
+      above the qty/Add-to-cart row when `isComingSoon` is true, independent
+      of stock status — the operator's own products needing this are already
+      out-of-stock too, so the existing out-of-stock disable logic already
+      stops Add to cart; this flag is purely the extra label.
+      Button radius: `components/ui/button.tsx`'s shared `buttonClassName()`
+      (every `<Button>` and every raw `buttonClassName()` call sitewide) now
+      uses `rounded-sm` (8px) instead of `rounded-md` (12px) — matches the
+      existing toast action buttons (`.th-toast-btn`, already `--radius-sm`),
+      not a new value. Scoped to buttons only: the `--radius-md` token itself
+      is untouched, so cards/inputs/modals that also use `rounded-md` keep
+      their current radius.
+      Interpretation call, stated so it can be corrected: "3rd ss ta dekho
+      otar moto kore title thakbe" was read as positional/contextual (the
+      title sits above the new chip row, same as the screenshot), NOT as a
+      mandate to change the title's own color/weight — AD-371 very recently,
+      explicitly set the title to a smaller, neutral, semibold style, and
+      nothing here changes that.
+      Verified: `npx prisma migrate dev` applied cleanly on the dev DB,
+      `npx prisma generate`, `tsc` 0, `eslint` clean, `next build` ok. New
+      suite `test:product-coming-soon` (23 checks: schema, type, mapper, both
+      DETAIL_SELECTs, input types, server parsing, bulk-CSV mapping, update
+      path, create path, clone (select + carry-forward), admin form state +
+      "Model number" field + sidebar toggle + prop threading, ProductMediaBuy
+      + page.tsx prop threading, the chip row, the Out Of Stock styling, View
+      More Info + its position, the Coming Soon label + its position, the
+      button radius) added to the regression run (now 17 suites, all pass).
+      Mutation-tested: 22 deliberate breakages via a throwaway script (one
+      per independent check — e.g. dropping each field at each layer,
+      renaming the Model number input's id, unhooking the Coming soon toggle
+      from the sidebar, recoloring the Out Of Stock text, reverting the
+      button radius), all 22 caught on the first pass after fixing one real
+      bug the mutation test itself found: the productData()-writes-both-
+      fields check used an unbounded regex that could match past that
+      function's own closing brace into the create path's object literal
+      further down the file, which would have let a real regression in
+      `productData()` through silently — replaced with the project's
+      existing brace-balanced `functionBody()` helper (from
+      `check-product-quick-edit.ts`) so the check is actually scoped to the
+      one function it names. Real browser (headless Chrome, production
+      build): a real out-of-stock dev product given `modelNumber: "TH-TP400"`
+      and `isComingSoon: true` showed all four chips (Stock: Out Of Stock in
+      the danger colour, Model: TH-TP400, SKU, Brand), the Coming Soon label,
+      and the View More Info link; clicking it scrolled the real page and
+      left the real Specifications section at the top of the viewport; the
+      Add to cart/Out of stock button measured an 8px computed border-radius.
+      The test product was restored to its original `modelNumber`/
+      `isComingSoon` afterward.
+      Honest notes: (1) the admin form's own rendering of the new "Model
+      number" field and "Coming soon / Upcoming" toggle (as opposed to the
+      data layer under them) was NOT verified in a live browser — signing in
+      to this dev environment's admin with the demo staff account currently
+      fails to reach `/admin` (bounced back to the login page with a valid,
+      freshly-set session cookie and a real, non-expired `StaffSession` row
+      already in the database), and the project's OWN pre-existing
+      `npm run test:toast-live` script, untouched by this work, fails
+      identically — so this is a separate, pre-existing local environment
+      issue, not something this change caused, and is outside this task's
+      scope to fix. The admin UI code itself is the same, already-working
+      pattern as the adjacent `barcode` input and the `New badge`/`Today's
+      deal` toggles right next to it, and is covered by the mutation-tested
+      source guard. (2) Whether "Stock: Out Of Stock" in bold red inside the
+      chip row satisfies "Out Of Stock likha ta... ss er moto show korbe", or
+      whether a separate, larger standalone banner was actually wanted, is an
+      interpretation call — flagged above. (3) No CSV column for
+      `is_coming_soon` was added to the bulk importer's template/export; the
+      field defaults false on import until one is added.
+      DEPLOY: SCHEMA CHANGE — this one needs a migration. `git pull origin
+      main`, `npx prisma generate`, `npm run db:migrate:deploy`,
+      `npm run build`, `pm2 restart techno-house` (pg_dump first, per the
+      standing rule).

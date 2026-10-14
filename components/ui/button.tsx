@@ -47,7 +47,11 @@ export function buttonClassName({
   return cn(
     // `th-btn` marks link-style buttons too, so the storefront's jump-up click
     // feedback reaches them (components/storefront/jump-up-effects.tsx).
-    "th-btn inline-flex items-center justify-center rounded-md font-medium",
+    // `rounded-sm` (8px), not `rounded-md` (12px) — matches the existing
+    // toast action buttons (.th-toast-btn) rather than introducing a new
+    // radius; a "professional" (less rounded) look for every button sitewide
+    // without touching --radius-md, which cards/inputs/modals still use.
+    "th-btn inline-flex items-center justify-center rounded-sm font-medium",
     "transition-[background-color,box-shadow,transform,color] duration-200 ease-out",
     "active:translate-y-px",
     "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",

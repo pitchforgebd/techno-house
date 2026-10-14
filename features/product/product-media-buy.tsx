@@ -34,6 +34,8 @@ type ProductMediaBuyProps = {
   discountStartsAt: string | null;
   discountEndsAt: string | null;
   whatsappNumber?: string | null;
+  modelNumber: string | null;
+  isComingSoon: boolean;
   productImages: ProductImage[];
   primaryImage: ProductImage;
   refundStickerSrc?: string | null;
@@ -77,6 +79,8 @@ export function ProductMediaBuy({
   discountStartsAt,
   discountEndsAt,
   whatsappNumber,
+  modelNumber,
+  isComingSoon,
   productImages,
   primaryImage,
   refundStickerSrc,
@@ -192,6 +196,8 @@ export function ProductMediaBuy({
         discountStartsAt={discountStartsAt}
         discountEndsAt={discountEndsAt}
         whatsappNumber={whatsappNumber}
+        modelNumber={modelNumber}
+        isComingSoon={isComingSoon}
         emiConfig={emiConfig}
         isSignedIn={isSignedIn}
         b2bAccount={b2bAccount}

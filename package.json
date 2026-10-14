@@ -45,6 +45,7 @@
     "test:product-gallery": "tsx scripts/catalog/check-product-gallery.ts",
     "test:table-scroll": "tsx scripts/ui/check-table-scroll.ts",
     "test:product-quick-edit": "tsx scripts/catalog/check-product-quick-edit.ts",
+    "test:product-coming-soon": "tsx scripts/catalog/check-product-coming-soon.ts",
     "catalog:export": "tsx scripts/deploy/export-catalog.ts",
     "catalog:import": "tsx scripts/deploy/import-catalog.ts",
     "pcbuilder:bootstrap-rules": "tsx scripts/deploy/create-pc-builder-rules.ts",

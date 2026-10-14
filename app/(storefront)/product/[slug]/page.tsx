@@ -252,6 +252,8 @@ export default async function ProductPage({
         discountStartsAt={product.discountStartsAt}
         discountEndsAt={product.discountEndsAt}
         whatsappNumber={chatWidgetTag.whatsappNumber}
+        modelNumber={product.modelNumber}
+        isComingSoon={product.isComingSoon}
         productImages={product.images}
         primaryImage={product.image}
         refundStickerSrc={refundSettings.stickerSrc}

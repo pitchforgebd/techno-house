@@ -62,6 +62,7 @@ export const BUILDER_ATTR_MAX = 120;
 export const BUILDER_TDP_MAX = 5_000;
 export const PRODUCT_ATTRIBUTE_MAX = ATTRIBUTE_VALUE_COUNT_MAX;
 export const PRODUCT_BARCODE_MAX = 40;
+export const PRODUCT_MODEL_NUMBER_MAX = 60;
 export const PRODUCT_RELATED_MAX = 8;
 
 export type ProductAttributeInputFields = {
@@ -188,12 +189,16 @@ export type ProductInputFields = {
   isActive: boolean;
   isNew: boolean;
   isSale: boolean;
+  /** Not yet stocked but launching soon — shows "Coming Soon" on the product page. */
+  isComingSoon: boolean;
   warrantyEnabled: boolean;
   warrantyLabel: string;
   noteIds?: string[];
   labelIds?: string[];
   /** Blank clears it. Nullable + unique in the schema. */
   barcode?: string;
+  /** Blank clears it. Nullable, not unique, in the schema. */
+  modelNumber?: string;
   relatedProductIds?: string[];
   /**
    * Omitted (not `[]`) means "don't touch" — the bulk CSV importer has no
@@ -247,10 +252,12 @@ export type ParsedProductInput = {
   isActive: boolean;
   isNew: boolean;
   isSale: boolean;
+  isComingSoon: boolean;
   warrantyLabel: string | null;
   noteIds: string[];
   labelIds: string[];
   barcode: string | null;
+  modelNumber: string | null;
   relatedProductIds: string[];
   /** `undefined` = leave whatever this product already has untouched. */
   variants?: ParsedProductVariant[];

@@ -245,6 +245,8 @@ export type ProductDetailRow = ProductCandidateRow & {
   youtubeUrl: string | null;
   pdfSpecificationSrc: string | null;
   noteIds?: string[];
+  modelNumber: string | null;
+  isComingSoon: boolean;
   colors: {
     id: string;
     name: string;
@@ -298,6 +300,8 @@ export function toProductDetail(
     youtubeUrl: row.youtubeUrl,
     pdfSpecificationSrc: row.pdfSpecificationSrc,
     notes: resolveProductNotes(row.noteIds ?? [], presets),
+    modelNumber: row.modelNumber,
+    isComingSoon: row.isComingSoon,
   };
 }
 

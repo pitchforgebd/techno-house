@@ -102,6 +102,8 @@ const DETAIL_SELECT = {
   youtubeUrl: true,
   pdfSpecificationSrc: true,
   noteIds: true,
+  modelNumber: true,
+  isComingSoon: true,
   colors: {
     select: {
       id: true,

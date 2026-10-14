@@ -20,6 +20,7 @@ import {
 } from "@/features/admin/products/admin-quick-create-category-brand";
 import {
   PRODUCT_BARCODE_MAX,
+  PRODUCT_MODEL_NUMBER_MAX,
   slugifyProduct,
   type ProductVariantInputFields,
 } from "@/lib/catalog/product-input";
@@ -260,6 +261,9 @@ export function AdminProductForm({
       .join(", ") ?? "",
   );
   const [barcode, setBarcode] = useState(product?.barcode ?? "");
+  const [modelNumber, setModelNumber] = useState(
+    product?.modelNumber ?? "",
+  );
   const [relatedProducts, setRelatedProducts] = useState<
     { id: string; slug: string; name: string }[]
   >(() => product?.relatedProducts ?? []);
@@ -275,6 +279,9 @@ export function AdminProductForm({
   const [published, setPublished] = useState(product?.isActive ?? true);
   const [featured, setFeatured] = useState(product?.isNew ?? false);
   const [todaysDeal, setTodaysDeal] = useState(product?.isSale ?? false);
+  const [comingSoon, setComingSoon] = useState(
+    product?.isComingSoon ?? false,
+  );
   const [refundable, setRefundable] = useState(false);
   const [warrantyEnabled, setWarrantyEnabled] = useState(
     product ? Boolean(product.warrantyLabel) : true,
@@ -419,11 +426,13 @@ export function AdminProductForm({
             todaysDeal ||
             (Number.parseFloat(regularPrice) >
               Number.parseFloat(specialPrice)),
+          isComingSoon: comingSoon,
           warrantyEnabled,
           warrantyLabel,
           noteIds,
           labelIds,
           barcode,
+          modelNumber,
           relatedProductIds: relatedProducts.map((item) => item.id),
           variants,
           attributes: attributeRows
@@ -832,6 +841,23 @@ export function AdminProductForm({
               <p className="text-xs text-neutral-500">
                 Must be unique across the catalogue. Saved with the rest of
                 this form.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <AdminFormLabel htmlFor="product-model-number">
+                Model number
+              </AdminFormLabel>
+              <Input
+                id="product-model-number"
+                value={modelNumber}
+                onChange={(event) => setModelNumber(event.target.value)}
+                maxLength={PRODUCT_MODEL_NUMBER_MAX}
+                placeholder="e.g. TH-TP400"
+                className={adminFormControlClass}
+              />
+              <p className="text-xs text-neutral-500">
+                Shown on the product page next to SKU and brand. Leave blank
+                to hide it.
               </p>
             </div>
             <div className="space-y-1.5">
@@ -1461,6 +1487,8 @@ export function AdminProductForm({
           setFeatured={setFeatured}
           todaysDeal={todaysDeal}
           setTodaysDeal={setTodaysDeal}
+          comingSoon={comingSoon}
+          setComingSoon={setComingSoon}
           refundable={refundable}
           setRefundable={setRefundable}
           warrantyEnabled={warrantyEnabled}

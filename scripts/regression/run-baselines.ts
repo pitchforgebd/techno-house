@@ -25,6 +25,7 @@ const SUITES: { name: string; script: string }[] = [
   { name: "product-gallery", script: "test:product-gallery" },
   { name: "table-scroll", script: "test:table-scroll" },
   { name: "product-quick-edit", script: "test:product-quick-edit" },
+  { name: "product-coming-soon", script: "test:product-coming-soon" },
 ];
 
 function main(): void {

@@ -477,6 +477,10 @@ model Product {
   /// Nullable + unique: Postgres allows multiple NULLs under a unique index,
   /// so products without a scanned barcode don't collide with each other.
   barcode    String? @unique
+  /// Manufacturer model number (e.g. "TH-TP400"), distinct from SKU/barcode.
+  /// Display-only, shown in the product page's info chip row. Not unique —
+  /// several SKUs (colour/size variants) can share one model number.
+  modelNumber String?
   name       String
   brandId    String
   categoryId String
@@ -507,6 +511,9 @@ model Product {
   isNew           Boolean     @default(false)
   isSale          Boolean     @default(false)
   isActive        Boolean     @default(true)
+  /// Not yet stocked but launching soon — shows "Coming Soon" above Add to
+  /// cart on the product page regardless of `stockStatus`.
+  isComingSoon    Boolean     @default(false)
   /// Assigned to the Promotional Products channel (`/admin/promotions/products`).
   /// Merchandising only, and deliberately separate from `isSale` (Today's Deal)
   /// so the two channels can hold different products.

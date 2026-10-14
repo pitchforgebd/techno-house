@@ -117,6 +117,7 @@ function fieldsFromCsvRow(row: Record<string, string>): ProductInputFields {
     isActive: row.is_active === undefined ? true : toBool(row.is_active),
     isNew: toBool(row.is_new),
     isSale: toBool(row.is_sale),
+    isComingSoon: toBool(row.is_coming_soon),
     warrantyEnabled: Boolean((row.warranty_label ?? "").trim()),
     warrantyLabel: row.warranty_label ?? "",
     // Deliberately omitted, not `[]` — the bulk CSV format has no columns

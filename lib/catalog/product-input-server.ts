@@ -42,6 +42,7 @@ import {
   parseVariants,
   slugifyProduct,
   PRODUCT_BARCODE_MAX,
+  PRODUCT_MODEL_NUMBER_MAX,
   PRODUCT_CONTENT_HTML_MAX,
   PRODUCT_NAME_MAX,
   PRODUCT_WARRANTY_MAX,
@@ -273,6 +274,20 @@ export async function parseProductInput(
     }
   }
 
+  let modelNumber: string | null = null;
+  if (input.modelNumber !== undefined) {
+    const trimmedModelNumber = input.modelNumber.trim();
+    if (trimmedModelNumber) {
+      if (trimmedModelNumber.length > PRODUCT_MODEL_NUMBER_MAX) {
+        return {
+          ok: false,
+          formError: `Model number must be ${PRODUCT_MODEL_NUMBER_MAX} characters or fewer.`,
+        };
+      }
+      modelNumber = trimmedModelNumber;
+    }
+  }
+
   const relatedProductIds = await parseRelatedProductIds(
     input.relatedProductIds,
     currentProductId,
@@ -410,10 +425,12 @@ export async function parseProductInput(
       isActive: input.isActive,
       isNew: input.isNew,
       isSale: input.isSale || pricedAsSale,
+      isComingSoon: input.isComingSoon,
       warrantyLabel,
       noteIds: noteIds.value,
       labelIds: labelIds.value,
       barcode,
+      modelNumber,
       relatedProductIds: relatedProductIds.value,
       variants: variants.value,
       attributes: attributes.value,
