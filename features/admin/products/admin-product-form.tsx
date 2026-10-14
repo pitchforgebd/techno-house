@@ -909,8 +909,9 @@ export function AdminProductForm({
 
           <AdminFormCard title="Quick overview">
             <p className="text-xs text-neutral-500">
-              Shown in the buy box, next to the price. Keep it short — a few
-              highlights, not the full spec sheet (that&apos;s Specifications).
+              Shown in the buy box, right under the price. Keep it short — a
+              few highlights, not the full spec sheet (that&apos;s
+              Specifications) — a long one pushes the Add to cart row down.
             </p>
             <RichTextEditor
               value={overviewHtml}

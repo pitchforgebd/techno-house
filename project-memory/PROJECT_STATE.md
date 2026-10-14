@@ -2380,17 +2380,18 @@ Idle. Manual testing support.
 None. Do not start Phase 18. Continue mock retirement only if operator asks.
 
 ## Last Updated
-2026-10-14 (AD-370 — admin product gallery is a real multi-image uploader (add several
-at once, reorder, remove), cloning a product now carries every gallery image, and the
-product form has a second "Save & publish" button at the top; product-page visual
-redesign requested in the same message is in progress next. AD-344 to AD-369 recorded
-2026-10-05 to 2026-10-07: AD-369 wrong-case URLs/links like /About redirect or are
-corrected, /favicon.ico never 404s; AD-368 banner links must lead to a real page, no
-longer prefetch; AD-367 admin saves no longer crash with the global error page (my
-AD-364 toast bug), full-site check; AD-366 a pale saved "Button hover" colour no
-longer blanks button text; AD-365 PC Builder buttons no longer jump; AD-364 storefront
-jump-up animation on buttons/icons/add to cart/alerts (storefront only); AD-363
-product Review and Q&A usable without signing in; AD-362 Add to cart beside the
-product image; AD-361 product page in the Ryans structure; AD-359 compare search
-before a type is chosen; AD-358 searchable compare picker; AD-357 homepage sections
-chosen by staff. AD-344 to AD-370 are recorded in TASKS.md only.)
+2026-10-14 (AD-371 — single product page made more minimal: price and regular price on
+one bold line, Quick overview moved to right under the price, the title a size smaller;
+AD-370 — admin product gallery is a real multi-image uploader (add several at once,
+reorder, remove), cloning a product now carries every gallery image, and the product
+form has a second "Save & publish" button at the top. Both from the same operator
+message. AD-344 to AD-369 recorded 2026-10-05 to 2026-10-07: AD-369 wrong-case URLs/
+links like /About redirect or are corrected, /favicon.ico never 404s; AD-368 banner
+links must lead to a real page, no longer prefetch; AD-367 admin saves no longer crash
+with the global error page (my AD-364 toast bug), full-site check; AD-366 a pale saved
+"Button hover" colour no longer blanks button text; AD-365 PC Builder buttons no
+longer jump; AD-364 storefront jump-up animation on buttons/icons/add to cart/alerts
+(storefront only); AD-363 product Review and Q&A usable without signing in; AD-362 Add
+to cart beside the product image; AD-361 product page in the Ryans structure; AD-359
+compare search before a type is chosen; AD-358 searchable compare picker; AD-357
+homepage sections chosen by staff. AD-344 to AD-371 are recorded in TASKS.md only.)

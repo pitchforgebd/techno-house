@@ -353,7 +353,11 @@ export function ProductSummary({
     <>
       <div className={cn("@container space-y-4", infoClassName)}>
         <div>
-          <h1 className="text-balance text-xl font-semibold leading-snug tracking-tight text-text sm:text-2xl">
+          {/* One size down from before, and semibold rather than carrying its
+              own bold weight — the price below is now the boldest, biggest
+              thing in the column, and the title reads as a heading over it
+              rather than competing with it (AD-371, "more minimal"). */}
+          <h1 className="text-balance text-lg leading-snug font-semibold tracking-tight text-text sm:text-xl">
             {name}
           </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -366,39 +370,52 @@ export function ProductSummary({
           </div>
         </div>
 
-        <div className="space-y-2">
-          {/* Special price sits in its own panel and the regular price on a
-              plain line beneath it, rather than struck through beside it —
-              the two figures read as separate facts that way, which is how
-              a shopper compares them. */}
-          <div className="inline-flex min-w-[11rem] flex-col gap-0.5 rounded-lg border border-border bg-surface-muted/60 px-4 py-2.5">
-            <span className="text-[0.7rem] font-bold tracking-[0.14em] text-text-muted uppercase">
-              {b2bActive ? "Wholesale price" : "Special price"}
-            </span>
-            <span className="text-[1.75rem] leading-none font-bold tabular-nums tracking-tight text-text">
+        <div className="space-y-1">
+          {/* Special and regular price now sit on one line, both bold, the
+              special price a size larger — no bordered panel, which is what
+              made the old version feel boxed-in rather than minimal. */}
+          <span className="text-[0.7rem] font-bold tracking-[0.14em] text-text-muted uppercase">
+            {b2bActive ? "Wholesale price" : "Special price"}
+          </span>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]">
               {formatMoney(displayPrice)}
             </span>
+            {retailReference && retailReference.amount > displayPrice.amount ? (
+              <span className="text-[1.25rem] leading-none font-bold tabular-nums text-text-muted line-through sm:text-[1.5rem]">
+                {formatMoney(retailReference)}
+              </span>
+            ) : null}
+            {savings !== null ? (
+              <span className="inline-flex items-center rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
+                Save {formatMoney({ amount: savings })}
+                {b2bActive ? " (B2B)" : ""}
+              </span>
+            ) : null}
           </div>
+        </div>
 
-          {retailReference && retailReference.amount > displayPrice.amount ? (
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <p className="text-caption font-medium text-text-muted">
-                Regular price
-              </p>
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="text-label tabular-nums text-text-muted line-through">
-                  {formatMoney(retailReference)}
-                </span>
-                {savings !== null ? (
-                  <span className="inline-flex items-center rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
-                    Save {formatMoney({ amount: savings })}
-                    {b2bActive ? " (B2B)" : ""}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
+        {/* Quick overview right under the price (AD-371) — the operator's own
+            words were "price er nichei Quick overview hobe". It used to sit
+            after the cart controls (AD-362), specifically so a long one could
+            never push Add to cart down; it is ordinarily a short few bullets
+            (the admin field says so: "Keep it short"), so this is a deliberate
+            trade — a product with an unusually long overview will push the
+            cart row down, which AD-362's own notes already flagged as a
+            standing limit of a flexible-height buy column. */}
+        {overviewHtml ? (
+          <div>
+            <h2 className="text-label font-semibold uppercase tracking-wide text-text">
+              Quick overview
+            </h2>
+            <div
+              className="th-rich-text mt-2 text-label text-text-muted"
+              dangerouslySetInnerHTML={{ __html: overviewHtml }}
+            />
+          </div>
+        ) : null}
 
+        <div className="space-y-2">
           {discountEndsAt ? (
             <p className="text-caption text-text-muted">
               Offer until{" "}
@@ -638,8 +655,9 @@ export function ProductSummary({
           </p>
         ) : null}
 
-        {/* Check availability and the quick overview come AFTER the buy controls,
-            so the cart button stays beside the image however long the overview is. */}
+        {/* Check availability comes AFTER the buy controls, so the cart button
+            stays beside the image regardless (AD-362); Quick overview itself
+            moved up to right under the price (AD-371), see the comment there. */}
         <Button
           type="button"
           variant="secondary"
@@ -654,18 +672,6 @@ export function ProductSummary({
         >
           Check availability
         </Button>
-
-        {overviewHtml ? (
-          <div>
-            <h2 className="text-label font-semibold uppercase tracking-wide text-text">
-              Quick overview
-            </h2>
-            <div
-              className="th-rich-text mt-2 text-label text-text-muted"
-              dangerouslySetInnerHTML={{ __html: overviewHtml }}
-            />
-          </div>
-        ) : null}
 
         {emiVisible ? (
           <div className="space-y-1.5 rounded-lg border border-border bg-surface px-3.5 py-3">

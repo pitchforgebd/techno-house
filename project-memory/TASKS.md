@@ -7208,3 +7208,69 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       browsers.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-371 Single product page: minimal redesign (price, Quick overview, title).
+      Operator request (same message as AD-370, done first): the single product
+      page needs to be more minimal — Quick overview right under the price;
+      special price beside the regular price, both bold, bigger, special price
+      larger than regular; the product title a bit smaller, a professional size.
+      A reference screenshot (a competitor page) was given with "system amader
+      tar moto shob thakbe, but kichu kichu jinish img tar moto lagbe" (ours will
+      have everything like that, but only SOME things should look like the
+      image) — read as inspiration for price/overview/title only, not a layout
+      copy; nothing from the reference's own fonts, colours or chip row was
+      copied. Also asked that the gallery and buy columns stay in one row so a
+      banner can sit under the image — that grid (gallery | buy information,
+      same row from `lg`) already exists since AD-360/361; this task did not
+      change the grid, only what is inside the buy column and its order.
+      Changes, all in `features/product/product-summary.tsx`:
+      - Price: the old layout was a bordered panel for the special price with
+        the regular price (not bold) on a separate line below it. Now one line,
+        no panel: `text-[1.875rem] sm:text-[2.25rem] font-bold` special price,
+        `text-[1.25rem] sm:text-[1.5rem] font-bold line-through` regular price
+        beside it, the "Save X" pill unchanged.
+      - Title: `text-xl sm:text-2xl font-semibold` -> `text-lg sm:text-xl
+        font-semibold` (one step down; still semibold, not bold — bold is now
+        reserved for the price, the biggest and boldest thing in the column).
+      - Quick overview moved from after the cart controls (where AD-362 put it,
+        specifically so a long overview could never push Add to cart down) to
+        directly under the price, before the badges/offer-dates/EMI/B2B rows and
+        before the cart controls. This is a deliberate trade the operator chose
+        explicitly, overriding AD-362's own ordering rule for this one field;
+        Check availability still comes after the cart controls (unchanged).
+      - `scripts/catalog/check-product-layout.ts` (the existing structural source
+        guard from AD-360/361) updated to pin the new order and the new class
+        strings, rather than silently drifting from the real code.
+      - Admin "Quick overview" field hint updated to say "right under the price"
+        and to warn that a long one pushes the cart row down.
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:product-layout`
+      27 checks (2 rewritten for the new order/classes), all 14 regression
+      suites, `test:listing`, `test:privilege` pass. Real browser (headless
+      Chrome, a production build, three real dev products — one plain, one on
+      sale with an overview, one with colour options and an overview — at 1920/
+      1440/1280/1024px and a phone width; 63 checks): price sits right under the
+      title at every width; where there is an overview, it sits after the price
+      and before the qty/cart row at every width; the qty/cart row still comes
+      before Check availability at every width; no horizontal overflow anywhere;
+      the mobile single-column order (image before title) is unchanged; a
+      temporary product-page banner rendered correctly under the buy box. 62 of
+      63 passed; the one "failure" (the colours+overview product at 1024px,
+      where colour options and delivery cards also fold into the buy column
+      below `xl`) had Add to cart 56px below the gallery's bottom edge — screen-
+      shotted and it reads cleanly, not as a gap; recorded as the AD-362 trade-
+      off this change knowingly accepts, not something hidden.
+      Honest notes: (1) the "match some things to the reference" instruction has
+      no hard boundary; only price/overview-position/title were changed, nothing
+      else from the reference (its info-chip row, fonts, green brand colour) was
+      added. (2) A product with an unusually long Quick overview will now push
+      Add to cart further down than before this change, at every width — a
+      direct, accepted consequence of the requested reorder, not a bug; the admin
+      field's own hint now says so. (3) Price colour was left neutral
+      (text-text), not changed to red/brand colour like the reference — not
+      explicitly asked for, and a colour change felt like scope beyond what was
+      requested. (4) Not tested: a product with long product-note content (tall
+      gallery column) combined with the new overview position — AD-362's
+      existing measurements for that case are unaffected by this change (the
+      gallery column's own height was not touched), so not re-measured.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

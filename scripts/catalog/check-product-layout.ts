@@ -1,5 +1,7 @@
 /**
- * Product page layout contract (AD-360, reworked in AD-361).
+ * Product page layout contract (AD-360, reworked in AD-361; the content order
+ * inside the buy column — price, then Quick overview, then the cart controls —
+ * reworked again in AD-371).
  *
  *   npm run test:product-layout
  *
@@ -146,18 +148,18 @@ function main(): void {
       at(summary, "{colorVariations ? <div") < at(summary, 'id="product-qty"'),
   );
   check(
-    "the buy controls (qty, add to cart) come BEFORE check-availability and the quick overview, so the cart button stays beside the image however long the overview is",
-    at(summary, 'id="product-qty"') > -1 &&
-      at(summary, 'id="product-qty"') < at(summary, "Check availability") &&
-      at(summary, 'id="product-qty"') < at(summary, "Quick overview") &&
-      // the price block is above the controls
-      at(summary, "Special price") < at(summary, 'id="product-qty"'),
+    "the price, then Quick overview, then the buy controls (qty, add to cart), then check-availability — in that order (AD-371: the operator asked for the overview right under the price; the cart controls still come before check-availability, same as AD-362)",
+    at(summary, "Special price") > -1 &&
+      at(summary, 'id="product-qty"') > -1 &&
+      at(summary, "Special price") < at(summary, "Quick overview") &&
+      at(summary, "Quick overview") < at(summary, 'id="product-qty"') &&
+      at(summary, 'id="product-qty"') < at(summary, "Check availability"),
   );
   check(
-    "the buy column is compact: a 2xl title, rating and product id on one row, a tight price block",
-    summary.includes("text-xl font-semibold leading-snug tracking-tight text-text sm:text-2xl") &&
+    "the buy column is compact: a 1xl/xl title, rating and product id on one row, a tight one-line price",
+    summary.includes("text-lg leading-snug font-semibold tracking-tight text-text sm:text-xl") &&
       summary.includes("mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1") &&
-      summary.includes("px-4 py-2.5") &&
+      summary.includes("text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]") &&
       summary.includes("space-y-4"),
   );
 
