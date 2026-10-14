@@ -61,6 +61,7 @@ import {
   colorRowsFromProduct,
   type ProductColorFormRow,
 } from "@/features/admin/products/admin-product-colors-fields";
+import { AdminProductGalleryFields } from "@/features/admin/products/admin-product-gallery-fields";
 import {
   AdminProductLabelsFields,
   AdminProductNotesFields,
@@ -357,11 +358,12 @@ export function AdminProductForm({
       ? product.image.src
       : "",
   );
-  const [gallerySrc, setGallerySrc] = useState(
-    product?.images?.[1]?.src &&
-      product.images[1].src !== "/products/placeholder.svg"
-      ? product.images[1].src
-      : "",
+  // Every image after the thumbnail (index 0), in display order (AD-370).
+  const [galleryImages, setGalleryImages] = useState<string[]>(() =>
+    (product?.images ?? [])
+      .slice(1)
+      .map((image) => image.src)
+      .filter((src) => src && src !== "/products/placeholder.svg"),
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -451,7 +453,7 @@ export function AdminProductForm({
           youtubeUrl,
           pdfSpecificationSrc,
           thumbnailSrc,
-          gallerySrc,
+          gallerySrcs: galleryImages,
         },
       });
       if (!result.ok) {
@@ -553,6 +555,17 @@ export function AdminProductForm({
               </Link>
             </>
           )}
+          {/* The form also has Save & publish at the bottom, after every field —
+              this top copy is for a long product with lots of fields, so saving
+              never needs a scroll back down (AD-370). Same submit, same result. */}
+          <Button
+            type="submit"
+            disabled={pending || !canSave}
+            size="sm"
+            className="min-h-9 bg-emerald-600 px-4 hover:bg-emerald-700"
+          >
+            {pending ? "Saving…" : "Save & publish"}
+          </Button>
         </div>
       </div>
 
@@ -844,29 +857,24 @@ export function AdminProductForm({
               Click a box to open the media library — upload from your PC or
               choose an existing file, then Save.
             </p>
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="max-w-40">
               <AdminFormUploadBox
                 label="Add thumbnail image"
-                sizeHint="300px × 300px"
+                sizeHint="300px × 300px — the cover image"
                 previewSrc={thumbnailSrc || product?.image.src}
                 previewAlt={product?.image.alt ?? product?.name ?? ""}
                 value={thumbnailSrc}
                 onChange={setThumbnailSrc}
                 folder="products"
               />
-              <AdminFormUploadBox
-                label="Add gallery images"
-                required
-                sizeHint="800px × 800px"
-                previewSrc={
-                  gallerySrc ||
-                  product?.images?.[1]?.src ||
-                  product?.images?.[0]?.src
-                }
-                previewAlt={product?.name ?? ""}
-                value={gallerySrc}
-                onChange={setGallerySrc}
-                folder="products"
+            </div>
+            <div className="space-y-1.5">
+              <AdminFormLabel>Gallery images</AdminFormLabel>
+              <AdminProductGalleryFields
+                images={galleryImages}
+                onChange={setGalleryImages}
+                productName={name || "Product"}
+                disabled={pending}
               />
             </div>
             <div className="space-y-2">

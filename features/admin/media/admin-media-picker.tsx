@@ -13,6 +13,7 @@ import {
 import {
   listMediaPickerAction,
   uploadMediaPickerAction,
+  uploadMediaPickerFilesAction,
   type MediaPickerItem,
 } from "@/features/admin/media/media-picker-actions";
 import type { MediaFolder } from "@/lib/admin/media-mock";
@@ -27,12 +28,24 @@ export function AdminMediaPickerModal({
   open,
   onClose,
   onSelect,
+  onSelectMany,
+  multiple = false,
   title = "Select image",
   folder = "general",
 }: {
   open: boolean;
   onClose: () => void;
-  onSelect: (path: string) => void;
+  /** Called once per pick in single-select mode (the default — unchanged). */
+  onSelect?: (path: string) => void;
+  /**
+   * Multi-select mode (AD-370): the Upload tab accepts several files in one
+   * go, and a Library click adds without closing the modal. Called once per
+   * batch (several uploaded files; one library click = an array of one) — so
+   * the caller always appends, never has to merge single calls itself.
+   */
+  onSelectMany?: (paths: string[]) => void;
+  /** Turns on multi-select. `onSelectMany` is required when this is true. */
+  multiple?: boolean;
   title?: string;
   folder?: MediaFolder;
 }) {
@@ -43,6 +56,9 @@ export function AdminMediaPickerModal({
   const [items, setItems] = useState<MediaPickerItem[]>([]);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Multi-select only: how many the admin has added this time, so "Done" can
+  // say so and an empty session can still be closed without it looking broken.
+  const [addedCount, setAddedCount] = useState(0);
 
   const loadLibrary = useCallback(
     (search: string) => {
@@ -101,7 +117,33 @@ export function AdminMediaPickerModal({
   }
 
   function handleUpload(files: FileList | null) {
-    const file = files?.[0];
+    if (!files || files.length === 0) {
+      return;
+    }
+    if (multiple && onSelectMany) {
+      const formData = new FormData();
+      formData.set("folder", folder);
+      for (const file of files) {
+        formData.append("file", file);
+      }
+      startTransition(async () => {
+        const result = await uploadMediaPickerFilesAction(formData);
+        if (!result.ok) {
+          setError(result.formError);
+          notifyError(result.formError);
+          return;
+        }
+        notifySuccess(
+          result.paths.length === 1
+            ? "Image uploaded"
+            : `${result.paths.length} images uploaded`,
+        );
+        setAddedCount((count) => count + result.paths.length);
+        onSelectMany(result.paths);
+      });
+      return;
+    }
+    const file = files[0];
     if (!file) {
       return;
     }
@@ -116,7 +158,7 @@ export function AdminMediaPickerModal({
         return;
       }
       notifySuccess("Image uploaded");
-      onSelect(result.path);
+      onSelect?.(result.path);
       onClose();
     });
   }
@@ -184,6 +226,7 @@ export function AdminMediaPickerModal({
               <input
                 ref={fileRef}
                 type="file"
+                multiple={multiple}
                 accept="image/*,.svg,.webp,.png,.jpg,.jpeg,.gif"
                 className="sr-only"
                 disabled={pending}
@@ -200,12 +243,23 @@ export function AdminMediaPickerModal({
               >
                 <Upload className="size-8" aria-hidden />
                 <span className="text-sm font-medium text-neutral-700">
-                  {pending ? "Uploading…" : "Drop a file or click to upload"}
+                  {pending
+                    ? "Uploading…"
+                    : multiple
+                      ? "Choose one or more files to upload"
+                      : "Drop a file or click to upload"}
                 </span>
                 <span className="text-xs text-neutral-400">
-                  PNG, JPG, WEBP, GIF, or SVG — max 5 MB
+                  PNG, JPG, WEBP, GIF, or SVG — max 5 MB each
+                  {multiple ? ", several at once" : ""}
                 </span>
               </button>
+              {multiple && addedCount > 0 ? (
+                <p className="text-xs font-medium text-emerald-600">
+                  {addedCount} image{addedCount === 1 ? "" : "s"} added so far
+                  — keep going, or switch to Media library below.
+                </p>
+              ) : null}
             </div>
           ) : (
             <div className="space-y-3">
@@ -244,7 +298,12 @@ export function AdminMediaPickerModal({
                         type="button"
                         disabled={pending}
                         onClick={() => {
-                          onSelect(item.path);
+                          if (multiple && onSelectMany) {
+                            onSelectMany([item.path]);
+                            setAddedCount((count) => count + 1);
+                            return;
+                          }
+                          onSelect?.(item.path);
                           onClose();
                         }}
                         className="group flex w-full flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white text-left hover:border-[#3897f0] hover:ring-1 hover:ring-[#3897f0]/30"
@@ -271,6 +330,23 @@ export function AdminMediaPickerModal({
             </div>
           )}
         </div>
+
+        {multiple ? (
+          <div className="flex items-center justify-between border-t border-neutral-100 px-4 py-3">
+            <p className="text-xs text-neutral-500">
+              {addedCount > 0
+                ? `${addedCount} image${addedCount === 1 ? "" : "s"} added. Pick more, or finish below.`
+                : "Upload or pick images — each one adds without closing this."}
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md bg-[#3897f0] px-4 py-2 text-sm font-medium text-white hover:bg-[#2f86d8]"
+            >
+              Done
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>,
     document.body,

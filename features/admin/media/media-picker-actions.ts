@@ -81,6 +81,55 @@ export async function listMediaPickerAction(input?: {
   };
 }
 
+/**
+ * Several files in one submit — the "Add gallery images" multi-upload
+ * (AD-370). Shares `uploadAdminMediaFiles`'s own per-file limits (type,
+ * size, signature, file-count cap); a reject on any file fails the whole
+ * batch, same as the single-file action, so a bad file never silently
+ * drops out of what the admin thought they added.
+ */
+export async function uploadMediaPickerFilesAction(
+  formData: FormData,
+): Promise<
+  | { ok: true; paths: string[] }
+  | { ok: false; formError: string }
+> {
+  if (!(await isSameOriginRequest())) {
+    return { ok: false, formError: CROSS_ORIGIN_ERROR };
+  }
+  const session = await getStaffSession();
+  if (!session || !canUpload(session.permissions)) {
+    return { ok: false, formError: "You do not have permission to upload media." };
+  }
+  const folderRaw = String(formData.get("folder") ?? "general");
+  const folder = (
+    ["products", "brands", "home", "general", "categories"].includes(folderRaw)
+      ? folderRaw
+      : "general"
+  ) as MediaFolder;
+  const files = formData.getAll("file").filter((f): f is File => f instanceof File);
+  if (files.length === 0) {
+    return { ok: false, formError: "Choose at least one image file." };
+  }
+  const meta = await getRequestMeta();
+  const uploaded = await uploadAdminMediaFiles({
+    files,
+    folder,
+    actor: {
+      staffId: session.staffId,
+      email: session.email,
+      ip: meta.ip,
+    },
+  });
+  if (!uploaded.ok) {
+    return uploaded;
+  }
+  if (!uploaded.paths || uploaded.paths.length === 0) {
+    return { ok: false, formError: "Upload saved but paths could not be read." };
+  }
+  return { ok: true, paths: uploaded.paths };
+}
+
 export async function uploadMediaPickerAction(
   formData: FormData,
 ): Promise<

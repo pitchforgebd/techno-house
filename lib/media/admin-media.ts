@@ -20,7 +20,14 @@ export const MEDIA_DB_REQUIRED =
   "Media needs the database. Remove DATA_SOURCE=mock.";
 
 export type MediaMutationResult =
-  | { ok: true; id: string; count?: number; path?: string }
+  | {
+      ok: true;
+      id: string;
+      count?: number;
+      path?: string;
+      /** Every path created by this call, in upload order (AD-370). `path` above is just the last one, kept for old single-file callers. */
+      paths?: string[];
+    }
   | { ok: false; formError: string };
 
 export type MediaActor = {
@@ -414,6 +421,7 @@ export async function uploadAdminMediaFiles(input: {
   await mkdir(dir, { recursive: true });
 
   const createdIds: string[] = [];
+  const createdPaths: string[] = [];
   let lastPath = "";
   for (const file of files) {
     const original = sanitizeFilename(file.name);
@@ -453,6 +461,7 @@ export async function uploadAdminMediaFiles(input: {
       select: { id: true },
     });
     createdIds.push(row.id);
+    createdPaths.push(publicPath);
     lastPath = publicPath;
   }
 
@@ -474,6 +483,7 @@ export async function uploadAdminMediaFiles(input: {
     id: createdIds[0] ?? "uploaded",
     count: createdIds.length,
     path: lastPath || undefined,
+    paths: createdPaths,
   };
 }
 

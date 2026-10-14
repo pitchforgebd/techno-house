@@ -621,6 +621,34 @@ async function syncProductColors(
   return { ok: true };
 }
 
+/**
+ * The gallery (every `ProductImage` row after the thumbnail) — delete and
+ * recreate in the submitted order, same pattern as `syncProductColors`. The
+ * thumbnail (`isPrimary: true`) is untouched; it has its own single-image
+ * handling in the caller (AD-370).
+ */
+async function syncProductGalleryImages(
+  prisma: Prisma.TransactionClient,
+  productId: string,
+  name: string,
+  gallerySrcs: string[],
+): Promise<void> {
+  await prisma.productImage.deleteMany({
+    where: { productId, isPrimary: false },
+  });
+  if (gallerySrcs.length > 0) {
+    await prisma.productImage.createMany({
+      data: gallerySrcs.map((src, index) => ({
+        productId,
+        src,
+        alt: `${name} — image ${index + 2}`,
+        position: index + 1,
+        isPrimary: false,
+      })),
+    });
+  }
+}
+
 async function syncSpecGroups(
   prisma: Prisma.TransactionClient,
   productId: string,
@@ -816,28 +844,13 @@ async function persistParsed(
             });
           }
         }
-        if (parsed.gallerySrc) {
-          const secondary = await tx.productImage.findFirst({
-            where: { productId: existing.id, isPrimary: false },
-            orderBy: { position: "asc" },
-            select: { id: true },
-          });
-          if (secondary) {
-            await tx.productImage.update({
-              where: { id: secondary.id },
-              data: { src: parsed.gallerySrc, alt: `${parsed.name} gallery` },
-            });
-          } else {
-            await tx.productImage.create({
-              data: {
-                productId: existing.id,
-                src: parsed.gallerySrc,
-                alt: `${parsed.name} gallery`,
-                position: 1,
-                isPrimary: false,
-              },
-            });
-          }
+        if (parsed.gallerySrcs !== undefined) {
+          await syncProductGalleryImages(
+            tx,
+            existing.id,
+            parsed.name,
+            parsed.gallerySrcs,
+          );
         }
 
         // Each of these four is `undefined` when not submitted (the bulk
@@ -979,16 +992,13 @@ async function persistParsed(
           isPrimary: true,
         },
       });
-      if (parsed.gallerySrc) {
-        await tx.productImage.create({
-          data: {
-            productId: createdRow.id,
-            src: parsed.gallerySrc,
-            alt: `${parsed.name} gallery`,
-            position: 1,
-            isPrimary: false,
-          },
-        });
+      if (parsed.gallerySrcs !== undefined && parsed.gallerySrcs.length > 0) {
+        await syncProductGalleryImages(
+          tx,
+          createdRow.id,
+          parsed.name,
+          parsed.gallerySrcs,
+        );
       }
 
       let variantStocks: { variantId: string; quantity: number }[] = [];
@@ -1305,7 +1315,9 @@ export async function cloneAdminProduct(
   }
 
   const primaryImage = source.images.find((image) => image.isPrimary);
-  const secondaryImage = source.images.find((image) => !image.isPrimary);
+  const gallerySrcs = source.images
+    .filter((image) => !image.isPrimary)
+    .map((image) => image.src);
 
   const cloned: ParsedProductInput = {
     name: `${source.name} (Copy)`,
@@ -1375,7 +1387,7 @@ export async function cloneAdminProduct(
     youtubeUrl: source.youtubeUrl,
     pdfSpecificationSrc: source.pdfSpecificationSrc,
     thumbnailSrc: primaryImage?.src,
-    gallerySrc: secondaryImage?.src,
+    gallerySrcs,
   };
 
   const result = await persistParsed(cloned, undefined, actor);

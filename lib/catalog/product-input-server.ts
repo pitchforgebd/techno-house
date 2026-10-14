@@ -19,6 +19,7 @@ import { normalizePdfSpecificationSrc } from "@/lib/product/pdf-specification";
 import { normalizeYoutubeUrl } from "@/lib/product/youtube";
 import { sanitizeRichBody } from "@/lib/content/sanitize-html";
 import { parseProductColors } from "@/lib/catalog/color-input";
+import { parseProductGalleryImages } from "@/lib/catalog/gallery-input";
 import {
   computeDiscountPricing,
   parseDiscountDate,
@@ -365,13 +366,9 @@ export async function parseProductInput(
         "Thumbnail must be a local public path (e.g. /uploads/…) or an http(s) image URL.",
     };
   }
-  const gallerySrc = normalizeProductImage(input.gallerySrc);
-  if (input.gallerySrc !== undefined && gallerySrc === undefined) {
-    return {
-      ok: false,
-      formError:
-        "Gallery image must be a local public path (e.g. /uploads/…) or an http(s) image URL.",
-    };
+  const gallerySrcs = parseProductGalleryImages(input.gallerySrcs);
+  if (!gallerySrcs.ok) {
+    return gallerySrcs;
   }
 
   const youtube = normalizeYoutubeUrl(input.youtubeUrl ?? "");
@@ -427,7 +424,7 @@ export async function parseProductInput(
       youtubeUrl: youtube.value,
       pdfSpecificationSrc,
       ...(thumbnailSrc !== undefined ? { thumbnailSrc } : {}),
-      ...(gallerySrc !== undefined ? { gallerySrc } : {}),
+      ...(gallerySrcs.value !== undefined ? { gallerySrcs: gallerySrcs.value } : {}),
     },
   };
 }

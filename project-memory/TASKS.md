@@ -7128,3 +7128,83 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       on the live server.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-370 Admin product gallery: real multi-image upload; a top Save & publish button.
+      Operator request (screenshot of a competitor's product page, long message): the
+      single product page needs a visual redesign (separate task, in progress after
+      this one), AND two admin problems — "products add option e multiple image add
+      korar option nai" (no way to add several images at once when adding a product)
+      and the Save & publish button only exists at the bottom of a long form, wanted
+      at the top too. "1st eta solve koro" (solve this one first) — read as: do the
+      admin fixes before the page redesign.
+      Root cause of the image limit: Admin -> Products -> Files & media had exactly
+      two upload boxes — "Add thumbnail image" (the cover, `ProductImage.isPrimary`)
+      and "Add gallery images", which was ALSO a single-image box bound to one
+      scalar `gallerySrc` field. The save path only ever read/wrote the thumbnail row
+      and the first non-primary row; anything beyond that (a bulk CSV import, say, or
+      a direct database edit) was invisible in the form and untouchable — the old
+      code never read it, so it only survived by never being overwritten.
+      Changes:
+      - `lib/catalog/gallery-input.ts` (new): `parseProductGalleryImages`, the array
+        version of the existing path/URL validator, capped at
+        `PRODUCT_GALLERY_IMAGE_MAX = 10`; `undefined` means "leave the gallery
+        untouched" (CSV import has no column for it, same convention as
+        variants/attributes/colors/specGroups), a real array including `[]` means
+        "this is the whole gallery now".
+      - `ProductInputFields`/`ParsedProductInput` (`product-input.ts`): `gallerySrc`
+        replaced by `gallerySrcs?: string[]`. `product-input-server.ts` validates it
+        with the new parser.
+      - `lib/catalog/admin-products.ts`: new `syncProductGalleryImages` (delete every
+        non-primary `ProductImage` row, recreate in the submitted order — same
+        delete-then-recreate pattern as `syncProductColors`), wired into product
+        create, update (only when `gallerySrcs !== undefined`) and — previously
+        missed entirely — `cloneAdminProduct`, which used to carry over only the
+        first gallery image; now carries all of them.
+      - `features/admin/products/admin-product-gallery-fields.tsx` (new): the
+        gallery editor — a grid of thumbnails, each with Remove and move-earlier/
+        move-later arrows (no drag library), an "Add gallery images (N/10)" button,
+        and an overflow toast if a batch would exceed the cap. The admin form's
+        gallery state now starts from `product.images.slice(1)` (every image after
+        the thumbnail), not just `images[1]`.
+      - Multi-file upload, built on infrastructure that mostly already existed
+        server-side (`uploadAdminMediaFiles` already took `files: File[]`, it just
+        only ever got called with one): `AdminMediaPickerModal` gained optional
+        `multiple`/`onSelectMany` props (default off — every other caller is
+        unaffected with no prop change needed). In multi-select mode the Upload
+        tab's file input takes several files in one go (new action
+        `uploadMediaPickerFilesAction`, reading `formData.getAll("file")`) and a
+        Library-tab click adds without closing the dialog, with a "Done" button to
+        finish; `uploadAdminMediaFiles` now also returns `paths: string[]` (every
+        created path, not just the last) alongside the original `path` field, so
+        every existing single-file caller is untouched.
+      - A second "Save & publish" submit button in the form's header action row
+        (same `type="submit"`, same result as the one at the bottom — the header
+        sits inside the `<form>`, so it needs no new handler).
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:product-gallery` 47
+      checks (new; mutation-checked — 22 deliberate breakages of the real files,
+      incl. the cap, path-traversal, the delete-only-non-primary guard, update only
+      syncing when submitted, clone carrying every image, the old field name coming
+      back, the top button disappearing, multi-select leaking into other pickers,
+      and an off-by-one on remove — all caught), all 14 regression suites,
+      `test:listing`, `test:privilege` pass. Real browser (headless Chrome, a
+      production build, the demo staff account, 5 generated PNGs + 1 library pick,
+      19 checks): uploading 5 files at once reported "5 images uploaded" and the
+      dialog stayed open; a library click added a 6th without closing; the grid
+      showed all 6 with working reorder (verified the actual `src` order swapped)
+      and remove (6 -> 5); saving from the NEW TOP button raised no page error, no
+      crash, showed "Product saved & published", and a full page reload showed the
+      exact same 5 images in the exact same order from the database; the thumbnail
+      picker (a different, untouched caller) still has no Done button, its file
+      input still refuses `multiple`, and uploading one file to it still auto-closes
+      exactly as before. Test rows and uploaded test files were deleted afterwards.
+      Honest notes: (1) reordering is up/down arrows, not drag-and-drop — no new
+      dependency, consistent with how the rest of admin handles ordering. (2) The cap
+      is 10 gallery images (plus the thumbnail = 11 total); chosen as a reasonable
+      ceiling, not requested by the operator — easy to raise
+      (`PRODUCT_GALLERY_IMAGE_MAX`). (3) Each file in a multi-file upload is still
+      checked individually (type, size, signature) — one bad file fails the whole
+      batch, same as the single-file path already did. (4) Not tested: the bulk CSV
+      importer (unchanged — it never set a gallery, still doesn't) and non-Chrome
+      browsers.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

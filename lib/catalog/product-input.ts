@@ -217,7 +217,12 @@ export type ProductInputFields = {
   youtubeUrl: string;
   pdfSpecificationSrc: string;
   thumbnailSrc?: string;
-  gallerySrc?: string;
+  /**
+   * The rest of the gallery, in display order. `undefined` (not `[]`) means
+   * "don't touch" for the same reason as `variants`/`attributes`/`colors`/
+   * `specGroups` above — the single-product form always sends a real array.
+   */
+  gallerySrcs?: string[];
 };
 
 export type ParsedProductInput = {
@@ -257,7 +262,8 @@ export type ParsedProductInput = {
   youtubeUrl: string | null;
   pdfSpecificationSrc: string | null;
   thumbnailSrc?: string | null;
-  gallerySrc?: string | null;
+  /** `undefined` = leave this product's gallery untouched. */
+  gallerySrcs?: string[];
 };
 
 export function normalizeSku(value: string): string {
