@@ -6,7 +6,14 @@ export function Table({
   ...props
 }: HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="overflow-x-auto">
+    // Every admin list page ALSO wraps this in its own
+    // `th-scroll-hide overflow-x-auto` div, so this inner one rarely has to
+    // scroll on its own — but when the table is wider than even that outer
+    // wrapper's content box (every column stays at its min-width), THIS div is
+    // the one that actually scrolls, and its scrollbar was never hidden
+    // (AD-372): the visible native scrollbar the operator saw under the
+    // products table was this div's, not the outer one's.
+    <div className="th-scroll-hide overflow-x-auto">
       <table
         className={cn("w-full border-collapse text-left text-body", className)}
         {...props}

@@ -5,12 +5,14 @@ import {
   deleteAdminProduct,
   saveAdminProduct,
   updateAdminProductFlags,
+  updateAdminProductQuickFields,
   type ProductMutationResult,
 } from "@/lib/catalog/admin-products";
 import { searchRelatedProductCandidates } from "@/lib/catalog/product-related";
 import { updateAdminProductStock } from "@/lib/catalog/admin-inventory";
 import type { InventoryInputFields } from "@/lib/catalog/inventory-input";
 import type { ProductInputFields } from "@/lib/catalog/product-input";
+import type { QuickEditInputFields } from "@/lib/catalog/product-quick-edit";
 import { getRequestMeta } from "@/lib/auth/request-meta";
 import { staffWithPermission } from "@/lib/auth/permissions";
 import {
@@ -97,6 +99,31 @@ export async function updateAdminProductStockAction(input: {
   }
   const meta = await getRequestMeta();
   return updateAdminProductStock({
+    productId: input.productId,
+    fields: input.fields,
+    actor: {
+      staffId: allowed.session.staffId,
+      email: allowed.session.email,
+      ip: meta.ip,
+    },
+  });
+}
+
+/** Admin product list -> "Quick edit" (AD-372): price, regular price, stock. */
+export async function updateAdminProductQuickFieldsAction(input: {
+  productId: string;
+  fields: QuickEditInputFields;
+}): Promise<ProductMutationResult> {
+  const blocked = await guardOrigin();
+  if (blocked) {
+    return blocked;
+  }
+  const allowed = await staffWithPermission("product.edit");
+  if (!allowed.ok) {
+    return allowed;
+  }
+  const meta = await getRequestMeta();
+  return updateAdminProductQuickFields({
     productId: input.productId,
     fields: input.fields,
     actor: {

@@ -7274,3 +7274,90 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       gallery column's own height was not touched), so not re-measured.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-372 Admin products: no visible scrollbar under the table; a "Quick edit" option.
+      Operator report (screenshot: the row "..." menu open over "ASUS PRIME
+      H610M-F D4 R2.0", a horizontal scrollbar visible at the bottom): "ekhane
+      scrol bar chole ashe,, eta solve koro, eta all products page e, and
+      quick edit ekta option rakho tahole quick price, stock etc change kora
+      jabe" (a scrollbar shows up here, fix it, on the All products page; also
+      keep a Quick edit option so price/stock/etc. can be changed quickly).
+      Part 1 — the scrollbar. Root cause: the SHARED `Table` component
+      (`components/ui/table.tsx`, used by 30+ admin list pages) wraps every
+      table in its own `<div className="overflow-x-auto">`, with no
+      `th-scroll-hide`. Every one of those 30 pages ALSO wraps `<Table>` in its
+      OWN `th-scroll-hide overflow-x-auto` div, which looked like it already
+      handled this — but on Admin -> Products (11 columns, `min-w-[72rem]`),
+      the table is wider than even that OUTER wrapper's content box, so it was
+      the shared component's INNER, never-hidden div that actually had to
+      scroll, with a plain native scrollbar. Fixed with one line: the shared
+      component's own div now also carries `th-scroll-hide`. A second,
+      separate oddity turned up alongside it while measuring in headless
+      Chrome: at some widths `document.documentElement.scrollWidth` read a few
+      tens of pixels more than any single element on the page could account
+      for (checked exhaustively — every ancestor of the table, and a scan of
+      every element in `<body>` for one poking past the viewport, found
+      nothing) — a known Chromium table-layout quirk, confirmed real (not just
+      a mis-measurement) because `window.scrollTo()` could actually move the
+      page by that exact amount. `html`/`body` now both carry a defensive
+      `overflow-x: hidden` in `app/globals.css`, so the page itself can never
+      show its own scrollbar for this or any other reason, independent of
+      which element causes it; nothing in the codebase relies on the page
+      itself scrolling sideways (checked), and every real horizontal-scroll
+      area (this table, `<main>`, any other `overflow-x-auto` div) keeps
+      working exactly as before — it manages its own overflow independently.
+      Part 2 — Quick edit. New entry in the row's own "..." menu (between Edit
+      and View product), opening a drawer with Price, Regular price, Stock
+      quantity and Low-stock threshold — the two price fields are new; stock
+      editing already existed as a separate "View stock" link/drawer (left
+      untouched, still there) — this is a second, additive way to reach a
+      related set of fields without opening the full product form. One
+      atomic transaction updates price and stock together
+      (`updateAdminProductQuickFields`, `lib/catalog/admin-products.ts`), using
+      the SAME validation the full form and the stock drawer already have
+      (`parseTaka`, `parseInventoryInput`), not a second copy of the rules — a
+      new small module `lib/catalog/product-quick-edit.ts` just combines them.
+      A regular price above the price always turns the Sale/"Today's deal"
+      column on (needed for the Sale badge and the discount %); clearing the
+      regular price here never turns it off, so Quick edit can never silently
+      undo a "Today's deal" the operator set from the table's own toggle.
+      Verified: `tsc` 0, `eslint` clean, `next build` ok, `test:table-scroll`
+      7 checks (new; 3 deliberate breakages caught) + `test:product-quick-edit`
+      27 checks (new; mutation-checked — 16 deliberate breakages, incl. a
+      zero/negative price, a regular price not above price, bypassed stock
+      validation, the price write split out of the stock transaction, clearing
+      regular price turning Today's-deal off, a swallowed failed stock write,
+      a dropped audit log, a missing product allowed through, the server
+      action's origin/permission checks dropped, the menu item removed, the
+      Save button showing without permission, the wrong product's drawer
+      opening — all caught), both added to the regression run (now 16
+      suites, all pass), `test:listing`, `test:privilege` pass. Real browser
+      (headless Chrome, a production build, the demo staff account):
+      screenshot of the row menu at 1280px (the operator's own width) with NO
+      scrollbar visible anywhere, "Quick edit" present between Edit and View
+      product; opened it on a real product (MSI A520M-A PRO, price ৳6,800,
+      regular ৳7,700, stock 3/5) — pre-filled exactly those four values; typing
+      a regular price not above the price was refused with a message and the
+      drawer stayed open (nothing saved); a real change (price ৳7,200, regular
+      ৳8,500, stock 15, threshold 4) saved with no page error, the drawer
+      closed, and the list itself showed the new price immediately, confirmed
+      again by reading the database directly; a follow-up pass cleared just
+      the regular price and the database showed compareAtAmount null with
+      isSale still true, exactly as designed. The product was restored to its
+      original values afterward.
+      Honest notes: (1) the ~70px extra `scrollWidth` reading could not be
+      pinned to a specific element despite an exhaustive search; the fix
+      (`overflow-x: hidden` on html/body) removes its only possible visible
+      symptom — a page-level scrollbar — regardless of cause, rather than
+      chasing the exact root layout mechanism further. (2) The 30 other admin
+      list pages' own now-redundant `th-scroll-hide overflow-x-auto` wrapper
+      around `<Table>` was left as-is (harmless double-wrapping, not touched —
+      removing it from 30 files is unrelated to this fix). (3) Quick edit does
+      not touch name, SKU, category, publish state or anything else — those
+      still need the full Edit page or the table's own inline toggles. (4) Not
+      tested: a staff account without `product.edit` actually attempting a
+      save (the demo account has full access) — covered instead by a source
+      guard confirming the action re-checks that permission, the same gate
+      every other product-write action uses.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

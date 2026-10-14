@@ -113,6 +113,19 @@
 
 html {
   color-scheme: light;
+  /* Belt-and-braces (AD-372): a wide admin table sitting inside its own
+     `overflow-x-auto` wrapper can still make the DOCUMENT itself report a few
+     tens of pixels of extra scrollable width — a known table-layout quirk in
+     Chromium, reproduced on Admin -> Products at < 1440px wide, where no
+     single element (checked exhaustively, including every ancestor of the
+     table) ever measured as overflowing, yet `window.scrollTo` could still
+     move the page a measurable amount. Nothing on this site is meant to
+     scroll the page itself sideways — every intentional horizontal scroll
+     area (this table, `<main>`, any other `overflow-x-auto` div) manages its
+     own overflow independently of this and keeps working exactly as before;
+     this only removes the browser's OWN outer scrollbar as a possible source
+     of the same visible-scrollbar bug, regardless of what causes it. */
+  overflow-x: hidden;
 }
 
 body {
@@ -123,6 +136,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 /* Real per-storefront-page override target for Admin -> Design Studio ->

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Copy, Eye, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Copy, Eye, MoreVertical, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import {
   cloneAdminProductAction,
@@ -15,6 +15,8 @@ type AdminProductRowActionsProps = {
   productSlug: string;
   productName: string;
   canDelete: boolean;
+  /** Opens the price/stock quick-edit drawer for this row (AD-372). */
+  onQuickEdit: () => void;
 };
 
 export function AdminProductRowActions({
@@ -22,6 +24,7 @@ export function AdminProductRowActions({
   productSlug,
   productName,
   canDelete,
+  onQuickEdit,
 }: AdminProductRowActionsProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -88,6 +91,17 @@ export function AdminProductRowActions({
             <Pencil className="size-4 text-text-muted" aria-hidden />
             Edit
           </Link>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-body text-text hover:bg-surface-muted"
+            onClick={() => {
+              setOpen(false);
+              onQuickEdit();
+            }}
+          >
+            <SlidersHorizontal className="size-4 text-text-muted" aria-hidden />
+            Quick edit
+          </button>
           <Link
             href={`/product/${productSlug}`}
             className="flex items-center gap-2 px-3 py-2 text-body text-text hover:bg-surface-muted"

@@ -13,6 +13,10 @@ import type {
 import { chipsFromSpecGroups } from "@/lib/catalog/spec-group-input";
 import { upsertProductStock } from "@/lib/catalog/admin-inventory";
 import {
+  parseQuickEditInput,
+  type QuickEditInputFields,
+} from "@/lib/catalog/product-quick-edit";
+import {
   DEFAULT_LOW_STOCK_THRESHOLD,
   deriveStockStatus,
 } from "@/lib/catalog/inventory-input";
@@ -1455,6 +1459,84 @@ export async function updateAdminProductFlags(input: {
         published: input.published,
         featured: input.featured,
         todaysDeal: input.todaysDeal,
+      },
+    },
+  );
+  return { ok: true, id: existing.id, slug: existing.slug };
+}
+
+/**
+ * Admin product list -> "Quick edit" (AD-372): price, regular price and stock
+ * in one small write, without the full product form. Price and stock are
+ * updated atomically in one transaction, same as a normal save would.
+ *
+ * `isSale` is the same column the "Today's deal" toggle writes (see
+ * `updateAdminProductFlags` above) — a regular price higher than the price
+ * always turns it ON (the Sale badge and the discount % need it), but
+ * clearing the regular price here never turns it OFF: that would silently
+ * undo a "Today's deal" the operator set independently of this drawer.
+ */
+export async function updateAdminProductQuickFields(input: {
+  productId: string;
+  fields: QuickEditInputFields;
+  actor?: ProductActor;
+}): Promise<ProductMutationResult> {
+  if (!usesCatalogDatabase()) {
+    return { ok: false, formError: PRODUCT_DB_REQUIRED };
+  }
+  const parsed = parseQuickEditInput(input.fields);
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  const id = input.productId.trim();
+  const existing = await getPrisma().product.findUnique({
+    where: { id },
+    select: { id: true, slug: true, name: true, isSale: true },
+  });
+  if (!existing) {
+    return { ok: false, formError: "That product no longer exists." };
+  }
+
+  try {
+    await getPrisma().$transaction(async (tx) => {
+      await tx.product.update({
+        where: { id: existing.id },
+        data: {
+          priceAmount: parsed.value.priceAmount,
+          compareAtAmount: parsed.value.compareAtAmount,
+          isSale: existing.isSale || parsed.value.marksAsSale,
+        },
+      });
+      const stockResult = await upsertProductStock(
+        {
+          productId: existing.id,
+          quantity: parsed.value.quantity,
+          lowStockThreshold: parsed.value.lowStockThreshold,
+        },
+        tx,
+      );
+      if (!stockResult.ok) {
+        throw new PersistRollback(stockResult);
+      }
+    });
+  } catch (err) {
+    if (err instanceof PersistRollback) {
+      return err.result;
+    }
+    throw err;
+  }
+
+  await recordProductAudit(
+    input.actor,
+    AUDIT_ACTIONS.PRODUCT_UPDATE,
+    existing,
+    {
+      quickEdit: {
+        priceAmount: parsed.value.priceAmount,
+        compareAtAmount: parsed.value.compareAtAmount,
+        quantity: parsed.value.quantity,
+        lowStockThreshold: parsed.value.lowStockThreshold,
       },
     },
   );

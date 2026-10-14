@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { AdminProductRowActions } from "@/features/admin/products/admin-product-row-actions";
 import { updateAdminProductFlagsAction } from "@/features/admin/products/product-actions";
+import { AdminProductQuickEditDrawer } from "@/features/admin/products/admin-product-quick-edit-drawer";
 import { AdminProductStockDrawer } from "@/features/admin/products/admin-product-stock-drawer";
 import { AdminToggleSwitch } from "@/features/admin/products/admin-toggle-switch";
 import { availableUnits } from "@/lib/catalog/inventory-input";
@@ -95,6 +96,8 @@ export function AdminProductTable({
   const [stockProduct, setStockProduct] = useState<AdminProductRow | null>(
     null,
   );
+  const [quickEditProduct, setQuickEditProduct] =
+    useState<AdminProductRow | null>(null);
   const [pending, startTransition] = useTransition();
 
   const allSelected = items.length > 0 && selected.size === items.length;
@@ -356,6 +359,7 @@ export function AdminProductTable({
                       productSlug={product.slug}
                       productName={product.name}
                       canDelete={canDelete}
+                      onQuickEdit={() => setQuickEditProduct(product)}
                     />
                   </TableCell>
                 </TableRow>
@@ -371,6 +375,15 @@ export function AdminProductTable({
           open
           canEdit={canEdit}
           onClose={() => setStockProduct(null)}
+        />
+      ) : null}
+      {quickEditProduct ? (
+        <AdminProductQuickEditDrawer
+          key={quickEditProduct.id}
+          product={quickEditProduct}
+          open
+          canEdit={canEdit}
+          onClose={() => setQuickEditProduct(null)}
         />
       ) : null}
     </>

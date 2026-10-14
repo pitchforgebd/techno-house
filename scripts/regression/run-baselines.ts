@@ -23,6 +23,8 @@ const SUITES: { name: string; script: string }[] = [
   { name: "jump-up", script: "test:jump-up" },
   { name: "storefront-links", script: "test:storefront-links" },
   { name: "product-gallery", script: "test:product-gallery" },
+  { name: "table-scroll", script: "test:table-scroll" },
+  { name: "product-quick-edit", script: "test:product-quick-edit" },
 ];
 
 function main(): void {
