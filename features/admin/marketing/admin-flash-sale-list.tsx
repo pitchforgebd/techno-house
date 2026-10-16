@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ImageIcon, MoreVertical, Plus, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { ImageIcon, MoreVertical, Plus } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { Alert } from "@/components/ui/alert";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
@@ -24,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminSearchInput } from "@/features/admin/admin-search-input";
 import { AdminToggleSwitch } from "@/features/admin/products/admin-toggle-switch";
 import type { FlashDealListResult } from "@/lib/admin/load-promotions-offers";
 import type { FlashDealTab } from "@/lib/admin/promotions-offers-mock";
@@ -159,26 +159,13 @@ export function AdminFlashSaleList({ data }: { data: FlashDealListResult }) {
 
         <div className="border-b border-neutral-100 bg-neutral-50/70 px-4 py-3 sm:px-5">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            <form
-              className="relative min-w-0"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                router.push(flashHref(params.tab, String(form.get("q") ?? "")));
-              }}
-            >
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400"
-                aria-hidden
-              />
-              <Input
-                name="q"
-                type="search"
-                defaultValue={params.q}
-                placeholder="Search Flash Deals ..."
-                className={cn(controlClass, "pl-9")}
-              />
-            </form>
+            <AdminSearchInput
+              defaultValue={params.q}
+              buildHref={(q) => flashHref(params.tab, q)}
+              placeholder="Search Flash Deals ..."
+              aria-label="Search flash deals"
+              className={controlClass}
+            />
             <Select
               aria-label="Bulk action"
               defaultValue=""

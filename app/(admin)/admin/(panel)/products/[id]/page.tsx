@@ -5,6 +5,7 @@ import {
   getAdminProductById,
   loadAdminProductFormOptions,
 } from "@/lib/admin/load-products";
+import { getAdminB2BProductTerms } from "@/lib/b2b/product-terms";
 import { hasPermission } from "@/lib/auth/permissions";
 import { requireStaffSession } from "@/lib/auth/staff-session";
 
@@ -23,9 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AdminEditProductPage({ params }: Props) {
   const session = await requireStaffSession();
   const { id } = await params;
-  const [product, options] = await Promise.all([
+  const [product, options, b2bTerms] = await Promise.all([
     getAdminProductById(id),
     loadAdminProductFormOptions(),
+    getAdminB2BProductTerms(id),
   ]);
 
   if (!product) {
@@ -44,6 +46,7 @@ export default async function AdminEditProductPage({ params }: Props) {
       notes={options.notes}
       labels={options.labels}
       canSave={hasPermission(session, "product.edit")}
+      b2bTerms={b2bTerms}
     />
   );
 }

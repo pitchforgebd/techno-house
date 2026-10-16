@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Search } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { buttonClassName } from "@/components/ui/button";
@@ -23,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminSearchInput } from "@/features/admin/admin-search-input";
 import { AdminOrderQuickModal } from "@/features/admin/orders/admin-order-quick-modal";
 import { AdminOrderRowActions } from "@/features/admin/orders/admin-order-row-actions";
 import {
@@ -212,26 +212,15 @@ export function AdminOrderList({
 
         <div className="border-b border-neutral-100 bg-neutral-50/70 px-4 py-3 sm:px-5">
           <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] xl:items-center">
-            <form
-              className="relative min-w-0"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                navigate({ q: String(form.get("q") ?? "") });
-              }}
-            >
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400"
-                aria-hidden
-              />
-              <Input
-                name="q"
-                type="search"
-                defaultValue={params.q}
-                placeholder="Search orders..."
-                className={cn(controlClass, "pl-9")}
-              />
-            </form>
+            <AdminSearchInput
+              defaultValue={params.q}
+              buildHref={(q) =>
+                adminOrdersHref({ base: params, q, page: 1, path: actionPath })
+              }
+              placeholder="Search orders..."
+              aria-label="Search orders"
+              className={controlClass}
+            />
 
             <Select
               aria-label="Bulk action"

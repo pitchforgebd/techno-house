@@ -20,6 +20,11 @@ approval before it begins. No code was changed by it;
 its 17 findings are an open backlog, not applied fixes. The
 full detail for AD-276..AD-315 lives in `project-memory/TASKS.md`; this
 file's narrative sections below stop at AD-288 and are historical.
+AD-337..AD-377 (storefront/admin feature and polish work, unrelated to the
+security remediation) and AD-378 (bundled PDP B2B/EMI redesign + admin B2B
+toggle/% pricing + admin topbar shortcut + sitewide admin live search +
+footer marquee controls + admin sidebar scroll fix) are also complete —
+full detail in `project-memory/TASKS.md`, not narrated here.
 
 ## Status
 Core sales + account paths are DB-backed. Catalogue repositories no longer
@@ -45,8 +50,12 @@ The PDP gallery shows only uploaded frames (no pad-to-6) and supports
 desktop hover lens + side zoom on the main image.
 
 Some admin chrome still uses seed/demo *type* modules or display-only mocks
-(marketing popups/SMS UI, design-studio localStorage, B2B, reports, etc.) —
-those are follow-ups, not checkout blockers. **Product requests** from
+(marketing popups/SMS UI, design-studio localStorage, reports, etc.) — those
+are follow-ups, not checkout blockers. **B2B/wholesale pricing is real**
+(`B2BAccount`/`B2BProductPrice`, since AD-257; the toggle+%-driven admin UI
+and per-product PDP eligibility gating landed in AD-378) — removed from this
+stale-mock list, which was already out of date before this edit. **Product
+requests** from
 `/product-request` now persist as `Complaint` (`PRODUCT_REQUEST`) and appear
 under Admin → Product requests. Status / staff-note updates on Product
 requests and Contacts write to PostgreSQL (no mock toast). The admin bell

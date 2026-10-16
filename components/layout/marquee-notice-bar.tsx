@@ -10,16 +10,28 @@
  * edge regardless of container width, and `translateX(-100%)` at the end
  * (relative to the span's own width) pushes it fully past the left edge
  * regardless of text length — see `.th-marquee-track` in globals.css.
+ *
+ * `html` is pre-sanitized server-side (`lib/content/sanitize-html.ts`) and
+ * safe to render as-is — it only ever allows formatting tags (bold, links),
+ * same trust boundary as blog post bodies.
  */
-export function MarqueeNoticeBar({ text }: { text: string }) {
+export function MarqueeNoticeBar({
+  html,
+  speedSeconds,
+}: {
+  html: string;
+  speedSeconds: number;
+}) {
   return (
     <div
       role="status"
       className="relative h-11 shrink-0 overflow-hidden border-t border-primary/25 bg-surface shadow-[0_-4px_12px_-6px_rgba(14,26,36,0.15)]"
     >
-      <span className="absolute inset-y-0 flex items-center whitespace-nowrap text-label font-medium text-text th-marquee-track">
-        {text}
-      </span>
+      <span
+        className="th-marquee-track th-rich-text absolute inset-y-0 flex items-center whitespace-nowrap text-label font-medium text-text [&_p]:inline [&_p]:m-0"
+        style={{ animationDuration: `${speedSeconds}s` }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
     </div>
   );
 }

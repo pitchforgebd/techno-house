@@ -12,6 +12,7 @@ import {
   LifeBuoy,
   ChevronDown,
   LogOut,
+  Building2,
 } from "lucide-react";
 import { ADMIN_DASHBOARD_TABS } from "@/lib/admin/admin-chrome";
 import { AdminOrderAlertBell } from "@/features/admin/admin-order-alert-bell";
@@ -178,6 +179,10 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
   const canViewSupport = canAccessAdminPath("/admin/support", permissions);
   const canViewContacts = canAccessAdminPath("/admin/contacts", permissions);
   const canAddProduct = hasPermission(session, "product.add");
+  const canViewB2BShortcut = canAccessAdminPath(
+    "/admin/customers/b2b/pricing",
+    permissions,
+  );
 
   return (
     <header className="border-b border-neutral-200/80 bg-white">
@@ -222,6 +227,17 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
             >
               <Plus className="size-4" aria-hidden />
               <span className="hidden sm:inline">Add new</span>
+            </Link>
+          ) : null}
+
+          {canViewB2BShortcut ? (
+            <Link
+              href="/admin/customers/b2b/pricing"
+              title="All products & B2B pricing"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-neutral-200 px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            >
+              <Building2 className="size-4" aria-hidden />
+              <span className="hidden sm:inline">B2B & All products</span>
             </Link>
           ) : null}
 

@@ -15,6 +15,9 @@ export type AdminB2BPricingRow = {
   retailAmount: number;
   b2bAmount: number | null;
   minQuantity: number;
+  /** True only when a row exists AND is active — a disabled row's stored
+   * price is kept (see `saveB2BProductTerms`) but is never "on" here. */
+  enabled: boolean;
 };
 
 export type AdminB2BPricingResult = {
@@ -65,9 +68,9 @@ export async function listAdminB2BPricing(input: {
       sku: row.sku,
       categoryName: row.category?.name ?? "—",
       retailAmount: row.priceAmount,
-      b2bAmount:
-        row.b2bPrice && row.b2bPrice.isActive ? row.b2bPrice.priceAmount : null,
+      b2bAmount: row.b2bPrice?.priceAmount ?? null,
       minQuantity: row.b2bPrice?.minQuantity ?? 1,
+      enabled: row.b2bPrice?.isActive ?? false,
     })),
   };
 }

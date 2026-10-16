@@ -48,6 +48,7 @@ type ProductMediaBuyProps = {
     discountPercent: number;
   } | null;
   b2bTerms?: import("@/lib/b2b/pricing").B2BProductTerms | null;
+  b2bEligible?: boolean;
   viewerCount?: number | null;
   /** Rendered under the gallery (labels, warranty, notes); omit when empty. */
   belowGallery?: ReactNode;
@@ -90,6 +91,7 @@ export function ProductMediaBuy({
   isSignedIn,
   b2bAccount,
   b2bTerms,
+  b2bEligible,
   viewerCount,
   belowGallery,
   hasNotes = false,
@@ -211,6 +213,7 @@ export function ProductMediaBuy({
             isSignedIn={isSignedIn}
             b2bAccount={b2bAccount}
             b2bTerms={b2bTerms}
+            b2bEligible={b2bEligible}
             viewerCount={viewerCount}
             infoClassName={cn(
               "mt-8 min-w-0 lg:col-span-7 lg:col-start-6 lg:mt-0 lg:row-start-1",

@@ -29,6 +29,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     label: "Catalog",
     items: [
       { href: "/admin/products", label: "Products" },
+      { href: "/admin/customers/b2b/pricing", label: "B2B pricing" },
       { href: "/admin/categories", label: "Categories" },
       { href: "/admin/brands", label: "Brands" },
       { href: "/admin/attributes", label: "Attributes" },
@@ -82,7 +83,6 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         children: [
           { href: "/admin/customers", label: "All customers" },
           { href: "/admin/customers/b2b", label: "B2B accounts" },
-          { href: "/admin/customers/b2b/pricing", label: "B2B pricing" },
         ],
       },
     ],

@@ -160,7 +160,12 @@ export default async function StorefrontLayout({
             className={hasMarquee ? "h-28 md:h-11" : "h-16 md:h-0"}
           />
           <div className="fixed inset-x-0 bottom-0 z-50 flex flex-col">
-            {hasMarquee ? <MarqueeNoticeBar text={footer.marqueeText} /> : null}
+            {hasMarquee ? (
+              <MarqueeNoticeBar
+                html={footer.marqueeText}
+                speedSeconds={footer.marqueeSpeedSeconds}
+              />
+            ) : null}
             <MobileBottomNav />
           </div>
           <StorefrontAnalytics />

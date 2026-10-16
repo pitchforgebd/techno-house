@@ -17,6 +17,7 @@ export async function saveB2BProductTermsAction(input: {
   productId: string;
   priceAmount: number;
   minQuantity: number;
+  enabled: boolean;
 }): Promise<SaveB2BTermsResult> {
   if (!(await isSameOriginRequest())) {
     return { ok: false, formError: CROSS_ORIGIN_ERROR };
@@ -43,9 +44,11 @@ export async function saveB2BProductTermsAction(input: {
     metadata: {
       priceAmount: input.priceAmount,
       minQuantity: input.minQuantity,
+      enabled: input.enabled,
     },
   });
 
   revalidatePath("/admin/customers/b2b/pricing");
+  revalidatePath(`/admin/products/${input.productId}`);
   return { ok: true };
 }

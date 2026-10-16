@@ -2,12 +2,11 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 import { summarizeBulkResult } from "@/lib/admin/bulk-actions";
+import { AdminSearchInput } from "@/features/admin/admin-search-input";
 import {
   bulkDeleteAdminCategoriesAction,
   bulkSetAdminCategoriesFeaturedAction,
@@ -79,35 +78,13 @@ export function AdminCategoryFilters({
 
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-      <form
-        method="get"
-        action="/admin/categories"
-        className="relative min-w-0"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const form = event.currentTarget;
-          const data = new FormData(form);
-          const q = String(data.get("q") ?? "");
-          router.push(
-            adminCategoriesHref({ base: params, q, page: 1 }),
-          );
-        }}
-      >
-        {params.tab !== "all" ? (
-          <input type="hidden" name="tab" value={params.tab} />
-        ) : null}
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400"
-          aria-hidden
-        />
-        <Input
-          name="q"
-          type="search"
-          defaultValue={params.q}
-          placeholder="Search categories..."
-          className={cn(controlClass, "pl-9")}
-        />
-      </form>
+      <AdminSearchInput
+        defaultValue={params.q}
+        buildHref={(q) => adminCategoriesHref({ base: params, q, page: 1 })}
+        placeholder="Search categories..."
+        aria-label="Search categories"
+        className={controlClass}
+      />
 
       <Select
         defaultValue=""

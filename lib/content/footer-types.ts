@@ -43,7 +43,13 @@ export type FooterWidgetsConfig = {
   contactHours: string;
   /** Fixed-bottom scrolling notice bar shown on every storefront page. */
   marqueeEnabled: boolean;
+  /** Sanitized rich HTML (bold/italic/links) — plain text is valid HTML too,
+   * so content saved before AD-378 round-trips unchanged. */
   marqueeText: string;
+  /** Full pass duration in seconds — lower is faster. */
+  marqueeSpeedSeconds: number;
+  /** Admin-configured ceiling on the notice's visible length. */
+  marqueeMaxChars: number;
   showContactFormLink: boolean;
   showCtaButtons: boolean;
   showNewsletter: boolean;
@@ -59,6 +65,40 @@ export type FooterWidgetsConfig = {
 
 function id(prefix: string, seed: string): string {
   return `${prefix}-${seed.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
+}
+
+/** Matches the hardcoded `.th-marquee-track` CSS duration this replaces, so
+ * a site that never touches the new field keeps its current speed. */
+export const DEFAULT_MARQUEE_SPEED_SECONDS = 14;
+export const MARQUEE_SPEED_MIN = 4;
+export const MARQUEE_SPEED_MAX = 60;
+
+export const DEFAULT_MARQUEE_MAX_CHARS = 200;
+export const MARQUEE_MAX_CHARS_MIN = 20;
+export const MARQUEE_MAX_CHARS_MAX = 500;
+
+export function clampMarqueeSpeedSeconds(raw: unknown): number {
+  const value = Number(raw);
+  if (!Number.isFinite(value)) {
+    return DEFAULT_MARQUEE_SPEED_SECONDS;
+  }
+  return Math.min(MARQUEE_SPEED_MAX, Math.max(MARQUEE_SPEED_MIN, Math.round(value)));
+}
+
+/** Visible character count, ignoring markup — what `marqueeMaxChars` limits. */
+export function marqueePlainTextLength(html: string): number {
+  return html.replace(/<[^>]*>/g, "").trim().length;
+}
+
+export function clampMarqueeMaxChars(raw: unknown): number {
+  const value = Number(raw);
+  if (!Number.isFinite(value)) {
+    return DEFAULT_MARQUEE_MAX_CHARS;
+  }
+  return Math.min(
+    MARQUEE_MAX_CHARS_MAX,
+    Math.max(MARQUEE_MAX_CHARS_MIN, Math.round(value)),
+  );
 }
 
 export const FOOTER_SOCIAL_NETWORKS: FooterSocialNetwork[] = [
@@ -102,6 +142,8 @@ export function defaultFooterWidgetsConfig(): FooterWidgetsConfig {
     contactHours: "Hours 9:00–22:00",
     marqueeEnabled: false,
     marqueeText: "",
+    marqueeSpeedSeconds: DEFAULT_MARQUEE_SPEED_SECONDS,
+    marqueeMaxChars: DEFAULT_MARQUEE_MAX_CHARS,
     showContactFormLink: true,
     showCtaButtons: true,
     showNewsletter: true,

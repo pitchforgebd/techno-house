@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClassName } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import {
@@ -17,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminSearchInput } from "@/features/admin/admin-search-input";
 import { AdminNoteFormModal } from "@/features/admin/notes/admin-note-form-modal";
 import { AdminNoteRowActions } from "@/features/admin/notes/admin-note-row-actions";
 import { bulkDeleteNotesAction } from "@/features/admin/catalog/preset-actions";
@@ -146,27 +146,13 @@ export function AdminNoteList({
 
         <div className="border-b border-neutral-100 bg-neutral-50/70 px-4 py-3 sm:px-5">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            <form
-              className="relative min-w-0"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const data = new FormData(event.currentTarget);
-                const q = String(data.get("q") ?? "");
-                router.push(adminNotesHref({ base: params, q }));
-              }}
-            >
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400"
-                aria-hidden
-              />
-              <Input
-                name="q"
-                type="search"
-                defaultValue={params.q}
-                placeholder="Search notes..."
-                className={cn(controlClass, "pl-9")}
-              />
-            </form>
+            <AdminSearchInput
+              defaultValue={params.q}
+              buildHref={(q) => adminNotesHref({ base: params, q })}
+              placeholder="Search notes..."
+              aria-label="Search notes"
+              className={controlClass}
+            />
             <Select
               defaultValue=""
               aria-label="Bulk action"

@@ -22,8 +22,14 @@ import {
   controlClass,
 } from "@/features/admin/design-studio/studio-ui";
 import { saveBrandContactAction } from "@/features/admin/settings/branding-actions";
+import { RichTextEditor } from "@/features/admin/marketing/rich-text-editor";
 import {
   FOOTER_SOCIAL_NETWORKS,
+  MARQUEE_MAX_CHARS_MAX,
+  MARQUEE_MAX_CHARS_MIN,
+  MARQUEE_SPEED_MAX,
+  MARQUEE_SPEED_MIN,
+  marqueePlainTextLength,
   type FooterNavColumn,
   type FooterSocialItem,
   type FooterSocialNetwork,
@@ -555,15 +561,49 @@ export function AdminStudioFooterWidgetsPage({
           />
           Enable marquee notice
         </label>
-        <Field label="Notice text">
-          <Input
+        <Field
+          label="Notice text"
+          hint={`${marqueePlainTextLength(config.marqueeText)} / ${config.marqueeMaxChars} characters. Use Bold for emphasis.`}
+        >
+          <RichTextEditor
             value={config.marqueeText}
-            onChange={(e) => patch({ marqueeText: e.target.value })}
+            onChange={(html) => patch({ marqueeText: html })}
             placeholder="e.g. All our branches are open except IDB Branch."
-            className={controlClass}
             disabled={pending}
           />
         </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Scroll speed (seconds per pass)">
+            <Input
+              type="number"
+              min={MARQUEE_SPEED_MIN}
+              max={MARQUEE_SPEED_MAX}
+              value={config.marqueeSpeedSeconds}
+              onChange={(e) =>
+                patch({
+                  marqueeSpeedSeconds: Number.parseInt(e.target.value, 10) || 0,
+                })
+              }
+              className={controlClass}
+              disabled={pending}
+            />
+          </Field>
+          <Field label="Maximum characters">
+            <Input
+              type="number"
+              min={MARQUEE_MAX_CHARS_MIN}
+              max={MARQUEE_MAX_CHARS_MAX}
+              value={config.marqueeMaxChars}
+              onChange={(e) =>
+                patch({
+                  marqueeMaxChars: Number.parseInt(e.target.value, 10) || 0,
+                })
+              }
+              className={controlClass}
+              disabled={pending}
+            />
+          </Field>
+        </div>
       </StudioCard>
     </PageShell>
   );

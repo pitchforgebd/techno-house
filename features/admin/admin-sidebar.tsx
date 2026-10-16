@@ -324,7 +324,18 @@ export function AdminSidebar({
         </label>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-5">
+      {/* `overflow-y-auto` only ever actually engages on the mobile <Sheet>
+          instance, which admin-shell.tsx clamps to a real fixed height
+          (`h-[calc(100vh-5rem)]`) — without it, a long menu would be
+          unreachable there. On desktop the `<aside>` has no height clamp of
+          its own (admin-shell.tsx), so this div's available height always
+          matches the page, and the class is a no-op: nothing to scroll
+          independently, which is exactly why the sidebar used to *feel*
+          pinned while the page scrolled past it — the fix for that is the
+          `<aside>` itself staying a plain (non-sticky) flex sibling, not
+          this div. `.th-scroll-hide` keeps the mobile drawer's own scroll
+          free of a visible scrollbar either way. */}
+      <div className="th-scroll-hide min-h-0 flex-1 overflow-y-auto px-2 pb-5">
         {query && filteredGroups.length === 0 ? (
           <p className="px-3 py-6 text-center text-[13px] text-white/50">
             No menu items match &ldquo;{query}&rdquo;.

@@ -3,14 +3,18 @@
  */
 import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/auth/audit-log";
 import {
+  clampMarqueeMaxChars,
+  clampMarqueeSpeedSeconds,
   defaultFooterWidgetsConfig,
   FOOTER_SOCIAL_NETWORKS,
+  marqueePlainTextLength,
   type FooterNavColumn,
   type FooterNavLink,
   type FooterSocialItem,
   type FooterSocialNetwork,
   type FooterWidgetsConfig,
 } from "@/lib/content/footer-types";
+import { sanitizeRichBody } from "@/lib/content/sanitize-html";
 import { getPrisma } from "@/lib/db/prisma";
 import { normalizeStorefrontHref } from "@/lib/design/storefront-link";
 import { usesDatabase } from "@/lib/runtime/data-source";
@@ -41,7 +45,19 @@ const TEXT_MAX = 1000;
 const COLUMN_MAX = 6;
 const LINKS_PER_COLUMN_MAX = 20;
 const SOCIAL_MAX = 8;
-const MARQUEE_TEXT_MAX = 200;
+// A hard safety ceiling on the stored HTML itself (tags included) — separate
+// from `marqueeMaxChars`, which is the admin-configured ceiling on the
+// notice's *visible* text length, enforced only at save time.
+const MARQUEE_HTML_SAFETY_MAX = 2000;
+
+function sanitizeMarqueeHtml(raw: string): string {
+  const result = sanitizeRichBody(raw, {
+    maxLength: MARQUEE_HTML_SAFETY_MAX,
+    tooLongError: "",
+  });
+  return result.ok ? result.value ?? "" : "";
+}
+
 
 function fail(formError: string): FooterMutationResult {
   return { ok: false, formError };
@@ -182,10 +198,14 @@ export function parseFooterWidgetsConfig(raw: unknown): FooterWidgetsConfig {
       .trim()
       .slice(0, 120),
     marqueeEnabled: Boolean(row.marqueeEnabled),
-    marqueeText: String(row.marqueeText ?? "")
-      .replace(/[<>]/g, "")
-      .trim()
-      .slice(0, MARQUEE_TEXT_MAX),
+    // Rich HTML (bold/italic/links) — re-sanitized on every read, not just on
+    // save, same precedent as blog post bodies (AD-264). Plain text saved
+    // before this field supported markup is valid HTML as-is. A read never
+    // fails validation — an over-length value is simply dropped rather than
+    // rejected, since there's no form here to show an error on.
+    marqueeText: sanitizeMarqueeHtml(String(row.marqueeText ?? "")),
+    marqueeSpeedSeconds: clampMarqueeSpeedSeconds(row.marqueeSpeedSeconds),
+    marqueeMaxChars: clampMarqueeMaxChars(row.marqueeMaxChars),
     showContactFormLink: row.showContactFormLink !== false,
     showCtaButtons: row.showCtaButtons !== false,
     showNewsletter: row.showNewsletter !== false,
@@ -238,6 +258,11 @@ export async function saveFooterWidgetsConfig(input: {
     return fail(FOOTER_DB_REQUIRED);
   }
   const config = parseFooterWidgetsConfig(input.config);
+  if (marqueePlainTextLength(config.marqueeText) > config.marqueeMaxChars) {
+    return fail(
+      `Marquee notice is longer than the configured limit (${config.marqueeMaxChars} characters). Shorten it or raise the limit.`,
+    );
+  }
   await getPrisma().footerSettings.upsert({
     where: { id: "singleton" },
     create: {

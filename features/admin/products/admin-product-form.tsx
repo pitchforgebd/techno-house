@@ -62,6 +62,10 @@ import {
   colorRowsFromProduct,
   type ProductColorFormRow,
 } from "@/features/admin/products/admin-product-colors-fields";
+import {
+  AdminProductB2BFields,
+  type AdminProductB2BTerms,
+} from "@/features/admin/products/admin-product-b2b-fields";
 import { AdminProductGalleryFields } from "@/features/admin/products/admin-product-gallery-fields";
 import {
   AdminProductLabelsFields,
@@ -150,6 +154,7 @@ export function AdminProductForm({
   notes,
   labels,
   canSave,
+  b2bTerms = null,
 }: {
   mode: FormMode;
   product?: EditorProduct | null;
@@ -161,6 +166,9 @@ export function AdminProductForm({
   notes: ProductNoteOption[];
   labels: ProductLabelOption[];
   canSave: boolean;
+  /** Only ever loaded in edit mode — a new product has no id to key the
+   * separate `B2BProductPrice` row off yet. */
+  b2bTerms?: AdminProductB2BTerms | null;
 }) {
   const router = useRouter();
   // Local copies so a quick-created category/brand can appear in the
@@ -1211,6 +1219,23 @@ export function AdminProductForm({
               </div>
             </div>
             <input type="hidden" name="slug" value={slug} />
+          </AdminFormCard>
+
+          <AdminFormCard title="B2B / Wholesale pricing">
+            {mode === "edit" && product ? (
+              <AdminProductB2BFields
+                productId={product.id}
+                retailAmount={
+                  Number.parseInt(specialPrice.replace(/,/g, ""), 10) ||
+                  product.price.amount
+                }
+                initial={b2bTerms}
+              />
+            ) : (
+              <p className="text-xs text-neutral-500">
+                Save the product first to enable B2B / wholesale pricing.
+              </p>
+            )}
           </AdminFormCard>
 
           <AdminFormCard title="PC Builder">

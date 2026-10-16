@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Lock, Plus, Search } from "lucide-react";
+import { Lock, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClassName } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
   notifyError,
@@ -26,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminSearchInput } from "@/features/admin/admin-search-input";
 import { AdminLabelBadge } from "@/features/admin/labels/admin-label-badge";
 import { AdminLabelRowActions } from "@/features/admin/labels/admin-label-row-actions";
 import { AdminToggleSwitch } from "@/features/admin/products/admin-toggle-switch";
@@ -59,10 +59,6 @@ export function AdminLabelList({ data }: { data: AdminLabelListResult }) {
   const allSelected =
     selectableIds.length > 0 &&
     selectableIds.every((id) => selected.has(id));
-
-  function navigate(next: Partial<typeof params>) {
-    router.push(adminLabelsHref({ base: params, ...next, page: 1 }));
-  }
 
   function toggleSelectAll() {
     if (allSelected) {
@@ -194,26 +190,13 @@ export function AdminLabelList({ data }: { data: AdminLabelListResult }) {
 
         <div className="border-b border-neutral-100 bg-neutral-50/70 px-4 py-3 sm:px-5">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            <form
-              className="relative min-w-0"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                navigate({ q: String(form.get("q") ?? "") });
-              }}
-            >
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400"
-                aria-hidden
-              />
-              <Input
-                name="q"
-                type="search"
-                defaultValue={params.q}
-                placeholder="Search custom label ..."
-                className={cn(controlClass, "pl-9")}
-              />
-            </form>
+            <AdminSearchInput
+              defaultValue={params.q}
+              buildHref={(q) => adminLabelsHref({ base: params, q, page: 1 })}
+              placeholder="Search custom label ..."
+              aria-label="Search custom labels"
+              className={controlClass}
+            />
             <Select
               aria-label="Bulk action"
               defaultValue=""

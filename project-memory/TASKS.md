@@ -7899,3 +7899,149 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       before AD-376 touched it.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-378 Five-part operator request (Banglish, bundled in one message,
+      no instruction to split it into separate approvals): PDP B2B/EMI
+      redesign, admin B2B pricing made toggle+%-driven and relocated into
+      Catalog nav, an admin topbar shortcut, sitewide admin search made
+      live (no Enter), and the footer marquee given speed/length/bold
+      controls. No schema migration for any of it — every new field is
+      either a JSON-config addition or reuses an existing-but-unexposed
+      column.
+
+      Audited first rather than assuming any of these were unbuilt: B2B
+      (`B2BAccount`/`B2BProductPrice`) and EMI (`EmiSettings`) were already
+      real, not mock, per AD-257 — `project-memory/PROJECT_STATE.md`'s
+      "B2B... display-only mocks" line is stale (predates AD-257). Found two
+      real, concrete gaps instead: (1) the PDP's B2B register/sign-in prompt
+      rendered for every signed-out visitor on literally every product page,
+      regardless of whether that specific product had a `B2BProductPrice`
+      row — never gated on per-product eligibility at all; (2)
+      `B2BProductPrice.isActive` existed in schema but no admin UI ever set
+      it false — the only "disable" path was deleting the row outright,
+      losing the price.
+
+      **PDP** (`features/product/product-summary.tsx`,
+      `product-media-buy.tsx`, `app/(storefront)/product/[slug]/page.tsx`):
+      new `b2bEligible` (from `isProductB2BEligible()`, independent of the
+      viewer's own account) gates a relocated, icon-led wholesale block
+      (bigger `Tag` badge + the exact same 4-branch register/sign-in/
+      pending/active/suspended copy and links, unchanged, just moved) beside
+      "Special price" at the top of the price card — closing gap (1). The
+      slim bar that used to split EMI (left) / B2B (right) is now EMI-only:
+      "Avail EMI offer · View Plans" (opens the existing `ProductEmiTooltip`)
+      + "EMI starts from ৳X/month", both already-computed real figures
+      (`emiLowestMonthly`), not new math — satisfies the operator's "jevabe
+      emi manage hobe price oirokm e dynamic vabe ashbe" by reusing the
+      pricing that already existed rather than hardcoding anything. The
+      separate lower EMI checkbox widget (the actual cart opt-in) is
+      untouched — the two EMI mentions serve different purposes (teaser vs.
+      opt-in), not a duplicate.
+
+      **Admin B2B** (`lib/b2b/product-terms.ts`, `lib/admin/b2b-pricing.ts`,
+      `features/admin/customers/b2b-pricing-actions.ts`,
+      `features/admin/customers/admin-b2b-pricing.tsx`,
+      `features/admin/products/admin-product-b2b-fields.tsx` new,
+      `admin-product-form.tsx`, `app/(admin)/.../products/[id]/page.tsx`,
+      `lib/admin/nav.ts`): `saveB2BProductTerms` now takes an explicit
+      `enabled` boolean instead of the old "price <= 0 deletes the row"
+      convention — disabling sets `isActive: false` and *keeps* the stored
+      price for next time; every reader (`getB2BTermsForProductId`,
+      `isProductB2BEligible`, `listAdminB2BPricing`) already filtered on
+      `isActive: true`, so flipping it off removes the product from B2B
+      everywhere (storefront + the pricing list) immediately — closing gap
+      (2). New `getAdminB2BProductTerms`/`isProductB2BEligible` reads. Both
+      the bulk pricing list and a new per-product "B2B / Wholesale pricing"
+      card in the product edit form (edit mode only — a brand-new product
+      has no id for the row yet) now share the same toggle + a "Discount %"
+      input that live-computes the wholesale price via the existing
+      `computeWholesalePrice()` (no new pricing math) and shows "Save ৳X
+      (Y% off)" next to retail, exactly the operator's "joto % diche real
+      price theke ta minus hole jeno pashe discount price ta calculation
+      hoye dekha jay". The "B2B pricing" nav entry moved from Customers to
+      Catalog in `ADMIN_NAV_GROUPS` (presentational only — permission
+      checks aren't keyed to nav grouping, confirmed before moving); "B2B
+      accounts" (the approve/suspend workflow) stayed under Customers since
+      that's a different concern.
+
+      **Admin topbar** (`admin-topbar.tsx`): a "B2B & All products" shortcut
+      next to "Add new", linking straight to the bulk B2B pricing page —
+      which already doubles as an all-products-with-wholesale-pricing table,
+      so one link satisfies "all products and b2b pricing e chole ashe"
+      without inventing a second page.
+
+      **Admin search** (new `features/admin/admin-search-input.tsx` +
+      9 list pages: attributes/orders/customers/warranty/labels/notes/
+      brands/categories/flash-sales, plus the B2B pricing list myself):
+      replaced each page's uncontrolled `<form onSubmit>` (Enter-required)
+      with one shared debounced (350ms) component that auto-navigates as you
+      type — mirrors the storefront header search's debounce idea without a
+      suggestion dropdown, since these pages already render a filtered table
+      below the box. Delegated the 9 mechanical conversions to a background
+      agent (it hit a mid-session rate limit once, resumed cleanly — all 9
+      files done, verified against the exact shared component). One real
+      bug caught in review: the agent's first draft synced `value` from
+      `defaultValue` inside a `useEffect`, a `react-hooks/set-state-in-effect`
+      violation — fixed with the React-recommended "adjust state during
+      render" pattern (compare-and-set before the return, no effect) instead
+      of suppressing the lint rule. Two now-orphaned `navigate()` helpers
+      (admin-customer-list.tsx, admin-label-list.tsx) deleted after
+      confirming zero remaining callers.
+
+      **Footer marquee** (`lib/content/footer-types.ts`,
+      `footer-settings.ts`, `admin-footer-widgets-page.tsx`,
+      `marquee-notice-bar.tsx`): kept the existing `marqueeText` field name
+      (so a site with a notice already saved keeps it — plain text is valid
+      HTML as-is) but reinterpreted it as sanitized rich HTML via the
+      existing `sanitizeRichBody`/TipTap `RichTextEditor` (the "Summernote
+      system" ask — this codebase has TipTap, not Summernote, same job) —
+      the admin field is swapped from a plain `<Input>` to the real editor
+      everywhere else in admin uses for bold/links. New admin-configurable
+      `marqueeSpeedSeconds` (replaces the hardcoded `14s` in `.th-marquee-
+      track`, applied as an inline `animationDuration` style — a class alone
+      can't be overridden per-instance) and `marqueeMaxChars` (checked at
+      save time against the real plain-text length; over the limit is
+      rejected with a formError naming the limit, not silently truncated —
+      truncating sanitized HTML risks a broken mid-tag cut, rejecting does
+      not). The storefront bar now renders the sanitized HTML via
+      `dangerouslySetInnerHTML` (same trust boundary as blog bodies) with
+      `[&_p]:inline [&_p]:m-0` so a `<p>`-wrapped TipTap paragraph doesn't
+      break the single-line `whitespace-nowrap` scroll.
+
+      **Admin sidebar** (`admin-sidebar.tsx`): audited the "stays fixed at
+      top while scrolling" complaint against the actual code first — found
+      no `sticky`/`fixed` anywhere in `admin-sidebar.tsx` or `admin-shell.tsx`
+      (grepped both), so the fix is defensive rather than a confirmed root-
+      cause removal: the nav-group list's own `overflow-y-auto` scroll
+      region is a no-op on desktop (the `<aside>` has no height clamp there,
+      so it scrolls with the page already) but is load-bearing on the
+      mobile `<Sheet>` drawer, which *does* get a real `h-[calc(100vh-5rem)]`
+      clamp — removing it outright (my first pass) would have made a long
+      mobile menu unreachable, caught and reverted before commit. Kept the
+      scroll region, added `.th-scroll-hide` (already existed, reused, not
+      invented) so neither surface ever shows a native scrollbar.
+
+      Verified against real Postgres with a written-then-deleted script
+      (`scripts/tmp-verify-b2b-footer.ts`): enabled B2B on a real product
+      (10% off a real ৳11,500 toner → ৳10,350, exact), confirmed
+      `b2bEligible`/the bulk list/the pricing-resolution reader all flip
+      true→false correctly on disable while the stored price survives,
+      cleaned up to the exact original state after. Footer: saved real bold
+      HTML + custom speed/max-chars, confirmed round-trip, confirmed a
+      `<script>` injection attempt sanitized down to `<p>safe</p>`, confirmed
+      an over-limit save rejected with the expected formError, restored the
+      original config exactly. `tsc --noEmit` 0 errors and a full `next
+      build` both clean (dev server was not running at the time — checked
+      first, per the standing "never build while dev is live" rule). Real
+      dev server + curl against a real in-stock product
+      (`lumen-14-office-laptop`, already B2B-eligible in this dev DB):
+      confirmed the relocated wholesale icon block and its links render;
+      EMI was off by default in this DB, so temporarily enabled it
+      (`scripts/tmp-check-emi.ts`, deleted after) and confirmed "Avail EMI
+      offer · View Plans", "via City Bank", and "EMI starts from ৳6,575"
+      (the real figure for that product) all render, then reverted EMI back
+      to disabled, its exact original state. Admin routes still correctly
+      307-redirect signed-out (auth gating unaffected).
+      DEPLOY: no schema migration — every new field lives in an existing
+      JSON config column or an existing-but-unexposed Boolean. `git pull
+      origin main`, `npm run build`, `pm2 restart techno-house`.

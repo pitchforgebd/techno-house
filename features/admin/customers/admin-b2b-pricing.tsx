@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
@@ -12,35 +12,64 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminSearchInput } from "@/features/admin/admin-search-input";
+import { AdminToggleSwitch } from "@/features/admin/products/admin-toggle-switch";
 import { saveB2BProductTermsAction } from "@/features/admin/customers/b2b-pricing-actions";
 import type {
   AdminB2BPricingResult,
   AdminB2BPricingRow,
 } from "@/lib/admin/b2b-pricing";
+import { computeWholesalePrice } from "@/lib/b2b/pricing";
 import { formatMoney } from "@/lib/format/currency";
 
 function PricingRow({ row }: { row: AdminB2BPricingRow }) {
+  const [enabled, setEnabled] = useState(row.enabled);
   const [price, setPrice] = useState(
     row.b2bAmount != null ? String(row.b2bAmount) : "",
   );
+  const [percent, setPercent] = useState("");
   const [minQty, setMinQty] = useState(String(row.minQuantity));
   const [pending, startTransition] = useTransition();
+
+  const priceAmount = Number.parseInt(price, 10) || 0;
+  // % is a one-way convenience that writes into the price field — the price
+  // is what actually persists, so typing a price directly still works and
+  // the preview below always reflects whichever was edited last.
+  function applyPercent(nextPercent: string) {
+    setPercent(nextPercent);
+    const pct = Number.parseFloat(nextPercent);
+    if (Number.isFinite(pct) && pct >= 0 && pct <= 100) {
+      setPrice(
+        String(
+          computeWholesalePrice({ amount: row.retailAmount, currency: "BDT" }, pct)
+            .amount,
+        ),
+      );
+    }
+  }
+
+  const savings = row.retailAmount - priceAmount;
+  const savedPercent =
+    priceAmount > 0 && savings > 0
+      ? Math.round((savings / row.retailAmount) * 100)
+      : null;
 
   function save() {
     startTransition(async () => {
       const result = await saveB2BProductTermsAction({
         productId: row.productId,
-        priceAmount: Number.parseInt(price, 10) || 0,
+        priceAmount,
         minQuantity: Number.parseInt(minQty, 10) || 1,
+        enabled,
       });
       if (!result.ok) {
         notifyError(result.formError);
         return;
       }
       notifySuccess(
-        Number.parseInt(price, 10) > 0
-          ? `Wholesale terms saved for ${row.name}`
-          : `Wholesale price cleared for ${row.name} — the account discount applies`,
+        enabled
+          ? `Wholesale pricing enabled for ${row.name}`
+          : `Wholesale pricing disabled for ${row.name}`,
       );
     });
   }
@@ -57,21 +86,48 @@ function PricingRow({ row }: { row: AdminB2BPricingRow }) {
         {formatMoney({ amount: row.retailAmount })}
       </TableCell>
       <TableCell>
-        <Input
-          type="number"
-          min={0}
-          value={price}
-          placeholder="Account %"
-          aria-label={`Wholesale price for ${row.name}`}
-          onChange={(event) => setPrice(event.target.value)}
-          className="h-9 w-28 tabular-nums"
+        <AdminToggleSwitch
+          label={`Enable B2B pricing for ${row.name}`}
+          checked={enabled}
+          onChange={setEnabled}
         />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1.5">
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            value={percent}
+            placeholder="%"
+            aria-label={`Discount percent for ${row.name}`}
+            onChange={(event) => applyPercent(event.target.value)}
+            disabled={!enabled}
+            className="h-9 w-16 tabular-nums"
+          />
+          <Input
+            type="number"
+            min={0}
+            value={price}
+            placeholder="Price"
+            aria-label={`Wholesale price for ${row.name}`}
+            onChange={(event) => setPrice(event.target.value)}
+            disabled={!enabled}
+            className="h-9 w-24 tabular-nums"
+          />
+        </div>
+        {enabled && savedPercent !== null ? (
+          <p className="mt-1 text-caption text-success">
+            Save {formatMoney({ amount: savings })} ({savedPercent}% off)
+          </p>
+        ) : null}
       </TableCell>
       <TableCell>
         <Input
           type="number"
           min={1}
           value={minQty}
+          disabled={!enabled}
           aria-label={`Minimum quantity for ${row.name}`}
           onChange={(event) => setMinQty(event.target.value)}
           className="h-9 w-24 tabular-nums"
@@ -87,6 +143,12 @@ function PricingRow({ row }: { row: AdminB2BPricingRow }) {
 }
 
 export function AdminB2BPricing({ data }: { data: AdminB2BPricingResult }) {
+  const buildHref = useMemo(
+    () => (q: string) =>
+      `/admin/customers/b2b/pricing${q ? `?q=${encodeURIComponent(q)}` : ""}`,
+    [],
+  );
+
   return (
     <div className="space-y-5">
       <div>
@@ -94,24 +156,23 @@ export function AdminB2BPricing({ data }: { data: AdminB2BPricingResult }) {
           B2B product pricing
         </h1>
         <p className="mt-1 text-caption text-text-muted">
-          Wholesale price and minimum order quantity per product. Only verified
-          (active) B2B accounts see these. Leave the price empty to fall back to
-          the account&apos;s discount percentage.
+          Toggle a product into B2B to set its wholesale price (type a
+          discount % for an instant calculated price, or type the price
+          directly) and minimum order quantity. Only verified (active) B2B
+          accounts ever see these, and a product shows its wholesale prompt
+          on the storefront only while this toggle is on. Turning it off
+          keeps the numbers for next time but removes it from B2B
+          everywhere immediately.
         </p>
       </div>
 
-      <form method="get" className="flex max-w-md gap-2" role="search">
-        <Input
-          name="q"
-          defaultValue={data.q}
-          placeholder="Search product name or SKU"
-          aria-label="Search products"
-          className="h-10"
-        />
-        <Button type="submit" size="sm" variant="ghost" className="border border-border">
-          Search
-        </Button>
-      </form>
+      <AdminSearchInput
+        defaultValue={data.q}
+        buildHref={buildHref}
+        placeholder="Search product name or SKU"
+        aria-label="Search products"
+        formClassName="max-w-md"
+      />
 
       <div className="overflow-x-auto rounded-lg border border-border bg-surface">
         <Table>
@@ -119,7 +180,8 @@ export function AdminB2BPricing({ data }: { data: AdminB2BPricingResult }) {
             <TableRow>
               <TableHeader scope="col">Product</TableHeader>
               <TableHeader scope="col">Retail</TableHeader>
-              <TableHeader scope="col">Wholesale price</TableHeader>
+              <TableHeader scope="col">B2B</TableHeader>
+              <TableHeader scope="col">Discount % / Wholesale price</TableHeader>
               <TableHeader scope="col">Min qty</TableHeader>
               <TableHeader scope="col">
                 <span className="sr-only">Save</span>
