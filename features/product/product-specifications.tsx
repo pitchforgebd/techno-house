@@ -11,33 +11,47 @@ type ProductSpecificationsProps = {
   productName: string;
 };
 
-type FlatSpecRow = {
-  groupTitle: string;
-  groupRowSpan: number;
-  isGroupStart: boolean;
-  key: string;
-  value: string;
-  rowKey: string;
-};
+/** Total rows across every group — what "N more" counts against. */
+function totalRowCount(groups: SpecGroup[]): number {
+  return groups.reduce((sum, group) => sum + group.rows.length, 0);
+}
 
-function flattenGroupedRows(groups: SpecGroup[]): FlatSpecRow[] {
-  const out: FlatSpecRow[] = [];
+/** Groups truncated to the first `limit` rows overall, group order preserved,
+ * empty groups (including ones emptied entirely by the cap) dropped. */
+function truncatedGroups(groups: SpecGroup[], limit: number): SpecGroup[] {
+  const out: SpecGroup[] = [];
+  let remaining = limit;
   for (const group of groups) {
+    if (remaining <= 0) {
+      break;
+    }
     if (group.rows.length === 0) {
       continue;
     }
-    group.rows.forEach((row, index) => {
-      out.push({
-        groupTitle: group.title,
-        groupRowSpan: group.rows.length,
-        isGroupStart: index === 0,
-        key: row.key,
-        value: row.value,
-        rowKey: `${group.title}-${index}-${row.key}`,
-      });
-    });
+    out.push({ ...group, rows: group.rows.slice(0, remaining) });
+    remaining -= group.rows.length;
   }
   return out;
+}
+
+type FlatRow = {
+  key: string;
+  value: string;
+  /** Set only on a group's first row — renders that group's header band. */
+  groupTitle: string | null;
+};
+
+/** Groups flattened into one row list the table body can `.map()` by plain
+ * index — a running mutable counter inside a JSX `.map()` callback trips the
+ * react-hooks "no reassignment during render" rule. */
+function flattenForDisplay(groups: SpecGroup[]): FlatRow[] {
+  return groups.flatMap((group) =>
+    group.rows.map((row, index) => ({
+      key: row.key,
+      value: row.value,
+      groupTitle: index === 0 ? group.title : null,
+    })),
+  );
 }
 
 export function ProductSpecifications({
@@ -45,66 +59,53 @@ export function ProductSpecifications({
   productName,
 }: ProductSpecificationsProps) {
   const [expanded, setExpanded] = useState(false);
-  const allRows = flattenGroupedRows(groups);
+  const nonEmptyGroups = groups.filter((group) => group.rows.length > 0);
 
-  if (allRows.length === 0) {
+  if (nonEmptyGroups.length === 0) {
     return (
-      <p className="border border-border bg-surface px-4 py-6 text-body text-text-muted">
-        Specifications for {productName} are not listed yet.
-      </p>
+      <div className="space-y-3">
+        <h2 className="text-xl font-bold text-text">Specification</h2>
+        <p className="border border-border bg-surface px-4 py-6 text-body text-text-muted">
+          Specifications for {productName} are not listed yet.
+        </p>
+      </div>
     );
   }
 
-  const hiddenCount = Math.max(0, allRows.length - INITIAL_VISIBLE_ROWS);
-  const visibleRows = expanded
-    ? allRows
-    : allRows.slice(0, INITIAL_VISIBLE_ROWS);
-
-  // When collapsed mid-group, fix rowspan so the table stays valid.
-  const displayRows = visibleRows.map((row, index) => {
-    if (!row.isGroupStart) {
-      return { ...row, showGroupCell: false, span: 1 };
-    }
-    let span = 1;
-    for (let i = index + 1; i < visibleRows.length; i += 1) {
-      const next = visibleRows[i];
-      if (!next || next.groupTitle !== row.groupTitle || next.isGroupStart) {
-        break;
-      }
-      span += 1;
-    }
-    return { ...row, showGroupCell: true, span };
-  });
+  const totalRows = totalRowCount(nonEmptyGroups);
+  const hiddenCount = Math.max(0, totalRows - INITIAL_VISIBLE_ROWS);
+  const displayGroups = expanded
+    ? nonEmptyGroups
+    : truncatedGroups(nonEmptyGroups, INITIAL_VISIBLE_ROWS);
+  // One flat list, not nested per-group maps, so the zebra stripe (by plain
+  // array index) reads as one continuous table rather than restarting at
+  // each group's own first row.
+  const flatRows = flattenForDisplay(displayGroups);
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto border border-border bg-surface">
-        <table className="w-full min-w-[20rem] border-collapse text-left">
-          <tbody>
-            {displayRows.map((row) => (
-              <tr key={row.rowKey} className="border-b border-border last:border-b-0">
-                {row.showGroupCell ? (
-                  <th
-                    scope="rowgroup"
-                    rowSpan={row.span}
-                    className="w-[22%] min-w-[5.5rem] border-r border-border bg-surface-muted/70 px-3 py-2.5 align-top text-label font-semibold text-text sm:px-4"
-                  >
-                    {row.groupTitle}
-                  </th>
-                ) : null}
-                <th
-                  scope="row"
-                  className="w-[28%] min-w-[7rem] border-r border-border px-3 py-2.5 align-top text-label font-semibold text-text sm:px-4"
-                >
-                  {row.key}
-                </th>
-                <td className="px-3 py-2.5 align-top text-body text-text-muted sm:px-4">
-                  {row.value}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <h2 className="text-xl font-bold text-text">Specification</h2>
+      <div className="overflow-hidden rounded-sm border border-border bg-surface">
+        {flatRows.map((row, index) => (
+          <div key={`${row.groupTitle ?? "cont"}-${index}-${row.key}`}>
+            {row.groupTitle ? (
+              <div className="bg-primary-soft px-4 py-2.5 text-label font-bold text-primary sm:px-5">
+                {row.groupTitle}
+              </div>
+            ) : null}
+            <div
+              className={cn(
+                "flex flex-col gap-1 border-t border-border px-4 py-2.5 sm:flex-row sm:gap-6 sm:px-5",
+                index % 2 === 1 && "bg-surface-muted/50",
+              )}
+            >
+              <span className="shrink-0 text-label text-text-muted sm:w-1/4">
+                {row.key}
+              </span>
+              <span className="text-body text-text">{row.value}</span>
+            </div>
+          </div>
+        ))}
       </div>
 
       {hiddenCount > 0 ? (

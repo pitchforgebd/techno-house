@@ -47,6 +47,7 @@
     "test:product-quick-edit": "tsx scripts/catalog/check-product-quick-edit.ts",
     "test:product-coming-soon": "tsx scripts/catalog/check-product-coming-soon.ts",
     "test:catalog-availability-filter": "tsx scripts/catalog/check-catalog-availability-filter.ts",
+    "test:product-specifications": "tsx scripts/catalog/check-product-specifications.ts",
     "catalog:export": "tsx scripts/deploy/export-catalog.ts",
     "catalog:import": "tsx scripts/deploy/import-catalog.ts",
     "pcbuilder:bootstrap-rules": "tsx scripts/deploy/create-pc-builder-rules.ts",

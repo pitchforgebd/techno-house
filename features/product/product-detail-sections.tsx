@@ -115,8 +115,8 @@ export function ProductDetailSections({
 
   return (
     <section ref={containerRef} aria-label="Product details">
-      <div className="flex flex-wrap" role="list">
-        {sections.map((section, index) => {
+      <div className="flex flex-wrap gap-2" role="list">
+        {sections.map((section) => {
           const active = section.id === activeId;
           return (
             <button
@@ -124,11 +124,10 @@ export function ProductDetailSections({
               type="button"
               aria-current={active ? "true" : undefined}
               className={cn(
-                "min-h-11 min-w-[7.5rem] border border-border px-4 text-label font-medium transition-colors sm:min-w-[8.5rem]",
-                index > 0 && "-ml-px",
+                "min-h-11 min-w-[7.5rem] rounded-sm border px-4 text-label font-semibold transition-colors sm:min-w-[8.5rem]",
                 active
-                  ? "relative z-[1] border-text bg-text text-primary-foreground"
-                  : "bg-surface text-text hover:bg-surface-muted",
+                  ? "border-danger bg-danger text-white"
+                  : "border-border bg-surface text-text hover:border-danger/40 hover:bg-surface-muted",
               )}
               onClick={() => jumpTo(section.id)}
             >

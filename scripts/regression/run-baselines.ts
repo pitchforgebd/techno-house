@@ -30,6 +30,7 @@ const SUITES: { name: string; script: string }[] = [
     name: "catalog-availability-filter",
     script: "test:catalog-availability-filter",
   },
+  { name: "product-specifications", script: "test:product-specifications" },
 ];
 
 function main(): void {

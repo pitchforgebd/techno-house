@@ -7800,3 +7800,78 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       main`, `npx prisma generate`, `npm run db:migrate:deploy`,
       `npm run build`, `pm2 restart techno-house` (pg_dump first, per the
       standing rule).
+
+- [x] AD-376 Specifications section redesigned to match a reference
+      screenshot — a full-width tinted band per spec group instead of a
+      narrow rowspan column, a "Specification" title above the table,
+      zebra-striped rows — and the Specifications/Details/Q&A/Review
+      jump-nav restyled as rounded pills with a red active tab. No schema
+      change.
+      Operator request: one reference screenshot of a competitor's
+      Specification tab/table, with "specification section ta evabe hobe,
+      title ta upore hobe, mane evabe shundor vabe design koro" ("the
+      specification section will be like this, the title will be on top —
+      design it beautifully like this").
+      `features/product/product-specifications.tsx` — rewritten: the old
+      3-column `<table>` (group-name column, rowspan-merged down the left,
+      beside key/value columns) is gone, replaced by stacked `<div>`s — a
+      full-width `bg-primary-soft` band per group (not a new colour; the
+      same tint already used for icon tiles elsewhere) followed by its
+      label/value rows, zebra-striped continuously across group boundaries
+      (not reset to white at each new group). Kept unchanged: the
+      `INITIAL_VISIBLE_ROWS = 10` cap and the "Show additional information
+      (N more)" / "Show less" toggle, the empty-state message, the
+      `productName` prop. Internally restructured from "flatten once, track
+      rowSpan while re-grouping for a table" to "flatten groups into one row
+      list, a `groupTitle` field marks a group's first row" — simpler now
+      that there is no `rowSpan` to compute, and avoids a real ESLint catch
+      along the way: a first attempt zebra-striped rows with `let rowIndex =
+      0` mutated inside the JSX `.map()` callback, which the project's
+      `react-hooks` lint config flags ("Cannot reassign variable after
+      render completes") — fixed by computing the flat row list with its
+      own array index instead of a hand-rolled mutable counter.
+      `features/product/product-detail-sections.tsx` — only the jump-nav
+      buttons' own classes changed (rounded-sm, a real gap between buttons
+      instead of the old flush/overlapping `-ml-px` border trick, active =
+      `bg-danger` red instead of the old black `bg-text`); the
+      `IntersectionObserver` active-section tracking, `data-product-section`
+      markers and `scrollIntoView` jump logic are untouched. Deliberately
+      scoped to ONLY the Specifications section's own content and the
+      shared tab strip above it (which affects Details/Q&A/Review too, since
+      they share one strip) — did not touch `ProductSectionHeading` (the
+      angled black ribbon used for the Details/Q&A/Review/Similar-products
+      headings), so those three keep their existing look; did not rename
+      any other tab ("Details" stays "Details", not "Description" as in the
+      reference) — the operator's own wording named the specification
+      section specifically.
+      Verified: `tsc` 0, `eslint` clean (confirmed it actually catches the
+      mutable-counter pattern above, not just assumed), `next build` ok. New
+      suite `test:product-specifications` (10 checks) added to the
+      regression run (now 19 suites, all pass). Mutation-tested: 10
+      deliberate breakages via a throwaway script (the title text, the
+      group-band colour, a group header leaking onto every row instead of
+      just the first, the zebra stripe, the truncation math, the "Show
+      additional information" label, the empty-state message, the tab gap,
+      the active-tab colour, the scrollIntoView behaviour) — 10/10 caught on
+      the first pass. Real browser (headless Chrome, a production build, a
+      real product with two spec groups): screenshot confirms the rounded
+      red "Specifications" active tab beside white "Details"/"Review" tabs,
+      and below it the "Specification" title, "Performance"/"Display" group
+      bands in the lavender tint, and continuous zebra striping across both
+      groups — closely matching the reference. Also drove a real click on
+      the "Review" tab and read its computed background colour back
+      (`rgb(180, 35, 24)`, exactly `--color-danger`), confirming the active-
+      tab styling actually applies at runtime, not just in source.
+      Honest notes: (1) the "Show additional information (N more)" expand
+      path itself was NOT visually screenshotted — no product in the current
+      dev catalogue has more than ~10 spec rows, so the toggle never
+      actually appears there right now; its logic is covered instead by 5 of
+      the 10 mutation-tested checks (the truncation math, the label, the
+      toggle behaviour), which is the same confidence level the pre-existing
+      component's own tests relied on. (2) The reference's "Description"
+      tab name and its "Questions (1)"/"Reviews (1)" counts in parentheses
+      were not replicated — out of scope, the operator's ask was specifically
+      about the specification section/title, not a tab-rename or adding
+      live counts to the other tab labels.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

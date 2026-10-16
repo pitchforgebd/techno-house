@@ -2380,7 +2380,13 @@ Idle. Manual testing support.
 None. Do not start Phase 18. Continue mock retirement only if operator asks.
 
 ## Last Updated
-2026-10-16 (AD-375 — Pre Order added as a second, mutually-exclusive availability
+2026-10-16 (AD-376 — the product page's Specifications section redesigned to match a
+competitor reference: a full-width tinted band per spec group (not the old narrow
+rowspan column), a "Specification" title above the table, continuous zebra striping
+across group boundaries; the shared Specifications/Details/Q&A/Review jump-nav tabs
+restyled as rounded pills with a red active tab (Details/Q&A/Review's own headings
+further down the page are untouched). No schema change. New regression suite (now
+19 total), 10/10 mutations caught. AD-375 — Pre Order added as a second, mutually-exclusive availability
 flag next to Coming Soon (new `Product.isPreOrder` column — SCHEMA CHANGE, migration
 applied); price is now hidden sitewide for Up Coming/out-of-stock products (not
 Pre Order, which keeps its price) — independently implemented across the single
@@ -2436,4 +2442,4 @@ storefront jump-up animation on buttons/icons/add to cart/alerts (storefront onl
 AD-363 product Review and Q&A usable without signing in; AD-362 Add to cart beside
 the product image; AD-361 product page in the Ryans structure; AD-359 compare
 search before a type is chosen; AD-358 searchable compare picker; AD-357 homepage
-sections chosen by staff. AD-344 to AD-375 are recorded in TASKS.md only.)
+sections chosen by staff. AD-344 to AD-376 are recorded in TASKS.md only.)
