@@ -13,6 +13,7 @@ import {
   ChevronDown,
   LogOut,
   Building2,
+  Package,
 } from "lucide-react";
 import { ADMIN_DASHBOARD_TABS } from "@/lib/admin/admin-chrome";
 import { AdminOrderAlertBell } from "@/features/admin/admin-order-alert-bell";
@@ -179,6 +180,10 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
   const canViewSupport = canAccessAdminPath("/admin/support", permissions);
   const canViewContacts = canAccessAdminPath("/admin/contacts", permissions);
   const canAddProduct = hasPermission(session, "product.add");
+  const canViewProductsShortcut = canAccessAdminPath(
+    "/admin/products",
+    permissions,
+  );
   const canViewB2BShortcut = canAccessAdminPath(
     "/admin/customers/b2b/pricing",
     permissions,
@@ -230,14 +235,25 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
             </Link>
           ) : null}
 
+          {canViewProductsShortcut ? (
+            <Link
+              href="/admin/products"
+              title="All products"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-neutral-200 px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            >
+              <Package className="size-4" aria-hidden />
+              <span className="hidden sm:inline">All products</span>
+            </Link>
+          ) : null}
+
           {canViewB2BShortcut ? (
             <Link
               href="/admin/customers/b2b/pricing"
-              title="All products & B2B pricing"
+              title="B2B pricing"
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-neutral-200 px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
             >
               <Building2 className="size-4" aria-hidden />
-              <span className="hidden sm:inline">B2B & All products</span>
+              <span className="hidden sm:inline">B2B</span>
             </Link>
           ) : null}
 
