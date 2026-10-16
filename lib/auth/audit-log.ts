@@ -73,6 +73,7 @@ export const AUDIT_ACTIONS = {
   ORDER_UPDATE: "order.update",
   /// A sweep cancelled an abandoned checkout and returned its units.
   ORDER_STALE_RELEASE: "order.stale_release",
+  ORDER_ITEM_DISCOUNT_APPLY: "order.item_discount.apply",
   MEDIA_UPLOAD: "media.upload",
   MEDIA_UPDATE: "media.update",
   MEDIA_DELETE: "media.delete",

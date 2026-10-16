@@ -368,6 +368,126 @@ export async function requestRefundForUser(
   return { ok: true, id: created.id, code: created.code };
 }
 
+/**
+ * Admin-initiated refund, already approved — no customer request/approval
+ * step, since the admin applying it (via an order-item discount, AD-379) is
+ * the one deciding it should happen. Mirrors `requestRefundForUser`'s
+ * locking/remaining-amount safety (same open-refund guard, same partial
+ * unique index backstop) but skips the refund-window and CUSTOMER-reason
+ * checks, neither of which apply to a staff-initiated adjustment. Returns an
+ * APPROVED refund — the caller still has to call `completeRefund()` to
+ * actually move money; this function only creates the record.
+ */
+export async function createAdminApprovedRefund(input: {
+  orderId: string;
+  amount: number;
+  reasonText: string;
+  actor: RefundActor;
+}): Promise<RefundMutationResult> {
+  if (!usesRefundDatabase()) {
+    return fail(REFUND_DB_REQUIRED);
+  }
+  const prisma = getPrisma();
+  const order = await prisma.order.findUnique({
+    where: { id: input.orderId },
+    include: {
+      payments: { orderBy: { createdAt: "asc" }, take: 1 },
+    },
+  });
+  if (!order || !order.payments[0]) {
+    return fail("Order was not found.");
+  }
+  const payment = order.payments[0];
+  if (payment.status !== "PAID" && payment.status !== "PARTIALLY_REFUNDED") {
+    return fail("Only a paid order can be refunded.");
+  }
+
+  const remaining = await refundableRemaining(order.id, payment.amount);
+  if (
+    !Number.isInteger(input.amount) ||
+    input.amount < 1 ||
+    input.amount > remaining
+  ) {
+    return fail("Refund amount is not valid.");
+  }
+
+  const reasonText = input.reasonText.trim().slice(0, REASON_TEXT_MAX);
+  const code = createRefundCode();
+
+  let created: { id: string; code: string };
+  try {
+    created = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${order.id} FOR UPDATE`;
+
+      const open = await tx.refund.findFirst({
+        where: {
+          orderId: order.id,
+          status: { in: ["REQUESTED", "APPROVED"] },
+        },
+        select: { id: true },
+      });
+      if (open) {
+        throw new RefundRequestError(
+          "A refund is already in progress for this order.",
+        );
+      }
+
+      return tx.refund.create({
+        data: {
+          code,
+          orderId: order.id,
+          paymentId: payment.id,
+          requestedById: null,
+          approvedById: input.actor.staffId,
+          amount: input.amount,
+          currency: "BDT",
+          status: "APPROVED",
+          channel: channelForProvider(payment.provider),
+          payoutStatus: "PENDING",
+          reasonText: reasonText || null,
+        },
+        select: { id: true, code: true },
+      });
+    });
+  } catch (error) {
+    if (error instanceof RefundRequestError) {
+      return fail(error.message);
+    }
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      return fail("A refund is already in progress for this order.");
+    }
+    throw error;
+  }
+
+  await addEvent({
+    refundId: created.id,
+    actorType: "STAFF",
+    actorName: input.actor.fullName,
+    message: `Refund ${created.code} created and approved by staff for ${input.amount} BDT.`,
+  });
+  await writeAuditLog({
+    actorType: "STAFF",
+    actorId: input.actor.staffId,
+    actorLabel: input.actor.email,
+    action: AUDIT_ACTIONS.REFUND_APPROVE,
+    entityType: "Refund",
+    entityId: created.id,
+    metadata: {
+      code: created.code,
+      orderNumber: order.number,
+      amount: input.amount,
+      source: "order_item_discount",
+    },
+    ip: input.actor.ip,
+  });
+  return { ok: true, id: created.id, code: created.code };
+}
+
 export async function decideRefund(input: {
   refundId: string;
   next: "APPROVED" | "REJECTED";

@@ -8,6 +8,8 @@ import {
   invoiceQrSourceFromInvoice,
   invoiceQrSourceFromOrder,
 } from "@/lib/orders/invoice-qr";
+import { hasPermission } from "@/lib/auth/permissions";
+import { requireStaffSession } from "@/lib/auth/staff-session";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -22,6 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function AdminOrderDetailPage({ params }: Props) {
+  const session = await requireStaffSession();
   const { id } = await params;
   const order = await getAdminOrderById(id);
   if (!order) {
@@ -33,5 +36,11 @@ export default async function AdminOrderDetailPage({ params }: Props) {
       ? invoiceQrSourceFromInvoice(invoice)
       : invoiceQrSourceFromOrder(order),
   );
-  return <AdminOrderDetail order={order} qrDataUrl={qrDataUrl} />;
+  return (
+    <AdminOrderDetail
+      order={order}
+      qrDataUrl={qrDataUrl}
+      canApplyItemDiscounts={hasPermission(session, "refunds.process")}
+    />
+  );
 }

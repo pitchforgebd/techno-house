@@ -15,6 +15,10 @@ export type AdminInvoiceLine = {
   totalAmount: number;
   colorName: string | null;
   colorHex: string | null;
+  /** Post-placement per-line discount (AD-379) — 0 unless an admin applied
+   * one. The line's own "price actually charged" is `totalAmount -
+   * discountAmount`, shown instead of `totalAmount` whenever it's set. */
+  discountAmount: number;
 };
 
 export type AdminInvoice = {
@@ -35,6 +39,9 @@ export type AdminInvoice = {
   subtotalAmount: number;
   discountAmount: number;
   adminDiscountAmount: number;
+  /** Sum of every line's `discountAmount` (AD-379) — computed, not stored;
+   * 0 unless an admin applied per-item discounts to this order. */
+  itemDiscountTotal: number;
   shippingAmount: number;
   taxAmount: number;
   serviceChargeAmount: number;
@@ -127,6 +134,7 @@ export async function getAdminOrderInvoice(
           totalAmount: true,
           colorName: true,
           colorHex: true,
+          discountAmount: true,
         },
       },
       payments: {
@@ -167,6 +175,10 @@ export async function getAdminOrderInvoice(
     subtotalAmount: row.subtotalAmount,
     discountAmount: row.discountAmount,
     adminDiscountAmount: row.adminDiscountAmount,
+    itemDiscountTotal: row.items.reduce(
+      (sum, item) => sum + item.discountAmount,
+      0,
+    ),
     shippingAmount: row.shippingAmount,
     taxAmount: row.taxAmount,
     serviceChargeAmount: row.serviceChargeAmount,

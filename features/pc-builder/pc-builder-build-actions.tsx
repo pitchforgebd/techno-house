@@ -1,7 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import type { MouseEvent } from "react";
 import { Download, Printer, Share2 } from "lucide-react";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
+import { useCustomerSession } from "@/features/account/customer-session-provider";
+import { loginHref } from "@/lib/account/return-path";
 import { cn } from "@/lib/cn";
 
 const actionClassName =
@@ -28,7 +32,23 @@ export function PcBuilderBuildActions({
   sharePath: string | null;
   buildName: string;
 }) {
+  const router = useRouter();
+  const session = useCustomerSession();
   const enabled = Boolean(sharePath);
+
+  // Viewing/printing a shared build stays open to anyone with the link —
+  // only the actual file download requires an account (AD-379: "share,
+  // save, download" all need sign-in). Caught here, client-side, rather
+  // than left to the PDF route's own redirect, so a guest gets a clean
+  // "sign in" hand-off instead of the browser's own handling of an anchor's
+  // `download` hint landing on a redirected HTML page.
+  function handleDownloadClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (session || !sharePath) {
+      return;
+    }
+    event.preventDefault();
+    router.push(loginHref(sharePath));
+  }
 
   async function handleShare() {
     if (!sharePath) {
@@ -73,7 +93,12 @@ export function PcBuilderBuildActions({
 
   return (
     <div className="grid grid-cols-3 gap-2 print:hidden">
-      <a href={`${sharePath}/pdf`} download className={actionClassName}>
+      <a
+        href={`${sharePath}/pdf`}
+        download
+        onClick={handleDownloadClick}
+        className={actionClassName}
+      >
         <Download aria-hidden className="size-5 text-primary" strokeWidth={1.75} />
         <span className={labelClassName}>Download</span>
       </a>

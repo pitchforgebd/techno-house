@@ -44,6 +44,11 @@ export function renderInvoiceHtml(
       const sub = [line.colorName ? `Colour: ${line.colorName}` : null, line.sku]
         .filter(Boolean)
         .join(" · ");
+      const finalAmount = line.totalAmount - line.discountAmount;
+      const totalCell =
+        line.discountAmount > 0
+          ? `<span class="line-was">${formatMoney({ amount: line.totalAmount })}</span><br/>${formatMoney({ amount: finalAmount })}`
+          : formatMoney({ amount: line.totalAmount });
       return `
         <tr>
           <td class="cell num">${index + 1}</td>
@@ -54,7 +59,7 @@ export function renderInvoiceHtml(
           <td class="cell num">${line.quantity.toFixed(2)}</td>
           <td class="cell">Pcs.</td>
           <td class="cell money">${formatMoney({ amount: line.unitAmount })}</td>
-          <td class="cell money">${formatMoney({ amount: line.totalAmount })}</td>
+          <td class="cell money">${totalCell}</td>
         </tr>`;
     })
     .join("");
@@ -121,6 +126,7 @@ export function renderInvoiceHtml(
   .cell { border: 1px solid #d1d5db; padding: 6px 8px; vertical-align: top; }
   .cell.num { text-align: center; width: 40px; }
   .cell.money { text-align: right; white-space: nowrap; }
+  .line-was { color: #9ca3af; text-decoration: line-through; font-size: 11px; }
   .product-name { font-weight: 600; }
   .product-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
   .totals { margin-top: 10px; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
@@ -187,6 +193,7 @@ export function renderInvoiceHtml(
         <div class="row"><span>Subtotal</span><span>${formatMoney({ amount: invoice.subtotalAmount })}</span></div>
         ${invoice.discountAmount > 0 ? `<div class="row"><span>Discount</span><span>−${formatMoney({ amount: invoice.discountAmount })}</span></div>` : ""}
         ${invoice.adminDiscountAmount > 0 ? `<div class="row"><span>Confirmation discount</span><span>−${formatMoney({ amount: invoice.adminDiscountAmount })}</span></div>` : ""}
+        ${invoice.itemDiscountTotal > 0 ? `<div class="row"><span>Item discounts</span><span>−${formatMoney({ amount: invoice.itemDiscountTotal })}</span></div>` : ""}
         <div class="row"><span>Shipping</span><span>${formatMoney({ amount: invoice.shippingAmount })}</span></div>
         ${invoice.serviceChargeAmount > 0 ? `<div class="row"><span>Service charge</span><span>${formatMoney({ amount: invoice.serviceChargeAmount })}</span></div>` : ""}
         ${invoice.taxAmount > 0 ? `<div class="row"><span>Tax / VAT</span><span>${formatMoney({ amount: invoice.taxAmount })}</span></div>` : ""}

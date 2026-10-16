@@ -20,6 +20,7 @@ import {
   notifySuccess,
 } from "@/components/ui/feedback-provider";
 import { updateAdminOrderAction } from "@/features/admin/orders/order-actions";
+import { AdminOrderItemDiscounts } from "@/features/admin/orders/admin-order-item-discounts";
 import { OrderInvoiceQr } from "@/features/admin/orders/order-invoice-qr";
 import {
   MOCK_DELIVERY_BOYS,
@@ -55,9 +56,11 @@ function fulfillmentLabel(status: OrderFulfillmentStatus) {
 export function AdminOrderDetail({
   order,
   qrDataUrl,
+  canApplyItemDiscounts,
 }: {
   order: AdminOrder;
   qrDataUrl: string;
+  canApplyItemDiscounts: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -281,6 +284,14 @@ export function AdminOrderDetail({
             </p>
           </div>
         ) : null}
+
+        {canApplyItemDiscounts ? (
+          <AdminOrderItemDiscounts
+            orderId={order.id}
+            orderNumber={order.number}
+            lines={order.lines}
+          />
+        ) : null}
       </div>
 
       <div className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">
@@ -390,9 +401,26 @@ export function AdminOrderDetail({
                     {formatMoney(line.unitPrice)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {formatMoney({
-                      amount: line.unitPrice.amount * line.quantity,
-                    })}
+                    {line.discountAmount && line.discountAmount > 0 ? (
+                      <>
+                        <p className="text-text-muted line-through">
+                          {formatMoney({
+                            amount: line.unitPrice.amount * line.quantity,
+                          })}
+                        </p>
+                        <p className="font-semibold text-emerald-700">
+                          {formatMoney({
+                            amount:
+                              line.unitPrice.amount * line.quantity -
+                              line.discountAmount,
+                          })}
+                        </p>
+                      </>
+                    ) : (
+                      formatMoney({
+                        amount: line.unitPrice.amount * line.quantity,
+                      })
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

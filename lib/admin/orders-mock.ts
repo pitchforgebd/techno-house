@@ -25,6 +25,9 @@ export type AdminOrderLine = {
   buildBatchId: string | null;
   /** Customer ticked "Avail EMI offer" for this line on the product page. */
   wantsEmi: boolean;
+  /** Post-placement per-line discount an admin applied (AD-379) — 0/unset
+   * unless one has been; mock rows don't carry it. */
+  discountAmount?: number;
 };
 
 export type AdminOrder = {

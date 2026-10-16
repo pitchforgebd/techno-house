@@ -110,8 +110,11 @@ function buildOrderConfirmationText(
 }
 
 /** Builds the PDF invoice attachment. Returns null (never throws) so a
- * PDF/rendering problem degrades to a plain email instead of no email. */
-async function buildInvoiceAttachment(
+ * PDF/rendering problem degrades to a plain email instead of no email.
+ * Exported — `order-discount-email.ts` (AD-379) reuses this exact builder so
+ * the discount-notice email attaches the same, freshly-rendered invoice
+ * rather than a second parallel PDF pipeline. */
+export async function buildInvoiceAttachment(
   orderNumber: string,
 ): Promise<{ filename: string; content: Buffer } | null> {
   try {

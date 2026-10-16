@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminBusinessSettings } from "@/lib/business/config";
+import { getCustomerSession } from "@/lib/auth/customer-session";
+import { loginHref } from "@/lib/account/return-path";
 import { BUILDER_SLOTS } from "@/lib/domain/pc-builder";
 import { renderInvoicePdf } from "@/lib/orders/invoice-pdf";
 import {
@@ -8,19 +10,35 @@ import {
 } from "@/lib/pc-builder/build-quote-html";
 import { getPublicSharedBuild } from "@/lib/pc-builder/share";
 import { validateBuild } from "@/lib/pc-builder/validate-build";
+import { publicOrigin } from "@/lib/seo/public-origin";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 /** Downloadable quote PDF for a shared build — same lookup as the share
  * page itself (`/pc-builder/share/[id]`), just rendered to PDF instead
- * of HTML. Anyone with the share link can generate this, same as the page.
+ * of HTML.
  *
  * `?inline=1` serves it for display instead of download, which is what the
  * Print buttons open: printing this quote gives a clean parts list, where
- * printing the builder page itself would carry the site header and footer. */
+ * printing the builder page itself would carry the site header and footer.
+ * Viewing/printing inline stays open to anyone with the link, same as the
+ * share page itself — but an actual file download requires sign-in (AD-379:
+ * "share, save, download" all need an account), same gate saving/sharing a
+ * build already use (`BUILDS_SIGN_IN` in lib/pc-builder/saved-builds.ts). */
 export async function GET(request: Request, { params }: RouteParams) {
   const { id } = await params;
-  const inline = new URL(request.url).searchParams.get("inline") === "1";
+  const url = new URL(request.url);
+  const inline = url.searchParams.get("inline") === "1";
+
+  if (!inline) {
+    const session = await getCustomerSession();
+    if (!session) {
+      return NextResponse.redirect(
+        `${publicOrigin()}${loginHref(`/pc-builder/share/${id}`)}`,
+      );
+    }
+  }
+
   const shared = await getPublicSharedBuild(id);
   if (!shared) {
     return NextResponse.json(

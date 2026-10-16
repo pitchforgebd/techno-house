@@ -227,7 +227,20 @@ export function AdminOrderInvoiceView({
                     </td>
                   ) : null}
                   <td className="py-2.5 pl-1 text-right align-top font-medium tabular-nums">
-                    {formatMoney({ amount: line.totalAmount })}
+                    {line.discountAmount > 0 ? (
+                      <>
+                        <p className="font-normal text-neutral-400 line-through">
+                          {formatMoney({ amount: line.totalAmount })}
+                        </p>
+                        <p>
+                          {formatMoney({
+                            amount: line.totalAmount - line.discountAmount,
+                          })}
+                        </p>
+                      </>
+                    ) : (
+                      formatMoney({ amount: line.totalAmount })
+                    )}
                   </td>
                 </tr>
               ))}
@@ -260,6 +273,14 @@ export function AdminOrderInvoiceView({
               <span>Confirmation discount</span>
               <span className="tabular-nums">
                 −{formatMoney({ amount: invoice.adminDiscountAmount })}
+              </span>
+            </div>
+          ) : null}
+          {invoice.itemDiscountTotal > 0 ? (
+            <div className="flex justify-between text-neutral-700">
+              <span>Item discounts</span>
+              <span className="tabular-nums">
+                −{formatMoney({ amount: invoice.itemDiscountTotal })}
               </span>
             </div>
           ) : null}
