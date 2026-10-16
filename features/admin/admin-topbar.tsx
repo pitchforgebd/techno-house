@@ -14,6 +14,8 @@ import {
   LogOut,
   Building2,
   Package,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { ADMIN_DASHBOARD_TABS } from "@/lib/admin/admin-chrome";
 import { AdminOrderAlertBell } from "@/features/admin/admin-order-alert-bell";
@@ -158,7 +160,15 @@ function AdminProfileMenu({
   );
 }
 
-export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
+export function AdminTopbar({
+  onOpenNav,
+  sidebarCollapsed,
+  onToggleSidebar,
+}: {
+  onOpenNav: () => void;
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
+}) {
   const pathname = usePathname();
   const session = useStaffSession();
   const loginPath = useAdminLoginPath();
@@ -199,6 +209,20 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
           onClick={onOpenNav}
         >
           <Menu className="size-5" aria-hidden />
+        </button>
+
+        <button
+          type="button"
+          className="hidden size-9 shrink-0 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100 lg:inline-flex"
+          aria-label={sidebarCollapsed ? "Show menu" : "Hide menu"}
+          title={sidebarCollapsed ? "Show menu" : "Hide menu"}
+          onClick={onToggleSidebar}
+        >
+          {sidebarCollapsed ? (
+            <PanelLeftOpen className="size-5" aria-hidden />
+          ) : (
+            <PanelLeftClose className="size-5" aria-hidden />
+          )}
         </button>
 
         <nav
