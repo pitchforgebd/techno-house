@@ -41,6 +41,28 @@ function isNewBadgeWorthy(product: ProductSummary): boolean {
   return product.isNewArrival || product.isNew;
 }
 
+/**
+ * No price exists to quote for an Up Coming product, and an out-of-stock
+ * (non-pre-order) price is not currently honourable — same rule as the
+ * single product page's `priceHidden`.
+ */
+function priceHidden(product: ProductSummary): boolean {
+  return (
+    product.isComingSoon ||
+    (product.stockStatus === "out_of_stock" && !product.isPreOrder)
+  );
+}
+
+function availabilityLabel(product: ProductSummary): string | null {
+  if (product.isComingSoon) {
+    return "Up Coming";
+  }
+  if (product.isPreOrder) {
+    return "Pre Order";
+  }
+  return null;
+}
+
 function productLabel(
   product: ProductSummary,
 ): { text: string; tone: "new" | "sale" } | null {
@@ -195,14 +217,22 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         </Link>
 
         <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="text-[1.0625rem] font-bold tabular-nums tracking-tight text-text">
-            {formatMoney(product.price)}
-          </span>
-          {product.compareAtPrice ? (
-            <span className="text-caption tabular-nums text-text-muted line-through">
-              {formatMoney(product.compareAtPrice)}
+          {priceHidden(product) ? (
+            <span className="text-[0.8rem] font-extrabold text-danger">
+              {availabilityLabel(product)}
             </span>
-          ) : null}
+          ) : (
+            <>
+              <span className="text-[1.0625rem] font-bold tabular-nums tracking-tight text-text">
+                {formatMoney(product.price)}
+              </span>
+              {product.compareAtPrice ? (
+                <span className="text-caption tabular-nums text-text-muted line-through">
+                  {formatMoney(product.compareAtPrice)}
+                </span>
+              ) : null}
+            </>
+          )}
         </p>
 
         {/*
@@ -213,7 +243,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
           shortest — the ragged-grid problem this card already fixed once.
         */}
         <p className="mt-1 min-h-[1.05rem] text-[0.7rem] leading-tight font-semibold text-success">
-          {saved != null
+          {saved != null && !priceHidden(product)
             ? `Save Extra ${formatMoney({ amount: saved })} on various offer`
             : null}
         </p>
@@ -252,6 +282,8 @@ export function ProductCard({ product }: { product: ProductSummary }) {
           <AddToCartButton
             slug={product.slug}
             stockStatus={product.stockStatus}
+            isComingSoon={product.isComingSoon}
+            isPreOrder={product.isPreOrder}
             size="sm"
             variant="ghost"
             showHint={false}
@@ -369,14 +401,22 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
       ) : null}
 
       <div className="mt-auto pt-4 text-center">
-        <p className="text-body font-semibold tabular-nums text-text">
-          {formatMoney(product.price)}
-        </p>
-        {product.compareAtPrice ? (
-          <p className="mt-0.5 text-caption tabular-nums text-text-muted line-through">
-            {formatMoney(product.compareAtPrice)}
+        {priceHidden(product) ? (
+          <p className="text-label font-extrabold text-danger">
+            {availabilityLabel(product)}
           </p>
-        ) : null}
+        ) : (
+          <>
+            <p className="text-body font-semibold tabular-nums text-text">
+              {formatMoney(product.price)}
+            </p>
+            {product.compareAtPrice ? (
+              <p className="mt-0.5 text-caption tabular-nums text-text-muted line-through">
+                {formatMoney(product.compareAtPrice)}
+              </p>
+            ) : null}
+          </>
+        )}
         {/*
           Savings and warranty are separate rows now, not an either/or. A
           discounted product used to LOSE its warranty line to the savings
@@ -388,7 +428,7 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
           in the row is shortest.
         */}
         <p className="mt-2 min-h-[1.05rem] text-caption leading-tight font-semibold text-success">
-          {saved != null
+          {saved != null && !priceHidden(product)
             ? `Save Extra ${formatMoney({ amount: saved })} on various offer`
             : null}
         </p>
@@ -412,6 +452,8 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
         <AddToCartButton
           slug={product.slug}
           stockStatus={product.stockStatus}
+          isComingSoon={product.isComingSoon}
+          isPreOrder={product.isPreOrder}
           size="sm"
         />
       </div>

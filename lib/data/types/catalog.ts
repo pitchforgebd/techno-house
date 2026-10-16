@@ -100,6 +100,10 @@ export type ProductSummary = {
   labels: ProductLabelBadge[];
   /** In a currently-running Promotion campaign — drives the corner "Offer" ribbon. */
   hasActiveOffer: boolean;
+  /** Not yet stocked but launching soon — shows "Up Coming" instead of a price. */
+  isComingSoon: boolean;
+  /** Orderable ahead of stock arriving — shows "Pre Order" and a price. */
+  isPreOrder: boolean;
 };
 
 /** Minimal row for the header search-as-you-type dropdown — deliberately
@@ -142,8 +146,6 @@ export type ProductDetail = ProductSummary & {
   notes: ProductNoteItem[];
   /** Manufacturer model number, shown in the product page's info chip row. */
   modelNumber: string | null;
-  /** Not yet stocked but launching soon — shows "Coming Soon" on the product page. */
-  isComingSoon: boolean;
 };
 
 /** One slot candidate — catalogue card plus builder fields. Never a full catalog. */
@@ -171,6 +173,10 @@ export type ProductListQuery = {
   sort?: ProductSort;
   inStockOnly?: boolean;
   onSaleOnly?: boolean;
+  /** Availability filter (category/shop sidebar) — each is an independent
+   * AND, same convention as `inStockOnly`/`onSaleOnly` above. */
+  preOrderOnly?: boolean;
+  comingSoonOnly?: boolean;
   /** Inclusive integer ৳ amount bounds (display-only). */
   minPrice?: number;
   maxPrice?: number;

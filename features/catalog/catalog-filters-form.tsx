@@ -2,13 +2,48 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useOptimistic, useRef, useTransition } from "react";
+import {
+  useEffect,
+  useOptimistic,
+  useRef,
+  useTransition,
+  type ReactNode,
+} from "react";
+import { ChevronDown } from "lucide-react";
 import { buttonClassName } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BRAND_FACET_KEY } from "@/lib/catalog/listing-params";
 import type { Brand, Facet } from "@/lib/data";
 import type { ParsedListingFilters } from "@/lib/catalog/listing-params";
 import { cn } from "@/lib/cn";
+
+/**
+ * One collapsible filter group — a native `<details>`, not a JS accordion:
+ * no state to wire up, keyboard/AT support for free, and it degrades to
+ * "just expanded" with no JS at all. Starts open; the operator's ask was a
+ * collapse system so a sidebar with many groups doesn't force the page to
+ * scroll past all of them, not that filters start hidden.
+ */
+function FilterGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <details open className="group border-b border-border pb-4 last:border-b-0 last:pb-0">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-caption font-semibold uppercase tracking-[0.04em] text-text [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronDown
+          aria-hidden
+          className="size-3.5 shrink-0 text-text-muted transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="mt-2.5">{children}</div>
+    </details>
+  );
+}
 
 /** Typing in a price box shouldn't fire a request per keystroke. */
 const PRICE_DEBOUNCE_MS = 500;
@@ -56,6 +91,12 @@ function paramsFromParsed(
   }
   if (parsed.inStockOnly) {
     params.set("stock", "1");
+  }
+  if (parsed.preOrderOnly) {
+    params.set("preOrder", "1");
+  }
+  if (parsed.comingSoonOnly) {
+    params.set("comingSoon", "1");
   }
   if (parsed.minPrice != null) {
     params.set("minPrice", String(parsed.minPrice));
@@ -188,29 +229,55 @@ export function CatalogFiltersForm({
         <input type="hidden" name="sort" value={sort} />
       ) : null}
 
-      <fieldset>
-        <legend className="text-caption font-semibold uppercase tracking-[0.04em] text-text">
-          Stock
-        </legend>
-        <label className="mt-2.5 inline-flex items-center gap-2 text-label text-text">
-          <input
-            id={`${idPrefix}-stock`}
-            type="checkbox"
-            name="stock"
-            value="1"
-            checked={active.get("stock") === "1"}
-            onChange={(event) => applyNow(event.currentTarget.form)}
-            className="size-3.5 rounded-sm border-border accent-primary"
-          />
-          In stock only
-        </label>
-      </fieldset>
+      <FilterGroup title="Availability">
+        <ul className="space-y-2">
+          <li>
+            <label className="inline-flex items-center gap-2 text-label text-text">
+              <input
+                id={`${idPrefix}-stock`}
+                type="checkbox"
+                name="stock"
+                value="1"
+                checked={active.get("stock") === "1"}
+                onChange={(event) => applyNow(event.currentTarget.form)}
+                className="size-3.5 rounded-sm border-border accent-primary"
+              />
+              In Stock
+            </label>
+          </li>
+          <li>
+            <label className="inline-flex items-center gap-2 text-label text-text">
+              <input
+                id={`${idPrefix}-preOrder`}
+                type="checkbox"
+                name="preOrder"
+                value="1"
+                checked={active.get("preOrder") === "1"}
+                onChange={(event) => applyNow(event.currentTarget.form)}
+                className="size-3.5 rounded-sm border-border accent-primary"
+              />
+              Pre Order
+            </label>
+          </li>
+          <li>
+            <label className="inline-flex items-center gap-2 text-label text-text">
+              <input
+                id={`${idPrefix}-comingSoon`}
+                type="checkbox"
+                name="comingSoon"
+                value="1"
+                checked={active.get("comingSoon") === "1"}
+                onChange={(event) => applyNow(event.currentTarget.form)}
+                className="size-3.5 rounded-sm border-border accent-primary"
+              />
+              Up Coming
+            </label>
+          </li>
+        </ul>
+      </FilterGroup>
 
-      <fieldset>
-        <legend className="text-caption font-semibold uppercase tracking-[0.04em] text-text">
-          Price (৳)
-        </legend>
-        <div className="mt-2.5 grid grid-cols-2 gap-2">
+      <FilterGroup title="Price (৳)">
+        <div className="grid grid-cols-2 gap-2">
           <div>
             <label
               htmlFor={`${idPrefix}-minPrice`}
@@ -250,14 +317,14 @@ export function CatalogFiltersForm({
             />
           </div>
         </div>
-      </fieldset>
+      </FilterGroup>
 
       {facets.map((facet) => (
-        <fieldset key={facet.key}>
-          <legend className="text-caption font-semibold uppercase tracking-[0.04em] text-text">
-            {facetLabel(facet.key)}
-          </legend>
-          <ul className="mt-2.5 space-y-2">
+        <FilterGroup key={facet.key} title={facetLabel(facet.key)}>
+          {/* Capped and internally scrollable rather than letting a facet
+              with many values (Brand, in particular) stretch the sidebar
+              past the page — the operator's "niche scroll issue na hoy". */}
+          <ul className="max-h-56 space-y-2 overflow-y-auto pr-1">
             {facet.values.map((entry) => {
               const label =
                 facet.key === BRAND_FACET_KEY
@@ -285,7 +352,7 @@ export function CatalogFiltersForm({
               );
             })}
           </ul>
-        </fieldset>
+        </FilterGroup>
       ))}
 
       {hideReset ? null : (

@@ -7615,3 +7615,188 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       verification there.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-375 Pre Order (second, mutually-exclusive availability flag, price
+      stays visible), price hidden sitewide for Up Coming/out-of-stock,
+      bigger meta pills, View More Info moved below Quick Overview, and a
+      collapsible category/shop filter sidebar with a new Availability
+      group. SCHEMA CHANGE — new `Product.isPreOrder` column, migration
+      applied.
+      Operator request (dense message + 5 reference screenshots — an
+      "Availability" sidebar filter with In Stock/Pre Order/Up Coming
+      checkboxes, a Cooler Master PSU card showing a muted disabled "Up
+      Coming" button, a PNY GPU card showing an active blue "Place Pre
+      Order" button, a T-WOLF case card's bigger Status/Product Code/Brand
+      pills, and a spec list with "View More Info" sitting BELOW the
+      content, not beside a header): (1) single page — the Stock/SKU/Brand
+      pills should be bigger ("jate manusher cokhe pore" — so they catch
+      the eye), and "View More Info" belongs under Quick Overview, not
+      where AD-374 had just moved it (into the header, next to the label) —
+      a correction of that same-conversation decision; (2) over the whole
+      site — an Up Coming product shows no price at all, and ANY product
+      that goes out of stock also loses its price; (3) category pages — the
+      left filter sidebar needs a real collapse system so a long filter
+      list doesn't force extra page scroll, plus the new Availability
+      checkboxes, admin-controlled the same way Coming Soon already is.
+      New flag, full stack, mirroring AD-373's isComingSoon exactly: schema
+      (`isPreOrder Boolean @default(false)`) -> `ProductInputFields`/
+      `ParsedProductInput` -> `product-input-server.ts` -> bulk CSV ->
+      `admin-products.ts` (update/create/clone) -> a "Pre Order" toggle in
+      the admin sidebar, next to "Coming soon / Upcoming" — NEW this time:
+      `handleSetComingSoon`/`handleSetPreOrder` wrapper functions in the
+      form enforce real mutual exclusion (turning one on turns the other
+      off), since a product can't logically be both. Widened scope beyond
+      AD-373: `isComingSoon`/`isPreOrder` moved from `ProductDetail` only
+      onto the base `ProductSummary` type (and both `SUMMARY_SELECT`s, not
+      just the `DETAIL_SELECT`s) — the single product page was the only
+      consumer before; this task needed the flags on every catalog grid
+      card and the Availability filter too, so the narrower AD-373 scoping
+      no longer fit. `modelNumber` stays `ProductDetail`-only (nobody asked
+      for it on cards).
+      Price hidden sitewide, same rule everywhere (`isComingSoon ||
+      (stockStatus === "out_of_stock" && !isPreOrder)`), independently
+      implemented in FOUR places since none of them share a component today:
+      the single product page (`ProductSummary` — the whole price card
+      disappears, not just the number; `emiVisible` and the discount-date
+      line are gated the same way, since quoting an EMI/offer window against
+      a price that is not shown would be more confusing than showing
+      nothing), the catalog grid cards (`ProductCard` and
+      `CatalogProductCard` in `product-card.tsx` — the price row's spot is
+      reused for bold red "Up Coming"/"Pre Order" text instead, so the grid
+      stays the same height), the Similar Products rail
+      (`product-similar-sidebar.tsx` — a THIRD, separate inline card found
+      only by actually screenshotting the single product page and noticing
+      its price still showed for an out-of-stock item), and the Compare
+      page (`compare-body.tsx` — its own price block plus its existing
+      "Availability" row, which used to print the raw `stockStatus` enum
+      text and now prints "Up Coming"/"Pre Order" there too). `unavailable`
+      (whatever disables Add to cart) is widened the same way everywhere:
+      `isComingSoon` disables regardless of real stock, `isPreOrder` is
+      NEVER disabled by `stockStatus` alone, since a pre-order item is "out
+      of stock" by definition — that is the whole point of the feature.
+      `AddToCartButton` (the shared component the two catalog cards use)
+      grew `isComingSoon`/`isPreOrder` props with the same logic, rather
+      than duplicating the disable/relabel rule a fourth time.
+      On the product page specifically: Up Coming REPLACES the entire
+      qty/Add-to-cart/Compare/Wishlist/Check-availability row with one
+      disabled button labelled "Up Coming" — matching the reference exactly,
+      nothing partially greyed out. Pre Order keeps the full normal row,
+      just relabels the main button "Place Pre Order" (it still adds to
+      cart — there is no separate pre-order checkout flow, stated as an
+      honest simplification below). A plain bold red status line ("Up
+      Coming" / "Pre Order") sits directly above either, replacing AD-373's
+      amber pill badge, and the text itself was renamed from "Coming Soon"
+      to "Up Coming" everywhere customer-facing to match the reference's
+      own wording (the admin toggle label stays "Coming soon / Upcoming" —
+      internal, not shown to customers).
+      Quick Overview: "View More Info" moved out of the header (AD-374) to
+      sit on its own line directly below the overview's rich-text body,
+      arrow icon dropped — matches the reference exactly (a plain
+      underlined red link under the content, not inline with a label).
+      Meta pills (Stock/Model/SKU/Brand): `Badge` `size="sm"` -> `size="md"`,
+      on request — a visibly bigger pill, not a new style.
+      Category/shop filter sidebar (`catalog-filters-form.tsx`): every
+      filter group (not just the new one) now renders through a new
+      `FilterGroup` wrapper — a native `<details>`/`<summary>`, open by
+      default, chevron rotates on toggle — instead of a bare `<fieldset>`;
+      no new JS accordion state needed, keyboard/AT support comes free. The
+      old standalone "Stock" fieldset (a single "In stock only" checkbox)
+      was folded into a new "Availability" group alongside two new
+      checkboxes (Pre Order, Up Coming) — the existing `stock` query param/
+      checkbox is REUSED as-is for "In Stock", not duplicated, so nothing
+      that already depended on it (deals/flash-sale pages, etc.) changed
+      behaviour. The two new checkboxes (`preOrder`, `comingSoon` params)
+      follow the exact existing `inStockOnly` convention through
+      `listing-params.ts` (parse, `ParsedListingFilters`,
+      `toListQueryFilters`, `listingHasActiveFilters`,
+      `buildListingSearchParams`) into `composeWhere()` in
+      `product-repository.ts` as two more independent-AND branches — each
+      checkbox narrows the grid on its own; checking more than one together
+      intersects rather than unions (same known limitation the existing
+      `inStockOnly`/`onSaleOnly` pair already has — not a new fragile
+      pattern). A facet's value list (Brand, in particular, with dozens of
+      values) is now capped at `max-h-56` and internally scrollable rather
+      than stretching the sidebar — the other half of "niche scroll issue na
+      hoy" alongside the collapse system itself.
+      Deliberately NOT built: a sitewide admin on/off switch for whether the
+      Availability filter group appears at all (a `FeatureFlagSetting`
+      entry, the mechanism `/admin/settings/features` already uses for
+      things like Coupons). Read the operator's "admin thekei control kora
+      jabe jemon upcoming on off kora jay" as pointing at the EXISTING
+      per-product Coming Soon/Pre Order toggles as the precedent being
+      extended, not a request for a second, separate sitewide toggle — flag
+      this reading so it can be corrected if a real on/off switch for the
+      filter group itself was actually wanted.
+      Verified: `npx prisma migrate dev` applied cleanly, `npx prisma
+      generate`, `tsc` 0, `eslint` clean, `next build` ok (twice — once
+      before, once after fixing two gaps the mutation test below caught).
+      Two check suites: `test:product-coming-soon` grew from 23 to 43
+      checks (new Pre Order wiring end to end, the price-hidden rule in all
+      four places, the Up Coming single-button state, the renamed status
+      text, bigger pills, View More Info's new position) and a brand new
+      `test:catalog-availability-filter` (11 checks: listing-params.ts,
+      composeWhere, the collapsible FilterGroup, the merged Availability
+      fieldset, the scroll cap) — both added to the regression run (now 18
+      suites, all pass). Mutation-tested: 36 deliberate breakages via a
+      throwaway script across both suites; the first pass caught 31/36 and
+      found 5 real gaps in the checks themselves (not the feature code) —
+      a `[\s\S]*?` regex that could leak from SUMMARY_SELECT's own closing
+      brace into a LATER block (CLONE_SELECT) with the same field names,
+      the exact bug class fixed once before in AD-373 and reintroduced here
+      by not reusing that fix; a `ProductInputFields`/`ParsedProductInput`
+      check that only verified ONE of the two types actually declares the
+      field; a "mutual exclusion" check that verified the wiring existed
+      but never exercised the actual exclusion logic; an "Up Coming" button
+      check that never looked at the button's own text, only nearby
+      markers; and a `priceHidden()` check that verified the function
+      existed and was called, but never its logic. All five fixed, rerun to
+      36/36 caught. Real browser (headless Chrome, a production build, the
+      real dev DB): an out-of-stock test product flipped to Up Coming showed
+      bigger pills, no price card, the bold red "Up Coming" status line, and
+      the single disabled button; an in-stock product flipped to Pre Order
+      kept its price card, showed "Pre Order" in red, and an active blue
+      "Place Pre Order" button with qty/Compare/Wishlist/Check availability
+      all still present; a genuinely out-of-stock, non-flagged product
+      confirmed the NEW sitewide rule — no price card, same as before only
+      for Coming Soon — while its own "Similar products" rail (caught by
+      this exact screenshot) still showed a real price for an out-of-stock
+      item until fixed. On /shop: clicking the "Up Coming" Availability
+      checkbox set `?comingSoon=1` in the URL and the grid narrowed to
+      exactly the one flagged product (confirmed against the real dev DB,
+      not a mock), the matching `CatalogProductCard` showed "Up Coming" in
+      place of a price, and collapsing the Availability group's `<details>`
+      hid its three checkboxes while Price/Brand below stayed open and the
+      Brand facet counts had already narrowed to match the filtered grid.
+      The Compare page's own price-hiding/Availability-row text was
+      confirmed by the mutation-tested source check and is byte-identical
+      logic to the already-screenshotted single-product-page rule, but was
+      not itself screenshotted — the two test products didn't share a
+      category, which the real Compare page correctly refuses to combine,
+      and setting up a same-category pair felt like more effort than the
+      marginal confidence it would add. Both test products were restored to
+      their original database values afterward.
+      Honest notes: (1) Pre Order has no real pre-order checkout flow —
+      "Place Pre Order" is the ordinary add-to-cart action under a
+      different label; if staff need a genuinely separate pre-order
+      fulfilment path (partial payment, a reservation record, etc.) that is
+      new scope, not covered here. (2) No sitewide admin on/off switch for
+      the Availability filter group itself — see the design note above. (3)
+      The header-dropdown search suggestions
+      (`components/layout/header-search.tsx`) use a separate, deliberately
+      minimal `ProductSearchSuggestion` type that still has no
+      isComingSoon/isPreOrder fields, so an Up Coming product's price can
+      still appear there; same for the B2B wholesale price list and PC
+      Builder's own part pickers — all three were judged out of scope
+      (autocomplete is low-stakes, B2B pricing is contract-driven, and PC
+      Builder's picker already filters to in-stock parts in practice) but
+      are not literally covered by the sitewide rule. (4) The admin side
+      (the new "Pre Order" toggle actually rendering/saving) was not
+      verified in a live browser — the same pre-existing local admin-login
+      issue noted in AD-373/374 (`project_local_admin_login_broken.md` in
+      long-term memory) blocks it; covered instead by the mutation-tested
+      source guard and the fact that it is the identical, already-proven
+      `AdminToggleRow` pattern the adjacent Coming Soon toggle already uses.
+      DEPLOY: SCHEMA CHANGE — this one needs a migration. `git pull origin
+      main`, `npx prisma generate`, `npm run db:migrate:deploy`,
+      `npm run build`, `pm2 restart techno-house` (pg_dump first, per the
+      standing rule).

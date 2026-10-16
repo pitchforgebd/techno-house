@@ -189,8 +189,10 @@ export type ProductInputFields = {
   isActive: boolean;
   isNew: boolean;
   isSale: boolean;
-  /** Not yet stocked but launching soon — shows "Coming Soon" on the product page. */
+  /** Not yet stocked but launching soon — shows "Up Coming" instead of a price. */
   isComingSoon: boolean;
+  /** Orderable ahead of stock arriving — shows "Pre Order" and keeps the price. */
+  isPreOrder: boolean;
   warrantyEnabled: boolean;
   warrantyLabel: string;
   noteIds?: string[];
@@ -253,6 +255,7 @@ export type ParsedProductInput = {
   isNew: boolean;
   isSale: boolean;
   isComingSoon: boolean;
+  isPreOrder: boolean;
   warrantyLabel: string | null;
   noteIds: string[];
   labelIds: string[];

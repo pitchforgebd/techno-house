@@ -2380,7 +2380,26 @@ Idle. Manual testing support.
 None. Do not start Phase 18. Continue mock retirement only if operator asks.
 
 ## Last Updated
-2026-10-15 (AD-374 — single product page's "first container" (gallery + buy box)
+2026-10-16 (AD-375 — Pre Order added as a second, mutually-exclusive availability
+flag next to Coming Soon (new `Product.isPreOrder` column — SCHEMA CHANGE, migration
+applied); price is now hidden sitewide for Up Coming/out-of-stock products (not
+Pre Order, which keeps its price) — independently implemented across the single
+product page, both catalog grid cards, the Similar Products rail, and the Compare
+page, since none of those four share a component; Up Coming replaces the whole
+buy row with one disabled button, Pre Order relabels Add to cart "Place Pre
+Order"; renamed "Coming Soon" -> "Up Coming" everywhere customer-facing to match
+the operator's reference; the product page's meta pills are bigger (size="md") and
+"View More Info" moved back below Quick Overview's body (correcting AD-374's own
+header placement); the category/shop filter sidebar got a real collapse system
+(every filter group is now a native, open-by-default `<details>`) plus a new
+Availability checkbox group (In Stock/Pre Order/Up Coming), and a long Brand facet
+list is now capped and internally scrollable. Two regression suites (now 18 total);
+a 36-mutation test caught 5 real gaps in the checks themselves on the first pass,
+all fixed. Honest gaps: no real separate pre-order checkout flow ("Place Pre
+Order" just adds to cart), no sitewide admin on/off switch for the Availability
+filter group, and three low-stakes surfaces (header search suggestions, B2B price
+list, PC Builder picker) still show price for an Up Coming item — see AD-375 in
+TASKS.md. AD-374 — single product page's "first container" (gallery + buy box)
 redesigned to match a competitor reference the operator shared: the whole thing now
 sits in one bordered/shadowed card; the title/rating/AD-373 chip row merged into one
 row of coloured pills; the price got its own gradient card with a "Limited Time
@@ -2417,4 +2436,4 @@ storefront jump-up animation on buttons/icons/add to cart/alerts (storefront onl
 AD-363 product Review and Q&A usable without signing in; AD-362 Add to cart beside
 the product image; AD-361 product page in the Ryans structure; AD-359 compare
 search before a type is chosen; AD-358 searchable compare picker; AD-357 homepage
-sections chosen by staff. AD-344 to AD-374 are recorded in TASKS.md only.)
+sections chosen by staff. AD-344 to AD-375 are recorded in TASKS.md only.)

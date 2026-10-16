@@ -72,6 +72,8 @@ const RESERVED = new Set([
   "page",
   "pageSize",
   "stock",
+  "preOrder",
+  "comingSoon",
   "minPrice",
   "maxPrice",
   BRAND_FACET_KEY,
@@ -81,6 +83,9 @@ export type ListingSearchParams = Record<string, string | string[] | undefined>;
 
 export type ParsedListingFilters = {
   inStockOnly: boolean;
+  /** Availability checkboxes, alongside `inStockOnly` above. */
+  preOrderOnly: boolean;
+  comingSoonOnly: boolean;
   minPrice?: number;
   maxPrice?: number;
   brandSlugs: string[];
@@ -138,6 +143,16 @@ export function parseListingFilters(
     : searchParams.stock;
   const inStockOnly = stockRaw === "1" || stockRaw === "true";
 
+  const preOrderRaw = Array.isArray(searchParams.preOrder)
+    ? searchParams.preOrder[0]
+    : searchParams.preOrder;
+  const preOrderOnly = preOrderRaw === "1" || preOrderRaw === "true";
+
+  const comingSoonRaw = Array.isArray(searchParams.comingSoon)
+    ? searchParams.comingSoon[0]
+    : searchParams.comingSoon;
+  const comingSoonOnly = comingSoonRaw === "1" || comingSoonRaw === "true";
+
   const filters: Record<string, string[]> = {};
   for (const [key, raw] of Object.entries(searchParams)) {
     if (RESERVED.has(key) || !allowed.has(key)) {
@@ -151,6 +166,8 @@ export function parseListingFilters(
 
   return {
     inStockOnly,
+    preOrderOnly,
+    comingSoonOnly,
     minPrice: parseOptionalInt(searchParams.minPrice),
     maxPrice: parseOptionalInt(searchParams.maxPrice),
     brandSlugs: [...new Set(asStringList(searchParams[BRAND_FACET_KEY]))],
@@ -177,10 +194,18 @@ export function toListQueryFilters(
   },
 ): Pick<
   ProductListQuery,
-  "inStockOnly" | "minPrice" | "maxPrice" | "brandSlugs" | "filters"
+  | "inStockOnly"
+  | "preOrderOnly"
+  | "comingSoonOnly"
+  | "minPrice"
+  | "maxPrice"
+  | "brandSlugs"
+  | "filters"
 > {
   return {
     inStockOnly: parsed.inStockOnly || undefined,
+    preOrderOnly: parsed.preOrderOnly || undefined,
+    comingSoonOnly: parsed.comingSoonOnly || undefined,
     minPrice: parsed.minPrice,
     maxPrice: parsed.maxPrice,
     brandSlugs:
@@ -195,6 +220,8 @@ export function toListQueryFilters(
 export function listingHasActiveFilters(parsed: ParsedListingFilters): boolean {
   return (
     parsed.inStockOnly ||
+    parsed.preOrderOnly ||
+    parsed.comingSoonOnly ||
     parsed.minPrice != null ||
     parsed.maxPrice != null ||
     parsed.brandSlugs.length > 0 ||
@@ -249,6 +276,12 @@ export function buildListingSearchParams(
 
   if (parsed.inStockOnly) {
     params.set("stock", "1");
+  }
+  if (parsed.preOrderOnly) {
+    params.set("preOrder", "1");
+  }
+  if (parsed.comingSoonOnly) {
+    params.set("comingSoon", "1");
   }
   if (parsed.minPrice != null) {
     params.set("minPrice", String(parsed.minPrice));

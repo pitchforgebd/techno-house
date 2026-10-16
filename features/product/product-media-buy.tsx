@@ -36,6 +36,7 @@ type ProductMediaBuyProps = {
   whatsappNumber?: string | null;
   modelNumber: string | null;
   isComingSoon: boolean;
+  isPreOrder: boolean;
   productImages: ProductImage[];
   primaryImage: ProductImage;
   refundStickerSrc?: string | null;
@@ -81,6 +82,7 @@ export function ProductMediaBuy({
   whatsappNumber,
   modelNumber,
   isComingSoon,
+  isPreOrder,
   productImages,
   primaryImage,
   refundStickerSrc,
@@ -204,6 +206,7 @@ export function ProductMediaBuy({
             whatsappNumber={whatsappNumber}
             modelNumber={modelNumber}
             isComingSoon={isComingSoon}
+            isPreOrder={isPreOrder}
             emiConfig={emiConfig}
             isSignedIn={isSignedIn}
             b2bAccount={b2bAccount}

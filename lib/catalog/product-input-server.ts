@@ -426,6 +426,7 @@ export async function parseProductInput(
       isNew: input.isNew,
       isSale: input.isSale || pricedAsSale,
       isComingSoon: input.isComingSoon,
+      isPreOrder: input.isPreOrder,
       warrantyLabel,
       noteIds: noteIds.value,
       labelIds: labelIds.value,

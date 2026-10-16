@@ -121,6 +121,8 @@ function candidate(
     discountEndsAt: null,
     labels: [],
     hasActiveOffer: false,
+    isComingSoon: false,
+    isPreOrder: false,
     builderSlot: null,
     builderAttrs: attrs,
   };

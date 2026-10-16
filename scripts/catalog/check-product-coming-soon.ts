@@ -1,21 +1,30 @@
 /**
  * Product page: Coming Soon flag, info chip row, Out Of Stock text, "View
- * More Info" jump-link, and a smaller button corner radius (AD-373).
+ * More Info" jump-link, and a smaller button corner radius (AD-373); the
+ * "first container" redesign, a merged meta-pill row and a repositioned
+ * View More Info (AD-374); Pre Order as a second, mutually-exclusive
+ * availability flag, price hidden for Up Coming/out-of-stock (not Pre
+ * Order), and bigger meta pills (AD-375).
  *
  *   npm run test:product-coming-soon
  *
- * Covers the full chain for the two new admin flags:
- *   schema -> ProductDetail type -> toProductDetail() mapper -> both
- *   DETAIL_SELECTs (storefront + admin) -> ProductInputFields/
- *   ParsedProductInput -> product-input-server.ts parsing ->
- *   admin-products.ts persistence (update, create, clone) -> the admin
- *   form's state/UI -> ProductMediaBuy -> the product page -> ProductSummary
- *   UI (chip row, Coming Soon label, View More Info link).
- * Also pins the button radius change in components/ui/button.tsx.
- * Source guards only — no database, no network. The real render (chip row,
- * Out of Stock styling, Coming Soon label, the jump-to-specifications click,
- * and the admin form fields) was checked in headless Chrome when this was
- * built (see AD-373 in project-memory/TASKS.md).
+ * Covers the full chain for the admin flags (isComingSoon from AD-373,
+ * isPreOrder from AD-375):
+ *   schema -> ProductSummary/ProductDetail types -> toProductSummary()/
+ *   toProductDetail() mappers -> SUMMARY_SELECT + DETAIL_SELECT (storefront
+ *   + admin — isComingSoon/isPreOrder moved onto SUMMARY_SELECT in AD-375 so
+ *   listing cards and the catalog filter can see them too, modelNumber stays
+ *   DETAIL-only) -> ProductInputFields/ParsedProductInput ->
+ *   product-input-server.ts parsing -> admin-products.ts persistence
+ *   (update, create, clone) -> the admin form's state/UI (mutually-exclusive
+ *   Coming soon / Pre Order toggles) -> ProductMediaBuy -> the product page
+ *   -> ProductSummary UI (meta-pill row, price-hiding, the Up Coming single-
+ *   button state, the Pre Order relabelled button, View More Info).
+ * Also pins the button radius change in components/ui/button.tsx, and the
+ * catalog grid card / AddToCartButton treatment of both flags.
+ * Source guards only — no database, no network. The real render was checked
+ * in headless Chrome when each of these was built (see AD-373/374/375 in
+ * project-memory/TASKS.md).
  */
 import { readFileSync } from "node:fs";
 
@@ -105,6 +114,29 @@ function main(): void {
   const page = source("app/(storefront)/product/[slug]/page.tsx");
   const summary = source("features/product/product-summary.tsx");
   const button = source("components/ui/button.tsx");
+  const productCard = source("features/catalog/product-card.tsx");
+  const addToCartButton = source("features/cart/add-to-cart-button.tsx");
+  const similarSidebar = source("features/product/product-similar-sidebar.tsx");
+  const compareBody = source("features/lists/compare-body.tsx");
+
+  /**
+   * One top-level `const NAME = {...} satisfies Prisma.ProductSelect;`
+   * block's own text, bounded to its OWN closing brace — a loose
+   * `[\s\S]*?` regex looking for two fields "inside SUMMARY_SELECT" can
+   * silently match past its real close into a LATER block (CLONE_SELECT,
+   * DETAIL_SELECT) that happens to declare the same two field names, which
+   * would let a real regression in SUMMARY_SELECT itself through
+   * unnoticed. Same class of bug fixed once already via `functionBody()`.
+   */
+  function namedSelectBlock(text: string, constName: string): string {
+    const marker = `const ${constName} = {`;
+    const start = text.indexOf(marker);
+    if (start < 0) {
+      return "";
+    }
+    const end = text.indexOf("} satisfies Prisma.ProductSelect;", start);
+    return end < 0 ? "" : text.slice(start, end);
+  }
 
   // --- schema ---------------------------------------------------------------------------
   check(
@@ -129,15 +161,24 @@ function main(): void {
 
   // --- both DETAIL_SELECTs (storefront read path + admin edit-form read path) -------------
   check(
-    "the storefront product-repository DETAIL_SELECT selects both new columns",
+    "the storefront product-repository selects modelNumber (detail-only) and isComingSoon (now on SUMMARY_SELECT, AD-374)",
     storefrontRepo.includes("modelNumber: true,") &&
       storefrontRepo.includes("isComingSoon: true,"),
   );
   check(
-    "the admin DETAIL_SELECT (separate from the storefront one) also selects both columns",
-    /DETAIL_SELECT = \{[\s\S]*?modelNumber: true,[\s\S]*?isComingSoon: true,[\s\S]*?\} satisfies Prisma\.ProductSelect;/.test(
-      adminProducts,
-    ),
+    "the admin DETAIL_SELECT selects modelNumber directly, and isComingSoon/isPreOrder via its ...SUMMARY_SELECT spread (AD-374 moved both onto SUMMARY_SELECT so listing cards/filters see them too)",
+    namedSelectBlock(adminProducts, "DETAIL_SELECT").startsWith(
+      "const DETAIL_SELECT = {\n  ...SUMMARY_SELECT,",
+    ) &&
+      namedSelectBlock(adminProducts, "DETAIL_SELECT").includes(
+        "modelNumber: true,",
+      ) &&
+      namedSelectBlock(adminProducts, "SUMMARY_SELECT").includes(
+        "isComingSoon: true,",
+      ) &&
+      namedSelectBlock(adminProducts, "SUMMARY_SELECT").includes(
+        "isPreOrder: true,",
+      ),
   );
 
   // --- input/parse types ------------------------------------------------------------------
@@ -203,9 +244,11 @@ function main(): void {
       form.includes("maxLength={PRODUCT_MODEL_NUMBER_MAX}"),
   );
   check(
-    "the form threads comingSoon/setComingSoon down to the sidebar",
+    "the form threads comingSoon down to the sidebar through the mutual-exclusion wrapper (AD-375: Coming soon and Pre Order can't both be on)",
     form.includes("comingSoon={comingSoon}") &&
-      form.includes("setComingSoon={setComingSoon}"),
+      form.includes("setComingSoon={handleSetComingSoon}") &&
+      form.includes("function handleSetComingSoon(") &&
+      form.includes("function handleSetPreOrder("),
   );
   check(
     'the sidebar renders a "Coming soon / Upcoming" toggle next to New badge / Today\'s deal',
@@ -254,13 +297,31 @@ function main(): void {
       summary.indexOf("View More Info") < summary.indexOf('id="product-qty"'),
   );
   check(
-    "a Coming Soon label renders only when isComingSoon is true, directly above the qty/cart row",
+    'an "Up Coming" status label renders only when isComingSoon is true, directly above the purchase row (AD-375: renamed from "Coming Soon" to match the operator\'s reference)',
     summary.includes("{isComingSoon ? (") &&
-      summary.includes("Coming Soon") &&
+      summary.includes("Up Coming") &&
+      !summary.includes("Coming Soon") &&
       summary.indexOf("{isComingSoon ? (") <
         summary.indexOf('id="product-qty"') &&
       summary.indexOf("Quick overview") <
         summary.indexOf("{isComingSoon ? ("),
+  );
+
+  const metaRowStart = summary.indexOf(
+    'className="mt-2.5 flex flex-wrap items-center gap-2.5"',
+  );
+  const metaRowEnd = summary.indexOf(
+    'className="relative overflow-hidden rounded-xl border',
+  );
+  const metaRow =
+    metaRowStart >= 0 && metaRowEnd > metaRowStart
+      ? summary.slice(metaRowStart, metaRowEnd)
+      : "";
+  check(
+    'the Stock/Model/SKU/Brand pills all use size="md" (AD-375: bigger, on request, than the size="sm" they were before)',
+    metaRow !== "" &&
+      (metaRow.match(/size="md"/g) ?? []).length >= 4 &&
+      !metaRow.includes('size="sm"'),
   );
 
   // --- button radius ------------------------------------------------------------------------
@@ -268,6 +329,181 @@ function main(): void {
     "buttonClassName() uses the smaller rounded-sm radius, not rounded-md",
     button.includes("rounded-sm font-medium") &&
       !button.includes("rounded-md font-medium"),
+  );
+
+  // ==========================================================================================
+  // AD-375 — Pre Order (second, mutually-exclusive availability flag) + price hidden for
+  // Up Coming/out-of-stock, shown for Pre Order; bigger meta pills; View More Info moved
+  // below the Quick Overview content instead of into its header.
+  // ==========================================================================================
+
+  check(
+    "schema: Product has isPreOrder (boolean, default false), alongside isComingSoon",
+    /isPreOrder\s+Boolean\s+@default\(false\)/.test(schema),
+  );
+  check(
+    "ProductSummary (not just ProductDetail) carries isComingSoon/isPreOrder — AD-375 widened scope so listing cards and the catalog filter see them too",
+    catalogTypes.includes("isPreOrder: boolean;") &&
+      /ProductSummary = \{[\s\S]*?isComingSoon: boolean;[\s\S]*?isPreOrder: boolean;[\s\S]*?\};/.test(
+        catalogTypes,
+      ),
+  );
+  check(
+    "ProductListQuery carries the two Availability-filter fields",
+    catalogTypes.includes("preOrderOnly?: boolean;") &&
+      catalogTypes.includes("comingSoonOnly?: boolean;"),
+  );
+  check(
+    "ProductSummaryRow declares both fields and toProductSummary() copies them through",
+    mappers.includes("isPreOrder: boolean;") &&
+      /function toProductSummary\([\s\S]*?isComingSoon: row\.isComingSoon,[\s\S]*?isPreOrder: row\.isPreOrder,[\s\S]*?\n\}/.test(
+        mappers,
+      ),
+  );
+  check(
+    "both SUMMARY_SELECTs (storefront + admin) select isComingSoon and isPreOrder — bounded to SUMMARY_SELECT's own block, not a later one (the CLONE_SELECT/DETAIL_SELECT leak-past-the-closing-brace bug from AD-373)",
+    namedSelectBlock(storefrontRepo, "SUMMARY_SELECT").includes(
+      "isComingSoon: true,",
+    ) &&
+      namedSelectBlock(storefrontRepo, "SUMMARY_SELECT").includes(
+        "isPreOrder: true,",
+      ) &&
+      namedSelectBlock(adminProducts, "SUMMARY_SELECT").includes(
+        "isComingSoon: true,",
+      ) &&
+      namedSelectBlock(adminProducts, "SUMMARY_SELECT").includes(
+        "isPreOrder: true,",
+      ),
+  );
+  check(
+    "composeWhere() gates preOrderOnly/comingSoonOnly the same way inStockOnly already does",
+    /if \(query\.preOrderOnly\) \{\s*where\.isPreOrder = true;\s*\}/.test(
+      storefrontRepo,
+    ) &&
+      /if \(query\.comingSoonOnly\) \{\s*where\.isComingSoon = true;\s*\}/.test(
+        storefrontRepo,
+      ),
+  );
+  check(
+    "BOTH ProductInputFields and ParsedProductInput declare isPreOrder (two separate types, two separate lines), and the server parser/bulk CSV pass it through",
+    (productInput.match(/isPreOrder: boolean;/g) ?? []).length >= 2 &&
+      productInputServer.includes("isPreOrder: input.isPreOrder,") &&
+      bulkCsv.includes("isPreOrder: toBool(row.is_pre_order)"),
+  );
+  check(
+    "productData() and the create path persist isPreOrder, and CLONE_SELECT/the clone carry it forward",
+    functionBody(adminProducts, "function productData(").includes(
+      "isPreOrder: parsed.isPreOrder,",
+    ) &&
+      functionBody(adminProducts, "async function persistParsed(").includes(
+        "isPreOrder: parsed.isPreOrder,",
+      ) &&
+      /const CLONE_SELECT = \{[\s\S]*?isPreOrder: true,[\s\S]*?\} satisfies Prisma\.ProductSelect;/.test(
+        adminProducts,
+      ) &&
+      adminProducts.includes("isPreOrder: source.isPreOrder,"),
+  );
+  check(
+    "the admin form has a Pre Order toggle next to Coming soon, wired to the form and submitted",
+    form.includes("const [preOrder, setPreOrder] = useState(") &&
+      form.includes("isPreOrder: preOrder,") &&
+      form.includes("preOrder={preOrder}") &&
+      form.includes("setPreOrder={handleSetPreOrder}") &&
+      sidebar.includes('label="Pre Order"') &&
+      sidebar.includes("checked={props.preOrder}"),
+  );
+  check(
+    "the two toggles are actually mutually exclusive — turning one on turns the other off, not just two toggles that happen to sit near each other",
+    functionBody(form, "function handleSetComingSoon(").includes(
+      "setPreOrder(false);",
+    ) &&
+      functionBody(form, "function handleSetPreOrder(").includes(
+        "setComingSoon(false);",
+      ),
+  );
+  check(
+    "ProductMediaBuy/the product page thread isPreOrder through to ProductSummary",
+    mediaBuy.includes("isPreOrder: boolean;") &&
+      mediaBuy.includes("isPreOrder={isPreOrder}") &&
+      page.includes("isPreOrder={product.isPreOrder}"),
+  );
+  check(
+    "ProductSummary hides the price for Up Coming or out-of-stock, but not for a pre-order item",
+    summary.includes(
+      "const priceHidden = isComingSoon || unavailable;",
+    ) &&
+      summary.includes(
+        'const unavailable = stockStatus === "out_of_stock" && !isPreOrder;',
+      ) &&
+      summary.includes("{!priceHidden ? (") &&
+      summary.includes("emiVisible =") &&
+      /emiVisible =\s*\n\s*!priceHidden &&/.test(summary),
+  );
+  check(
+    "Up Coming replaces the whole purchase row with one disabled button LABELLED \"Up Coming\"; Pre Order keeps the normal row and relabels Add to cart",
+    summary.includes(
+      "Matches the reference exactly: nothing but one disabled button",
+    ) &&
+      summary.includes("cursor-not-allowed") &&
+      /cursor-not-allowed[\s\S]*?>\s*\n\s*Up Coming\s*\n\s*<\/button>/.test(
+        summary,
+      ) &&
+      summary.includes(
+        '? "Place Pre Order"\n                    : justAdded || inCart',
+      ),
+  );
+  check(
+    'View More Info sits AFTER the overview body, not in the "Quick Overview" header (AD-375 — the operator corrected AD-374\'s header placement)',
+    summary.indexOf("Quick Overview") < summary.indexOf("dangerouslySetInnerHTML") &&
+      summary.indexOf("dangerouslySetInnerHTML") < summary.indexOf("View More Info") &&
+      !summary.includes("ArrowRight"),
+  );
+  check(
+    "the catalog grid cards' priceHidden() actually implements the isComingSoon/out-of-stock-not-pre-order rule, not just a same-named stub",
+    functionBody(productCard, "function priceHidden(").includes(
+      "product.isComingSoon ||",
+    ) &&
+      functionBody(productCard, "function priceHidden(").includes(
+        'product.stockStatus === "out_of_stock" && !product.isPreOrder',
+      ),
+  );
+  check(
+    "the catalog grid cards (both ProductCard and CatalogProductCard) hide price the same way and show the status text instead, and pass isComingSoon/isPreOrder to AddToCartButton",
+    productCard.includes("function priceHidden(product: ProductSummary)") &&
+      productCard.includes("function availabilityLabel(product: ProductSummary)") &&
+      (productCard.match(/priceHidden\(product\)/g) ?? []).length >= 4 &&
+      (productCard.match(/isComingSoon=\{product\.isComingSoon\}/g) ?? [])
+        .length === 2 &&
+      (productCard.match(/isPreOrder=\{product\.isPreOrder\}/g) ?? [])
+        .length === 2,
+  );
+  check(
+    "AddToCartButton bypasses the out-of-stock disable for a pre-order item and relabels for both states",
+    addToCartButton.includes(
+      "isComingSoon || (stockStatus === \"out_of_stock\" && !isPreOrder)",
+    ) &&
+      addToCartButton.includes('"Up Coming"') &&
+      addToCartButton.includes('"Place Pre Order"'),
+  );
+  check(
+    "the Similar Products sidebar card (a third, separate inline card — not ProductCard/CatalogProductCard) hides price and relabels its own button too",
+    functionBody(similarSidebar, "function priceHidden(").includes(
+      "product.isComingSoon ||",
+    ) &&
+      similarSidebar.includes('"Up Coming"') &&
+      similarSidebar.includes('"Place Pre Order"'),
+  );
+  check(
+    "the Compare page hides price and shows Up Coming/Pre Order in its own Availability row too",
+    functionBody(compareBody, "function priceHidden(").includes(
+      "product.isComingSoon ||",
+    ) &&
+      functionBody(compareBody, "function availabilityText(").includes(
+        'return "Up Coming";',
+      ) &&
+      functionBody(compareBody, "function availabilityText(").includes(
+        'return "Pre Order";',
+      ),
   );
 
   console.log(

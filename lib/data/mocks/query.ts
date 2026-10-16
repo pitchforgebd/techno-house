@@ -36,6 +36,8 @@ export function toSummary(product: ProductDetail): ProductSummary {
     discountEndsAt: product.discountEndsAt,
     labels: product.labels,
     hasActiveOffer: product.hasActiveOffer,
+    isComingSoon: product.isComingSoon,
+    isPreOrder: product.isPreOrder,
   };
 }
 

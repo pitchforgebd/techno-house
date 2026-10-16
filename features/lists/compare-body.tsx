@@ -27,6 +27,28 @@ const selectClass =
 
 const cellClass = "border-b border-border px-4 py-3 align-top text-label";
 
+/**
+ * No price exists to quote for an Up Coming product, and an out-of-stock
+ * (non-pre-order) price is not currently honourable — same rule as the
+ * single product page's `priceHidden` and the catalog grid cards'.
+ */
+function priceHidden(product: ProductSummary): boolean {
+  return (
+    product.isComingSoon ||
+    (product.stockStatus === "out_of_stock" && !product.isPreOrder)
+  );
+}
+
+function availabilityText(product: ProductSummary): string {
+  if (product.isComingSoon) {
+    return "Up Coming";
+  }
+  if (product.isPreOrder) {
+    return "Pre Order";
+  }
+  return product.stockStatus.replaceAll("_", " ");
+}
+
 export function CompareBody({ className }: { className?: string }) {
   const { state, removeCompare, clearCompare, toggleCompare, setCompare } =
     useListsStore();
@@ -416,22 +438,30 @@ export function CompareBody({ className }: { className?: string }) {
                     <span className="font-mono text-text">{product.sku}</span>
                   </p>
                   <div className="mt-2 space-y-0.5">
-                    {product.compareAtPrice &&
-                    product.compareAtPrice.amount > product.price.amount ? (
-                      <p className="text-label tabular-nums text-text-muted">
-                        Regular Price{" "}
-                        <span className="line-through">
-                          {formatMoney(product.compareAtPrice)}
-                        </span>
+                    {priceHidden(product) ? (
+                      <p className="text-body font-bold text-danger">
+                        {availabilityText(product)}
                       </p>
-                    ) : null}
-                    <p className="text-body font-bold tabular-nums text-text">
-                      {product.compareAtPrice &&
-                      product.compareAtPrice.amount > product.price.amount
-                        ? "Special Price "
-                        : "Price "}
-                      {formatMoney(product.price)}
-                    </p>
+                    ) : (
+                      <>
+                        {product.compareAtPrice &&
+                        product.compareAtPrice.amount > product.price.amount ? (
+                          <p className="text-label tabular-nums text-text-muted">
+                            Regular Price{" "}
+                            <span className="line-through">
+                              {formatMoney(product.compareAtPrice)}
+                            </span>
+                          </p>
+                        ) : null}
+                        <p className="text-body font-bold tabular-nums text-text">
+                          {product.compareAtPrice &&
+                          product.compareAtPrice.amount > product.price.amount
+                            ? "Special Price "
+                            : "Price "}
+                          {formatMoney(product.price)}
+                        </p>
+                      </>
+                    )}
                   </div>
                 </th>
               ))}
@@ -497,7 +527,7 @@ export function CompareBody({ className }: { className?: string }) {
             <CompareRow label="Availability" span={remaining > 0}>
               {ordered.map((product) => (
                 <td key={`${product.id}-stock`} className={cn(cellClass, "border-l")}>
-                  {product.stockStatus.replaceAll("_", " ")}
+                  {availabilityText(product)}
                 </td>
               ))}
             </CompareRow>

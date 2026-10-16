@@ -23,6 +23,12 @@ type AddToCartButtonProps = {
   variant?: ButtonVariant;
   className?: string;
   showHint?: boolean;
+  /** Not yet stocked but launching soon — disables the button and shows
+   * "Up Coming" regardless of `stockStatus`. */
+  isComingSoon?: boolean;
+  /** Orderable ahead of stock arriving — bypasses the usual out-of-stock
+   * disable and shows "Place Pre Order" instead. */
+  isPreOrder?: boolean;
 };
 
 export function AddToCartButton({
@@ -32,11 +38,14 @@ export function AddToCartButton({
   variant = "primary",
   className,
   showHint = true,
+  isComingSoon = false,
+  isPreOrder = false,
 }: AddToCartButtonProps) {
   const router = useRouter();
   const { state, addItem } = useCartStore();
   const [justAdded, setJustAdded] = useState(false);
-  const unavailable = stockStatus === "out_of_stock";
+  const unavailable =
+    isComingSoon || (stockStatus === "out_of_stock" && !isPreOrder);
   const inCart = state.lines.some((line) => line.slug === slug);
   const count = cartItemCount(state);
 
@@ -52,8 +61,10 @@ export function AddToCartButton({
       onClick={() => {
         if (unavailable) {
           notifyError({
-            title: "Out of stock",
-            description: "This item cannot be added while it is out of stock.",
+            title: isComingSoon ? "Up Coming" : "Out of stock",
+            description: isComingSoon
+              ? "This item is not available to order yet."
+              : "This item cannot be added while it is out of stock.",
           });
           return;
         }
@@ -70,11 +81,15 @@ export function AddToCartButton({
         });
       }}
     >
-      {unavailable
-        ? "Out of stock"
-        : justAdded || inCart
-          ? "Added to cart"
-          : "Add to cart"}
+      {isComingSoon
+        ? "Up Coming"
+        : stockStatus === "out_of_stock" && !isPreOrder
+          ? "Out of stock"
+          : justAdded || inCart
+            ? "Added to cart"
+            : isPreOrder
+              ? "Place Pre Order"
+              : "Add to cart"}
     </button>
   );
 

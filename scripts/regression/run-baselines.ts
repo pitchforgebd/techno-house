@@ -26,6 +26,10 @@ const SUITES: { name: string; script: string }[] = [
   { name: "table-scroll", script: "test:table-scroll" },
   { name: "product-quick-edit", script: "test:product-quick-edit" },
   { name: "product-coming-soon", script: "test:product-coming-soon" },
+  {
+    name: "catalog-availability-filter",
+    script: "test:catalog-availability-filter",
+  },
 ];
 
 function main(): void {

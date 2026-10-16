@@ -164,9 +164,9 @@ function main(): void {
       at(summary, 'id="product-qty"') < at(summary, "Check availability"),
   );
   check(
-    "the buy column is compact: a 1xl/xl title, rating/stock/model/SKU/brand merged into one meta row (AD-374), a tight one-line price",
+    "the buy column is compact: a 1xl/xl title, rating/stock/model/SKU/brand merged into one meta row (AD-374, bigger pills AD-375), a tight one-line price",
     summary.includes("text-lg leading-snug font-semibold tracking-tight text-text sm:text-xl") &&
-      summary.includes("mt-2 flex flex-wrap items-center gap-2") &&
+      summary.includes("mt-2.5 flex flex-wrap items-center gap-2.5") &&
       summary.includes("text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]") &&
       summary.includes("space-y-4"),
   );

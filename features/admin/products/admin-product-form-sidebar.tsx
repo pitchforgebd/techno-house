@@ -29,6 +29,8 @@ type SidebarProps = {
   setTodaysDeal: (value: boolean) => void;
   comingSoon: boolean;
   setComingSoon: (value: boolean) => void;
+  preOrder: boolean;
+  setPreOrder: (value: boolean) => void;
   refundable: boolean;
   setRefundable: (value: boolean) => void;
   warrantyEnabled: boolean;
@@ -262,6 +264,11 @@ export function AdminProductFormSidebar(props: SidebarProps) {
           label="Coming soon / Upcoming"
           checked={props.comingSoon}
           onChange={props.setComingSoon}
+        />
+        <AdminToggleRow
+          label="Pre Order"
+          checked={props.preOrder}
+          onChange={props.setPreOrder}
         />
         <div className="space-y-2 border-t border-neutral-100 pt-4">
           <AdminFormLabel>Choose flash title</AdminFormLabel>

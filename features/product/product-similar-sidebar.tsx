@@ -11,10 +11,24 @@ import type { ProductSummary } from "@/lib/data";
 import { formatMoney } from "@/lib/format/currency";
 import { cn } from "@/lib/cn";
 
+/**
+ * No price exists to quote for an Up Coming product, and an out-of-stock
+ * (non-pre-order) price is not currently honourable — same rule as the
+ * single product page's `priceHidden` and the catalog grid cards'.
+ */
+function priceHidden(product: ProductSummary): boolean {
+  return (
+    product.isComingSoon ||
+    (product.stockStatus === "out_of_stock" && !product.isPreOrder)
+  );
+}
+
 function SimilarProductCard({ product }: { product: ProductSummary }) {
   const { addItem } = useCartStore();
   const { toggleCompare } = useListsStore();
-  const unavailable = product.stockStatus === "out_of_stock";
+  const unavailable =
+    product.isComingSoon ||
+    (product.stockStatus === "out_of_stock" && !product.isPreOrder);
 
   return (
     <article className="border border-border bg-surface p-3">
@@ -38,9 +52,15 @@ function SimilarProductCard({ product }: { product: ProductSummary }) {
           >
             {product.name}
           </Link>
-          <p className="mt-1 text-label font-semibold tabular-nums text-text">
-            {formatMoney(product.price)}
-          </p>
+          {priceHidden(product) ? (
+            <p className="mt-1 text-caption font-bold text-danger">
+              {product.isComingSoon ? "Up Coming" : "Pre Order"}
+            </p>
+          ) : (
+            <p className="mt-1 text-label font-semibold tabular-nums text-text">
+              {formatMoney(product.price)}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -52,9 +72,10 @@ function SimilarProductCard({ product }: { product: ProductSummary }) {
               onClick={() => {
                 if (unavailable) {
                   notifyError({
-                    title: "Out of stock",
-                    description:
-                      "This item cannot be added while out of stock.",
+                    title: product.isComingSoon ? "Up Coming" : "Out of stock",
+                    description: product.isComingSoon
+                      ? "This item is not available to order yet."
+                      : "This item cannot be added while out of stock.",
                   });
                   return;
                 }
@@ -70,7 +91,13 @@ function SimilarProductCard({ product }: { product: ProductSummary }) {
                 });
               }}
             >
-              {unavailable ? "Out of stock" : "Add to cart"}
+              {product.isComingSoon
+                ? "Up Coming"
+                : unavailable
+                  ? "Out of stock"
+                  : product.isPreOrder
+                    ? "Place Pre Order"
+                    : "Add to cart"}
             </button>
             <button
               type="button"

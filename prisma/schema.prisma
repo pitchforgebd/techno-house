@@ -511,9 +511,12 @@ model Product {
   isNew           Boolean     @default(false)
   isSale          Boolean     @default(false)
   isActive        Boolean     @default(true)
-  /// Not yet stocked but launching soon — shows "Coming Soon" above Add to
-  /// cart on the product page regardless of `stockStatus`.
+  /// Not yet stocked but launching soon — shows "Up Coming" instead of a price
+  /// and replaces Add to cart with a disabled button, regardless of `stockStatus`.
   isComingSoon    Boolean     @default(false)
+  /// Orderable ahead of stock arriving — shows "Pre Order" and swaps Add to
+  /// cart for an active "Place Pre Order" button; the price still shows.
+  isPreOrder      Boolean     @default(false)
   /// Assigned to the Promotional Products channel (`/admin/promotions/products`).
   /// Merchandising only, and deliberately separate from `isSale` (Today's Deal)
   /// so the two channels can hold different products.

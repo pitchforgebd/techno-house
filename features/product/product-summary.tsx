@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   ArrowLeftRight,
-  ArrowRight,
   Check,
   Heart,
   ShieldCheck,
@@ -69,8 +68,12 @@ type ProductSummaryProps = {
   whatsappNumber?: string | null;
   /** Manufacturer model number, shown in the info chip row under the title. */
   modelNumber?: string | null;
-  /** Not yet stocked but launching soon — shows "Coming Soon" above Add to cart. */
+  /** Not yet stocked but launching soon — hides the price and replaces Add to
+   * cart with a single disabled "Up Coming" button. */
   isComingSoon?: boolean;
+  /** Orderable ahead of stock arriving — keeps the price, relabels Add to
+   * cart "Place Pre Order", and is never disabled by `stockStatus`. */
+  isPreOrder?: boolean;
   emiConfig?: AdminEmiConfig;
   isSignedIn?: boolean;
   b2bAccount?: {
@@ -156,6 +159,7 @@ export function ProductSummary({
   whatsappNumber = null,
   modelNumber = null,
   isComingSoon = false,
+  isPreOrder = false,
   emiConfig = {
     enabled: false,
     tenureMonths: [],
@@ -202,7 +206,14 @@ export function ProductSummary({
   // arrange EMI with the partner bank manually; no gateway processes it.
   const [emiSelected, setEmiSelected] = useState(false);
 
-  const unavailable = stockStatus === "out_of_stock";
+  // A pre-order item is "out of stock" by definition — that's the whole
+  // point — so it must bypass the disable that out-of-stock normally means.
+  const unavailable = stockStatus === "out_of_stock" && !isPreOrder;
+  // Up Coming: no price exists to quote yet. Out of stock (and not a
+  // pre-order): the listed price is not currently honourable. Either way,
+  // nothing price-shaped should render — the card, the savings pill, the
+  // discount-date line, and the EMI figure all key off this.
+  const priceHidden = isComingSoon || unavailable;
   const selectedColor =
     colors.find((color) => color.id === selectedColorId) ?? null;
   const inCart = cartState.lines.some(
@@ -248,6 +259,7 @@ export function ProductSummary({
     }));
   const emiLowestMonthly = emiPlans[0]?.monthly ?? 0;
   const emiVisible =
+    !priceHidden &&
     emiConfig.enabled &&
     emiPlans.length > 0 &&
     displayPrice.amount >= emiConfig.minOrderAmount;
@@ -390,9 +402,11 @@ export function ProductSummary({
               what covers the user's separate "Out Of Stock likha ta... show
               korbe" ask — one prominent place for it rather than a second
               standalone banner. */}
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
             <RatingStars rating={averageRating} reviewCount={reviewCount} />
-            <span className="h-3.5 w-px bg-border" aria-hidden />
+            <span className="h-4 w-px bg-border" aria-hidden />
+            {/* Bigger (size="md") than a typical caption chip, on request —
+                these should catch the eye, not read as fine print. */}
             <Badge
               tone={
                 unavailable
@@ -401,73 +415,78 @@ export function ProductSummary({
                     ? "stock"
                     : "neutral"
               }
-              size="sm"
+              size="md"
               className={unavailable ? "font-bold" : undefined}
             >
               {unavailable ? "Out Of Stock" : STOCK_LABEL[stockStatus]}
             </Badge>
             {modelNumber ? (
-              <Badge tone="neutral" size="sm">
+              <Badge tone="neutral" size="md">
                 Model:{" "}
                 <span className="ml-1 font-semibold text-text">
                   {modelNumber}
                 </span>
               </Badge>
             ) : null}
-            <Badge tone="neutral" size="sm">
+            <Badge tone="neutral" size="md">
               SKU:{" "}
               <span className="ml-1 font-mono font-semibold text-text">
                 {sku}
               </span>
             </Badge>
-            <Badge tone="warranty" size="sm">
+            <Badge tone="warranty" size="md">
               Brand: <span className="ml-1 font-semibold">{brandName}</span>
             </Badge>
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-r from-surface-muted/70 via-primary-soft/20 to-surface p-4 shadow-sm sm:p-5">
-          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-            {/* Special and regular price sit on one line, both bold, the
-                special price a size larger — no bordered panel is what made
-                the old version feel boxed-in rather than minimal; this one
-                keeps that single-line price but gives it a card so the offer
-                badge and the pulsing dot have somewhere to sit. */}
-            <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-extrabold tracking-[0.14em] text-primary uppercase">
-              <span
-                className="size-2 animate-pulse rounded-full bg-primary"
-                aria-hidden
-              />
-              {b2bActive ? "Wholesale price" : "Special price"}
-            </span>
-            {discountEndsAt ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-danger/25 bg-danger/10 px-2.5 py-1 text-[0.65rem] font-bold text-danger">
+        {/* No price exists to quote for an Up Coming product, and an
+            out-of-stock (non-pre-order) price is not currently honourable —
+            see `priceHidden`. */}
+        {!priceHidden ? (
+          <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-r from-surface-muted/70 via-primary-soft/20 to-surface p-4 shadow-sm sm:p-5">
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+              {/* Special and regular price sit on one line, both bold, the
+                  special price a size larger — no bordered panel is what made
+                  the old version feel boxed-in rather than minimal; this one
+                  keeps that single-line price but gives it a card so the offer
+                  badge and the pulsing dot have somewhere to sit. */}
+              <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-extrabold tracking-[0.14em] text-primary uppercase">
                 <span
-                  className="size-1.5 animate-ping rounded-full bg-danger"
+                  className="size-2 animate-pulse rounded-full bg-primary"
                   aria-hidden
                 />
-                Limited Time Offer
+                {b2bActive ? "Wholesale price" : "Special price"}
               </span>
-            ) : null}
+              {discountEndsAt ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-danger/25 bg-danger/10 px-2.5 py-1 text-[0.65rem] font-bold text-danger">
+                  <span
+                    className="size-1.5 animate-ping rounded-full bg-danger"
+                    aria-hidden
+                  />
+                  Limited Time Offer
+                </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]">
+                {formatMoney(displayPrice)}
+              </span>
+              {retailReference && retailReference.amount > displayPrice.amount ? (
+                <span className="text-[1.25rem] leading-none font-bold tabular-nums text-text-muted line-through sm:text-[1.5rem]">
+                  {formatMoney(retailReference)}
+                </span>
+              ) : null}
+              {savings !== null ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
+                  Save {formatMoney({ amount: savings })}
+                  {discountPercent !== null ? ` (${discountPercent}% OFF)` : ""}
+                  {b2bActive ? " · B2B" : ""}
+                </span>
+              ) : null}
+            </div>
           </div>
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]">
-              {formatMoney(displayPrice)}
-            </span>
-            {retailReference && retailReference.amount > displayPrice.amount ? (
-              <span className="text-[1.25rem] leading-none font-bold tabular-nums text-text-muted line-through sm:text-[1.5rem]">
-                {formatMoney(retailReference)}
-              </span>
-            ) : null}
-            {savings !== null ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
-                Save {formatMoney({ amount: savings })}
-                {discountPercent !== null ? ` (${discountPercent}% OFF)` : ""}
-                {b2bActive ? " · B2B" : ""}
-              </span>
-            ) : null}
-          </div>
-        </div>
+        ) : null}
 
         {/* Quick overview right under the price (AD-371) — the operator's own
             words were "price er nichei Quick overview hobe". It used to sit
@@ -480,34 +499,11 @@ export function ProductSummary({
             rich text (our system), not the reference's spec-grid layout —
             only the header/card treatment follows the reference. */}
         <div className="border-y border-border py-3.5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="h-4 w-1.5 rounded-full bg-primary" aria-hidden />
-              <h2 className="text-label font-bold uppercase tracking-wide text-text">
-                Quick Overview
-              </h2>
-            </div>
-            {/* Jumps to the Specifications section — ProductDetailSections
-                marks it with data-product-section="specifications" and
-                already tracks scroll position via its own
-                IntersectionObserver, so this needs no wiring beyond a plain
-                scrollIntoView. */}
-            <button
-              type="button"
-              onClick={() => {
-                document
-                  .querySelector('[data-product-section="specifications"]')
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-              className="group inline-flex items-center gap-1 text-label font-semibold text-danger underline-offset-2 hover:underline"
-            >
-              View More Info
-              <ArrowRight
-                aria-hidden
-                className="size-3.5 transition-transform group-hover:translate-x-0.5"
-                strokeWidth={2}
-              />
-            </button>
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-1.5 rounded-full bg-primary" aria-hidden />
+            <h2 className="text-label font-bold uppercase tracking-wide text-text">
+              Quick Overview
+            </h2>
           </div>
           {overviewHtml ? (
             <div
@@ -515,10 +511,27 @@ export function ProductSummary({
               dangerouslySetInnerHTML={{ __html: overviewHtml }}
             />
           ) : null}
+          {/* Below the overview content, not beside the header — the
+              operator's own instruction. Jumps to the Specifications
+              section: ProductDetailSections marks it with
+              data-product-section="specifications" and already tracks
+              scroll position via its own IntersectionObserver, so this
+              needs no wiring beyond a plain scrollIntoView. */}
+          <button
+            type="button"
+            onClick={() => {
+              document
+                .querySelector('[data-product-section="specifications"]')
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="mt-3 text-label font-semibold text-danger underline-offset-2 hover:underline"
+          >
+            View More Info
+          </button>
         </div>
 
         <div className="space-y-2">
-          {discountEndsAt ? (
+          {!priceHidden && discountEndsAt ? (
             <p className="text-caption text-text-muted">
               Offer until{" "}
               {new Date(discountEndsAt).toLocaleDateString("en-GB", {
@@ -528,7 +541,7 @@ export function ProductSummary({
                 timeZone: "UTC",
               })}
             </p>
-          ) : discountStartsAt ? (
+          ) : !priceHidden && discountStartsAt ? (
             <p className="text-caption text-text-muted">
               Offer from{" "}
               {new Date(discountStartsAt).toLocaleDateString("en-GB", {
@@ -653,130 +666,152 @@ export function ProductSummary({
           </p>
         ) : null}
 
+        {/* Plain bold red status text directly above the purchase row/button
+            — matches the reference exactly, rather than the pill badge this
+            used to be. */}
         {isComingSoon ? (
-          <p className="inline-flex w-fit items-center gap-1.5 rounded-sm bg-warning/12 px-2.5 py-1 text-label font-bold text-warning">
-            Coming Soon
-          </p>
+          <p className="text-body font-extrabold text-danger">Up Coming</p>
+        ) : isPreOrder ? (
+          <p className="text-body font-extrabold text-danger">Pre Order</p>
         ) : null}
 
-        <div className="flex flex-wrap items-end gap-2 border-t border-border pt-4">
-          <div className="w-20">
-            <label
-              htmlFor="product-qty"
-              className="text-caption text-text-muted"
+        {isComingSoon ? (
+          /* Matches the reference exactly: nothing but one disabled button —
+             no qty stepper, no branch-stock lookup, no Compare/Wishlist, none
+             of which apply to something that cannot be bought yet. */
+          <div className="border-t border-border pt-4">
+            <button
+              type="button"
+              disabled
+              className="flex min-h-11 w-full cursor-not-allowed items-center justify-center rounded-sm border border-border bg-surface-muted font-medium text-text-muted"
             >
-              Qty
-            </label>
-            <Input
-              id="product-qty"
-              type="number"
-              min={minQuantity}
-              max={99}
-              value={quantity}
-              onChange={(event) =>
-                setQuantity(Number.parseInt(event.target.value, 10) || 1)
-              }
-              className="mt-1 h-10 text-center tabular-nums"
-            />
+              Up Coming
+            </button>
           </div>
-          <button
-            type="button"
-            disabled={unavailable}
-            className={buttonClassName({
-              size: "md",
-              className: "min-h-11 min-w-[7rem] flex-1 gap-2 sm:flex-none",
-            })}
-            onClick={handleAddToCart}
-          >
-            <ShoppingCart aria-hidden className="size-4" strokeWidth={1.75} />
-            {unavailable
-              ? "Out of stock"
-              : justAdded || inCart
-                ? "Added to cart"
-                : "Add to cart"}
-          </button>
-          {/* Desktop-only: folded into the same row as the cart controls so
-              it stops being a second, separate full-width button below (the
-              mobile fallback right after this row keeps it reachable there). */}
-          {/* The visibility toggle lives on this wrapper, not on the Button's
-              own className — buttonClassName() already hardcodes `inline-flex`
-              with no breakpoint, and `cn()` has no tailwind-merge, so a
-              `hidden sm:inline-flex` passed alongside it is not guaranteed to
-              win the cascade (the exact pitfall the `light` variant comment
-              above warns about). */}
-          <div className="hidden sm:block">
+        ) : (
+          <>
+            <div className="flex flex-wrap items-end gap-2 border-t border-border pt-4">
+              <div className="w-20">
+                <label
+                  htmlFor="product-qty"
+                  className="text-caption text-text-muted"
+                >
+                  Qty
+                </label>
+                <Input
+                  id="product-qty"
+                  type="number"
+                  min={minQuantity}
+                  max={99}
+                  value={quantity}
+                  onChange={(event) =>
+                    setQuantity(Number.parseInt(event.target.value, 10) || 1)
+                  }
+                  className="mt-1 h-10 text-center tabular-nums"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={unavailable}
+                className={buttonClassName({
+                  size: "md",
+                  className: "min-h-11 min-w-[7rem] flex-1 gap-2 sm:flex-none",
+                })}
+                onClick={handleAddToCart}
+              >
+                <ShoppingCart aria-hidden className="size-4" strokeWidth={1.75} />
+                {unavailable
+                  ? "Out of stock"
+                  : isPreOrder
+                    ? "Place Pre Order"
+                    : justAdded || inCart
+                      ? "Added to cart"
+                      : "Add to cart"}
+              </button>
+              {/* Desktop-only: folded into the same row as the cart controls so
+                  it stops being a second, separate full-width button below (the
+                  mobile fallback right after this row keeps it reachable there). */}
+              {/* The visibility toggle lives on this wrapper, not on the Button's
+                  own className — buttonClassName() already hardcodes `inline-flex`
+                  with no breakpoint, and `cn()` has no tailwind-merge, so a
+                  `hidden sm:inline-flex` passed alongside it is not guaranteed to
+                  win the cascade (the exact pitfall the `light` variant comment
+                  above warns about). */}
+              <div className="hidden sm:block">
+                <Button
+                  type="button"
+                  variant="ink"
+                  size="md"
+                  className="min-h-11 gap-1.5"
+                  onClick={checkAvailability}
+                >
+                  <ShieldCheck aria-hidden className="size-4" strokeWidth={1.75} />
+                  Check availability
+                </Button>
+              </div>
+              <button
+                type="button"
+                aria-pressed={onCompare}
+                aria-label={onCompare ? "In compare" : "Compare"}
+                title={onCompare ? "In compare" : "Compare"}
+                className={buttonClassName({
+                  variant: "ghost",
+                  size: "md",
+                  className: "min-h-11 gap-2 border border-border px-3",
+                })}
+                onClick={() => {
+                  const result = toggleCompare(slug, categorySlug);
+                  if (!result.ok) {
+                    setCompareMessage(result.reason);
+                    notifyError({ title: "Compare", description: result.reason });
+                    return;
+                  }
+                  setCompareMessage(null);
+                  const nextOn = !onCompare;
+                  notifyToast(nextOn ? "Added to compare" : "Removed from compare");
+                }}
+              >
+                <ArrowLeftRight aria-hidden className="size-4" strokeWidth={1.75} />
+                {/* The label drops out when the buy column is too narrow to fit the
+                    whole row (it keeps its accessible name via aria-label). */}
+                <span className="hidden @[27rem]:inline">
+                  {onCompare ? "In compare" : "Compare"}
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-label={onWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                aria-pressed={onWishlist}
+                className={buttonClassName({
+                  variant: "ghost",
+                  size: "md",
+                  className: "min-h-11 min-w-11 border border-border px-0",
+                })}
+                onClick={() => {
+                  const nextOn = !onWishlist;
+                  toggleWishlist(slug);
+                  notifyToast(
+                    nextOn ? "Added to wishlist" : "Removed from wishlist",
+                  );
+                }}
+              >
+                <WishlistHeartIcon filled={onWishlist} />
+              </button>
+            </div>
+
+            {/* Mobile fallback for the same action, hidden on the row above from `sm`. */}
             <Button
               type="button"
               variant="ink"
               size="md"
-              className="min-h-11 gap-1.5"
+              className="w-full gap-1.5 sm:hidden"
               onClick={checkAvailability}
             >
               <ShieldCheck aria-hidden className="size-4" strokeWidth={1.75} />
               Check availability
             </Button>
-          </div>
-          <button
-            type="button"
-            aria-pressed={onCompare}
-            aria-label={onCompare ? "In compare" : "Compare"}
-            title={onCompare ? "In compare" : "Compare"}
-            className={buttonClassName({
-              variant: "ghost",
-              size: "md",
-              className: "min-h-11 gap-2 border border-border px-3",
-            })}
-            onClick={() => {
-              const result = toggleCompare(slug, categorySlug);
-              if (!result.ok) {
-                setCompareMessage(result.reason);
-                notifyError({ title: "Compare", description: result.reason });
-                return;
-              }
-              setCompareMessage(null);
-              const nextOn = !onCompare;
-              notifyToast(nextOn ? "Added to compare" : "Removed from compare");
-            }}
-          >
-            <ArrowLeftRight aria-hidden className="size-4" strokeWidth={1.75} />
-            {/* The label drops out when the buy column is too narrow to fit the
-                whole row (it keeps its accessible name via aria-label). */}
-            <span className="hidden @[27rem]:inline">
-              {onCompare ? "In compare" : "Compare"}
-            </span>
-          </button>
-          <button
-            type="button"
-            aria-label={onWishlist ? "Remove from wishlist" : "Add to wishlist"}
-            aria-pressed={onWishlist}
-            className={buttonClassName({
-              variant: "ghost",
-              size: "md",
-              className: "min-h-11 min-w-11 border border-border px-0",
-            })}
-            onClick={() => {
-              const nextOn = !onWishlist;
-              toggleWishlist(slug);
-              notifyToast(
-                nextOn ? "Added to wishlist" : "Removed from wishlist",
-              );
-            }}
-          >
-            <WishlistHeartIcon filled={onWishlist} />
-          </button>
-        </div>
-
-        {/* Mobile fallback for the same action, hidden on the row above from `sm`. */}
-        <Button
-          type="button"
-          variant="ink"
-          size="md"
-          className="w-full gap-1.5 sm:hidden"
-          onClick={checkAvailability}
-        >
-          <ShieldCheck aria-hidden className="size-4" strokeWidth={1.75} />
-          Check availability
-        </Button>
+          </>
+        )}
 
         {compareMessage ? (
           <p className="text-caption text-danger" role="status">

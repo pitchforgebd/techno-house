@@ -282,6 +282,22 @@ export function AdminProductForm({
   const [comingSoon, setComingSoon] = useState(
     product?.isComingSoon ?? false,
   );
+  const [preOrder, setPreOrder] = useState(product?.isPreOrder ?? false);
+  // Mutually exclusive — a product cannot be both "launching soon" (no price,
+  // Add to cart replaced entirely) and "orderable ahead of stock" (keeps its
+  // price, Add to cart just relabelled) at once.
+  function handleSetComingSoon(value: boolean) {
+    setComingSoon(value);
+    if (value) {
+      setPreOrder(false);
+    }
+  }
+  function handleSetPreOrder(value: boolean) {
+    setPreOrder(value);
+    if (value) {
+      setComingSoon(false);
+    }
+  }
   const [refundable, setRefundable] = useState(false);
   const [warrantyEnabled, setWarrantyEnabled] = useState(
     product ? Boolean(product.warrantyLabel) : true,
@@ -427,6 +443,7 @@ export function AdminProductForm({
             (Number.parseFloat(regularPrice) >
               Number.parseFloat(specialPrice)),
           isComingSoon: comingSoon,
+          isPreOrder: preOrder,
           warrantyEnabled,
           warrantyLabel,
           noteIds,
@@ -1488,7 +1505,9 @@ export function AdminProductForm({
           todaysDeal={todaysDeal}
           setTodaysDeal={setTodaysDeal}
           comingSoon={comingSoon}
-          setComingSoon={setComingSoon}
+          setComingSoon={handleSetComingSoon}
+          preOrder={preOrder}
+          setPreOrder={handleSetPreOrder}
           refundable={refundable}
           setRefundable={setRefundable}
           warrantyEnabled={warrantyEnabled}

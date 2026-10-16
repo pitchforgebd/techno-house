@@ -69,6 +69,8 @@ const SUMMARY_SELECT = {
   createdAt: true,
   isNew: true,
   isSale: true,
+  isComingSoon: true,
+  isPreOrder: true,
   brand: { select: { slug: true, name: true } },
   category: { select: { slug: true } },
   warranty: { select: { label: true, logoSrc: true } },
@@ -103,7 +105,6 @@ const DETAIL_SELECT = {
   pdfSpecificationSrc: true,
   noteIds: true,
   modelNumber: true,
-  isComingSoon: true,
   colors: {
     select: {
       id: true,
@@ -212,6 +213,14 @@ function composeWhere(
 
   if (query.inStockOnly) {
     where.stockStatus = IN_STOCK;
+  }
+
+  if (query.preOrderOnly) {
+    where.isPreOrder = true;
+  }
+
+  if (query.comingSoonOnly) {
+    where.isComingSoon = true;
   }
 
   if (query.onSaleOnly) {

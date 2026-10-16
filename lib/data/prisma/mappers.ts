@@ -166,6 +166,8 @@ export type ProductSummaryRow = {
   createdAt?: Date | null;
   isNew: boolean;
   isSale: boolean;
+  isComingSoon: boolean;
+  isPreOrder: boolean;
   brand: { slug: string; name: string };
   category: { slug: string };
   warranty: { label: string; logoSrc: string | null } | null;
@@ -215,6 +217,8 @@ export function toProductSummary(
       : null,
     labels: resolveProductLabels(row.labelIds ?? [], presets),
     hasActiveOffer: presets.activeOfferProductIds.has(row.id),
+    isComingSoon: row.isComingSoon,
+    isPreOrder: row.isPreOrder,
   };
 }
 
@@ -246,7 +250,6 @@ export type ProductDetailRow = ProductCandidateRow & {
   pdfSpecificationSrc: string | null;
   noteIds?: string[];
   modelNumber: string | null;
-  isComingSoon: boolean;
   colors: {
     id: string;
     name: string;
@@ -301,7 +304,6 @@ export function toProductDetail(
     pdfSpecificationSrc: row.pdfSpecificationSrc,
     notes: resolveProductNotes(row.noteIds ?? [], presets),
     modelNumber: row.modelNumber,
-    isComingSoon: row.isComingSoon,
   };
 }
 
