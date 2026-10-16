@@ -203,7 +203,7 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
 
         <nav
           aria-label="Quick sections"
-          className="hidden min-w-0 flex-1 items-center gap-1 md:flex"
+          className="th-scroll-hide hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto md:flex"
         >
           {visibleTabs.map((tab) => {
             const active = activeTab?.href === tab.href;
@@ -212,7 +212,7 @@ export function AdminTopbar({ onOpenNav }: { onOpenNav: () => void }) {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                  "shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                   active
                     ? "bg-[#3897f0]/10 text-[#2f86d8] shadow-[inset_0_0_0_1px_rgba(56,151,240,0.18)]"
                     : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800",
