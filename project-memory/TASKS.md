@@ -8045,3 +8045,130 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       DEPLOY: no schema migration — every new field lives in an existing
       JSON config column or an existing-but-unexposed Boolean. `git pull
       origin main`, `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-379 Operator (Banglish), explicit "analyze first" instruction:
+      per-product discounts on an already-placed order (any order — plain
+      or PC-build — with each product discounted separately, one invoice
+      either way), a dedicated "you got a discount, total X%/৳Y" email
+      with the updated invoice attached, and PC Builder's share/save/
+      download gated behind sign-in. Delivered a written analysis first
+      (per instruction) covering what already existed (the invoice/email/
+      PDF pipeline was already real; save and share-link creation already
+      required sign-in; only PDF *download* didn't) and the one real
+      design fork — what happens to the money when a *paid* order is
+      discounted afterward — via AskUserQuestion before writing any code.
+      Operator chose: a real refund for the difference, not a cosmetic-
+      only invoice change.
+
+      **Why a real refund, not just rewriting `totalAmount`:** confirmed
+      by reading `lib/refunds/workflow.ts` and the `Order`/`Payment`
+      models first — `Order.totalAmount` is already treated as "what was
+      actually charged" in several places (the refund-eligibility math,
+      the existing one-time `adminDiscountAmount` discount, the invoice's
+      PAID/UNPAID stamp) — silently shrinking it after the fact on a paid
+      order would make the books lie about what the customer was charged
+      vs. what they're shown. Routing the difference through the same
+      audited refund system keeps Payment/Order/Refund internally
+      consistent with no new, parallel money-moving code path.
+
+      **Schema:** `OrderItem.discountAmount Int @default(0)` (migration
+      `20261016225835_add_order_item_discount`), nothing else — `AdminInvoice`/
+      `AdminInvoiceLine` gained a computed `itemDiscountTotal`/per-line
+      `discountAmount`, not stored.
+
+      **`lib/refunds/workflow.ts`** gained `createAdminApprovedRefund()` —
+      an admin-initiated refund (no customer REQUESTED step, since staff
+      is deciding it, not approving someone else's request) that reuses
+      the exact same locking/remaining-amount safety as
+      `requestRefundForUser` and hands back an APPROVED row for the caller
+      to run through the existing `completeRefund()` — so a per-item
+      discount's payout goes through the identical gateway/offline code
+      (SSLCommerz/bKash API calls with their existing idempotency, or an
+      `offline:` marker for COD) a staff-processed refund already uses,
+      not a second implementation of moving money.
+
+      **`lib/orders/item-discounts.ts`** (new) — `applyOrderItemDiscounts()`
+      is a **one-shot action per order**: if any `OrderItem` already
+      carries a discount, a further call is refused ("Use the Refunds
+      tools for any further adjustment") — the same one-time convention
+      `adminDiscountAmount` already established, chosen specifically to
+      avoid a second apply silently compounding or a reduced discount
+      trying to claw back an already-paid-out refund, neither of which
+      the system has any mechanism to undo safely. Validates each line's
+      discount against its own price and the order total, then: if the
+      order is PAID/PARTIALLY_REFUNDED, creates **and completes** the
+      refund *before* writing any discount (a failed payout must never
+      leave the invoice claiming a discount nobody was actually paid
+      back); only then persists each `OrderItem.discountAmount` and
+      reduces `Order.totalAmount` in one transaction; writes an audit log;
+      fire-and-forgets the new discount email (never fails the apply on
+      a mail problem, same precedent as order confirmation emails).
+
+      **Invoice + email:** `AdminInvoiceLine` gained `discountAmount`,
+      threaded through the already-real PDF pipeline
+      (`invoice-html.ts`/`invoice-pdf.ts`, Puppeteer, already used for the
+      order-confirmation attachment) and the admin on-screen invoice view
+      — both now show a line's original price struck through next to its
+      discounted price, plus an "Item discounts" totals row. New
+      `lib/orders/order-discount-email.ts` sends a dedicated "You've
+      received a discount" email (not a reuse of the order-confirmation
+      email, which is framed around placement/first-confirm — wrong
+      framing for a discount applied afterward, sometimes much later);
+      exported `buildInvoiceAttachment()` out of
+      `order-confirmation-email.ts` so both emails share one PDF builder
+      instead of two parallel ones.
+
+      **Admin UI:** new `AdminOrderItemDiscounts`
+      (features/admin/orders/) on the order detail page — a %-or-৳
+      calculator per line (same convention as the B2B pricing calculator,
+      AD-378: type a %, see the computed Taka amount, or type the amount
+      directly), a running total, one "Apply discount & email invoice"
+      button. Gated on `refunds.process` (not a lighter order-editing
+      permission) — chosen because this action can move real money
+      exactly like the existing refund-complete action, so it gets the
+      same permission bar. Already-applied orders render a read-only
+      summary instead of the form.
+
+      **PC Builder gate:** save and share-link *creation* already
+      required sign-in (`BUILDS_SIGN_IN` in `saved-builds.ts`/`share.ts`,
+      confirmed by reading the code, not assumed) — the only real gap was
+      the PDF *download* route
+      (`app/(storefront)/pc-builder/share/[id]/pdf/route.ts`), previously
+      open to anyone with the link "by design" per its own doc comment.
+      Gated non-inline requests on `getCustomerSession()`, redirecting to
+      login with a return path; `?inline=1` (what the page's own Print
+      button opens) stays public, same as viewing the share page itself —
+      only the file download needs an account. Also added a client-side
+      check in `PcBuilderBuildActions`'s Download link
+      (`useCustomerSession()` + redirect) so a signed-out click lands
+      cleanly on the login page instead of depending on how a given
+      browser happens to handle an anchor's `download` hint against a
+      redirected response.
+
+      **Verification, real Postgres, both money paths exercised
+      end-to-end** (two written-then-deleted scripts). Unpaid path: a
+      real order's item discounted, `totalAmount` reduced by the exact
+      amount, invoice `itemDiscountTotal` correct, a second apply
+      correctly refused, full revert confirmed. Paid path (no real
+      COD+PAID fixture existed in this dev DB, so one was borrowed and
+      temporarily forced into that state, restored after): applying the
+      discount created a real `Refund` row (`status: COMPLETED`,
+      `channel: OFFLINE`, `payoutStatus: PAID`, real `payoutRef`) for the
+      exact discount amount, flipped `Payment`/`Order` to
+      `PARTIALLY_REFUNDED` via the real existing `applyPaymentRefundStatus`
+      logic, applied the item discount, then a full revert (including
+      deleting the audit-log rows the test run itself created under a
+      borrowed real staff id, since audit logs are append-only in the
+      real app and must not keep a misleading record) confirmed every
+      touched field matched its original value exactly. A first
+      verification attempt silently produced no visible output for
+      several minutes — diagnosed as Node stdout buffering never
+      flushing because an un-awaited `sendMail()` call was holding the
+      process open (fire-and-forget by design, same as order-confirmation
+      email), not a logic bug; killing the process flushed the buffer and
+      showed every assertion had already passed. `tsc --noEmit` 0 errors,
+      `eslint` clean, full `next build` clean, Prisma client regenerated
+      after the migration.
+      DEPLOY: `git pull origin main`, `npx prisma migrate deploy`
+      (applies `20261016225835_add_order_item_discount` — safe, additive,
+      default 0), `npm run build`, `pm2 restart techno-house`.

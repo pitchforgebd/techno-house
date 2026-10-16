@@ -21,10 +21,13 @@ its 17 findings are an open backlog, not applied fixes. The
 full detail for AD-276..AD-315 lives in `project-memory/TASKS.md`; this
 file's narrative sections below stop at AD-288 and are historical.
 AD-337..AD-377 (storefront/admin feature and polish work, unrelated to the
-security remediation) and AD-378 (bundled PDP B2B/EMI redesign + admin B2B
+security remediation), AD-378 (bundled PDP B2B/EMI redesign + admin B2B
 toggle/% pricing + admin topbar shortcut + sitewide admin live search +
-footer marquee controls + admin sidebar scroll fix) are also complete —
-full detail in `project-memory/TASKS.md`, not narrated here.
+footer marquee controls + admin sidebar scroll fix), and AD-379
+(per-product post-placement order discounts with real refund integration +
+a dedicated discount-notice email + PC Builder download login gate) are
+also complete — full detail in `project-memory/TASKS.md`, not narrated
+here.
 
 ## Status
 Core sales + account paths are DB-backed. Catalogue repositories no longer
