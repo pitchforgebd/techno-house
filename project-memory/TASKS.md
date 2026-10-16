@@ -7875,3 +7875,27 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       live counts to the other tab labels.
       DEPLOY: no schema change, no migration. `git pull origin main`,
       `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-377 Jump-nav active tab colour reverted from AD-376's red back to
+      the original black. No schema change.
+      Operator request, with a screenshot of exactly what AD-376 had just
+      shipped: "button color ager motoi hobe, change koro eta" ("the button
+      colour should be like before, change this"). Scoped narrowly to
+      colour only — the rounded-pill shape and the gap between tabs from
+      AD-376 stay; only `active ? "border-danger bg-danger text-white" :
+      ...` reverted to the original `active ? "border-text bg-text
+      text-primary-foreground" : ...` in
+      `features/product/product-detail-sections.tsx`, and the inactive
+      tab's `hover:border-danger/40` (added in AD-376 to echo the red) went
+      back to a plain `hover:bg-surface-muted`.
+      Verified: `tsc` 0, `eslint` clean, `next build` ok. Updated the
+      AD-376 `test:product-specifications` check (rather than adding a new
+      suite for a one-line colour revert) to assert `bg-text`/no `bg-danger`
+      instead of the red it pinned a few minutes earlier; still 10/10
+      checks, still passes inside the 19-suite regression run. Real browser
+      (headless Chrome, a production build): screenshot confirms the black
+      pill tab, and the active tab's computed background colour read back
+      as `rgb(5, 28, 57)` — exactly `--color-text`, the same token used
+      before AD-376 touched it.
+      DEPLOY: no schema change, no migration. `git pull origin main`,
+      `npm run build`, `pm2 restart techno-house`.

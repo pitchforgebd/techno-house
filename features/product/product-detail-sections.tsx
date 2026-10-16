@@ -126,8 +126,8 @@ export function ProductDetailSections({
               className={cn(
                 "min-h-11 min-w-[7.5rem] rounded-sm border px-4 text-label font-semibold transition-colors sm:min-w-[8.5rem]",
                 active
-                  ? "border-danger bg-danger text-white"
-                  : "border-border bg-surface text-text hover:border-danger/40 hover:bg-surface-muted",
+                  ? "border-text bg-text text-primary-foreground"
+                  : "border-border bg-surface text-text hover:bg-surface-muted",
               )}
               onClick={() => jumpTo(section.id)}
             >

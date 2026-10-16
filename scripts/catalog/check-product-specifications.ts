@@ -2,15 +2,17 @@
  * Product page: Specifications redesigned to match a reference screenshot —
  * a full-width tinted band per spec group (not a narrow rowspan column), a
  * "Specification" title above the table, zebra-striped rows, and the
- * Specifications/Details/Q&A/Review jump-nav restyled as rounded pills with
- * a red active tab (AD-376).
+ * Specifications/Details/Q&A/Review jump-nav restyled as rounded pills
+ * (AD-376). The active tab was red at first; the operator asked for the
+ * original black colour back right after, keeping the new pill shape/gap
+ * (AD-377).
  *
  *   npm run test:product-specifications
  *
  * Source guards only — no database, no network. The real render (group
- * bands, striping, the "N more" expand/collapse still working, the red
- * active tab) was checked in headless Chrome when this was built (see
- * AD-376 in project-memory/TASKS.md).
+ * bands, striping, the "N more" expand/collapse still working, the active
+ * tab's colour) was checked in headless Chrome when this was built (see
+ * AD-376/377 in project-memory/TASKS.md).
  */
 import { readFileSync } from "node:fs";
 
@@ -141,9 +143,9 @@ function main(): void {
       !sections.includes("-ml-px"),
   );
   check(
-    "the active tab is red (bg-danger), replacing the old black bg-text treatment",
-    sections.includes('"border-danger bg-danger text-white"') &&
-      !sections.includes('"relative z-[1] border-text bg-text text-primary-foreground"'),
+    "the active tab stays the original black bg-text treatment (AD-377: the operator asked for the colour back after AD-376 tried red) — only the pill shape/gap changed, not the colour",
+    sections.includes('"border-text bg-text text-primary-foreground"') &&
+      !sections.includes("bg-danger"),
   );
   check(
     "data-product-section ids and the IntersectionObserver jump-to wiring are untouched — only the button's own classes changed",
