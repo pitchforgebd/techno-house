@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import {
   Table,
@@ -148,6 +149,20 @@ export function AdminB2BPricing({ data }: { data: AdminB2BPricingResult }) {
       `/admin/customers/b2b/pricing${q ? `?q=${encodeURIComponent(q)}` : ""}`,
     [],
   );
+  const hrefForPage = useMemo(
+    () => (page: number) => {
+      const query = new URLSearchParams();
+      if (data.q) {
+        query.set("q", data.q);
+      }
+      if (page > 1) {
+        query.set("page", String(page));
+      }
+      const qs = query.toString();
+      return qs ? `/admin/customers/b2b/pricing?${qs}` : "/admin/customers/b2b/pricing";
+    },
+    [data.q],
+  );
 
   return (
     <div className="space-y-5">
@@ -196,9 +211,19 @@ export function AdminB2BPricing({ data }: { data: AdminB2BPricingResult }) {
         </Table>
       </div>
 
-      <p className="text-caption text-text-muted">
-        Showing {data.rows.length} of {data.total} products.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-caption text-text-muted">
+          Showing {data.rows.length} of {data.total} products — page{" "}
+          {data.page} of {data.pageCount}.
+        </p>
+        {data.pageCount > 1 ? (
+          <Pagination
+            page={data.page}
+            pageCount={data.pageCount}
+            hrefForPage={hrefForPage}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

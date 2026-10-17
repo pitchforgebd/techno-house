@@ -9,9 +9,13 @@ export const metadata: Metadata = {
 export default async function AdminB2BPricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const data = await listAdminB2BPricing({ q: params.q });
+  const page = Number.parseInt(params.page ?? "1", 10);
+  const data = await listAdminB2BPricing({
+    q: params.q,
+    page: Number.isFinite(page) ? page : 1,
+  });
   return <AdminB2BPricing data={data} />;
 }

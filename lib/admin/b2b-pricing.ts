@@ -7,6 +7,8 @@
  */
 import { getPrisma } from "@/lib/db/prisma";
 
+export const ADMIN_B2B_PRICING_PAGE_SIZE = 50;
+
 export type AdminB2BPricingRow = {
   productId: string;
   name: string;
@@ -24,10 +26,14 @@ export type AdminB2BPricingResult = {
   rows: AdminB2BPricingRow[];
   total: number;
   q: string;
+  page: number;
+  pageSize: number;
+  pageCount: number;
 };
 
 export async function listAdminB2BPricing(input: {
   q?: string;
+  page?: number;
 }): Promise<AdminB2BPricingResult> {
   const q = (input.q ?? "").trim();
   const prisma = getPrisma();
@@ -40,28 +46,38 @@ export async function listAdminB2BPricing(input: {
       }
     : {};
 
-  const [rows, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      orderBy: [{ name: "asc" }],
-      take: 200,
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        priceAmount: true,
-        category: { select: { name: true } },
-        b2bPrice: {
-          select: { priceAmount: true, minQuantity: true, isActive: true },
-        },
+  const pageSize = ADMIN_B2B_PRICING_PAGE_SIZE;
+  const total = await prisma.product.count({ where });
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const rawPage = input.page ?? 1;
+  const page =
+    Number.isFinite(rawPage) && rawPage >= 1
+      ? Math.min(Math.floor(rawPage), pageCount)
+      : 1;
+
+  const rows = await prisma.product.findMany({
+    where,
+    orderBy: [{ name: "asc" }],
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      priceAmount: true,
+      category: { select: { name: true } },
+      b2bPrice: {
+        select: { priceAmount: true, minQuantity: true, isActive: true },
       },
-    }),
-    prisma.product.count({ where }),
-  ]);
+    },
+  });
 
   return {
     q,
     total,
+    page,
+    pageSize,
+    pageCount,
     rows: rows.map((row) => ({
       productId: row.id,
       name: row.name,
