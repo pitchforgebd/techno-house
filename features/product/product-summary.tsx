@@ -445,7 +445,7 @@ export function ProductSummary({
             out-of-stock (non-pre-order) price is not currently honourable —
             see `priceHidden`. */}
         {!priceHidden ? (
-          <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-r from-surface-muted/70 via-primary-soft/20 to-surface p-4 shadow-sm sm:p-5">
+          <div className="p-4 sm:p-5">
             <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
               {/* Special and regular price sit on one line, both bold, the
                   special price a size larger — no bordered panel is what made
