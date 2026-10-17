@@ -470,67 +470,6 @@ export function ProductSummary({
               ) : null}
             </div>
 
-            {/* Universal — shown on every product regardless of whether it
-                has its own B2BProductPrice row, since an active B2B account
-                still gets its flat account-level discount on any product
-                (resolveB2BPricing's fallback); gating this on per-product
-                eligibility hid the register/sign-in entry point in exactly
-                the cases where it still works. Its own row, right-aligned,
-                directly above the price — not sharing the price's row —
-                so its icon/text/Sign in/WhatsApp never fragment across
-                lines regardless of how narrow the card gets. */}
-            <div className="mb-1.5 flex justify-end">
-              <span className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
-                <span
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-                  aria-hidden
-                >
-                  <Tag className="size-5" strokeWidth={1.75} />
-                </span>
-                {b2bActive ? (
-                  <span className="text-label font-bold text-primary">
-                    Wholesale pricing active — {b2bAccount?.company}
-                  </span>
-                ) : b2bAccount?.status === "PENDING" ? (
-                  <span className="text-label font-bold text-text-muted">
-                    Your wholesale application is under review.
-                  </span>
-                ) : !isSignedIn ? (
-                  // Wholesale has its own entry point — the customer
-                  // login sent B2B buyers to a retail form with no way
-                  // to register a business.
-                  <span className="text-label font-bold text-text-muted">
-                    <Link
-                      href="/b2b/register"
-                      className="text-primary underline-offset-2 hover:underline"
-                    >
-                      For B2B — register for wholesale price
-                    </Link>
-                    {" · "}
-                    <Link
-                      href="/b2b/login"
-                      className="text-primary underline-offset-2 hover:underline"
-                    >
-                      Sign in
-                    </Link>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setB2bOpen(true)}
-                    className="text-label font-bold text-primary underline-offset-2 hover:underline"
-                  >
-                    {b2bAccount?.status === "SUSPENDED"
-                      ? "Wholesale account suspended — re-apply"
-                      : "For B2B — apply for wholesale price"}
-                  </button>
-                )}
-                {whatsappNumber && !b2bActive ? (
-                  <WhatsAppInlineLink number={whatsappNumber} />
-                ) : null}
-              </span>
-            </div>
-
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]">
                 {formatMoney(displayPrice)}
@@ -546,6 +485,65 @@ export function ProductSummary({
                   {discountPercent !== null ? ` (${discountPercent}% OFF)` : ""}
                   {b2bActive ? " · B2B" : ""}
                 </span>
+              ) : null}
+            </div>
+
+            {/* Universal — shown on every product regardless of whether it
+                has its own B2BProductPrice row, since an active B2B account
+                still gets its flat account-level discount on any product
+                (resolveB2BPricing's fallback); gating this on per-product
+                eligibility hid the register/sign-in entry point in exactly
+                the cases where it still works. Sits below the price on its
+                own full-width row, separated by a divider, instead of
+                squeezed onto the price or label row — that cramped it at
+                narrow widths and fought the discount badge for space. */}
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+              <span
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+                aria-hidden
+              >
+                <Tag className="size-4" strokeWidth={1.75} />
+              </span>
+              {b2bActive ? (
+                <span className="text-label font-bold text-primary">
+                  Wholesale pricing active — {b2bAccount?.company}
+                </span>
+              ) : b2bAccount?.status === "PENDING" ? (
+                <span className="text-label font-bold text-text-muted">
+                  Your wholesale application is under review.
+                </span>
+              ) : !isSignedIn ? (
+                // Wholesale has its own entry point — the customer
+                // login sent B2B buyers to a retail form with no way
+                // to register a business.
+                <span className="text-label font-bold text-text-muted">
+                  <Link
+                    href="/b2b/register"
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    For B2B — register for wholesale price
+                  </Link>
+                  {" · "}
+                  <Link
+                    href="/b2b/login"
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    Sign in
+                  </Link>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setB2bOpen(true)}
+                  className="text-label font-bold text-primary underline-offset-2 hover:underline"
+                >
+                  {b2bAccount?.status === "SUSPENDED"
+                    ? "Wholesale account suspended — re-apply"
+                    : "For B2B — apply for wholesale price"}
+                </button>
+              )}
+              {whatsappNumber && !b2bActive ? (
+                <WhatsAppInlineLink number={whatsappNumber} />
               ) : null}
             </div>
           </div>
