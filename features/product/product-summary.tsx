@@ -469,42 +469,18 @@ export function ProductSummary({
                 </span>
               ) : null}
             </div>
-            {/* The row itself may still wrap as a whole (flex-wrap) when the
-                card is too narrow to fit both groups — but the B2B group
-                itself never fragments internally (its icon/text/Sign in/
-                WhatsApp always render together on one line, forced via
-                flex-nowrap + whitespace-nowrap on its own span below): it
-                either sits beside the price on this row, or drops to its
-                own clean full-width line underneath, never scattered
-                mid-way with the icon stranded above its own text. */}
-            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]">
-                  {formatMoney(displayPrice)}
-                </span>
-                {retailReference && retailReference.amount > displayPrice.amount ? (
-                  <span className="text-[1.25rem] leading-none font-bold tabular-nums text-text-muted line-through sm:text-[1.5rem]">
-                    {formatMoney(retailReference)}
-                  </span>
-                ) : null}
-                {savings !== null ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
-                    Save {formatMoney({ amount: savings })}
-                    {discountPercent !== null ? ` (${discountPercent}% OFF)` : ""}
-                    {b2bActive ? " · B2B" : ""}
-                  </span>
-                ) : null}
-              </div>
 
-              {/* Universal — shown on every product regardless of whether
-                  it has its own B2BProductPrice row, since an active B2B
-                  account still gets its flat account-level discount on any
-                  product (resolveB2BPricing's fallback); gating this on
-                  per-product eligibility hid the register/sign-in entry
-                  point in exactly the cases where it still works. Sits
-                  opposite the price on this same row per the operator's
-                  own screenshot. */}
-              <span className="ml-auto flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
+            {/* Universal — shown on every product regardless of whether it
+                has its own B2BProductPrice row, since an active B2B account
+                still gets its flat account-level discount on any product
+                (resolveB2BPricing's fallback); gating this on per-product
+                eligibility hid the register/sign-in entry point in exactly
+                the cases where it still works. Its own row, right-aligned,
+                directly above the price — not sharing the price's row —
+                so its icon/text/Sign in/WhatsApp never fragment across
+                lines regardless of how narrow the card gets. */}
+            <div className="mb-1.5 flex justify-end">
+              <span className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                 <span
                   className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
                   aria-hidden
@@ -553,6 +529,24 @@ export function ProductSummary({
                   <WhatsAppInlineLink number={whatsappNumber} />
                 ) : null}
               </span>
+            </div>
+
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]">
+                {formatMoney(displayPrice)}
+              </span>
+              {retailReference && retailReference.amount > displayPrice.amount ? (
+                <span className="text-[1.25rem] leading-none font-bold tabular-nums text-text-muted line-through sm:text-[1.5rem]">
+                  {formatMoney(retailReference)}
+                </span>
+              ) : null}
+              {savings !== null ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-success/12 px-2.5 py-1 text-caption font-bold text-success">
+                  Save {formatMoney({ amount: savings })}
+                  {discountPercent !== null ? ` (${discountPercent}% OFF)` : ""}
+                  {b2bActive ? " · B2B" : ""}
+                </span>
+              ) : null}
             </div>
           </div>
         ) : null}
