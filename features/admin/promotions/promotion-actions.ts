@@ -149,6 +149,36 @@ export async function bulkRemovePromotionProductsAction(
   return result;
 }
 
+/** From the product-edit page's "Promotions" section — the reverse direction
+ * of assign/remove above (one product, toggled against one campaign at a
+ * time), saved immediately rather than bundled into the main product form. */
+export async function toggleProductPromotionAction(
+  productId: string,
+  promotionId: string,
+  on: boolean,
+): Promise<PromotionProductMutationResult> {
+  const gate = await guardPromotionManage();
+  if (!gate.ok) {
+    return gate;
+  }
+  const result = on
+    ? await assignPromotionProducts({
+        promotionId,
+        productIds: [productId],
+        actor: gate.actor,
+      })
+    : await removePromotionProduct({
+        promotionId,
+        productId,
+        actor: gate.actor,
+      });
+  if (result.ok) {
+    revalidatePromotionDetail(promotionId);
+    revalidatePath(`/admin/products/${productId}`);
+  }
+  return result;
+}
+
 export async function assignPromotionalProductsAction(
   productIds: string[],
 ): Promise<PromotionalMutationResult> {

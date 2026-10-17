@@ -8172,3 +8172,84 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       DEPLOY: `git pull origin main`, `npx prisma migrate deploy`
       (applies `20261016225835_add_order_item_discount` — safe, additive,
       default 0), `npm run build`, `pm2 restart techno-house`.
+
+- [x] AD-380 Promotion assignment workflow — operator (Banglish) asked for
+      the offer/promotion system to be organized "perfectly": creating an
+      offer should get a category-page-like public page with its banner,
+      offer label on the product card, a way to assign products from the
+      product edit screen, and the same bulk assign-to-offer ability from
+      `/admin/promotions/products`.
+
+      Audited first rather than building from scratch — two of the three
+      asks were already real and live: `/offers/[slug]` (per-promotion
+      public page, AD-298) and the pink "Offer" ribbon on every product
+      card (`ProductSummary.hasActiveOffer`, DB-driven off
+      `loadActivePromotionProductIds()`). Only the admin-side assignment
+      workflow was missing. Confirmed scope with the operator
+      (AskUserQuestion) on the one real design fork: `/admin/promotions/
+      products` already means something else today (`Product.isPromotional`,
+      a global homepage flag unrelated to offer campaigns) — operator chose
+      to add the new tool as a second tab there rather than replacing that
+      existing feature or routing it to a new URL.
+
+      **Product edit → Promotions section**
+      (`admin-product-promotions-fields.tsx`, new): a Labels-style checkbox
+      list of every non-ended promotion, edit mode only (mirrors the
+      `b2bTerms` precedent — a new product has no id to key a
+      `PromotionProduct` row off yet). Deliberately **not** bundled into
+      the main product-save submit like Labels/Notes are: promotion
+      membership is a join table gated by its own `promotion.manage`
+      permission (separate from `product.edit`), so bundling it into
+      `saveAdminProductAction` would have let anyone who can edit a product
+      also silently manage promotions, and would have added a new field
+      through the product form's already-sensitive dual-create/update
+      write path (flagged risky as far back as AD-274) for no real benefit.
+      Instead each checkbox saves immediately via a new
+      `toggleProductPromotionAction`, the reverse direction of the existing
+      `assignPromotionProducts`/`removePromotionProduct` — same pattern
+      already proven by the Today's Deal toggle in
+      `AdminPromoProductChannelList`. A staff member without
+      `promotion.manage` sees the list disabled with an explanation instead
+      of a silent no-op.
+
+      **`/admin/promotions/products` → "Add to an Offer" tab**
+      (`admin-promo-products-page.tsx` + `admin-offer-assign-panel.tsx`,
+      both new): a simple tab strip switches between the untouched existing
+      "Promotional Products" list and a new panel — pick a promotion from a
+      dropdown, click "Select products…", and the existing
+      `AdminPromoProductPickerModal` (already built for the single-promotion
+      detail page) opens for a bulk multi-select; confirming calls the
+      already-existing `assignPromotionProductsAction(promotionId,
+      productIds)` directly — no new mutation logic needed, since that
+      action already took a promotion id as a plain argument rather than a
+      bound one. `AdminPromoProductChannelList` itself was left completely
+      unmodified to avoid any regression risk to its two other call sites
+      (the promotion detail page's "Offer products" list, and this same
+      page's first tab).
+
+      New read-only helpers backing both UIs:
+      `listAssignablePromotions()` (`lib/marketing/promotions.ts` — every
+      promotion except `ended`, so a draft/scheduled offer can be stocked
+      with products before going live) and
+      `listPromotionIdsForProduct(productId)`
+      (`lib/marketing/promotion-products.ts` — the reverse lookup of the
+      existing `listPromotionProductSlugs`).
+
+      `tsc --noEmit` clean, `eslint` clean on all 9 touched/new files,
+      `next build` clean (`/admin/promotions/products`, `/admin/products/
+      [id]`, `/offers`, `/offers/[slug]` all present in the route list).
+      Verified against real Postgres with a round-trip script (written,
+      verified, then deleted): created a throwaway DRAFT promotion,
+      confirmed `listAssignablePromotions()` includes a draft but excludes
+      a separately-created ENDED one, assigned a real product via
+      `assignPromotionProducts`, confirmed the assignment round-trips both
+      directions (`listPromotionIdsForProduct` and
+      `listPromotionProductSlugs`), removed it, confirmed it's gone, then
+      deleted the test promotion and confirmed zero rows remained. Live
+      (signed out): `/admin/products`, `/admin/promotions`, `/admin/
+      promotions/products` all still correctly 307-redirect; `/offers` 200.
+      **Not verified**: the authenticated UI itself (checkbox clicks, tab
+      switch, the picker modal) was not exercised in a real browser — no
+      browser automation tool is available in this environment; this
+      mirrors the disclosed boundary on every other admin-only page
+      verified this session.

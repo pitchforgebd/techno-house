@@ -300,6 +300,45 @@ export async function getAdminPromotion(
   return row ? toAdminPromotion(row) : null;
 }
 
+export type AssignablePromotionOption = {
+  id: string;
+  name: string;
+  slug: string;
+  status: CampaignStatus;
+};
+
+/**
+ * Every campaign a product could be attached to — everything except
+ * `ended`, so a draft/scheduled offer can be stocked with products before it
+ * goes live. Feeds the product-edit "Promotions" picker and the
+ * `/admin/promotions/products` "Add to an Offer" tab.
+ */
+export async function listAssignablePromotions(): Promise<
+  AssignablePromotionOption[]
+> {
+  if (!usesDatabase()) {
+    return MOCK_ADMIN_PROMOTIONS.filter((item) => item.status !== "ended")
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        slug: item.slug,
+        status: item.status,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  const rows = await getPrisma().promotion.findMany({
+    where: { kind: "PROMOTION", status: { not: "ENDED" } },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, slug: true, status: true },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    status: STATUS_FROM_DB[row.status],
+  }));
+}
+
 export async function countPromotionsByStatus(
   status: CampaignStatus,
 ): Promise<number> {

@@ -60,6 +60,20 @@ export async function listPromotionProductSlugs(
   return rows.map((row) => row.product.slug);
 }
 
+/** Which campaigns a product currently belongs to — feeds the product-edit "Promotions" picker. */
+export async function listPromotionIdsForProduct(
+  productId: string,
+): Promise<string[]> {
+  if (!usesDatabase()) {
+    return [];
+  }
+  const rows = await getPrisma().promotionProduct.findMany({
+    where: { productId },
+    select: { promotionId: true },
+  });
+  return rows.map((row) => row.promotionId);
+}
+
 async function recordAudit(
   promotionId: string,
   actor: PromotionProductActor | undefined,

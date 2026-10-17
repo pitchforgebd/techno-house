@@ -23,11 +23,13 @@ file's narrative sections below stop at AD-288 and are historical.
 AD-337..AD-377 (storefront/admin feature and polish work, unrelated to the
 security remediation), AD-378 (bundled PDP B2B/EMI redesign + admin B2B
 toggle/% pricing + admin topbar shortcut + sitewide admin live search +
-footer marquee controls + admin sidebar scroll fix), and AD-379
+footer marquee controls + admin sidebar scroll fix), AD-379
 (per-product post-placement order discounts with real refund integration +
-a dedicated discount-notice email + PC Builder download login gate) are
-also complete — full detail in `project-memory/TASKS.md`, not narrated
-here.
+a dedicated discount-notice email + PC Builder download login gate), and
+AD-380 (promotion assignment workflow: a "Promotions" checklist on the
+product edit page, and a new "Add to an Offer" bulk-assign tab on
+`/admin/promotions/products`) are also complete — full detail in
+`project-memory/TASKS.md`, not narrated here.
 
 ## Status
 Core sales + account paths are DB-backed. Catalogue repositories no longer

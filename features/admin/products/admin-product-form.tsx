@@ -71,6 +71,8 @@ import {
   AdminProductLabelsFields,
   AdminProductNotesFields,
 } from "@/features/admin/products/admin-product-notes-labels-fields";
+import { AdminProductPromotionsFields } from "@/features/admin/products/admin-product-promotions-fields";
+import type { AssignablePromotionOption } from "@/lib/marketing/promotions";
 import { AdminProductPdfField } from "@/features/admin/products/admin-product-pdf-field";
 import {
   AdminProductSpecGroupsFields,
@@ -155,6 +157,9 @@ export function AdminProductForm({
   labels,
   canSave,
   b2bTerms = null,
+  promotions,
+  assignedPromotionIds = [],
+  canManagePromotions = false,
 }: {
   mode: FormMode;
   product?: EditorProduct | null;
@@ -169,6 +174,11 @@ export function AdminProductForm({
   /** Only ever loaded in edit mode — a new product has no id to key the
    * separate `B2BProductPrice` row off yet. */
   b2bTerms?: AdminProductB2BTerms | null;
+  /** Only ever loaded in edit mode, same reason — a new product has no id to
+   * key a `PromotionProduct` row off yet. */
+  promotions?: AssignablePromotionOption[];
+  assignedPromotionIds?: string[];
+  canManagePromotions?: boolean;
 }) {
   const router = useRouter();
   // Local copies so a quick-created category/brand can appear in the
@@ -1513,6 +1523,17 @@ export function AdminProductForm({
               onChange={setNoteIds}
             />
           </AdminFormCard>
+
+          {mode === "edit" && product?.id && promotions ? (
+            <AdminFormCard title="Promotions">
+              <AdminProductPromotionsFields
+                productId={product.id}
+                promotions={promotions}
+                assignedPromotionIds={assignedPromotionIds}
+                canManage={canManagePromotions}
+              />
+            </AdminFormCard>
+          ) : null}
 
           <AdminFormCard title="Specifications">
             <AdminProductSpecGroupsFields

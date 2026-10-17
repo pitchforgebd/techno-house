@@ -1,24 +1,27 @@
 import type { Metadata } from "next";
 import {
   assignPromotionalProductsAction,
+  assignPromotionProductsAction,
   bulkRemovePromotionalProductsAction,
   removePromotionalProductAction,
   setPromotionalProductFlagAction,
 } from "@/features/admin/promotions/promotion-actions";
-import { AdminPromoProductChannelList } from "@/features/admin/marketing/admin-promo-product-channel-list";
+import { AdminPromoProductsPage } from "@/features/admin/marketing/admin-promo-products-page";
 import {
   loadPromoCatalogProducts,
   loadPromotionalAssignedProducts,
 } from "@/lib/admin/load-promotions-offers";
+import { listAssignablePromotions } from "@/lib/marketing/promotions";
 
 export const metadata: Metadata = {
   title: "Promotional Products",
 };
 
 export default async function AdminPromotionalProductsPage() {
-  const [assigned, catalog] = await Promise.all([
+  const [assigned, catalog, promotions] = await Promise.all([
     loadPromotionalAssignedProducts(),
     loadPromoCatalogProducts(),
+    listAssignablePromotions(),
   ]);
   const categories = Array.from(
     new Map(
@@ -27,22 +30,18 @@ export default async function AdminPromotionalProductsPage() {
   ).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <AdminPromoProductChannelList
-      title="Promotional Products"
-      tabLabel="Promotional Product List"
-      addLabel="Promotional Products"
-      pickerTitle="Add Product In Promotional"
-      emptyTitle="No products found"
+    <AdminPromoProductsPage
       assigned={assigned}
       catalog={catalog}
       categories={categories}
-      showTodaysDealToggle
+      promotions={promotions}
       persist={{
         assign: assignPromotionalProductsAction,
         remove: removePromotionalProductAction,
         bulkRemove: bulkRemovePromotionalProductsAction,
         setFlag: setPromotionalProductFlagAction,
       }}
+      assignToPromotion={assignPromotionProductsAction}
     />
   );
 }

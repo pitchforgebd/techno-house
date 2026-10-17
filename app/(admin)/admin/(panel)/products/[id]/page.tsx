@@ -8,6 +8,8 @@ import {
 import { getAdminB2BProductTerms } from "@/lib/b2b/product-terms";
 import { hasPermission } from "@/lib/auth/permissions";
 import { requireStaffSession } from "@/lib/auth/staff-session";
+import { listAssignablePromotions } from "@/lib/marketing/promotions";
+import { listPromotionIdsForProduct } from "@/lib/marketing/promotion-products";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -24,11 +26,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AdminEditProductPage({ params }: Props) {
   const session = await requireStaffSession();
   const { id } = await params;
-  const [product, options, b2bTerms] = await Promise.all([
-    getAdminProductById(id),
-    loadAdminProductFormOptions(),
-    getAdminB2BProductTerms(id),
-  ]);
+  const [product, options, b2bTerms, promotions, assignedPromotionIds] =
+    await Promise.all([
+      getAdminProductById(id),
+      loadAdminProductFormOptions(),
+      getAdminB2BProductTerms(id),
+      listAssignablePromotions(),
+      listPromotionIdsForProduct(id),
+    ]);
 
   if (!product) {
     notFound();
@@ -47,6 +52,9 @@ export default async function AdminEditProductPage({ params }: Props) {
       labels={options.labels}
       canSave={hasPermission(session, "product.edit")}
       b2bTerms={b2bTerms}
+      promotions={promotions}
+      assignedPromotionIds={assignedPromotionIds}
+      canManagePromotions={hasPermission(session, "promotion.manage")}
     />
   );
 }
