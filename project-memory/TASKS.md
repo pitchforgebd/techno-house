@@ -8253,3 +8253,60 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       browser automation tool is available in this environment; this
       mirrors the disclosed boundary on every other admin-only page
       verified this session.
+
+- [x] AD-381 Offer pages get a full "Filter By" sidebar — operator
+      (Banglish): an offer can hold any kind of product, so `/offers/[slug]`
+      needs the same filter sidebar as category/shop pages, with every
+      feature present.
+
+      The old `/offers/[slug]` (built in AD-380's audit, actually shipped
+      earlier under AD-298) was a plain product grid with zero filtering —
+      fine while no promotion had products yet, but an offer can legitimately
+      mix a laptop, a monitor and a cable, so a shopper needs to narrow it
+      exactly like `/shop` does. Reused `/shop`'s own approach instead of
+      building a parallel one: `/shop` already handles "arbitrary products,
+      no single category" by falling back to `listStorefrontFilterKeys()`
+      (global filterable attributes) instead of a category's declared
+      `filterKeys` — an offer page is the same shape of problem.
+
+      The one real gap: `productRepository.list()` had no way to restrict
+      results to an arbitrary id set while still computing real facets/
+      pagination/sort within that restriction — `categorySlug` and
+      `brandSlug` both scope the query, but nothing scoped to "this specific
+      set of product ids." Added `ProductListQuery.productIds` (empty array
+      means "no products", not "unscoped" — required for a draft offer with
+      nothing assigned yet) and applied it in `composeWhere`
+      (`lib/data/prisma/product-repository.ts`) the same way `categorySlugs`
+      is: a fixed page-context restriction, never excluded or togglable.
+      Mirrored in the mock repository (`lib/data/mocks/query.ts`) for
+      `DATA_SOURCE=mock` parity. `resolveFilterKeys`/`buildFacets` needed no
+      changes — they already derive from whatever `where` is passed in, so
+      facets and the attribute-filter list come out correctly scoped to just
+      the offer's own products for free.
+
+      Rewrote `/offers/[slug]/page.tsx` to the exact `ShopListing` pattern
+      (`parseListingQuery` → `productRepository.list({ productIds, ...
+      toListQueryFilters(parsed) })` → `CatalogListingBody`) instead of its
+      old one-off `listBySlugs` + bare `<ul>` grid. One accepted trade-off,
+      consistent with how Category pages already behave: "Featured" sort
+      now means global catalog `Product.position`, not the offer's own
+      curated `PromotionProduct.position` order — no sibling listing page
+      (`/shop`, `/category/[slug]`) honours a manual per-list order once
+      real filter/sort controls are added either, so this isn't a new
+      inconsistency.
+
+      `tsc --noEmit` clean, `eslint` clean on all 4 touched files, `next
+      build` clean. Verified against real Postgres with a script (written,
+      verified, then deleted): scoped a query to 2 real products from 2
+      different real brands — got back exactly those 2, the brand facet
+      listed only those 2 real brands with counts summing to exactly 2 (not
+      leaking the wider catalog), filtering the scoped set by a third,
+      out-of-scope real brand correctly returned 0, filtering it by one of
+      the 2 in-scope brands correctly returned exactly 1, and an empty
+      `productIds` array correctly returned 0 rather than the whole
+      catalog. Live: created a temporary real ACTIVE promotion with 2 real
+      products from different brands, confirmed `/offers/<its-slug>` 200
+      with "Filter By" rendered, both real brand facet values present, the
+      "In Stock" availability filter present, and "Showing 2 of 2 products"
+      matching exactly — then deleted the test promotion and confirmed zero
+      rows remained.

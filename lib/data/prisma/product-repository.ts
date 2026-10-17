@@ -200,6 +200,12 @@ function composeWhere(
     where.category = { slug: { in: categorySlugs } };
   }
 
+  // Page-context restriction (offer/promotion page), never excluded or
+  // togglable — same treatment as `categorySlugs` above.
+  if (query.productIds) {
+    where.id = { in: query.productIds };
+  }
+
   // `brandSlug` is the brand page itself — page context, not a tick box the
   // shopper can clear — so it is never excluded. `brandSlugs` is the facet.
   const brandSlugs = query.brandSlug

@@ -161,6 +161,10 @@ export type ProductListQuery = {
   categorySlug?: string;
   /** Fixed brand scope (brand page). */
   brandSlug?: string;
+  /** Fixed product-id scope (an offer/promotion page) — a page-context
+   * restriction like `categorySlug`, never a togglable facet. An empty
+   * array means "no products", not "unscoped". */
+  productIds?: string[];
   /** Multi-select brand filter on shop/category/search. */
   brandSlugs?: string[];
   q?: string;

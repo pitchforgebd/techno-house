@@ -83,6 +83,10 @@ export function matchesQuery(
     }
   }
 
+  if (query.productIds && !query.productIds.includes(product.id)) {
+    return false;
+  }
+
   if (query.brandSlug && product.brandSlug !== query.brandSlug) {
     return false;
   }
