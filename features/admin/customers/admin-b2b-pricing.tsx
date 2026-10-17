@@ -174,10 +174,11 @@ export function AdminB2BPricing({ data }: { data: AdminB2BPricingResult }) {
           Toggle a product into B2B to set its wholesale price (type a
           discount % for an instant calculated price, or type the price
           directly) and minimum order quantity. Only verified (active) B2B
-          accounts ever see these, and a product shows its wholesale prompt
-          on the storefront only while this toggle is on. Turning it off
-          keeps the numbers for next time but removes it from B2B
-          everywhere immediately.
+          accounts ever get this price — everyone else sees the register/
+          sign-in prompt on every product regardless of this toggle. Turning
+          it off keeps the numbers for next time but stops this
+          product&apos;s own price from applying immediately (the
+          account&apos;s flat discount still applies instead).
         </p>
       </div>
 

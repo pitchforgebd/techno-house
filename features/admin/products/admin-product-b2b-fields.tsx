@@ -24,10 +24,12 @@ export type AdminProductB2BTerms = {
  * submit, since it writes to a separate `B2BProductPrice` row. Only shown in
  * edit mode: a brand-new product has no id for that row to key off yet.
  *
- * The toggle is the real on/off switch (`B2BProductPrice.isActive`) — a
- * product is in the B2B list and shows its wholesale prompt on the
- * storefront only while this is on. Turning it off keeps the stored price
- * for next time instead of deleting it.
+ * The toggle is the real on/off switch (`B2BProductPrice.isActive`) — while
+ * on, this product's own wholesale price applies to a verified B2B buyer
+ * (overriding the account's flat discount); turning it off keeps the
+ * stored price for next time instead of deleting it, and the account's
+ * flat discount applies here meanwhile. The storefront's register/sign-in
+ * prompt itself is universal and unaffected by this toggle.
  */
 export function AdminProductB2BFields({
   productId,

@@ -24,10 +24,7 @@ import { canonicalUrl } from "@/lib/seo/canonical";
 import { breadcrumbListJsonLd, productJsonLd } from "@/lib/seo/json-ld";
 import { getStorefrontHomeBanners } from "@/lib/design/home-banners";
 import { getCustomerSession } from "@/lib/auth/customer-session";
-import {
-  getB2BTermsForProductId,
-  isProductB2BEligible,
-} from "@/lib/b2b/product-terms";
+import { getB2BTermsForProductId } from "@/lib/b2b/product-terms";
 import { getMyB2BAccount } from "@/lib/b2b/applications";
 import { getLiveViewerCount } from "@/lib/analytics/product-views";
 import { getVisitorWidgetSettings } from "@/lib/marketing/visitor-widget-settings";
@@ -152,10 +149,6 @@ export default async function ProductPage({
     b2bAccount?.status === "ACTIVE"
       ? await getB2BTermsForProductId(product.id)
       : null;
-  // Independent of the viewer's own account — this is what decides whether
-  // the wholesale icon/prompt shows on the page at all. A product never
-  // added to B2B shows none of it, for anyone.
-  const b2bEligible = await isProductB2BEligible(product.id);
 
   // Prefer category items that aren't already in the "Related products" row,
   // but a small category can leave nothing — then repeating one card beats an
@@ -277,7 +270,6 @@ export default async function ProductPage({
             : null
         }
         b2bTerms={b2bTerms}
-        b2bEligible={b2bEligible}
         viewerCount={viewerCount}
         hasNotes={product.notes.length > 0}
         belowGallery={
