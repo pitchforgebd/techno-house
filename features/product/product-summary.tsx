@@ -614,31 +614,6 @@ export function ProductSummary({
             </p>
           ) : null}
 
-          {/* EMI promo bar — the B2B prompt that used to share this bar now
-              lives beside the price above (universal, every product), so
-              this bar is EMI-only: a "View Plans" entry point on one side,
-              the lowest monthly figure on the other. */}
-          {emiVisible ? (
-            <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-border bg-surface-muted px-3.5 py-2.5 text-caption">
-              <span className="flex flex-wrap items-baseline gap-x-2">
-                <ProductEmiTooltip
-                  label="Avail EMI offer · View Plans"
-                  plans={emiPlans}
-                  note={emiConfig.interestNote || undefined}
-                  triggerClassName="text-label font-semibold text-text underline underline-offset-4 decoration-dotted hover:text-primary"
-                />
-                {emiConfig.partnerName ? (
-                  <span className="text-text-muted">
-                    via {emiConfig.partnerName}
-                  </span>
-                ) : null}
-              </span>
-              <span className="text-label font-semibold tabular-nums text-text-muted">
-                EMI starts from {formatMoney({ amount: emiLowestMonthly })}
-                /month
-              </span>
-            </div>
-          ) : null}
         </div>
 
         {/* Stock status already has its own pill in the merged meta row
