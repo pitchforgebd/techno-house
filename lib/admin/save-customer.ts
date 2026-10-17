@@ -190,6 +190,40 @@ export async function bulkSetCustomerBanned(input: {
   return { ok: true, count: result.count };
 }
 
+export async function setCustomerVerified(input: {
+  id: string;
+  verified: boolean;
+  actor: Actor;
+}): Promise<SaveCustomerResult> {
+  const prisma = getPrisma();
+  const existing = await prisma.user.findUnique({
+    where: { id: input.id },
+    select: { id: true },
+  });
+  if (!existing) {
+    return { ok: false, formError: "That customer no longer exists." };
+  }
+
+  await prisma.user.update({
+    where: { id: existing.id },
+    data: { emailVerifiedAt: input.verified ? new Date() : null },
+  });
+
+  await writeAuditLog({
+    actorType: "STAFF",
+    actorId: input.actor.staffId,
+    actorLabel: input.actor.email,
+    action: input.verified
+      ? AUDIT_ACTIONS.CUSTOMER_VERIFY
+      : AUDIT_ACTIONS.CUSTOMER_UNVERIFY,
+    entityType: "User",
+    entityId: existing.id,
+    ip: input.actor.ip,
+  });
+
+  return { ok: true, id: existing.id };
+}
+
 export async function setCustomerSuspicious(input: {
   id: string;
   suspicious: boolean;

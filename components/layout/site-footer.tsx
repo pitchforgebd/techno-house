@@ -389,31 +389,12 @@ export async function SiteFooter() {
       ) : null}
 
       <div className="border-t border-footer-text/10">
-        {/* `sm:pr-24` keeps the credit clear of the fixed chat widget
-            (`bottom-5 right-5`, 56px) that floats over this corner. */}
-        <div className="mx-auto flex max-w-catalog flex-col gap-4 px-4 py-6 sm:flex-row sm:items-end sm:justify-between sm:pr-24">
+        <div className="mx-auto flex max-w-catalog flex-col gap-4 px-4 py-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-3xl space-y-1 text-caption leading-relaxed text-footer-text/55">
             {copyrightLines.map((line) => (
               <p key={line}>{line}</p>
             ))}
           </div>
-          {/*
-            Developer credit. Deliberately hardcoded — not part of
-            `getFooterWidgetsConfig()` and not editable from Admin → Design
-            Studio → Footer widgets, so it cannot be switched off from the
-            panel. Do not move this into the database.
-          */}
-          <p className="shrink-0 text-caption text-footer-text/55 sm:text-right">
-            Developed by{" "}
-            <a
-              href="https://pitchforgebd.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-primary-soft underline-offset-4 transition-colors hover:text-footer-text hover:underline"
-            >
-              PitchForgeBD
-            </a>
-          </p>
         </div>
       </div>
     </footer>

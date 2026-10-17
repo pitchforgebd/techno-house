@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { notifySuccess } from "@/components/ui/feedback-provider";
-import { updateCustomerProfileAction } from "@/features/admin/customers/customer-actions";
+import {
+  setCustomerVerifiedAction,
+  updateCustomerProfileAction,
+} from "@/features/admin/customers/customer-actions";
 import type { AdminCustomer, CustomerStatus } from "@/lib/admin/customers-mock";
 import type { AdminOrder } from "@/lib/admin/orders-mock";
 import { formatMoney } from "@/lib/format/currency";
@@ -67,6 +70,24 @@ export function AdminCustomerDetail({
   const [notes, setNotes] = useState(customer.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function handleToggleVerified() {
+    setError(null);
+    const verified = !customer.verified;
+    startTransition(async () => {
+      const result = await setCustomerVerifiedAction({ id: customer.id, verified });
+      if (!result.ok) {
+        setError(result.formError ?? "Could not update verification.");
+        return;
+      }
+      notifySuccess(
+        verified
+          ? `Approved ${customer.fullName} as verified`
+          : `Marked ${customer.fullName} as unverified`,
+      );
+      router.refresh();
+    });
+  }
 
   function handleSave() {
     setError(null);
@@ -160,11 +181,23 @@ export function AdminCustomerDetail({
                 {formatMoney(customer.walletBalance)}
               </dd>
             </div>
-            <div className="flex justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <dt className="text-text-muted">Verification</dt>
-              <dd className="text-right text-text">
+              <dd className="flex items-center gap-2 text-right text-text">
                 {customer.verified ? "Verified" : "Unverified"}
                 {customer.suspicious ? " · Suspicious" : ""}
+                {canEdit ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="border border-border"
+                    disabled={pending}
+                    onClick={handleToggleVerified}
+                  >
+                    {customer.verified ? "Revoke" : "Approve"}
+                  </Button>
+                ) : null}
               </dd>
             </div>
             <div className="flex justify-between gap-3">

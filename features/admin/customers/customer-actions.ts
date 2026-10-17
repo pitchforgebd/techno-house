@@ -8,6 +8,7 @@ import {
   createCustomer,
   setCustomerBanned,
   setCustomerSuspicious,
+  setCustomerVerified,
   updateCustomerProfile,
   type SaveCustomerResult,
 } from "@/lib/admin/save-customer";
@@ -100,6 +101,21 @@ export async function bulkSetCustomerBannedAction(input: {
   }
   const result = await bulkSetCustomerBanned({ ...input, actor: gate.actor });
   revalidateCustomer();
+  return result;
+}
+
+export async function setCustomerVerifiedAction(input: {
+  id: string;
+  verified: boolean;
+}): Promise<SaveCustomerResult> {
+  const gate = await actorOrReject("customer.edit");
+  if (!gate.ok) {
+    return gate;
+  }
+  const result = await setCustomerVerified({ ...input, actor: gate.actor });
+  if (result.ok) {
+    revalidateCustomer(result.id);
+  }
   return result;
 }
 

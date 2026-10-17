@@ -19,6 +19,8 @@ export const AUDIT_ACTIONS = {
   CUSTOMER_UPDATE: "customer.update",
   CUSTOMER_BAN: "customer.ban",
   CUSTOMER_UNBAN: "customer.unban",
+  CUSTOMER_VERIFY: "customer.verify",
+  CUSTOMER_UNVERIFY: "customer.unverify",
   CUSTOMER_WALLET_ADJUST: "customer.wallet_adjust",
   B2B_APPLY: "b2b.apply",
   B2B_APPROVE: "b2b.approve",

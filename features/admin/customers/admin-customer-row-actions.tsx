@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { AlertTriangle, MoreVertical, UserX, Wallet } from "lucide-react";
+import { AlertTriangle, BadgeCheck, MoreVertical, UserX, Wallet } from "lucide-react";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import {
   adjustCustomerWalletAction,
   setCustomerBannedAction,
   setCustomerSuspiciousAction,
+  setCustomerVerifiedAction,
 } from "@/features/admin/customers/customer-actions";
 import type { AdminCustomer } from "@/lib/admin/customers-mock";
 
@@ -45,6 +46,24 @@ export function AdminCustomerRowActions({
         return;
       }
       notifySuccess(banned ? `Banned ${customer.fullName}` : `Unbanned ${customer.fullName}`);
+      router.refresh();
+    });
+  }
+
+  function toggleVerified() {
+    setOpen(false);
+    const verified = !customer.verified;
+    startTransition(async () => {
+      const result = await setCustomerVerifiedAction({ id: customer.id, verified });
+      if (!result.ok) {
+        notifyError(result.formError ?? "Could not update the customer.");
+        return;
+      }
+      notifySuccess(
+        verified
+          ? `Approved ${customer.fullName} as verified`
+          : `Marked ${customer.fullName} as unverified`,
+      );
       router.refresh();
     });
   }
@@ -126,6 +145,14 @@ export function AdminCustomerRowActions({
             {customer.status === "blocked"
               ? "Unban this customer"
               : "Ban this customer"}
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-body text-text hover:bg-surface-muted"
+            onClick={toggleVerified}
+          >
+            <BadgeCheck className="size-4 text-text-muted" aria-hidden />
+            {customer.verified ? "Mark as unverified" : "Approve as verified"}
           </button>
           <button
             type="button"
