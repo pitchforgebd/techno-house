@@ -469,14 +469,16 @@ export function ProductSummary({
                 </span>
               ) : null}
             </div>
-            {/* flex-nowrap, not flex-wrap, so the B2B block stays beside the
-                price on this one row instead of dropping to its own full-width
-                line below (that was the previous, unwanted result). The price
-                group is shrink-0 (its own size is non-negotiable); the B2B
-                side is the one allowed to wrap its own text onto a second
-                line, within its own column, if the row is genuinely tight. */}
-            <div className="flex flex-nowrap items-start justify-between gap-2">
-              <div className="flex shrink-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+            {/* The row itself may still wrap as a whole (flex-wrap) when the
+                card is too narrow to fit both groups — but the B2B group
+                itself never fragments internally (its icon/text/Sign in/
+                WhatsApp always render together on one line, forced via
+                flex-nowrap + whitespace-nowrap on its own span below): it
+                either sits beside the price on this row, or drops to its
+                own clean full-width line underneath, never scattered
+                mid-way with the icon stranded above its own text. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="text-[1.875rem] leading-none font-bold tabular-nums tracking-tight text-text sm:text-[2.25rem]">
                   {formatMoney(displayPrice)}
                 </span>
@@ -502,7 +504,7 @@ export function ProductSummary({
                   point in exactly the cases where it still works. Sits
                   opposite the price on this same row per the operator's
                   own screenshot. */}
-              <span className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5 text-right">
+              <span className="ml-auto flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                 <span
                   className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
                   aria-hidden
