@@ -199,22 +199,32 @@ export async function approveB2BAccount(input: {
   }
   const existing = await getPrisma().b2BAccount.findUnique({
     where: { id: input.id },
-    select: { id: true },
+    select: { id: true, userId: true },
   });
   if (!existing) {
     return { ok: false, formError: "That application no longer exists." };
   }
 
-  await getPrisma().b2BAccount.update({
-    where: { id: existing.id },
-    data: {
-      status: "ACTIVE",
-      discountPercent: input.discountPercent,
-      tier: input.tier.trim().slice(0, 40) || null,
-      notes: input.notes.trim().slice(0, 2000) || null,
-      approvedAt: new Date(),
-    },
-  });
+  // Approving the wholesale account also verifies the underlying customer
+  // account — same "Verified" flag the general Customers list uses — so an
+  // approved B2B buyer doesn't still show as "Unverified" there. Only set
+  // when unset: this must never un-verify an already-verified customer.
+  await getPrisma().$transaction([
+    getPrisma().b2BAccount.update({
+      where: { id: existing.id },
+      data: {
+        status: "ACTIVE",
+        discountPercent: input.discountPercent,
+        tier: input.tier.trim().slice(0, 40) || null,
+        notes: input.notes.trim().slice(0, 2000) || null,
+        approvedAt: new Date(),
+      },
+    }),
+    getPrisma().user.updateMany({
+      where: { id: existing.userId, emailVerifiedAt: null },
+      data: { emailVerifiedAt: new Date() },
+    }),
+  ]);
 
   await writeAuditLog({
     actorType: "STAFF",
