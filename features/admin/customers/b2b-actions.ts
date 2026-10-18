@@ -37,9 +37,9 @@ function revalidate(id: string) {
 
 export async function approveB2BAccountAction(input: {
   id: string;
-  discountPercent: number;
-  tier: string;
-  notes: string;
+  discountPercent?: number;
+  tier?: string;
+  notes?: string;
 }): Promise<SaveB2BResult> {
   const gate = await actorOrReject();
   if (!gate.ok) {

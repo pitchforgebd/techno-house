@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminB2bAccountRowActions } from "@/features/admin/customers/admin-b2b-row-actions";
 import {
   approveB2BAccountAction,
   setB2BAccountSuspendedAction,
@@ -57,9 +58,11 @@ export function AdminB2bAccountsList({ data }: { data: AdminB2BListResult }) {
           B2B accounts
         </h1>
         <p className="mt-1 text-sm text-neutral-500">
-          Wholesale applications submitted from real customer accounts.
-          Approve to set a tier and discount; the discount then shows as
-          the wholesale price on product pages for that customer.
+          Wholesale applications submitted from real customer accounts. Use
+          the <span className="font-medium text-neutral-700">⋮</span> menu
+          for a quick approve / suspend / ban — tier and discount are
+          optional at approval time and can be set afterward from the
+          account&apos;s own page, once terms are agreed directly with the buyer.
         </p>
       </div>
 
@@ -131,6 +134,9 @@ export function AdminB2bAccountsList({ data }: { data: AdminB2BListResult }) {
                   <TableHeader className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
                     Applied
                   </TableHeader>
+                  <TableHeader className="text-right text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+                    Actions
+                  </TableHeader>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -151,6 +157,9 @@ export function AdminB2bAccountsList({ data }: { data: AdminB2BListResult }) {
                       <Badge tone={statusTone(account.status)}>{account.status}</Badge>
                     </TableCell>
                     <TableCell className="text-neutral-500">{account.createdAt}</TableCell>
+                    <TableCell className="text-right">
+                      <AdminB2bAccountRowActions account={account} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

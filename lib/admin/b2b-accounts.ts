@@ -4,7 +4,7 @@
  */
 import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/auth/audit-log";
 import { getPrisma } from "@/lib/db/prisma";
-import type { B2BStatus } from "@/lib/generated/prisma/enums";
+import type { B2BStatus, UserStatus as DbUserStatus } from "@/lib/generated/prisma/enums";
 import type { AdminB2BTab } from "@/lib/admin/b2b-list-shared";
 
 export {
@@ -23,7 +23,13 @@ export type AdminB2BListItem = {
   discountPercent: number;
   tier: string | null;
   createdAt: string;
-  customer: { id: string; fullName: string; email: string; phone: string | null };
+  customer: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string | null;
+    status: DbUserStatus;
+  };
 };
 
 export type AdminB2BListResult = {
@@ -66,7 +72,13 @@ function toListItem(row: {
   discountPercent: number;
   tier: string | null;
   createdAt: Date;
-  user: { id: string; fullName: string; email: string; phone: string | null };
+  user: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string | null;
+    status: DbUserStatus;
+  };
 }): AdminB2BListItem {
   return {
     id: row.id,
@@ -121,7 +133,9 @@ export async function listAdminB2BAccounts(input: {
       discountPercent: true,
       tier: true,
       createdAt: true,
-      user: { select: { id: true, fullName: true, email: true, phone: true } },
+      user: {
+        select: { id: true, fullName: true, email: true, phone: true, status: true },
+      },
     },
   });
 
@@ -155,7 +169,9 @@ export async function getAdminB2BAccountById(id: string): Promise<AdminB2BDetail
       tradeLicenceMedia: true,
       nidMedia: true,
       createdAt: true,
-      user: { select: { id: true, fullName: true, email: true, phone: true } },
+      user: {
+        select: { id: true, fullName: true, email: true, phone: true, status: true },
+      },
     },
   });
   if (!row) {
@@ -189,12 +205,19 @@ export type SaveB2BResult = { ok: true } | { ok: false; formError: string };
 
 export async function approveB2BAccount(input: {
   id: string;
-  discountPercent: number;
-  tier: string;
-  notes: string;
+  /**
+   * Optional — the operator's own call, made over direct communication with
+   * the buyer rather than forced at approval time. Defaults to 0 (no
+   * wholesale discount yet) and can be set later from the account's own
+   * "Wholesale terms" form.
+   */
+  discountPercent?: number;
+  tier?: string;
+  notes?: string;
   actor: Actor;
 }): Promise<SaveB2BResult> {
-  if (!Number.isInteger(input.discountPercent) || input.discountPercent < 0 || input.discountPercent > 90) {
+  const discountPercent = input.discountPercent ?? 0;
+  if (!Number.isInteger(discountPercent) || discountPercent < 0 || discountPercent > 90) {
     return { ok: false, formError: "Discount must be a whole number between 0 and 90." };
   }
   const existing = await getPrisma().b2BAccount.findUnique({
@@ -214,9 +237,9 @@ export async function approveB2BAccount(input: {
       where: { id: existing.id },
       data: {
         status: "ACTIVE",
-        discountPercent: input.discountPercent,
-        tier: input.tier.trim().slice(0, 40) || null,
-        notes: input.notes.trim().slice(0, 2000) || null,
+        discountPercent,
+        tier: (input.tier ?? "").trim().slice(0, 40) || null,
+        notes: (input.notes ?? "").trim().slice(0, 2000) || null,
         approvedAt: new Date(),
       },
     }),
@@ -234,7 +257,7 @@ export async function approveB2BAccount(input: {
     entityType: "B2BAccount",
     entityId: existing.id,
     ip: input.actor.ip,
-    metadata: { discountPercent: input.discountPercent, tier: input.tier },
+    metadata: { discountPercent, tier: input.tier ?? "" },
   });
 
   return { ok: true };
