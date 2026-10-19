@@ -8,19 +8,27 @@
  * validate snapshot, and the T07 validated cart plan.
  */
 import {
+  addSlotSelection,
   assembleValidatedBuild,
   BUILDER_SLOTS,
   BUILDER_SLOT_CATEGORY_SLUGS,
+  compatibilityPartsFromCandidates,
   defaultSlotForCategory,
   evaluateCompatibility,
   isCompatibilityReady,
+  isSlotFilled,
   missingRequiredFields,
+  normalizeBuildSelection,
   parseAttrList,
+  planBuildToCart,
   planValidatedBuildToCart,
   rankCandidatesForSlot,
+  removeSlotItem,
+  setSlotSelection,
   toggleAttrValue,
   PC_RULE_TYPES,
   RULE_EVALUATORS,
+  type BuildSelection,
   type BuildValidateCandidate,
   type CompatibilityPart,
 } from "@/lib/domain/pc-builder";
@@ -81,6 +89,7 @@ const mbDdr4 = part("motherboard", "MB DDR4", {
   formFactor: "Micro-ATX",
 });
 const ramDdr5 = part("ram", "RAM DDR5", { ramType: "DDR5" });
+const ramDdr5b = part("ram", "RAM DDR5 stick 2", { ramType: "DDR5" });
 const ramDdr4 = part("ram", "RAM DDR4", { ramType: "DDR4" });
 const caseMatx = part("case", "Case mATX", { formFactor: "Micro-ATX" });
 const caseAtx = part("case", "Case ATX", { formFactor: "ATX" });
@@ -89,6 +98,7 @@ const psu650 = part("psu", "PSU 650", { tdpWatts: 650 });
 const psu200 = part("psu", "PSU 200", { tdpWatts: 200 });
 const psuBare = part("psu", "PSU bare", null);
 const ssdNvme = part("ssd", "SSD NVMe", { storageInterface: "NVMe" });
+const ssdNvme2 = part("ssd", "SSD NVMe stick 2", { storageInterface: "NVMe" });
 const ssdSata = part("ssd", "SSD SATA", { storageInterface: "SATA" });
 const ssdBare = part("ssd", "SSD bare", null);
 const hddBare = part("hdd", "HDD bare", null);
@@ -180,6 +190,30 @@ function main(): void {
     ramBad.hasIncompatible && hasCode(ramBad, "ram_mb_type_mismatch"),
   );
 
+  // Multi-item RAM slot (AD-382): two sticks in the one build, each checked
+  // against the motherboard independently — one match must not hide the
+  // other stick's mismatch, and two matches both count toward checkedOk.
+  const ramTwoOk = evaluateCompatibility(
+    [ramDdr5, ramDdr5b, mbAm5],
+    ["ram_type"],
+  );
+  check(
+    "two matching RAM sticks both pass",
+    ramTwoOk.checkedOk === 2 && !ramTwoOk.hasIncompatible,
+  );
+
+  const ramMixed = evaluateCompatibility(
+    [ramDdr5, ramDdr4, mbAm5],
+    ["ram_type"],
+  );
+  check(
+    "one mismatching stick among two is still flagged",
+    ramMixed.checkedOk === 1 &&
+      ramMixed.hasIncompatible &&
+      ramMixed.warnings.filter((w) => w.code === "ram_mb_type_mismatch")
+        .length === 1,
+  );
+
   const formOk = evaluateCompatibility([mbAm5, caseMatx], ["form_factor"]);
   check("matching form factor passes", formOk.checkedOk === 1);
 
@@ -242,6 +276,28 @@ function main(): void {
       hasCode(storageBad, "ssd_mb_storage_mismatch"),
   );
 
+  // Multi-item storage slot (AD-382): an SSD plus an HDD, or two SSDs, all
+  // checked against the motherboard independently.
+  const storageTwoSsd = evaluateCompatibility(
+    [mbAm5, ssdNvme, ssdNvme2],
+    ["storage_interface"],
+  );
+  check(
+    "two NVMe SSDs both pass",
+    storageTwoSsd.checkedOk === 2 && !storageTwoSsd.hasIncompatible,
+  );
+
+  const storageSsdAndHdd = evaluateCompatibility(
+    [mbAm5, ssdNvme, hddBare],
+    ["storage_interface"],
+  );
+  check(
+    "SSD + HDD in the same build are checked separately",
+    storageSsdAndHdd.checkedOk === 1 &&
+      storageSsdAndHdd.hasUnknown &&
+      hasCode(storageSsdAndHdd, "hdd_mb_storage_unknown"),
+  );
+
   const disabled = evaluateCompatibility([cpuLga, mbAm5], []);
   check("empty enabled set runs no checks", disabled.warnings.length === 0);
   check("empty enabled set checkedOk is 0", disabled.checkedOk === 0);
@@ -301,7 +357,7 @@ function main(): void {
   check("validate empty has no issues", emptySnap.issues.length === 0);
 
   const okSnap = assembleValidatedBuild(
-    { cpu: "cpu-am5", motherboard: "mb-am5" },
+    { cpu: ["cpu-am5"], motherboard: ["mb-am5"] },
     [am5Cpu, am5Board],
     ["socket"],
   );
@@ -312,7 +368,7 @@ function main(): void {
   );
 
   const missingSnap = assembleValidatedBuild(
-    { cpu: "gone-cpu" },
+    { cpu: ["gone-cpu"] },
     [am5Cpu],
     ["socket"],
   );
@@ -326,7 +382,7 @@ function main(): void {
   );
 
   const mismatchSnap = assembleValidatedBuild(
-    { cpu: "gpu-card" },
+    { cpu: ["gpu-card"] },
     [gpuAsCpu],
     ["socket"],
   );
@@ -339,7 +395,7 @@ function main(): void {
     mismatchSnap.parts.length === 0,
   );
 
-  const requiredSlots = {
+  const requiredSlugs = {
     cpu: "cpu-am5",
     cpu_cooler: "cooler",
     motherboard: "mb-am5",
@@ -351,12 +407,15 @@ function main(): void {
     case: "case",
     case_fans: "fans",
   } as const;
-  const requiredProducts = Object.values(requiredSlots).map((slug) => ({
+  const requiredProducts = Object.values(requiredSlugs).map((slug) => ({
     slug,
     stockStatus: "in_stock" as const,
   }));
+  const requiredSelection: BuildSelection = Object.fromEntries(
+    Object.entries(requiredSlugs).map(([slotId, slug]) => [slotId, [slug]]),
+  );
   const cartOk = planValidatedBuildToCart({
-    selection: { ...requiredSlots },
+    selection: requiredSelection,
     products: requiredProducts,
     compatibility: {
       warnings: [],
@@ -371,7 +430,7 @@ function main(): void {
   check("plan validated complete build is ok", cartOk.ok === true);
 
   const cartIssue = planValidatedBuildToCart({
-    selection: { cpu: "gone-cpu" },
+    selection: { cpu: ["gone-cpu"] },
     products: [],
     compatibility: null,
     issues: [
@@ -390,7 +449,7 @@ function main(): void {
   );
 
   const cartMismatch = planValidatedBuildToCart({
-    selection: { cpu: "gpu-card" },
+    selection: { cpu: ["gpu-card"] },
     products: [{ slug: "gpu-card", stockStatus: "in_stock" }],
     compatibility: null,
     issues: [
@@ -1000,6 +1059,140 @@ function main(): void {
         }),
       ),
   );
+
+  // Multi-item slots (AD-382): RAM/SSD/HDD can hold more than one product.
+  {
+    const empty1: BuildSelection = {};
+    const after1 = setSlotSelection(empty1, "ram", "ram-a");
+    check(
+      "setSlotSelection writes a one-item array",
+      JSON.stringify(after1.ram) === JSON.stringify(["ram-a"]),
+    );
+
+    const after2 = addSlotSelection(after1, "ram", "ram-b");
+    check(
+      "addSlotSelection appends without dropping the first item",
+      JSON.stringify(after2.ram) === JSON.stringify(["ram-a", "ram-b"]),
+    );
+
+    const after3 = removeSlotItem(after2, "ram", 0);
+    check(
+      "removeSlotItem drops only the targeted index",
+      JSON.stringify(after3.ram) === JSON.stringify(["ram-b"]),
+    );
+
+    const after4 = removeSlotItem(after3, "ram", 0);
+    check(
+      "removing the last item clears the slot key entirely",
+      !("ram" in after4) && !isSlotFilled(after4, "ram"),
+    );
+
+    const legacy = normalizeBuildSelection({ cpu: "cpu-am5", ram: "ram-a" });
+    check(
+      "normalizeBuildSelection still accepts a legacy single-string value",
+      JSON.stringify(legacy.cpu) === JSON.stringify(["cpu-am5"]) &&
+        JSON.stringify(legacy.ram) === JSON.stringify(["ram-a"]),
+    );
+
+    const multiParts = compatibilityPartsFromCandidates(
+      { ram: ["ram-a", "ram-b"] },
+      [
+        candidate("ram-a", "RAM A", { ramType: "DDR5" }),
+        candidate("ram-b", "RAM B", { ramType: "DDR5" }),
+      ],
+    );
+    check(
+      "compatibilityPartsFromCandidates expands a multi-item slot into one part per unit",
+      multiParts.length === 2 &&
+        multiParts.every((p) => p.slotId === "ram") &&
+        multiParts[0]!.slug === "ram-a" &&
+        multiParts[1]!.slug === "ram-b",
+    );
+
+    const multiSnap = assembleValidatedBuild(
+      { ram: ["ram-a", "ram-b"] },
+      [
+        {
+          slug: "ram-a",
+          name: "RAM A",
+          priceAmount: 5000,
+          stockStatus: "in_stock",
+          builderSlot: "ram",
+          builderAttrs: { ramType: "DDR5" },
+        },
+        {
+          slug: "ram-b",
+          name: "RAM B",
+          priceAmount: 6000,
+          stockStatus: "in_stock",
+          builderSlot: "ram",
+          builderAttrs: { ramType: "DDR5" },
+        },
+      ],
+    );
+    check(
+      "validate snapshot carries both items of a multi-item slot",
+      multiSnap.parts.length === 2 && multiSnap.pricing.subtotal === 11000,
+    );
+
+    // Scoped to just the RAM slot so the "all required slots filled" gate
+    // (irrelevant to what's being tested here) doesn't block the plan.
+    const ramOnlySlots = [
+      {
+        id: "ram" as const,
+        label: "RAM",
+        required: true,
+        description: "",
+        multipleAllowed: true,
+      },
+    ];
+    const multiPlan = planBuildToCart({
+      selection: { ram: ["ram-a", "ram-b"] },
+      products: [
+        { slug: "ram-a", stockStatus: "in_stock" },
+        { slug: "ram-b", stockStatus: "in_stock" },
+      ],
+      compatibility: null,
+      existingCartSlugs: [],
+      maxCartLines: 24,
+      slots: ramOnlySlots,
+    });
+    check(
+      "plan build-to-cart includes both distinct items of a multi-item slot",
+      multiPlan.ok === true &&
+        multiPlan.slugs.includes("ram-a") &&
+        multiPlan.slugs.includes("ram-b"),
+    );
+
+    const duplicatePlan = planBuildToCart({
+      selection: { ram: ["ram-a", "ram-a"] },
+      products: [{ slug: "ram-a", stockStatus: "in_stock" }],
+      compatibility: null,
+      existingCartSlugs: [],
+      maxCartLines: 24,
+      slots: ramOnlySlots,
+    });
+    check(
+      "plan build-to-cart dedupes two identical units down to one slug (cart write turns it into quantity 2)",
+      duplicatePlan.ok === true && duplicatePlan.slugs.length === 1,
+    );
+
+    const outOfStockSecond = planBuildToCart({
+      selection: { ram: ["ram-a", "ram-b"] },
+      products: [
+        { slug: "ram-a", stockStatus: "in_stock" },
+        { slug: "ram-b", stockStatus: "out_of_stock" },
+      ],
+      compatibility: null,
+      existingCartSlugs: [],
+      maxCartLines: 24,
+      slots: ramOnlySlots,
+    });
+    check(
+      "an out-of-stock second item in the same slot still blocks the plan",
+      outOfStockSecond.ok === false && outOfStockSecond.code === "out_of_stock",
+    );
+  }
 
   console.log(
     failures === 0

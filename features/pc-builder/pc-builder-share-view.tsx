@@ -132,35 +132,35 @@ export function PcBuilderShareView({
             </p>
           </div>
           <ul className="divide-y divide-border">
-            {BUILDER_SLOTS.map((slot) => {
-              const slug = selection[slot.id];
-              if (typeof slug !== "string" || !slug) {
-                return null;
-              }
-              const product = productsBySlug.get(slug);
-              return (
-                <li key={slot.id} className="px-4 py-3">
-                  <p className="text-caption text-text-muted">{slot.label}</p>
-                  {product ? (
-                    <p className="text-label font-medium text-text">
-                      <Link
-                        href={`/product/${product.slug}`}
-                        className="hover:text-primary"
-                      >
-                        {product.name}
-                      </Link>
-                      <span className="ml-2 tabular-nums text-text-muted">
-                        {formatMoney(product.price)}
-                      </span>
+            {BUILDER_SLOTS.flatMap((slot) =>
+              (selection[slot.id] ?? []).map((slug, index) => {
+                const product = productsBySlug.get(slug);
+                return (
+                  <li key={`${slot.id}-${index}`} className="px-4 py-3">
+                    <p className="text-caption text-text-muted">
+                      {slot.label}
                     </p>
-                  ) : (
-                    <p className="font-mono text-caption text-text-muted">
-                      {slug}
-                    </p>
-                  )}
-                </li>
-              );
-            })}
+                    {product ? (
+                      <p className="text-label font-medium text-text">
+                        <Link
+                          href={`/product/${product.slug}`}
+                          className="hover:text-primary"
+                        >
+                          {product.name}
+                        </Link>
+                        <span className="ml-2 tabular-nums text-text-muted">
+                          {formatMoney(product.price)}
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="font-mono text-caption text-text-muted">
+                        {slug}
+                      </p>
+                    )}
+                  </li>
+                );
+              }),
+            )}
           </ul>
         </section>
 

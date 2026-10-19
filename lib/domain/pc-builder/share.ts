@@ -45,11 +45,11 @@ export function encodeShareId(selection: BuildSelection): string | null {
   if (countFilledSlots(selection).filled === 0) {
     return null;
   }
-  const compact: Record<string, string> = {};
+  const compact: Record<string, string[]> = {};
   for (const slot of BUILDER_SLOTS) {
-    const slug = selection[slot.id];
-    if (typeof slug === "string" && slug.length > 0) {
-      compact[slot.id] = slug;
+    const slugs = selection[slot.id];
+    if (slugs && slugs.length > 0) {
+      compact[slot.id] = slugs;
     }
   }
   const json = JSON.stringify(compact);

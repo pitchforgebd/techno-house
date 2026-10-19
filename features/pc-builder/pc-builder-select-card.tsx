@@ -24,17 +24,17 @@ export type PcBuilderCardCompatibility = {
 export function PcBuilderSelectCard({
   product,
   slotId,
-  selectedSlug,
+  selectedSlugs,
   onAdd,
   compatibility,
 }: {
   product: ProductSummary;
   slotId: BuilderSlot;
-  selectedSlug: string | null;
+  selectedSlugs: string[];
   onAdd: (slotId: BuilderSlot, slug: string) => void;
   compatibility?: PcBuilderCardCompatibility;
 }) {
-  const isSelected = product.slug === selectedSlug;
+  const isSelected = selectedSlugs.includes(product.slug);
   const disabled = product.stockStatus === "out_of_stock";
   const specs = product.specs.slice(0, 4);
   const incompatible = compatibility?.status === "incompatible";

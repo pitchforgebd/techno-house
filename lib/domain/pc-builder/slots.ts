@@ -6,6 +6,12 @@ export type BuilderSlotMeta = {
   /** Required for a complete core build (display logic; not enforced in shell). */
   required: boolean;
   description: string;
+  /**
+   * When true, the customer can add more than one item to this slot (e.g.
+   * two RAM sticks, or an SSD plus an HDD within the same `ssd`/`hdd`
+   * slot). Defaults to single-item when omitted.
+   */
+  multipleAllowed?: boolean;
 };
 
 /**
@@ -35,6 +41,7 @@ export const BUILDER_SLOTS: readonly BuilderSlotMeta[] = [
     label: "RAM",
     required: true,
     description: "System memory",
+    multipleAllowed: true,
   },
   {
     id: "gpu",
@@ -47,12 +54,14 @@ export const BUILDER_SLOTS: readonly BuilderSlotMeta[] = [
     label: "SSD",
     required: true,
     description: "Primary solid-state storage",
+    multipleAllowed: true,
   },
   {
     id: "hdd",
     label: "HDD",
     required: true,
     description: "Additional hard-disk storage",
+    multipleAllowed: true,
   },
   {
     id: "psu",

@@ -35,12 +35,17 @@ export function PcBuilderSelectedPart({
   missingSlug,
   isResolving,
   onRemove,
+  /** Set only inside a multi-item slot (RAM, SSD, HDD) with more than one card — shows "RAM #2" etc. and hides Replace, since there's no single item to swap. */
+  itemLabel,
+  showReplace = true,
 }: {
   slot: BuilderSlotMeta;
   product: ProductSummary | undefined;
   missingSlug: string | null;
   isResolving: boolean;
   onRemove: () => void;
+  itemLabel?: string;
+  showReplace?: boolean;
 }) {
   return (
     <li className="bg-success/5 px-4 py-4 sm:px-5">
@@ -70,7 +75,9 @@ export function PcBuilderSelectedPart({
 
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-label font-semibold text-text">{slot.label}</p>
+            <p className="text-label font-semibold text-text">
+              {itemLabel ?? slot.label}
+            </p>
             <Badge tone="stock">Selected</Badge>
           </div>
 
@@ -115,17 +122,19 @@ export function PcBuilderSelectedPart({
         </div>
 
         <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto">
-          <Link
-            href={builderSelectPath(slot.id)}
-            className={buttonClassName({
-              size: "sm",
-              variant: "secondary",
-              className: "inline-flex grow gap-1.5 sm:grow-0",
-            })}
-          >
-            <RefreshCw className="size-4" aria-hidden />
-            Replace
-          </Link>
+          {showReplace ? (
+            <Link
+              href={builderSelectPath(slot.id)}
+              className={buttonClassName({
+                size: "sm",
+                variant: "secondary",
+                className: "inline-flex grow gap-1.5 sm:grow-0",
+              })}
+            >
+              <RefreshCw className="size-4" aria-hidden />
+              Replace
+            </Link>
+          ) : null}
           <button
             type="button"
             className={buttonClassName({

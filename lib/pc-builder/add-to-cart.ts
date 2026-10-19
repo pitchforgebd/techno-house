@@ -72,13 +72,12 @@ export async function addBuildToCart(
 
   const slugSet = new Set(plan.slugs);
   const items = (
-    Object.entries(snapshot.selection) as [BuilderSlot, string | undefined][]
-  )
-    .filter(
-      (entry): entry is [BuilderSlot, string] =>
-        typeof entry[1] === "string" && slugSet.has(entry[1]),
-    )
-    .map(([slot, slug]) => ({ slug, builderSlot: slot }));
+    Object.entries(snapshot.selection) as [BuilderSlot, string[] | undefined][]
+  ).flatMap(([slot, slugs]) =>
+    (slugs ?? [])
+      .filter((slug) => slugSet.has(slug))
+      .map((slug) => ({ slug, builderSlot: slot })),
+  );
 
   const written = await addBuildItemsToCart(items);
   if (!written.ok) {

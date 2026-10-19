@@ -3,10 +3,12 @@
 import { useCallback, useSyncExternalStore } from "react";
 import type { BuilderSlot } from "@/lib/data";
 import {
+  addSlotSelection,
   BUILDER_STORAGE_KEY,
   clearSlotSelection,
   emptyBuildSelection,
   normalizeBuildSelection,
+  removeSlotItem,
   setSlotSelection,
   type BuildSelection,
 } from "@/lib/domain/pc-builder";
@@ -26,8 +28,15 @@ function emit() {
 function sameSelection(a: BuildSelection, b: BuildSelection): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   for (const key of keys) {
-    if (a[key as BuilderSlot] !== b[key as BuilderSlot]) {
+    const av = a[key as BuilderSlot] ?? [];
+    const bv = b[key as BuilderSlot] ?? [];
+    if (av.length !== bv.length) {
       return false;
+    }
+    for (let i = 0; i < av.length; i += 1) {
+      if (av[i] !== bv[i]) {
+        return false;
+      }
     }
   }
   return true;
@@ -88,8 +97,16 @@ export function useBuilderStore() {
     writeStorage(setSlotSelection(getSnapshot(), slotId, slug));
   }, []);
 
+  const addPart = useCallback((slotId: BuilderSlot, slug: string) => {
+    writeStorage(addSlotSelection(getSnapshot(), slotId, slug));
+  }, []);
+
   const clearPart = useCallback((slotId: BuilderSlot) => {
     writeStorage(clearSlotSelection(getSnapshot(), slotId));
+  }, []);
+
+  const removePartAt = useCallback((slotId: BuilderSlot, index: number) => {
+    writeStorage(removeSlotItem(getSnapshot(), slotId, index));
   }, []);
 
   const clearBuild = useCallback(() => {
@@ -100,5 +117,13 @@ export function useBuilderStore() {
     writeStorage(normalizeBuildSelection(next));
   }, []);
 
-  return { selection, selectPart, clearPart, clearBuild, loadSelection };
+  return {
+    selection,
+    selectPart,
+    addPart,
+    clearPart,
+    removePartAt,
+    clearBuild,
+    loadSelection,
+  };
 }

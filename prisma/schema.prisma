@@ -1743,7 +1743,10 @@ model PCBuildItem {
   build   PCBuild @relation(fields: [buildId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@unique([buildId, slot])
+  /// One row per distinct product in a slot — multi-item slots (RAM, SSD,
+  /// HDD) can hold more than one distinct product; identical repeats of the
+  /// same product within a slot collapse into `quantity` on this one row.
+  @@unique([buildId, slot, productId])
   @@index([productId])
 }
 

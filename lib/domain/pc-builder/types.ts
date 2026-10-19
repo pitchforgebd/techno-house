@@ -1,7 +1,12 @@
 ﻿import type { BuilderSlot } from "@/lib/data/types/catalog";
 
-/** Product slug selected for a slot. Null means empty. */
-export type BuildSelection = Partial<Record<BuilderSlot, string | null>>;
+/**
+ * Product slugs selected for a slot, one entry per physical unit. A slot
+ * with `multipleAllowed` can hold more than one (two RAM sticks, an SSD
+ * plus an HDD); every other slot holds at most one. A key is always either
+ * absent or a non-empty array — never present with an empty array.
+ */
+export type BuildSelection = Partial<Record<BuilderSlot, string[]>>;
 
 export type CompatibilityStatus = "compatible" | "incompatible" | "unknown";
 
@@ -28,6 +33,5 @@ export function isSlotFilled(
   selection: BuildSelection,
   slotId: BuilderSlot,
 ): boolean {
-  const slug = selection[slotId];
-  return typeof slug === "string" && slug.length > 0;
+  return (selection[slotId]?.length ?? 0) > 0;
 }

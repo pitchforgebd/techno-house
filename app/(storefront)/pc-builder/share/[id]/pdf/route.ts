@@ -54,20 +54,18 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   const lines: BuildQuoteLine[] = [];
   for (const slot of BUILDER_SLOTS) {
-    const slug = shared.selection[slot.id];
-    if (typeof slug !== "string" || !slug) {
-      continue;
+    for (const slug of shared.selection[slot.id] ?? []) {
+      const product = productsBySlug.get(slug);
+      if (!product) {
+        continue;
+      }
+      lines.push({
+        slotLabel: slot.label,
+        productName: product.name,
+        sku: product.sku,
+        unitAmount: product.price.amount,
+      });
     }
-    const product = productsBySlug.get(slug);
-    if (!product) {
-      continue;
-    }
-    lines.push({
-      slotLabel: slot.label,
-      productName: product.name,
-      sku: product.sku,
-      unitAmount: product.price.amount,
-    });
   }
 
   if (lines.length === 0) {

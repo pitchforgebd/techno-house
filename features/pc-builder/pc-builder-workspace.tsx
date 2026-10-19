@@ -31,7 +31,8 @@ const EMPTY_BUILD: ValidatedBuild = {
 };
 
 export function PcBuilderWorkspace() {
-  const { selection, clearPart, clearBuild, loadSelection } = useBuilderStore();
+  const { selection, removePartAt, clearBuild, loadSelection } =
+    useBuilderStore();
   const [snapshot, setSnapshot] = useState<ValidatedBuild>(EMPTY_BUILD);
   const [pending, startTransition] = useTransition();
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export function PcBuilderWorkspace() {
         selection={selection}
         productsBySlug={productsBySlug}
         productsPending={pending}
-        onClearPart={clearPart}
+        onRemovePartAt={removePartAt}
         slots={snapshot.slots}
       />
       <PcBuilderSummary

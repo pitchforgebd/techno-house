@@ -28,9 +28,13 @@ footer marquee controls + admin sidebar scroll fix), AD-379
 a dedicated discount-notice email + PC Builder download login gate), and
 AD-380 (promotion assignment workflow: a "Promotions" checklist on the
 product edit page, and a new "Add to an Offer" bulk-assign tab on
-`/admin/promotions/products`), and AD-381 (`/offers/[slug]` now has the
+`/admin/promotions/products`), AD-381 (`/offers/[slug]` now has the
 same real "Filter By" sidebar as `/shop`/category pages, scoped to just
-that offer's own products via a new `ProductListQuery.productIds`) are
+that offer's own products via a new `ProductListQuery.productIds`), and
+AD-382 (PC Builder: RAM/SSD/HDD slots can now hold more than one item —
+`BuildSelection` changed from one slug per slot to an array, a
+`PCBuildItem` schema migration widening its unique constraint to
+`(build, slot, product)`, and a new "+ Add another" picker flow) are
 also complete — full detail in `project-memory/TASKS.md`, not narrated
 here.
 

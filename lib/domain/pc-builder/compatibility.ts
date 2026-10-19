@@ -44,6 +44,14 @@ function partBySlot(
   return parts.find((part) => part.slotId === slotId);
 }
 
+/** Every part in a slot that can hold more than one (RAM, SSD, HDD). */
+function partsBySlot(
+  parts: CompatibilityPart[],
+  slotId: BuilderSlot,
+): CompatibilityPart[] {
+  return parts.filter((part) => part.slotId === slotId);
+}
+
 function pushWarning(
   warnings: CompatibilityWarning[],
   warning: CompatibilityWarning,
@@ -159,9 +167,11 @@ function evaluateSocket(parts: CompatibilityPart[]): RuleEvaluation {
 function evaluateRamType(parts: CompatibilityPart[]): RuleEvaluation {
   const warnings: CompatibilityWarning[] = [];
   let checkedOk = 0;
-  const ram = partBySlot(parts, "ram");
   const motherboard = partBySlot(parts, "motherboard");
-  if (ram && motherboard) {
+  if (!motherboard) {
+    return { warnings, checkedOk };
+  }
+  for (const ram of partsBySlot(parts, "ram")) {
     if (
       compareOverlapField({
         left: ram,
@@ -282,9 +292,9 @@ function evaluateStorageInterface(parts: CompatibilityPart[]): RuleEvaluation {
     return { warnings, checkedOk };
   }
 
-  const drives = (["ssd", "hdd"] as const)
-    .map((slot) => partBySlot(parts, slot))
-    .filter((part): part is CompatibilityPart => part != null);
+  const drives = (["ssd", "hdd"] as const).flatMap((slot) =>
+    partsBySlot(parts, slot),
+  );
 
   for (const drive of drives) {
     if (

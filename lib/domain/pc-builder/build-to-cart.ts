@@ -78,29 +78,27 @@ export function planBuildToCart({
   const slugs: string[] = [];
 
   for (const slot of slots) {
-    const slug = selection[slot.id];
-    if (typeof slug !== "string" || !slug) {
-      continue;
+    for (const slug of selection[slot.id] ?? []) {
+      if (slugs.includes(slug)) {
+        continue;
+      }
+      const product = productBySlug.get(slug);
+      if (!product) {
+        return {
+          ok: false,
+          code: "missing_product",
+          reason: `Could not resolve product for ${slot.label}. Try again in a moment.`,
+        };
+      }
+      if (product.stockStatus === "out_of_stock") {
+        return {
+          ok: false,
+          code: "out_of_stock",
+          reason: `${slot.label} is out of stock and cannot be added.`,
+        };
+      }
+      slugs.push(slug);
     }
-    if (slugs.includes(slug)) {
-      continue;
-    }
-    const product = productBySlug.get(slug);
-    if (!product) {
-      return {
-        ok: false,
-        code: "missing_product",
-        reason: `Could not resolve product for ${slot.label}. Try again in a moment.`,
-      };
-    }
-    if (product.stockStatus === "out_of_stock") {
-      return {
-        ok: false,
-        code: "out_of_stock",
-        reason: `${slot.label} is out of stock and cannot be added.`,
-      };
-    }
-    slugs.push(slug);
   }
 
   if (slugs.length === 0) {

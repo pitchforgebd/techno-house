@@ -33,17 +33,18 @@ export function compatibilityPartsFromCandidates(
   const parts: CompatibilityPart[] = [];
 
   for (const slot of BUILDER_SLOTS) {
-    const slug = selection[slot.id];
-    if (typeof slug !== "string" || !slug) {
-      continue;
-    }
-    const candidate = bySlug.get(slug);
-    if (!candidate) {
-      continue;
-    }
-    parts.push(candidateToCompatibilityPart(slot.id, candidate));
     if (parts.length >= MAX_BUILD_PRODUCTS) {
       break;
+    }
+    for (const slug of selection[slot.id] ?? []) {
+      if (parts.length >= MAX_BUILD_PRODUCTS) {
+        break;
+      }
+      const candidate = bySlug.get(slug);
+      if (!candidate) {
+        continue;
+      }
+      parts.push(candidateToCompatibilityPart(slot.id, candidate));
     }
   }
 

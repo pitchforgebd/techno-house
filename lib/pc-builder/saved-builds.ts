@@ -56,12 +56,28 @@ export type PreparedBuildItems =
     }
   | { ok: false; formError: string };
 
+/**
+ * A saved row's `quantity` (default 1) means that many identical physical
+ * units of the same product — expanded back into one array entry per unit
+ * so the live builder shows one card per unit, same as picking them one
+ * at a time would have.
+ */
 export function selectionFromBuildItems(
-  items: Array<{ slot: DbBuilderSlot; product: { slug: string } }>,
+  items: Array<{
+    slot: DbBuilderSlot;
+    product: { slug: string };
+    quantity?: number;
+  }>,
 ): BuildSelection {
   const selection: BuildSelection = {};
   for (const item of items) {
-    selection[toBuilderSlot(item.slot)] = item.product.slug;
+    const slotId = toBuilderSlot(item.slot);
+    const existing = selection[slotId] ?? [];
+    const quantity = Math.max(1, item.quantity ?? 1);
+    selection[slotId] = [
+      ...existing,
+      ...Array.from({ length: quantity }, () => item.product.slug),
+    ];
   }
   return normalizeBuildSelection(selection);
 }
@@ -71,7 +87,11 @@ function toSavedBuild(row: {
   name: string;
   createdAt: Date;
   shareSlug?: string | null;
-  items: Array<{ slot: DbBuilderSlot; product: { slug: string } }>;
+  items: Array<{
+    slot: DbBuilderSlot;
+    product: { slug: string };
+    quantity?: number;
+  }>;
 }): SavedBuild {
   return {
     id: row.id,
@@ -91,9 +111,9 @@ export async function prepareBuildItems(
     return { ok: false, formError: emptyMessage };
   }
 
-  const slugs = BUILDER_SLOTS.map((slot) => selection[slot.id]).filter(
-    (slug): slug is string => typeof slug === "string" && slug.length > 0,
-  );
+  const slugs = [
+    ...new Set(BUILDER_SLOTS.flatMap((slot) => selection[slot.id] ?? [])),
+  ];
   const candidates =
     await productRepository.listBuilderCandidatesBySlugs(slugs);
   const bySlug = new Map(candidates.map((item) => [item.slug, item]));
@@ -106,29 +126,38 @@ export async function prepareBuildItems(
   let totalAmount = 0;
 
   for (const slot of BUILDER_SLOTS) {
-    const slug = selection[slot.id];
-    if (typeof slug !== "string" || !slug) {
+    const slugsForSlot = selection[slot.id] ?? [];
+    if (slugsForSlot.length === 0) {
       continue;
     }
-    const product = bySlug.get(slug);
-    if (!product) {
-      return {
-        ok: false,
-        formError: "A selected part is no longer available.",
-      };
+    // Group identical products within the same slot into one row with a
+    // summed quantity (two of the same RAM stick), rather than one row per
+    // physical unit — PCBuildItem is unique per (build, slot, product).
+    const quantityBySlug = new Map<string, number>();
+    for (const slug of slugsForSlot) {
+      quantityBySlug.set(slug, (quantityBySlug.get(slug) ?? 0) + 1);
     }
-    if (product.builderSlot && product.builderSlot !== slot.id) {
-      return {
-        ok: false,
-        formError: `${product.name} does not belong in the ${slot.label} slot.`,
-      };
+    for (const [slug, quantity] of quantityBySlug) {
+      const product = bySlug.get(slug);
+      if (!product) {
+        return {
+          ok: false,
+          formError: "A selected part is no longer available.",
+        };
+      }
+      if (product.builderSlot && product.builderSlot !== slot.id) {
+        return {
+          ok: false,
+          formError: `${product.name} does not belong in the ${slot.label} slot.`,
+        };
+      }
+      items.push({
+        slot: toDbBuilderSlot(slot.id),
+        productId: product.id,
+        quantity,
+      });
+      totalAmount += product.price.amount * quantity;
     }
-    items.push({
-      slot: toDbBuilderSlot(slot.id),
-      productId: product.id,
-      quantity: 1,
-    });
-    totalAmount += product.price.amount;
   }
 
   return { ok: true, items, totalAmount };
@@ -147,6 +176,7 @@ export async function listUserBuilds(userId: string): Promise<SavedBuild[]> {
       items: {
         select: {
           slot: true,
+          quantity: true,
           product: { select: { slug: true } },
         },
       },

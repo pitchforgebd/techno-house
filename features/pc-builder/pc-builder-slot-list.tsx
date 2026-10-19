@@ -22,13 +22,13 @@ export function PcBuilderSlotList({
   selection,
   productsBySlug,
   productsPending,
-  onClearPart,
+  onRemovePartAt,
   slots = BUILDER_SLOTS,
 }: {
   selection: BuildSelection;
   productsBySlug: Map<string, ProductSummary>;
   productsPending: boolean;
-  onClearPart: (slotId: BuilderSlot) => void;
+  onRemovePartAt: (slotId: BuilderSlot, index: number) => void;
   slots?: readonly BuilderSlotMeta[];
 }) {
   const counts = useMemo(
@@ -54,7 +54,8 @@ export function PcBuilderSlotList({
             </h2>
             <p className="mt-1 max-w-prose text-caption text-text-muted">
               Pick one part per slot. Each slot opens a dedicated selection
-              page. Compatibility checks run as you build.
+              page. RAM, SSD, and HDD let you add more than one.
+              Compatibility checks run as you build.
             </p>
           </div>
           <div className="text-right">
@@ -80,22 +81,43 @@ export function PcBuilderSlotList({
       <ul className="divide-y divide-border">
         {slots.map((slot) => {
           const filled = isSlotFilled(selection, slot.id);
-          const slug = selection[slot.id] ?? null;
-          const product =
-            typeof slug === "string" ? productsBySlug.get(slug) : undefined;
+          const slugs = selection[slot.id] ?? [];
+          const multi = Boolean(slot.multipleAllowed);
 
           if (filled) {
             return (
-              <PcBuilderSelectedPart
-                key={slot.id}
-                slot={slot}
-                product={product}
-                missingSlug={
-                  !product && typeof slug === "string" ? slug : null
-                }
-                isResolving={!product && productsPending}
-                onRemove={() => onClearPart(slot.id)}
-              />
+              <li key={slot.id}>
+                <ul>
+                  {slugs.map((slug, index) => {
+                    const product = productsBySlug.get(slug);
+                    return (
+                      <PcBuilderSelectedPart
+                        key={`${slot.id}-${index}`}
+                        slot={slot}
+                        product={product}
+                        missingSlug={!product ? slug : null}
+                        isResolving={!product && productsPending}
+                        onRemove={() => onRemovePartAt(slot.id, index)}
+                        itemLabel={
+                          multi && slugs.length > 1
+                            ? `${slot.label} #${index + 1}`
+                            : undefined
+                        }
+                        showReplace={!multi || slugs.length === 1}
+                      />
+                    );
+                  })}
+                </ul>
+                {multi ? (
+                  <Link
+                    href={builderSelectPath(slot.id, "add")}
+                    className="flex items-center justify-center gap-1.5 border-t border-border bg-surface-muted/30 px-4 py-2.5 text-caption font-semibold text-primary transition-colors hover:bg-surface-muted/60 sm:px-5"
+                  >
+                    <Plus className="size-4" aria-hidden />
+                    Add another {slot.label}
+                  </Link>
+                ) : null}
+              </li>
             );
           }
 

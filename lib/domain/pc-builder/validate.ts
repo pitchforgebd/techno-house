@@ -68,42 +68,40 @@ export function assembleValidatedBuild(
   const issues: BuildValidationIssue[] = [];
 
   for (const slot of slots) {
-    const slug = selection[slot.id];
-    if (typeof slug !== "string" || !slug) {
-      continue;
-    }
-    const product = bySlug.get(slug);
-    if (!product) {
-      issues.push({
-        code: "missing_part",
+    for (const slug of selection[slot.id] ?? []) {
+      const product = bySlug.get(slug);
+      if (!product) {
+        issues.push({
+          code: "missing_part",
+          slotId: slot.id,
+          message: `${slot.label} is no longer available.`,
+        });
+        priceLines.push({ priceAmount: null, stockStatus: null });
+        continue;
+      }
+      if (product.builderSlot && product.builderSlot !== slot.id) {
+        issues.push({
+          code: "slot_mismatch",
+          slotId: slot.id,
+          message: `${product.name} does not belong in the ${slot.label} slot.`,
+        });
+        priceLines.push({
+          priceAmount: product.priceAmount,
+          stockStatus: product.stockStatus,
+        });
+        continue;
+      }
+      parts.push({
         slotId: slot.id,
-        message: `${slot.label} is no longer available.`,
-      });
-      priceLines.push({ priceAmount: null, stockStatus: null });
-      continue;
-    }
-    if (product.builderSlot && product.builderSlot !== slot.id) {
-      issues.push({
-        code: "slot_mismatch",
-        slotId: slot.id,
-        message: `${product.name} does not belong in the ${slot.label} slot.`,
+        slug: product.slug,
+        name: product.name,
+        attrs: product.builderAttrs,
       });
       priceLines.push({
         priceAmount: product.priceAmount,
         stockStatus: product.stockStatus,
       });
-      continue;
     }
-    parts.push({
-      slotId: slot.id,
-      slug: product.slug,
-      name: product.name,
-      attrs: product.builderAttrs,
-    });
-    priceLines.push({
-      priceAmount: product.priceAmount,
-      stockStatus: product.stockStatus,
-    });
   }
 
   const filled = countFilledSlots(selection, slots).filled;

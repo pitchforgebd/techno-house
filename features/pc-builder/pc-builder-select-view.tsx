@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { ArrowLeft, Search, SlidersHorizontal } from "lucide-react";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -21,6 +27,7 @@ import { PcBuilderSelectSidebar } from "@/features/pc-builder/pc-builder-select-
 import { useBuilderStore } from "@/features/pc-builder/use-builder-store";
 import type { BuilderCandidate } from "@/lib/data";
 import {
+  isSlotFilled,
   rankCandidatesForSlot,
   type BuilderSlotMeta,
 } from "@/lib/domain/pc-builder";
@@ -28,6 +35,18 @@ import {
 type SelectSort = "default" | "price_asc" | "price_desc" | "discount";
 
 const EMPTY_COMPAT = new Map<string, PcBuilderCardCompatibility>();
+
+function noopSubscribe() {
+  return () => {};
+}
+
+function getAppendModeSnapshot(): boolean {
+  return new URLSearchParams(window.location.search).get("mode") === "add";
+}
+
+function getAppendModeServerSnapshot(): boolean {
+  return false;
+}
 
 const SORT_OPTIONS: { value: SelectSort; label: string }[] = [
   { value: "default", label: "Default" },
@@ -71,7 +90,7 @@ export function PcBuilderSelectView({
   products: BuilderCandidate[];
 }) {
   const router = useRouter();
-  const { selection, selectPart } = useBuilderStore();
+  const { selection, selectPart, addPart } = useBuilderStore();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SelectSort>("default");
   const [showHidden, setShowHidden] = useState(false);
@@ -79,9 +98,23 @@ export function PcBuilderSelectView({
     key: string;
     bySlug: Map<string, PcBuilderCardCompatibility>;
   } | null>(null);
+  // "+ Add Another …" links here with `?mode=add` so picking a part appends
+  // instead of replacing — read via useSyncExternalStore (not Next's
+  // `useSearchParams`, which would force this page into a Suspense
+  // boundary) since the value is only available in the browser; the server
+  // snapshot of `false` matches the client's first paint before React
+  // reconciles it to the real value, same pattern as useBuilderStore.
+  const appendMode = useSyncExternalStore(
+    noopSubscribe,
+    getAppendModeSnapshot,
+    getAppendModeServerSnapshot,
+  );
+  // Appending is only meaningful once the slot already has an item — a
+  // fresh multi-item slot behaves exactly like any other empty slot.
+  const isAppending =
+    appendMode && Boolean(slot.multipleAllowed) && isSlotFilled(selection, slot.id);
 
-  const selectedSlug =
-    (selection[slot.id] as string | null | undefined) ?? null;
+  const selectedSlugs = selection[slot.id] ?? [];
 
   const selectionKey = JSON.stringify(selection);
   const compatKey = `${slot.id}|${selectionKey}`;
@@ -177,7 +210,11 @@ export function PcBuilderSelectView({
 
   function handleAdd(slotId: typeof slot.id, slug: string) {
     const product = products.find((item) => item.slug === slug);
-    selectPart(slotId, slug);
+    if (isAppending) {
+      addPart(slotId, slug);
+    } else {
+      selectPart(slotId, slug);
+    }
     notifySuccess({
       title: `${slot.label} added`,
       description: product?.name ?? "Part added to your build.",
@@ -211,10 +248,10 @@ export function PcBuilderSelectView({
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-caption font-medium uppercase tracking-wide text-primary">
-            Select your components
+            {isAppending ? "Add another component" : "Select your components"}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-text sm:text-3xl">
-            {slot.label}
+            {isAppending ? `Add another ${slot.label}` : slot.label}
             {checking ? null : (
               <span className="ml-2 text-body font-normal text-text-muted">
                 ({filtered.length}{" "}
@@ -225,6 +262,9 @@ export function PcBuilderSelectView({
           <p className="mt-2 max-w-prose text-body text-text-muted">
             {slot.description}. Choose a part and it will be added to your
             build. Only in-stock desktop parts are listed.
+            {isAppending
+              ? ` You already have ${selectedSlugs.length} in this build — this adds one more.`
+              : ""}
           </p>
         </div>
       </header>
@@ -322,7 +362,7 @@ export function PcBuilderSelectView({
                   <PcBuilderSelectCard
                     product={product}
                     slotId={slot.id}
-                    selectedSlug={selectedSlug}
+                    selectedSlugs={isAppending ? [] : selectedSlugs}
                     onAdd={handleAdd}
                     compatibility={compatBySlug.get(product.slug)}
                   />

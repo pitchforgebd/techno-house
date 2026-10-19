@@ -193,6 +193,7 @@ export async function getPublicSharedBuild(
         items: {
           select: {
             slot: true,
+            quantity: true,
             product: { select: { slug: true } },
           },
         },

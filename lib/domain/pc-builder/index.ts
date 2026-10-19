@@ -12,12 +12,14 @@ export {
   type CompatibilityWarning,
 } from "@/lib/domain/pc-builder/types";
 export {
+  addSlotSelection,
   BUILDER_STORAGE_KEY,
   clearSlotSelection,
   countFilledSlots,
   isBuilderSlotId,
   builderSelectPath,
   normalizeBuildSelection,
+  removeSlotItem,
   selectedSlugs,
   setSlotSelection,
   slotMetaList,

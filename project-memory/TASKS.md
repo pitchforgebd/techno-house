@@ -8310,3 +8310,92 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       "In Stock" availability filter present, and "Showing 2 of 2 products"
       matching exactly — then deleted the test promotion and confirmed zero
       rows remained.
+
+- [x] AD-382 PC Builder: RAM/SSD/HDD slots can now hold more than one item —
+      operator (Banglish): many real PCs take multiple RAM sticks and more
+      than one drive, so a customer should be able to pick one, then add
+      more of the same slot, all landing in cart on "Add build to cart".
+
+      This was an architectural change, not a UI tweak: `BuildSelection`
+      (`lib/domain/pc-builder/types.ts`) was `Partial<Record<BuilderSlot,
+      string | null>>` — exactly one product slug per slot — end to end,
+      from the client localStorage store through the compatibility engine,
+      cart write, and saved-build schema. Changed it to `Partial<Record
+      <BuilderSlot, string[]>>` (one slug per physical unit; a key is
+      always absent or non-empty, never `[]`) and added `multipleAllowed`
+      to `BuilderSlotMeta` (`slots.ts`), set on `ram`/`ssd`/`hdd` only —
+      every other slot still holds exactly one item, unchanged behaviour.
+      `normalizeBuildSelection` accepts both the new array shape and the
+      legacy single-string shape on read (old browsers' persisted
+      localStorage keeps working untouched) and always writes the
+      canonical array form going forward — no migration step needed for
+      existing customers' in-progress builds.
+
+      Touched the full chain `tsc --noEmit` flagged once the type changed
+      (used the compiler itself as the checklist, not a grep): `selection.ts`
+      (new `addSlotSelection`/`removeSlotItem` alongside the existing
+      `setSlotSelection`/`clearSlotSelection`), `compatibility.ts`
+      (`evaluateRamType`/`evaluateStorageInterface` now iterate every part
+      in a slot instead of `.find()`-ing the first — a 2nd RAM stick or 2nd
+      SSD is checked against the motherboard independently, one mismatch
+      can't hide behind another's match), `components.ts`/`build-to-cart.ts`/
+      `validate.ts`/`share.ts` (expand a multi-item slot into multiple
+      `CompatibilityPart`/price-line/plan entries instead of one),
+      `lib/pc-builder/add-to-cart.ts` (flatMaps the selection into multiple
+      `{slug, builderSlot}` cart-write items sharing one `buildBatchId` —
+      `addCartItemForOwner`'s existing product+colour keyed `findLine`
+      already collapses two identical units into one row with quantity 2,
+      so no cart-write change was needed there, only the item list feeding
+      it).
+
+      **Schema migration** (`20261019125548_pc_builder_multi_item_slots`):
+      `PCBuildItem.@@unique([buildId, slot])` physically could not store 2
+      items in one slot — widened to `@@unique([buildId, slot, productId])`.
+      Identical repeats of the same product within a slot still collapse
+      into one row via the already-existing (previously always-1)
+      `quantity` field rather than duplicate rows. `prepareBuildItems`
+      (`lib/pc-builder/saved-builds.ts`) now groups a slot's slugs by
+      product and sums quantity per distinct product;
+      `selectionFromBuildItems` does the inverse on read — expands each
+      row's `quantity` back into that many repeated array entries, so
+      loading a saved build into the live builder shows one card per
+      physical unit, same as picking them one at a time would have.
+
+      **UI** (`features/pc-builder/`): a multi-item slot that already has
+      ≥1 item renders one `PcBuilderSelectedPart` card per unit (numbered
+      "RAM #2" once there's more than one; the single-item case is
+      unchanged, including the per-item "Replace" button) plus a new
+      "+ Add another {label}" row linking to the existing picker route with
+      `?mode=add`. The picker (`pc-builder-select-view.tsx`) reads that
+      query param via `useSyncExternalStore` reading `window.location.search`
+      — not Next's `useSearchParams()`, which would have forced a Suspense
+      boundary onto an otherwise-static-shelled route — and calls the
+      store's new `addPart` instead of the existing `selectPart` (replace)
+      when appending; card highlighting is suppressed in append mode so
+      re-picking the identical product doesn't look disabled (clicking it
+      again is the intended way to add a 2nd identical stick).
+
+      `tsc --noEmit` clean; `eslint` clean on all 21 touched files;
+      `npm run test:pc-builder` 121/121 (was 107 — added 14 new checks
+      covering two-good-RAM-sticks, one-good-one-mismatched-RAM, two SSDs,
+      an SSD+HDD pair, the new `addSlotSelection`/`removeSlotItem`/legacy-
+      string-normalize helpers, multi-item `compatibilityPartsFromCandidates`
+      expansion, multi-item `assembleValidatedBuild` pricing, and
+      `planBuildToCart` both including two distinct units and correctly
+      deduping two identical ones); `npm run test:payments` 51/51
+      (no cart regression). Verified against real Postgres with a script
+      (written, verified, then deleted): `prepareBuildItems` on
+      `ram: [A, B, A]` produced exactly 2 `PCBuildItem` rows (A at quantity
+      2, B at quantity 1) under the new unique constraint; `listUserBuilds`
+      round-tripped it back to `selection.ram` as `[A, A, B]` (length 3);
+      and three real `addCartItemForOwner` calls for the same A/B/A build
+      produced exactly 2 real `CartItem` rows (A quantity 2, B quantity 1),
+      both carrying the shared `buildBatchId`/`builderSlot` — then all test
+      rows deleted and confirmed gone. **Not independently verified**: the
+      live click-through (the new "+ Add another RAM" button, per-item
+      remove) in a real browser — no browser automation tool is available
+      in this environment; every route involved (`/pc-builder`,
+      `/pc-builder/select/ram`, `/pc-builder/select/ram?mode=add`, `/ssd`,
+      `/hdd`, `/cpu`) was confirmed live at 200 with no server error, and
+      the underlying client store logic is covered by the pure-engine
+      suite above, but the actual DOM interaction was not clicked through.
