@@ -323,13 +323,23 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
       */}
       <div className="relative overflow-hidden bg-surface-muted">
         <Link href={href} className="block">
-          <div className="relative aspect-[4/3]">
+          {/*
+            `object-contain` was still leaving side gaps on any product photo
+            that already has its own built-in whitespace margin (most of
+            them) — no amount of container tuning fixes that, since the
+            empty space is baked into the image file itself. `object-cover`
+            on a square box scales until the photo truly fills the section
+            edge to edge, same as every other major storefront's grid
+            thumbnail; the trade-off is a few edge pixels crop on unusually
+            wide/tall shots, which reads better here than guaranteed gaps.
+          */}
+          <div className="relative aspect-square">
             <Image
               src={product.image.src}
               alt={product.image.alt}
               fill
               sizes="(min-width: 1280px) 20vw, (min-width: 768px) 33vw, 50vw"
-              className="object-contain transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.06]"
+              className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.06]"
             />
           </div>
         </Link>
