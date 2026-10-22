@@ -1887,6 +1887,16 @@ model FooterSettings {
   updatedAt  DateTime @updatedAt
 }
 
+/// Admin-configurable section order for the Add/Edit Product form (AD-383).
+/// A drag-and-drop reorder (Admin -> Catalog -> Product form layout) changes
+/// which section renders first without touching code. JSON array of
+/// ProductFormSectionId strings — see lib/catalog/product-form-layout.ts.
+model AdminProductFormLayout {
+  id               String   @id @default("singleton")
+  sectionOrderJson String   @default("[]")
+  updatedAt        DateTime @updatedAt
+}
+
 /// Real static-content pages (AD-273) — About/Contact/FAQ/Support/Warranty/
 /// Shipping/Returns/Terms. `slug` is restricted to a fixed known set (see
 /// CONTENT_PAGE_SLUGS in lib/content/pages.ts) since each maps to an

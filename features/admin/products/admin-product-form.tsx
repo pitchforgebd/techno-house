@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition } from "react";
+import {
+  Fragment,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +88,10 @@ import {
 } from "@/features/admin/products/admin-product-spec-groups-fields";
 import { AdminProductFormSidebar } from "@/features/admin/products/admin-product-form-sidebar";
 import type { ProductFormAttributeOption } from "@/lib/admin/load-products";
+import {
+  DEFAULT_PRODUCT_FORM_ORDER,
+  type ProductFormSectionId,
+} from "@/lib/catalog/product-form-layout";
 import type { Category, ProductDetail, StockStatus } from "@/lib/data";
 import {
   categoryDescendantsWithDepth,
@@ -160,6 +171,7 @@ export function AdminProductForm({
   promotions,
   assignedPromotionIds = [],
   canManagePromotions = false,
+  sectionOrder = DEFAULT_PRODUCT_FORM_ORDER,
 }: {
   mode: FormMode;
   product?: EditorProduct | null;
@@ -179,6 +191,10 @@ export function AdminProductForm({
   promotions?: AssignablePromotionOption[];
   assignedPromotionIds?: string[];
   canManagePromotions?: boolean;
+  /** Admin-configurable (Admin -> Catalog -> Product form layout, AD-383).
+   * Section order is applied purely at render time — the sections
+   * themselves are unchanged, only their sequence in the main column. */
+  sectionOrder?: ProductFormSectionId[];
 }) {
   const router = useRouter();
   // Local copies so a quick-created category/brand can appear in the
@@ -322,7 +338,7 @@ export function AdminProductForm({
   );
   const [warrantyOptionId, setWarrantyOptionId] = useState(() =>
     matchWarrantyOptionId(product?.warrantyLabel, warranties) ||
-    warranties.find((item) => item.id === "warranty-1y")?.id ||
+    warranties.find((item) => item.id === "warranty-3y")?.id ||
     warranties[0]?.id ||
     "",
   );
@@ -621,6 +637,9 @@ export function AdminProductForm({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-5">
+          {(() => {
+            const sectionNodes: Record<ProductFormSectionId, ReactNode> = {
+            basic_info: (
           <AdminFormCard title="Product basic information">
             <div className="space-y-1.5">
               <AdminFormLabel htmlFor="product-name" required>
@@ -753,7 +772,8 @@ export function AdminProductForm({
               </div>
             ) : null}
           </AdminFormCard>
-
+            ),
+            configuration: (
           <AdminFormCard title="Product configuration">
             <div className="space-y-1.5">
               <AdminFormLabel required>Related categories</AdminFormLabel>
@@ -912,7 +932,8 @@ export function AdminProductForm({
               </p>
             </div>
           </AdminFormCard>
-
+            ),
+            files_media: (
           <AdminFormCard title="Files & media">
             <p className="text-xs text-neutral-500">
               Click a box to open the media library — upload from your PC or
@@ -967,7 +988,8 @@ export function AdminProductForm({
               />
             </div>
           </AdminFormCard>
-
+            ),
+            quick_overview: (
           <AdminFormCard title="Quick overview">
             <p className="text-xs text-neutral-500">
               Shown in the buy box, right under the price. Keep it short — a
@@ -981,7 +1003,8 @@ export function AdminProductForm({
               placeholder="A few short highlights…"
             />
           </AdminFormCard>
-
+            ),
+            details: (
           <AdminFormCard title="Details">
             <p className="text-xs text-neutral-500">
               Shown in the &quot;Details&quot; tab below the gallery. Independent of
@@ -995,7 +1018,8 @@ export function AdminProductForm({
               placeholder="Longer-form details about this product…"
             />
           </AdminFormCard>
-
+            ),
+            seo: (
           <AdminFormCard title="SEO meta tags">
             <div className="space-y-1.5">
               <AdminFormLabel htmlFor="seo-title">Meta title</AdminFormLabel>
@@ -1043,7 +1067,8 @@ export function AdminProductForm({
               />
             </div>
           </AdminFormCard>
-
+            ),
+            price_stock: (
           <AdminFormCard title="Product price + stock">
             <AdminFormDivider />
             <div className="space-y-1.5">
@@ -1230,7 +1255,8 @@ export function AdminProductForm({
             </div>
             <input type="hidden" name="slug" value={slug} />
           </AdminFormCard>
-
+            ),
+            b2b_pricing: (
           <AdminFormCard title="B2B / Wholesale pricing">
             {mode === "edit" && product ? (
               <AdminProductB2BFields
@@ -1247,7 +1273,8 @@ export function AdminProductForm({
               </p>
             )}
           </AdminFormCard>
-
+            ),
+            pc_builder: (
           <AdminFormCard title="PC Builder">
             <p className="text-xs text-neutral-500">
               Assign this product to one builder slot. Leave empty if it is not
@@ -1372,7 +1399,8 @@ export function AdminProductForm({
               </div>
             ) : null}
           </AdminFormCard>
-
+            ),
+            variants: (
           <AdminFormCard title="Variants">
             <p className="text-xs text-neutral-500">
               Optional SKU rows for this product. Leave empty if the product has
@@ -1507,7 +1535,8 @@ export function AdminProductForm({
               Add variant
             </AdminFormDashedButton>
           </AdminFormCard>
-
+            ),
+            labels: (
           <AdminFormCard title="Labels">
             <AdminProductLabelsFields
               labels={labels}
@@ -1515,7 +1544,8 @@ export function AdminProductForm({
               onChange={setLabelIds}
             />
           </AdminFormCard>
-
+            ),
+            notes: (
           <AdminFormCard title="Notes">
             <AdminProductNotesFields
               notes={notes}
@@ -1523,8 +1553,9 @@ export function AdminProductForm({
               onChange={setNoteIds}
             />
           </AdminFormCard>
-
-          {mode === "edit" && product?.id && promotions ? (
+            ),
+            promotions:
+              mode === "edit" && product?.id && promotions ? (
             <AdminFormCard title="Promotions">
               <AdminProductPromotionsFields
                 productId={product.id}
@@ -1533,14 +1564,20 @@ export function AdminProductForm({
                 canManage={canManagePromotions}
               />
             </AdminFormCard>
-          ) : null}
-
+          ) : null,
+            specifications: (
           <AdminFormCard title="Specifications">
             <AdminProductSpecGroupsFields
               groups={specGroupSections}
               onChange={setSpecGroupSections}
             />
           </AdminFormCard>
+            ),
+            };
+            return sectionOrder.map((id) => (
+              <Fragment key={id}>{sectionNodes[id]}</Fragment>
+            ));
+          })()}
         </div>
 
         <AdminProductFormSidebar

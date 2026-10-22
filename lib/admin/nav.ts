@@ -39,6 +39,10 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       { href: "/admin/labels", label: "Custom labels" },
       { href: "/admin/catalog/import", label: "Bulk import" },
       { href: "/admin/catalog/export", label: "Bulk export" },
+      {
+        href: "/admin/catalog/product-form-layout",
+        label: "Product form layout",
+      },
       { href: "/admin/reviews", label: "Reviews" },
       { href: "/admin/questions", label: "Questions" },
       { href: "/admin/product-requests", label: "Product requests" },

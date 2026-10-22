@@ -16,6 +16,10 @@ type RouteRule = {
 const ROUTE_RULES: readonly RouteRule[] = [
   { prefix: "/admin/catalog/import", anyOf: ["product.bulk_upload"] },
   { prefix: "/admin/catalog/export", anyOf: ["product.export"] },
+  {
+    prefix: "/admin/catalog/product-form-layout",
+    anyOf: ["product.edit"],
+  },
   { prefix: "/admin/products", anyOf: ["product.view"] },
   { prefix: "/admin/categories", anyOf: ["category.view"] },
   { prefix: "/admin/brands", anyOf: ["brand.view"] },

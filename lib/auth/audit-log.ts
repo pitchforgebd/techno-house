@@ -139,6 +139,7 @@ export const AUDIT_ACTIONS = {
   WARRANTY_DELETE: "warranty.delete",
   CATEGORY_DISCOUNT_UPDATE: "category_discount.update",
   FOOTER_SETTINGS_UPDATE: "footer_settings.update",
+  PRODUCT_FORM_LAYOUT_UPDATE: "product_form_layout.update",
   GOOGLE_MAP_UPDATE: "google_map.update",
   CHAT_WIDGET_UPDATE: "chat_widget.update",
   COMMENT_SYSTEM_UPDATE: "comment_system.update",
