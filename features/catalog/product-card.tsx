@@ -297,7 +297,10 @@ export function ProductCard({ product }: { product: ProductSummary }) {
 
 /** Category / shop listing card (demo IA — not a visual clone). */
 export function CatalogProductCard({ product }: { product: ProductSummary }) {
-  const specs = product.specs.slice(0, 5);
+  // Always 4 when the product has that many — the comparison this card
+  // exists for needs a consistent amount of information per product, not
+  // whatever happened to be entered first.
+  const specs = product.specs.slice(0, 4);
   const off = discountPercent(product);
   const saved = savingsAmount(product);
   const href = `/product/${product.slug}`;
@@ -305,23 +308,28 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
   return (
     // `group` drives the hover actions below. Without it they would never
     // appear, since their reveal is `group-hover` on this element.
-    <article className="group flex h-full flex-col border border-border bg-surface p-3 transition-[box-shadow,border-color] duration-300 ease-out hover:border-primary/40 hover:shadow-xl">
+    <article className="group flex h-full flex-col overflow-hidden rounded-sm border border-border bg-surface transition-[box-shadow,border-color] duration-300 ease-out hover:border-primary/40 hover:shadow-xl">
       {/*
         The image sits in its own positioned wrapper rather than inside the
         link. The corner flag, badges and hover buttons are absolutely
         positioned against it, and the hover buttons are real <button>s —
         nesting those inside an <a> is invalid markup and would navigate to
         the product on every wishlist click.
+
+        Full-bleed, no inset padding on the photo itself — the old `p-3` on
+        the image plus a square aspect ratio was most of why this card ran
+        taller than the compact one for no informational gain. 4:3 shaves
+        real height off every row in the grid.
       */}
       <div className="relative overflow-hidden bg-surface-muted">
         <Link href={href} className="block">
-          <div className="relative aspect-square">
+          <div className="relative aspect-[4/3]">
             <Image
               src={product.image.src}
               alt={product.image.alt}
               fill
               sizes="(min-width: 1280px) 20vw, (min-width: 768px) 33vw, 50vw"
-              className="object-contain p-3 transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.06]"
+              className="object-contain transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.06]"
             />
           </div>
         </Link>
@@ -373,89 +381,93 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
         />
       </div>
 
-      <Link href={href}>
-        <h3 className="mt-3 line-clamp-2 min-h-10 text-label font-semibold tracking-tight text-text">
-          {product.name}
-        </h3>
-      </Link>
+      {/* Padding lives here, not on the article — the image above stays
+          full-bleed to the card edges while everything else keeps its
+          breathing room. */}
+      <div className="flex flex-1 flex-col px-3 pt-2.5 pb-3">
+        <Link href={href}>
+          <h3 className="line-clamp-2 min-h-9 text-label font-semibold tracking-tight text-text">
+            {product.name}
+          </h3>
+        </Link>
 
-      <p className="mt-1 text-caption tabular-nums text-text-muted">
-        {product.sku}
-      </p>
+        {/* No SKU/model-code line — a shopper comparing products on a
+            listing page reads specs, not an internal product id. */}
 
-      {specs.length > 0 ? (
-        <ul className="mt-2 space-y-0.5 text-caption text-text-muted">
-          {specs.map((spec) => (
-            <li key={`${spec.label}-${spec.value}`} className="flex gap-1.5">
-              <span aria-hidden className="text-text-muted">
-                •
-              </span>
-              <span>
-                <span className="text-text/80">{spec.label}</span>
-                {" - "}
-                {spec.value}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+        {specs.length > 0 ? (
+          <ul className="mt-2 space-y-0.5 text-caption text-text-muted">
+            {specs.map((spec) => (
+              <li key={`${spec.label}-${spec.value}`} className="flex gap-1.5">
+                <span aria-hidden className="text-text-muted">
+                  •
+                </span>
+                <span>
+                  <span className="text-text/80">{spec.label}</span>
+                  {" - "}
+                  {spec.value}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
-      <div className="mt-auto pt-4 text-center">
-        {priceHidden(product) ? (
-          <p className="text-label font-extrabold text-danger">
-            {availabilityLabel(product)}
-          </p>
-        ) : (
-          <>
-            <p className="text-body font-semibold tabular-nums text-text">
-              {formatMoney(product.price)}
+        <div className="mt-auto pt-3 text-center">
+          {priceHidden(product) ? (
+            <p className="text-label font-extrabold text-danger">
+              {availabilityLabel(product)}
             </p>
-            {product.compareAtPrice ? (
-              <p className="mt-0.5 text-caption tabular-nums text-text-muted line-through">
-                {formatMoney(product.compareAtPrice)}
+          ) : (
+            <>
+              <p className="text-body font-semibold tabular-nums text-text">
+                {formatMoney(product.price)}
               </p>
+              {product.compareAtPrice ? (
+                <p className="mt-0.5 text-caption tabular-nums text-text-muted line-through">
+                  {formatMoney(product.compareAtPrice)}
+                </p>
+              ) : null}
+            </>
+          )}
+          {/*
+            Savings and warranty are separate rows now, not an either/or. A
+            discounted product used to LOSE its warranty line to the savings
+            line, which is the one product where both matter most.
+
+            Both rows keep their height when empty: a conditional row would make
+            discounted cards taller than their neighbours and leave `mt-auto`
+            above to pool the difference into one ragged gap on whichever card
+            in the row is shortest.
+          */}
+          <p className="mt-1.5 min-h-[1.05rem] text-caption leading-tight font-semibold text-success">
+            {saved != null && !priceHidden(product)
+              ? `Save Extra ${formatMoney({ amount: saved })} on various offer`
+              : null}
+          </p>
+          <p className="mt-1 flex min-h-[1.25rem] items-center justify-center gap-1.5 text-caption text-text-muted">
+            {product.warrantyBadge ? (
+              <span
+                aria-hidden
+                className="inline-flex size-5 items-center justify-center rounded-full border border-amber-500 bg-neutral-900 text-[0.55rem] font-bold text-amber-400"
+              >
+                {product.warrantyBadge}
+              </span>
             ) : null}
-          </>
-        )}
-        {/*
-          Savings and warranty are separate rows now, not an either/or. A
-          discounted product used to LOSE its warranty line to the savings
-          line, which is the one product where both matter most.
+            {product.warrantyLabel}
+          </p>
+        </div>
 
-          Both rows keep their height when empty: a conditional row would make
-          discounted cards taller than their neighbours and leave `mt-auto`
-          above to pool the difference into one ragged gap on whichever card
-          in the row is shortest.
-        */}
-        <p className="mt-2 min-h-[1.05rem] text-caption leading-tight font-semibold text-success">
-          {saved != null && !priceHidden(product)
-            ? `Save Extra ${formatMoney({ amount: saved })} on various offer`
-            : null}
-        </p>
-        <p className="mt-1 flex min-h-[1.25rem] items-center justify-center gap-1.5 text-caption text-text-muted">
-          {product.warrantyBadge ? (
-            <span
-              aria-hidden
-              className="inline-flex size-5 items-center justify-center rounded-full border border-amber-500 bg-neutral-900 text-[0.55rem] font-bold text-amber-400"
-            >
-              {product.warrantyBadge}
-            </span>
-          ) : null}
-          {product.warrantyLabel}
-        </p>
-      </div>
-
-      {/* Add to cart only. Wishlist, compare and view moved to the hover
-          icons over the image — as three stacked buttons they cost roughly a
-          third of the card's height on every product in the grid. */}
-      <div className="mt-3 border-t border-border pt-3">
-        <AddToCartButton
-          slug={product.slug}
-          stockStatus={product.stockStatus}
-          isComingSoon={product.isComingSoon}
-          isPreOrder={product.isPreOrder}
-          size="sm"
-        />
+        {/* Add to cart only. Wishlist, compare and view moved to the hover
+            icons over the image — as three stacked buttons they cost roughly a
+            third of the card's height on every product in the grid. */}
+        <div className="mt-3 border-t border-border pt-3">
+          <AddToCartButton
+            slug={product.slug}
+            stockStatus={product.stockStatus}
+            isComingSoon={product.isComingSoon}
+            isPreOrder={product.isPreOrder}
+            size="sm"
+          />
+        </div>
       </div>
     </article>
   );
