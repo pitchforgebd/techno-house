@@ -1,12 +1,15 @@
 ﻿"use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { buttonClassName } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { useCustomerSession } from "@/features/account/customer-session-provider";
 import { useSavedBuilds } from "@/features/pc-builder/use-saved-builds";
+import { loginHref } from "@/lib/account/return-path";
 import {
   MAX_SAVED_BUILD_NAME,
   countFilledSlots,
@@ -36,6 +39,8 @@ export function PcBuilderSaveShare({
   selection: BuildSelection;
   onLoadSelection: (selection: BuildSelection) => void;
 }) {
+  const router = useRouter();
+  const session = useCustomerSession();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">(
@@ -148,6 +153,13 @@ export function PcBuilderSaveShare({
           className: "w-full",
         })}
         onClick={() => {
+          // Save and share both require an account now — sent straight to
+          // sign-in instead of opening the dialog, same hand-off as
+          // Download/Print/Share above it.
+          if (!session) {
+            router.push(loginHref("/pc-builder"));
+            return;
+          }
           setCopyStatus("idle");
           setSaveError(null);
           setSharePath(null);

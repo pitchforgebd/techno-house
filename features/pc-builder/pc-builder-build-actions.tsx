@@ -15,15 +15,13 @@ const disabledClassName =
 const labelClassName = "text-caption font-semibold text-text";
 
 /**
- * Download / Print / Share for a build's parts list.
+ * Download / Print / Share for a build's parts list — all three require
+ * sign-in (operator: no guest download, print, or share).
  *
  * `sharePath` is the public share page for this build. Both Download and
  * Print go through that page's PDF route rather than the browser's own
  * print of the current page, so the output is the clean quote document
  * instead of a screenshot of the site with its header and footer.
- *
- * A guest build has no saved share slug — `sharePathForSelection()` encodes
- * the parts into the URL itself, so these work without signing in or saving.
  */
 export function PcBuilderBuildActions({
   sharePath,
@@ -36,22 +34,33 @@ export function PcBuilderBuildActions({
   const session = useCustomerSession();
   const enabled = Boolean(sharePath);
 
-  // Viewing/printing a shared build stays open to anyone with the link —
-  // only the actual file download requires an account (AD-379: "share,
-  // save, download" all need sign-in). Caught here, client-side, rather
-  // than left to the PDF route's own redirect, so a guest gets a clean
-  // "sign in" hand-off instead of the browser's own handling of an anchor's
-  // `download` hint landing on a redirected HTML page.
-  function handleDownloadClick(event: MouseEvent<HTMLAnchorElement>) {
+  // Download, Print, and Share all require an account now — none of the
+  // three work for a guest. Checked here, client-side, so a signed-out
+  // click gets a clean "sign in, then come back" hand-off instead of
+  // partially running (e.g. opening a print tab) before failing.
+  function requireLogin(): boolean {
     if (session || !sharePath) {
+      return false;
+    }
+    router.push(loginHref(sharePath));
+    return true;
+  }
+
+  function handleDownloadClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (requireLogin()) {
+      event.preventDefault();
+    }
+  }
+
+  function handlePrintClick() {
+    if (requireLogin()) {
       return;
     }
-    event.preventDefault();
-    router.push(loginHref(sharePath));
+    window.open(`${sharePath}/pdf?inline=1`, "_blank");
   }
 
   async function handleShare() {
-    if (!sharePath) {
+    if (!sharePath || requireLogin()) {
       return;
     }
     const url = `${window.location.origin}${sharePath}`;
@@ -105,7 +114,7 @@ export function PcBuilderBuildActions({
       <button
         type="button"
         className={actionClassName}
-        onClick={() => window.open(`${sharePath}/pdf?inline=1`, "_blank")}
+        onClick={handlePrintClick}
       >
         <Printer aria-hidden className="size-5 text-primary" strokeWidth={1.75} />
         <span className={labelClassName}>Print</span>
