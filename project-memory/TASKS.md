@@ -8399,3 +8399,86 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `/hdd`, `/cpu`) was confirmed live at 200 with no server error, and
       the underlying client store logic is covered by the pure-engine
       suite above, but the actual DOM interaction was not clicked through.
+
+- [x] AD-383 Add/Edit Product form: reordered sections to an operator-
+      specified sequence, made that order admin-configurable (drag-and-drop,
+      no code change), and defaulted new products' warranty to 3 Year
+      (was defaulting to 1 Year even though "enabled" itself already
+      defaulted on).
+
+      Operator gave an exact 9-section sequence (basic info, configuration,
+      B2B/wholesale, files & media, quick overview, specifications, details,
+      PC builder, SEO) and asked for a drag system so the order can change
+      without touching code. The other 5 sections that exist on the form but
+      weren't named (price+stock, variants, labels, notes, promotions) keep
+      their prior relative order, appended after the named 9 — a reasonable
+      default the operator can immediately fix themselves via the new drag
+      UI if wanted, rather than guessing their intended position.
+
+      **New `AdminProductFormLayout` singleton** (`sectionOrderJson`, same
+      String-column-holding-JSON-text pattern as `FooterSettings` — this
+      codebase doesn't use Prisma's native `Json` type anywhere) persists the
+      order. `lib/catalog/product-form-layout.ts` defines the 14 canonical
+      `ProductFormSectionId`s + labels + the default order;
+      `normalizeProductFormOrder()` is tolerant of drift both directions — an
+      unknown id from a stale save is dropped, and any canonical id *missing*
+      from a saved order (a section added to the code later, or no saved
+      order yet at all) is appended rather than silently vanishing from the
+      form. `lib/admin/product-form-layout.ts` is the DB loader/saver;
+      `features/admin/products/product-form-layout-actions.ts` is the gated
+      (`product.edit`), audit-logged (`PRODUCT_FORM_LAYOUT_UPDATE`) server
+      action. New `/admin/catalog/product-form-layout` page (added to the
+      Catalog nav group and to `admin-route-permissions.ts` — every admin
+      route needs an explicit permission mapping or it's denied to everyone,
+      per that file's own comment) with `AdminProductFormLayout`: real
+      native HTML5 drag-and-drop per row, plus up/down buttons alongside
+      for keyboard/touch, a Save button, and a Reset-to-default.
+
+      **The actual reorder mechanism in `admin-product-form.tsx`** (1655
+      lines, the core product editor): each of the 14 `<AdminFormCard>`
+      sections — only their outer wrapper, none of their internal fields,
+      handlers, or state touched — now lives as a value in a `sectionNodes`
+      object typed `Record<ProductFormSectionId, ReactNode>`, built exactly
+      where the old literal JSX sequence used to sit. That `Record` type is
+      deliberate: TypeScript itself then enforces that all 14 keys are
+      present exactly once with no typos or duplicates — the object literal
+      simply fails to compile otherwise, which is a stronger guarantee than
+      a manual review would have been for a change this size. Render became
+      `sectionOrder.map((id) => <Fragment key={id}>{sectionNodes[id]}</Fragment>)`
+      instead of a fixed sequence. The conditional Promotions section (only
+      shown in edit mode once a product exists) stays a ternary, now as the
+      object's `promotions` value instead of inline JSX.
+
+      **Warranty default** (`admin-product-form.tsx`): the `warrantyEnabled`
+      checkbox already defaulted to true for a new product (unchanged) — the
+      bug was the *pre-selected option*, which fell back to the `warranty-1y`
+      preset id when nothing else matched. Changed the fallback to
+      `warranty-3y`. `listProductWarrantyOptions()` (`lib/catalog/
+      warranty-badge.ts`) always returns the same fixed 6-entry list
+      (`warranty-5y`/`-3y`/`-2y`/`-1y`/`-lifetime`/`-6m`) regardless of
+      `DATA_SOURCE` — warranty presets aren't DB-backed at all, so these ids
+      are stable across every environment, confirmed by reading the loader
+      before relying on the id string.
+
+      New migration `20261022193444_admin_product_form_layout` (additive —
+      one new table, nothing existing touched). `tsc --noEmit` clean,
+      `eslint` clean on all 13 touched/new files. Verified against real
+      Postgres with a script (written, verified, then deleted):
+      `getAdminProductFormOrder()` with no saved row returns exactly the
+      requested 9-item sequence plus the 5 appended ones in their prior
+      order; a real reorder round-tripped through `saveAdminProductFormOrder`
+      correctly (moved `price_stock` to the front, confirmed back); the
+      audit row was written; `normalizeProductFormOrder` confirmed to both
+      drop a fabricated unknown id and append a canonical id missing from
+      the input (14 items either way, no dupes) — all test rows deleted
+      after. Every `sectionId: (` key in the refactored file was indepen-
+      dently grep-verified to sit immediately before its matching
+      `<AdminFormCard title="...">`, confirming no section's content ended
+      up filed under the wrong key. **Not independently verified**: the
+      authenticated render and the actual drag interaction in a real
+      browser — no browser automation tool is available in this
+      environment, and local staff login is a separate, already-disclosed
+      pre-existing issue in this dev environment (not caused by this
+      change); both `/admin/products/new` and `/admin/catalog/
+      product-form-layout` correctly 307-redirect signed-out with no server
+      error in the dev log.
