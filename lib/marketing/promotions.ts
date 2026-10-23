@@ -14,6 +14,7 @@ import {
   ADMIN_MARKETING_PAGE_SIZE,
   type MarketingListParams,
 } from "@/lib/admin/marketing-list-params";
+import { sanitizeRichBody } from "@/lib/content/sanitize-html";
 import { getPrisma } from "@/lib/db/prisma";
 import type {
   CampaignStatus as DbCampaignStatus,
@@ -22,6 +23,9 @@ import type {
 
 export const PROMOTIONS_DB_REQUIRED =
   "Promotion changes need the database. Turn off DATA_SOURCE=mock to save.";
+
+/** Same ceiling as product Quick overview/Details (`PRODUCT_CONTENT_HTML_MAX`). */
+const PROMOTION_DESCRIPTION_HTML_MAX = 60_000;
 
 export type PromotionMutationResult =
   { ok: true; id: string } | { ok: false; formError: string };
@@ -49,6 +53,9 @@ export type PublicPromotion = {
   summary: string;
   startsAt: string | null;
   endsAt: string | null;
+  /** Full-precision end instant, for a live countdown — `endsAt` above is a
+   * date-only display string. Null when the campaign has no end date. */
+  endsAtIso: string | null;
   /** Offer artwork. Null until an admin uploads one. */
   bannerSrc: string | null;
   /** Rotated strip label; falls back to the channel when unset. */
@@ -57,6 +64,8 @@ export type PublicPromotion = {
   bannerHref: string | null;
   /** Has at least one product assigned — `/offers/[slug]` has something to show. */
   hasProducts: boolean;
+  /** Rich HTML terms & conditions, shown behind a "T&C" button on the offer's own page. */
+  descriptionHtml: string | null;
 };
 
 const CHANNEL_TO_DB = {
@@ -172,6 +181,7 @@ function toAdminPromotion(row: {
   bannerSrc?: string | null;
   bannerLabel?: string | null;
   bannerHref?: string | null;
+  descriptionHtml?: string | null;
 }): AdminPromotion {
   const startsAt = dateLabel(row.startsAt);
   return {
@@ -188,6 +198,7 @@ function toAdminPromotion(row: {
     bannerSrc: row.bannerSrc ?? null,
     bannerLabel: row.bannerLabel ?? null,
     bannerHref: row.bannerHref ?? null,
+    descriptionHtml: row.descriptionHtml ?? null,
   };
 }
 
@@ -295,6 +306,7 @@ export async function getAdminPromotion(
       bannerSrc: true,
       bannerLabel: true,
       bannerHref: true,
+      descriptionHtml: true,
     },
   });
   return row ? toAdminPromotion(row) : null;
@@ -420,10 +432,14 @@ export async function listPublicPromotions(): Promise<PublicPromotion[]> {
       summary: item.summary,
       startsAt: item.startsAt || null,
       endsAt: item.endsAt || null,
+      endsAtIso: item.endsAt
+        ? new Date(`${item.endsAt}T00:00:00.000Z`).toISOString()
+        : null,
       bannerSrc: null,
       bannerLabel: null,
       bannerHref: null,
       hasProducts: false,
+      descriptionHtml: item.descriptionHtml,
     }));
   }
 
@@ -448,6 +464,7 @@ export async function listPublicPromotions(): Promise<PublicPromotion[]> {
       bannerSrc: true,
       bannerLabel: true,
       bannerHref: true,
+      descriptionHtml: true,
       _count: { select: { products: true } },
     },
   });
@@ -460,6 +477,7 @@ export async function listPublicPromotions(): Promise<PublicPromotion[]> {
     summary: row.summary ?? "",
     startsAt: dateLabel(row.startsAt) || null,
     endsAt: dateLabel(row.endsAt) || null,
+    endsAtIso: row.endsAt ? row.endsAt.toISOString() : null,
     // Re-checked on read, not trusted because it was clean on write: these
     // columns are also reachable by direct database edits and by any future
     // importer, and both feed straight into next/image and a Link href.
@@ -467,6 +485,7 @@ export async function listPublicPromotions(): Promise<PublicPromotion[]> {
     bannerLabel: row.bannerLabel,
     bannerHref: publicLocalPath(row.bannerHref),
     hasProducts: row._count.products > 0,
+    descriptionHtml: row.descriptionHtml,
   }));
 }
 
@@ -504,6 +523,7 @@ export async function getPublicPromotionBySlug(
       bannerSrc: true,
       bannerLabel: true,
       bannerHref: true,
+      descriptionHtml: true,
       _count: { select: { products: true } },
     },
   });
@@ -518,10 +538,12 @@ export async function getPublicPromotionBySlug(
     summary: row.summary ?? "",
     startsAt: dateLabel(row.startsAt) || null,
     endsAt: dateLabel(row.endsAt) || null,
+    endsAtIso: row.endsAt ? row.endsAt.toISOString() : null,
     bannerSrc: publicLocalPath(row.bannerSrc),
     bannerLabel: row.bannerLabel,
     bannerHref: publicLocalPath(row.bannerHref),
     hasProducts: row._count.products > 0,
+    descriptionHtml: row.descriptionHtml,
   };
 }
 
@@ -538,6 +560,7 @@ export async function savePromotion(input: {
   bannerSrc?: string;
   bannerLabel?: string;
   bannerHref?: string;
+  descriptionHtml?: string;
   actor?: PromotionActor;
 }): Promise<PromotionMutationResult> {
   if (!usesDatabase()) {
@@ -592,6 +615,18 @@ export async function savePromotion(input: {
   }
   const bannerLabel = (input.bannerLabel ?? "").trim().slice(0, 28) || null;
 
+  let descriptionHtml: string | null | undefined;
+  if (input.descriptionHtml !== undefined) {
+    const result = sanitizeRichBody(input.descriptionHtml, {
+      maxLength: PROMOTION_DESCRIPTION_HTML_MAX,
+      tooLongError: "Description / T&C is too long.",
+    });
+    if (!result.ok) {
+      return fail(result.formError);
+    }
+    descriptionHtml = result.value;
+  }
+
   const existingId = input.id?.trim() ?? "";
 
   const slugTaken = await getPrisma().promotion.findFirst({
@@ -618,6 +653,7 @@ export async function savePromotion(input: {
     bannerSrc,
     bannerLabel,
     bannerHref,
+    descriptionHtml,
   };
 
   if (existingId) {

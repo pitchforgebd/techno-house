@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { notifySuccess } from "@/components/ui/feedback-provider";
 import { AdminMediaImageField } from "@/features/admin/media/admin-media-picker";
+import { RichTextEditor } from "@/features/admin/marketing/rich-text-editor";
 import { savePromotionAction } from "@/features/admin/promotions/promotion-actions";
 import { CampaignStatusBadge } from "@/features/admin/marketing/admin-marketing-badges";
 import { AdminPromoProductChannelList } from "@/features/admin/marketing/admin-promo-product-channel-list";
@@ -59,6 +60,9 @@ export function AdminPromotionDetail({
   const [bannerSrc, setBannerSrc] = useState(promotion?.bannerSrc ?? "");
   const [bannerLabel, setBannerLabel] = useState(promotion?.bannerLabel ?? "");
   const [bannerHref, setBannerHref] = useState(promotion?.bannerHref ?? "");
+  const [descriptionHtml, setDescriptionHtml] = useState(
+    promotion?.descriptionHtml ?? "",
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -79,6 +83,7 @@ export function AdminPromotionDetail({
         bannerSrc,
         bannerLabel,
         bannerHref,
+        descriptionHtml,
       });
       if (!result.ok) {
         setFormError(result.formError);
@@ -235,7 +240,7 @@ export function AdminPromotionDetail({
             disabled={pending}
             folder="promotions"
             pickerTitle="Offer banner"
-            hint="Recommended 800px × 400px, wide artwork (roughly 2:1). Without one this campaign does not appear on /offers."
+            hint="Recommended 600px × 600px, square artwork (1:1). Without one this campaign does not appear on /offers."
           />
 
           <label className="block space-y-1">
@@ -271,6 +276,26 @@ export function AdminPromotionDetail({
               non-clickable.
             </span>
           </label>
+        </div>
+
+        <div className="space-y-2 border-t border-border pt-5">
+          <div>
+            <p className="text-body font-semibold text-text">
+              Description / T&amp;C
+            </p>
+            <p className="mt-0.5 text-caption text-text-muted">
+              Shown on this offer&apos;s own page behind a T&amp;C button —
+              full terms, eligibility, anything the short Summary above
+              doesn&apos;t cover. Leave empty to hide the T&amp;C button
+              entirely.
+            </p>
+          </div>
+          <RichTextEditor
+            value={descriptionHtml}
+            onChange={setDescriptionHtml}
+            disabled={pending}
+            placeholder="Full offer terms and conditions…"
+          />
         </div>
 
         <div className="flex flex-wrap gap-2 pt-2">

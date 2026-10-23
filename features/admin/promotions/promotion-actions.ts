@@ -263,6 +263,7 @@ export async function savePromotionAction(input: {
   bannerSrc?: string;
   bannerLabel?: string;
   bannerHref?: string;
+  descriptionHtml?: string;
 }): Promise<PromotionMutationResult> {
   if (!(await isSameOriginRequest())) {
     return { ok: false, formError: CROSS_ORIGIN_ERROR };

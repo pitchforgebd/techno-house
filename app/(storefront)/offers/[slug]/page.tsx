@@ -79,6 +79,14 @@ export default async function OfferDetailPage({
           {promotion.summary}
         </p>
       ) : null}
+      {promotion.descriptionHtml ? (
+        <a
+          href="#offer-terms"
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-muted px-3 py-1.5 text-caption font-semibold text-text transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          T&amp;C
+        </a>
+      ) : null}
 
       <CatalogListingBody
         pathname={pathname}
@@ -96,6 +104,21 @@ export default async function OfferDetailPage({
             : "Products will appear here once they're added to this offer."
         }
       />
+
+      {promotion.descriptionHtml ? (
+        <section
+          id="offer-terms"
+          className="mt-10 scroll-mt-20 border-t border-border pt-8"
+        >
+          <h2 className="text-label font-bold uppercase tracking-wide text-text">
+            Terms &amp; conditions
+          </h2>
+          <div
+            className="th-rich-text mt-3 max-w-prose text-body text-text-muted"
+            dangerouslySetInnerHTML={{ __html: promotion.descriptionHtml }}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

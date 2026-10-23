@@ -26,6 +26,8 @@ export type AdminPromotion = {
   bannerSrc: string | null;
   bannerLabel: string | null;
   bannerHref: string | null;
+  /** Rich HTML terms & conditions, shown on the public offer page under "T&C". */
+  descriptionHtml: string | null;
 };
 
 export type AdminFlashSale = {
@@ -87,6 +89,7 @@ export const MOCK_ADMIN_PROMOTIONS: readonly AdminPromotion[] = [
     bannerSrc: null,
     bannerLabel: null,
     bannerHref: null,
+    descriptionHtml: null,
   },
   {
     id: "promo-component-week",
@@ -102,6 +105,7 @@ export const MOCK_ADMIN_PROMOTIONS: readonly AdminPromotion[] = [
     bannerSrc: null,
     bannerLabel: null,
     bannerHref: null,
+    descriptionHtml: null,
   },
   {
     id: "promo-free-shipping",
@@ -117,6 +121,7 @@ export const MOCK_ADMIN_PROMOTIONS: readonly AdminPromotion[] = [
     bannerSrc: null,
     bannerLabel: null,
     bannerHref: null,
+    descriptionHtml: null,
   },
   {
     id: "promo-monitor-fest",
@@ -132,6 +137,7 @@ export const MOCK_ADMIN_PROMOTIONS: readonly AdminPromotion[] = [
     bannerSrc: null,
     bannerLabel: null,
     bannerHref: null,
+    descriptionHtml: null,
   },
 ];
 

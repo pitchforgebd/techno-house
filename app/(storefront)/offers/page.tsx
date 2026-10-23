@@ -1,38 +1,15 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { buttonClassName } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { OfferCountdown } from "@/features/marketing/offer-countdown";
 import { listPublicPromotions } from "@/lib/marketing/promotions";
 import type { PublicPromotion } from "@/lib/marketing/promotions";
 
 export const metadata: Metadata = {
   title: "Offers — Techno House",
 };
-
-function scheduleLabel(
-  startsAt: string | null,
-  endsAt: string | null,
-): string | null {
-  if (startsAt && endsAt) {
-    return `${startsAt} → ${endsAt}`;
-  }
-  if (startsAt) {
-    return `From ${startsAt}`;
-  }
-  if (endsAt) {
-    return `Until ${endsAt}`;
-  }
-  return null;
-}
-
-/**
- * Rotated strip down the banner's left edge. `bannerLabel` is the admin's
- * word for it; the channel is a readable fallback so the strip is never
- * blank on a campaign nobody has labelled yet.
- */
-function stripLabel(promotion: PublicPromotion): string {
-  return (promotion.bannerLabel || promotion.channel).toUpperCase();
-}
 
 /**
  * Once a campaign has products assigned, its own offer page is the
@@ -48,54 +25,41 @@ function offerHref(promotion: PublicPromotion): string | null {
 }
 
 function OfferCard({ promotion }: { promotion: PublicPromotion }) {
-  const schedule = scheduleLabel(promotion.startsAt, promotion.endsAt);
-  const label = stripLabel(promotion);
   const href = offerHref(promotion);
 
-  const inner = (
-    <div className="flex h-full min-h-36 overflow-hidden rounded-sm border border-border bg-surface transition-[border-color,box-shadow,transform] duration-300 ease-out group-hover:border-primary/40 group-hover:shadow-[0_18px_40px_-28px_rgb(14_26_36/0.5)] motion-safe:group-hover:-translate-y-0.5 sm:min-h-44">
-      {/*
-        Vertical category strip, reading bottom-to-top like the reference.
-        `writing-mode` keeps it a real text node — an image of the word would
-        be invisible to search and screen readers.
-      */}
-      <span
-        className="flex shrink-0 items-center justify-center bg-text px-2 py-4 text-[0.6rem] font-bold tracking-[0.18em] text-surface uppercase sm:text-[0.68rem]"
-        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
-      >
-        {label}
-      </span>
-
-      <div className="relative min-w-0 flex-1 bg-surface-muted">
+  const card = (
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface transition-[border-color,box-shadow,transform] duration-300 ease-out group-hover:border-primary/40 group-hover:shadow-[0_18px_40px_-28px_rgb(14_26_36/0.5)] motion-safe:group-hover:-translate-y-0.5">
+      <div className="relative aspect-square w-full overflow-hidden bg-surface-muted">
         {promotion.bannerSrc ? (
           <Image
             src={promotion.bannerSrc}
             alt={promotion.name}
             fill
-            sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover"
+            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+            className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.04]"
           />
         ) : (
-          /*
-            No artwork uploaded yet. Rather than an empty tile, fall back to
-            the campaign's own words so the page still says something true.
-          */
-          <div className="flex h-full flex-col justify-center gap-1.5 px-5 py-5 sm:px-7">
-            <p className="text-lg font-semibold tracking-tight text-text sm:text-xl">
-              {promotion.name}
-            </p>
-            {promotion.summary ? (
-              <p className="max-w-prose text-label leading-relaxed text-text-muted">
-                {promotion.summary}
-              </p>
-            ) : null}
-            {schedule ? (
-              <p className="text-caption tabular-nums text-text-muted">
-                {schedule}
-              </p>
-            ) : null}
+          /* No artwork uploaded yet — a neutral placeholder, not an empty tile. */
+          <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary-soft to-surface-muted">
+            <span className="text-3xl font-bold text-primary/50">
+              {promotion.name.slice(0, 1).toUpperCase()}
+            </span>
           </div>
         )}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <p className="line-clamp-2 text-center text-label font-bold text-text">
+          {promotion.name}
+        </p>
+        <OfferCountdown endsAtIso={promotion.endsAtIso} />
+        <span
+          className={buttonClassName({
+            className: "mt-auto w-full",
+          })}
+        >
+          View Details
+        </span>
       </div>
     </div>
   );
@@ -105,13 +69,13 @@ function OfferCard({ promotion }: { promotion: PublicPromotion }) {
       {href ? (
         <Link
           href={href}
-          aria-label={promotion.name}
-          className="group block rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          aria-label={`View details for ${promotion.name}`}
+          className="group block h-full rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
-          {inner}
+          {card}
         </Link>
       ) : (
-        <div className="group">{inner}</div>
+        <div className="group h-full">{card}</div>
       )}
     </li>
   );
@@ -138,7 +102,7 @@ export default async function OffersPage() {
           description="Promotions will appear here when a campaign is active."
         />
       ) : (
-        <ul className="mt-8 grid gap-4 lg:grid-cols-2">
+        <ul className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {promotions.map((promotion) => (
             <OfferCard key={promotion.id} promotion={promotion} />
           ))}

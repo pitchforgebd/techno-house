@@ -1265,6 +1265,11 @@ model Promotion {
   bannerLabel String?
   /// Where the banner links. Local storefront path only.
   bannerHref  String?
+  /// Rich HTML terms & conditions / full description, shown on the offer's
+  /// own page (/offers/[slug]) behind a "T&C" button — separate from
+  /// `summary`, the short plain-text subtitle. Sanitized the same way
+  /// Product Quick overview/Details are (see sanitizeRichBody).
+  descriptionHtml String?
   startsAt  DateTime?
   endsAt    DateTime?
   createdAt DateTime         @default(now())
