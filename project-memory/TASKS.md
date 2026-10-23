@@ -8482,3 +8482,76 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       change); both `/admin/products/new` and `/admin/catalog/
       product-form-layout` correctly 307-redirect signed-out with no server
       error in the dev log.
+
+- [x] AD-384 Offers page redesign: square cards + a real date-to-date
+      countdown, and a T&C/description system on `/offers/[slug]` — operator
+      shared a reference screenshot (square card, title, DAY/HRS/MIN/SEC
+      timer, "View Details" button). Neither the countdown nor the
+      description/T&C system existed before this; `/offers`' old card was a
+      wide banner with a rotated category-label strip and no timer at all,
+      and `Promotion` had no rich-text field (`summary` is a 280-char
+      plain-text blurb, not HTML).
+
+      New `Promotion.descriptionHtml` column (nullable, additive migration
+      `20261023174114_promotion_description_html`) threaded through
+      `AdminPromotion`, `PublicPromotion`, every Prisma select that needed
+      it, and `savePromotion()` — sanitized with the same
+      `sanitizeRichBody()` the product form's Quick overview/Details
+      already use, with the same "omitting the field on an update leaves it
+      untouched" contract (verified explicitly, see below) so a routine
+      save can never silently wipe a previously-written description.
+      Admin form (`admin-promotion-detail.tsx`) gets a new Description/T&C
+      field using the shared `RichTextEditor`
+      (`@/features/admin/marketing/rich-text-editor` — the TipTap-based
+      editor this project nicknames "Summernote"; same exact component the
+      product form uses, not a second editor). Banner-artwork hint updated
+      from "800×400, roughly 2:1" to "600×600, square (1:1)" to match the
+      new card shape.
+
+      New `PublicPromotion.endsAtIso` (full ISO instant) alongside the
+      existing date-only `endsAt` display string — a live countdown needs
+      second-level precision a `YYYY-MM-DD` label can't carry. New client
+      component `OfferCountdown` (`features/marketing/offer-countdown.tsx`)
+      computes days/hrs/min/sec from `endsAtIso` and ticks every second;
+      server-renders a zeroed placeholder (the real value depends on the
+      visitor's own clock, which the server can't know) and swaps in the
+      live value after mount — same pattern as this session's other
+      client-only-value reads (the PC Builder lightbox's append-mode query
+      read).
+
+      `/offers`: `OfferCard` rebuilt — square image (`object-cover`, falls
+      back to a plain initial-letter tile when no artwork is uploaded),
+      title, `OfferCountdown`, and a "View Details" pseudo-button (a styled
+      `span`, not a nested interactive element — the whole card stays one
+      real `<Link>`, same convention as `ProductCard`'s "View" pseudo-
+      button). Dropped the now-unused rotated banner-label strip and the
+      old plain-text `scheduleLabel()` fallback. Grid widened from 2 wide
+      columns to 2/3/4 square columns.
+
+      `/offers/[slug]`: a T&C pill-button now appears under the title/
+      summary, but only when a description actually exists, linking to a
+      new `#offer-terms` anchor at the bottom of the page (after the
+      product grid) holding the sanitized HTML in the same `th-rich-text`
+      wrapper class the product page already uses for Details/Quick
+      overview.
+
+      `tsc --noEmit` clean, `eslint` clean on all 9 touched/new files.
+      Verified against real Postgres with a script (written, verified,
+      then deleted): `savePromotion`'s sanitization strips a `<script>`
+      tag while keeping real `<strong>`/`<a>` markup; `getAdminPromotion`/
+      `getPublicPromotionBySlug`/`listPublicPromotions` all round-trip
+      `descriptionHtml` and `endsAtIso` correctly; clearing the description
+      to `""` persists as real `null`; and — the one most worth stating
+      explicitly — omitting `descriptionHtml` entirely on a later update
+      call leaves a previously-set description completely untouched while
+      every other field on that same save still updates normally. Live:
+      created a real temporary ACTIVE promotion with 2 real products, a
+      real end date 3 days out, and a real description — `/offers` and
+      `/offers/tmp-live-verify-offer` both 200, the countdown's DAY/HRS/
+      MIN/SEC labels rendered for every active campaign carrying an end
+      date (both the temp one and the one pre-existing real campaign), the
+      T&C anchor and `#offer-terms` section rendered with the real
+      description text, no server error in the dev log — then the test
+      promotion (and its `PromotionProduct` rows) were deleted and
+      confirmed gone. Admin promotion edit/new pages still correctly
+      307-redirect signed-out.

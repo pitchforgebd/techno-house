@@ -38,8 +38,12 @@ AD-382 (PC Builder: RAM/SSD/HDD slots can now hold more than one item —
 AD-383 (Add/Edit Product form sections reordered to an operator-specified
 sequence and made admin drag-reorderable via a new `AdminProductFormLayout`
 singleton + `/admin/catalog/product-form-layout` page, and new products'
-warranty now defaults to 3 Year instead of 1 Year) are also complete —
-full detail in `project-memory/TASKS.md`, not narrated here.
+warranty now defaults to 3 Year instead of 1 Year), and AD-384 (Offers page
+redesign: square cards with a real live DAY/HRS/MIN/SEC countdown, and a
+new `Promotion.descriptionHtml` field + T&C button/section on
+`/offers/[slug]`, edited via the same shared RichTextEditor the product
+form uses) are also complete — full detail in `project-memory/TASKS.md`,
+not narrated here.
 
 ## Status
 Core sales + account paths are DB-backed. Catalogue repositories no longer
