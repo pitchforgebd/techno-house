@@ -45,7 +45,9 @@ new `Promotion.descriptionHtml` field + T&C button/section on
 form uses), and AD-385 (mega-menu brand flyout: hover bridge, close/switch
 delays, menu-aim, and single-column panels no longer open it off-screen),
 and AD-386 (product form warranty dropdown reads the real ProductWarranty
-presets and saves by id) are also complete — full detail in `project-memory/TASKS.md`,
+presets and saves by id), and AD-387 (searchable Main category /
+Subcategory / Related categories pickers on the product form) are also
+complete — full detail in `project-memory/TASKS.md`,
 not narrated here.
 
 ## Status

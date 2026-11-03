@@ -8632,3 +8632,40 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       (then restored) it still preselects it via the current-warranty
       option; `/product/apex-arc-8g` shows "Official Warranty — 3 year
       warranty"; no page errors.
+
+- [x] AD-387 Searchable category pickers on the Add/Edit Product form —
+      operator: keep the selection on Main category, Subcategory and
+      Related categories, but add a search so a keyword or even one letter
+      lists the matching categories. New reusable
+      `features/admin/products/admin-searchable-select.tsx` (combobox
+      trigger styled like the form's other controls; opens a search box +
+      listbox) and pure matcher `lib/admin/searchable-options.ts`:
+      case/accent/punctuation-insensitive, every query word must appear in
+      the name or its "Parent › Child" trail (so typing a parent finds its
+      children), ranked label-prefix > word-start > contains > trail-only,
+      ties in tree order; the hit is highlighted. Keyboard: Enter/Space/
+      ArrowDown opens, ArrowUp/Down move, Enter picks (and never submits the
+      product form), Escape closes and refocuses, Tab closes; outside click
+      closes. The panel is portalled to <body> with fixed positioning
+      because `AdminFormCard` clips overflow; it follows scroll (capture, the
+      admin shell scrolls an inner container) and resize, prefers opening
+      downward with a shortened list, and only flips upward under 180px of
+      room. Subcategory keeps its "Use main category" choice and shows the
+      parent trail per option; the tree indent shows while unfiltered.
+      Related categories is still NOT stored (operator asked only for the
+      search; the existing note says so) — it now holds local state so the
+      picker behaves like a real control.
+
+      Verified: new `npm run test:category-search` (22 checks: ranking,
+      single letter, multi-word, accents, punctuation, trail search,
+      highlight range, and source guards that all three fields use the
+      searchable control, Enter is prevented, the list is portalled).
+      Headless Chrome, signed in: opening focuses the search; "l" cuts 18
+      root categories to 3 with Laptop first; "laptop" + Enter picks it,
+      closes, and the URL stays `/admin/products/new` (no submit); Laptop's
+      subcategory search "gam" -> Gaming Laptop with its "Laptop" trail;
+      click picks; Escape closes unchanged; "No subcategory matches" shown
+      for junk; outside click closes; Related "mon" lists Monitor / Monitor
+      Arm / …, ArrowDown+Enter picks the second; the edit page of `p-gpu`
+      shows its stored "Component / Graphics Card"; no page errors.
+      `tsc --noEmit` + eslint clean.

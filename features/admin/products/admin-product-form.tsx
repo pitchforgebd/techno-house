@@ -97,6 +97,8 @@ import {
   categoryDescendantsWithDepth,
   categoryRootSlug,
 } from "@/lib/catalog/category-tree";
+import { AdminSearchableSelect } from "@/features/admin/products/admin-searchable-select";
+import type { SearchableOption } from "@/lib/admin/searchable-options";
 import {
   formatDiscountDateInput,
 } from "@/lib/catalog/discount-pricing";
@@ -262,6 +264,58 @@ export function AdminProductForm({
     () => categoryDescendantsWithDepth(categorySlug, categories),
     [categories, categorySlug],
   );
+  // "Parent › Child" trail per category, shown beside each option and
+  // searched along with its name, so typing a parent finds its children.
+  const categoryTrail = useMemo(() => {
+    const bySlug = new Map(categories.map((category) => [category.slug, category]));
+    const trail = new Map<string, string>();
+    for (const category of categories) {
+      const names: string[] = [];
+      const seen = new Set<string>();
+      let parentSlug = category.parentSlug;
+      while (parentSlug && !seen.has(parentSlug)) {
+        seen.add(parentSlug);
+        const parent = bySlug.get(parentSlug);
+        if (!parent) {
+          break;
+        }
+        names.unshift(parent.name);
+        parentSlug = parent.parentSlug;
+      }
+      trail.set(category.slug, names.join(" › "));
+    }
+    return trail;
+  }, [categories]);
+  const rootCategoryOptions = useMemo<SearchableOption[]>(
+    () =>
+      rootCategories.map((category) => ({
+        value: category.slug,
+        label: category.name,
+      })),
+    [rootCategories],
+  );
+  const subcategoryOptions = useMemo<SearchableOption[]>(
+    () =>
+      childCategories.map((category) => ({
+        value: category.slug,
+        label: category.name,
+        hint: categoryTrail.get(category.slug) || undefined,
+        depth: category.depth,
+      })),
+    [childCategories, categoryTrail],
+  );
+  const allCategoryOptions = useMemo<SearchableOption[]>(
+    () =>
+      categories.map((category) => ({
+        value: category.slug,
+        label: category.name,
+        hint: categoryTrail.get(category.slug) || undefined,
+      })),
+    [categories, categoryTrail],
+  );
+  // Not stored yet (see the note under "Related categories"); kept in state
+  // only so the searchable picker behaves like a real control.
+  const [relatedCategorySlug, setRelatedCategorySlug] = useState("");
   const [specialPrice, setSpecialPrice] = useState(
     product ? String(product.price.amount) : "0",
   );
@@ -736,24 +790,20 @@ export function AdminProductForm({
                 <AdminFormLabel htmlFor="product-category" required>
                   Select main category
                 </AdminFormLabel>
-                <Select
+                <AdminSearchableSelect
                   id="product-category"
                   value={categorySlug}
-                  onChange={(event) => {
-                    setCategorySlug(event.target.value);
+                  onChange={(next) => {
+                    setCategorySlug(next);
                     setSubcategorySlug("");
-                    applyCategorySlotDefault(event.target.value);
+                    applyCategorySlotDefault(next);
                   }}
-                  className={adminFormControlClass}
+                  options={rootCategoryOptions}
+                  placeholder="Select main category"
+                  searchPlaceholder="Search categories…"
+                  noMatchText="No category matches"
                   disabled={pending}
-                >
-                  <option value="">Select main category</option>
-                  {rootCategories.map((category) => (
-                    <option key={category.slug} value={category.slug}>
-                      {category.name}
-                    </option>
-                  ))}
-                </Select>
+                />
                 <AdminFormInlineLink onClick={() => setAddingCategory(true)}>
                   + New category
                 </AdminFormInlineLink>
@@ -783,25 +833,20 @@ export function AdminProductForm({
                 <AdminFormLabel htmlFor="product-subcategory">
                   Subcategory
                 </AdminFormLabel>
-                <Select
+                <AdminSearchableSelect
                   id="product-subcategory"
                   value={subcategorySlug}
-                  onChange={(event) => {
-                    setSubcategorySlug(event.target.value);
-                    applyCategorySlotDefault(event.target.value || categorySlug);
+                  onChange={(next) => {
+                    setSubcategorySlug(next);
+                    applyCategorySlotDefault(next || categorySlug);
                   }}
-                  className={adminFormControlClass}
+                  options={subcategoryOptions}
+                  placeholder="Use main category"
+                  emptyOptionLabel="Use main category"
+                  searchPlaceholder="Search subcategories…"
+                  noMatchText="No subcategory matches"
                   disabled={pending}
-                >
-                  <option value="">Use main category</option>
-                  {childCategories.map((category) => (
-                    <option key={category.slug} value={category.slug}>
-                      {"  ".repeat(category.depth)}
-                      {category.depth > 0 ? "— " : ""}
-                      {category.name}
-                    </option>
-                  ))}
-                </Select>
+                />
                 <p className="text-xs text-neutral-500">
                   The product is filed under this category on the storefront.
                 </p>
@@ -817,14 +862,16 @@ export function AdminProductForm({
                 Extra category links are not stored yet. The subcategory above
                 is the product&apos;s category.
               </p>
-              <Select className={adminFormControlClass} defaultValue="">
-                <option value="">Nothing selected</option>
-                {categories.map((category) => (
-                  <option key={category.slug} value={category.slug}>
-                    {category.name}
-                  </option>
-                ))}
-              </Select>
+              <AdminSearchableSelect
+                id="product-related-category"
+                value={relatedCategorySlug}
+                onChange={setRelatedCategorySlug}
+                options={allCategoryOptions}
+                placeholder="Nothing selected"
+                emptyOptionLabel="Nothing selected"
+                searchPlaceholder="Search categories…"
+                noMatchText="No category matches"
+              />
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
