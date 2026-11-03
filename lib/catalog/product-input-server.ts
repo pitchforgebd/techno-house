@@ -230,6 +230,7 @@ export async function parseProductInput(
   }
 
   let warrantyLabel: string | null = null;
+  let warrantyId: string | null = null;
   if (input.warrantyEnabled) {
     const label = input.warrantyLabel.trim();
     if (!label) {
@@ -242,6 +243,12 @@ export async function parseProductInput(
       return { ok: false, formError: "Warranty label is too long." };
     }
     warrantyLabel = label;
+    const pickedId =
+      typeof input.warrantyId === "string" ? input.warrantyId.trim() : "";
+    // Only a plausible id is kept; whether it is real is checked on save.
+    if (pickedId && pickedId.length <= 64) {
+      warrantyId = pickedId;
+    }
   }
 
   const noteIds = await parseProductNoteIds(input.noteIds);
@@ -428,6 +435,7 @@ export async function parseProductInput(
       isComingSoon: input.isComingSoon,
       isPreOrder: input.isPreOrder,
       warrantyLabel,
+      warrantyId,
       noteIds: noteIds.value,
       labelIds: labelIds.value,
       barcode,

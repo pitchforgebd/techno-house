@@ -23,12 +23,16 @@ import {
 } from "@/lib/catalog/admin-attributes";
 import { listAdminBrandRecords } from "@/lib/catalog/admin-brands";
 import { listAdminCategoryRecords } from "@/lib/catalog/admin-categories";
+import { listAdminWarranties } from "@/lib/catalog/admin-presets";
 import {
   MOCK_ADMIN_ATTRIBUTES,
   type AdminAttribute,
 } from "@/lib/admin/attributes-mock";
 import { MOCK_ADMIN_UNITS } from "@/lib/admin/units-mock";
-import { listProductWarrantyOptions } from "@/lib/catalog/warranty-badge";
+import {
+  listProductWarrantyOptions,
+  type ProductWarrantyOption,
+} from "@/lib/catalog/warranty-badge";
 import type {
   ProductLabelOption,
   ProductNoteOption,
@@ -229,7 +233,7 @@ export async function loadAdminProductFormOptions(): Promise<{
   brands: { slug: string; name: string }[];
   attributes: ProductFormAttributeOption[];
   units: { id: string; name: string }[];
-  warranties: { id: string; text: string; badge: string }[];
+  warranties: ProductWarrantyOption[];
   notes: ProductNoteOption[];
   labels: ProductLabelOption[];
 }> {
@@ -241,10 +245,13 @@ export async function loadAdminProductFormOptions(): Promise<{
   const labels = await listProductLabelOptions();
 
   if (usesCatalogDatabase()) {
-    const [categories, brands, attributes] = await Promise.all([
+    // The real presets managed at Admin -> Warranty — the hardcoded mock list
+    // meant a warranty added there never appeared in this form.
+    const [categories, brands, attributes, warrantyRows] = await Promise.all([
       listAdminCategoryRecords(),
       listAdminBrandRecords(),
       loadProductFormAttributes(),
+      listAdminWarranties(),
     ]);
     return {
       categories: categories.map((category) => ({
@@ -257,7 +264,7 @@ export async function loadAdminProductFormOptions(): Promise<{
       brands: brands.map((brand) => ({ slug: brand.slug, name: brand.name })),
       attributes,
       units,
-      warranties,
+      warranties: warrantyRows,
       notes,
       labels,
     };

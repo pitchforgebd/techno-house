@@ -400,6 +400,29 @@ function warrantyMonths(label: string): number | null {
   return null;
 }
 
+/**
+ * The warranty to store. A picked preset id wins when it is a real row —
+ * resolving by label alone recreated a preset after it was renamed in
+ * Admin -> Warranty (its `code` keeps the old label), duplicating it.
+ */
+async function resolveProductWarrantyId(
+  parsed: Pick<ParsedProductInput, "warrantyId" | "warrantyLabel">,
+): Promise<string | null> {
+  if (!parsed.warrantyLabel) {
+    return null;
+  }
+  if (parsed.warrantyId) {
+    const row = await getPrisma().productWarranty.findUnique({
+      where: { id: parsed.warrantyId },
+      select: { id: true },
+    });
+    if (row) {
+      return row.id;
+    }
+  }
+  return resolveWarrantyId(parsed.warrantyLabel);
+}
+
 async function resolveWarrantyId(label: string | null): Promise<string | null> {
   if (!label) {
     return null;
@@ -795,7 +818,7 @@ async function persistParsed(
     }
   }
 
-  const warrantyId = await resolveWarrantyId(parsed.warrantyLabel);
+  const warrantyId = await resolveProductWarrantyId(parsed);
   const data = productData(parsed, {
     brandId: brand.id,
     categoryId: category.id,
@@ -1239,6 +1262,7 @@ const CLONE_SELECT = {
   isComingSoon: true,
   isPreOrder: true,
   modelNumber: true,
+  warrantyId: true,
   warranty: { select: { label: true, logoSrc: true } },
   noteIds: true,
   labelIds: true,
@@ -1367,6 +1391,7 @@ export async function cloneAdminProduct(
     isPreOrder: source.isPreOrder,
     modelNumber: source.modelNumber,
     warrantyLabel: source.warranty?.label ?? null,
+    warrantyId: source.warrantyId,
     noteIds: source.noteIds,
     labelIds: source.labelIds,
     // Barcodes are unique — copying the source's would collide with it.

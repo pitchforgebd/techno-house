@@ -347,6 +347,7 @@ export function AdminProductFormSidebar(props: SidebarProps) {
                   <AdminWarrantyBadge
                     badge={selected.badge}
                     label={selected.text}
+                    logoSrc={selected.logoSrc}
                   />
                 ) : null;
               })()}

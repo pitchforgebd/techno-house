@@ -8584,3 +8584,51 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       nested row": 32/32 rows pass. The same diagonal check on the old code
       failed on every panel tried (bug reproduced). eslint clean,
       `tsc --noEmit` clean.
+
+- [x] AD-386 Product form warranty dropdown now lists the real
+      `ProductWarranty` presets — operator: "warranty add kora jacche but
+      eta add products page warranty selection e show kore na". The form's
+      options came from `listProductWarrantyOptions()`, i.e. the hardcoded
+      `MOCK_ADMIN_WARRANTIES` (5Y/3Y/2Y/1Y/Lifetime/6M), while
+      `/admin/warranty` writes real rows — so a preset added there never
+      appeared. `loadAdminProductFormOptions()` now returns
+      `listAdminWarranties()` (active rows, with `logoSrc`, which the
+      sidebar's "Warranty (with logo)" badge now shows) when the catalogue
+      DB is in use; the mock stays only for the no-DB fallback.
+
+      Saving by id: the product save resolved its warranty purely by label
+      (`resolveWarrantyId` upserts on a code derived from the label). A
+      preset renamed in Admin -> Warranty keeps its old `code`, so the next
+      product save created a duplicate row under the new label — the dev DB
+      already has "3 Year" / "3 Years" / "3 year warranty" side by side.
+      `ProductInputFields`/`ParsedProductInput` gain an optional
+      `warrantyId`; `resolveProductWarrantyId()` uses it when it is a real
+      row and otherwise falls back to the label path (bulk CSV and the
+      mock catalogue send no id). Clone now carries the source's
+      `warrantyId` too. Turning warranty off still clears it regardless of
+      any id sent.
+
+      Edit-mode safety: the edited product's current warranty is kept as a
+      selectable option (`__current-warranty__`, label-resolved on save)
+      when it is not an active preset — previously `matchWarrantyOptionId`'s
+      fuzzy match would preselect the "closest" preset and silently replace
+      the product's warranty on its next save. New products default to the
+      "3 Year" preset by label (no longer by the mock id `warranty-3y`).
+
+      Storefront needed no change: the product page already renders the
+      warranty (gallery-side "Official Warranty" card + Details tab, with
+      the uploaded logo) whenever the product has one; the gap was only
+      that the admin could not pick a custom preset.
+
+      Verified: `tsc --noEmit` + eslint clean. Real-Postgres script
+      (written, run, deleted; temp preset + temp product cleaned up, 0
+      leftovers): options include an admin-created preset and not the mock
+      ids; save-by-id stores it; rename-then-resave keeps the same row and
+      creates no duplicate; an unknown id falls back to the label; warranty
+      off clears it. Headless Chrome, signed in as the demo staff: the new
+      product form offers every active DB preset and defaults to "3 Year";
+      the edit form for `p-gpu` preselects its own "3 year warranty" (main
+      and sidebar selects agree); with that preset temporarily deactivated
+      (then restored) it still preselects it via the current-warranty
+      option; `/product/apex-arc-8g` shows "Official Warranty — 3 year
+      warranty"; no page errors.

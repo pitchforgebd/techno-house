@@ -102,6 +102,7 @@ import {
 } from "@/lib/catalog/discount-pricing";
 import {
   matchWarrantyOptionId,
+  warrantyBadgeFromLabel,
   type ProductWarrantyOption,
 } from "@/lib/catalog/warranty-badge";
 import type {
@@ -130,6 +131,9 @@ type EditorProduct = ProductDetail & {
   barcode: string;
   relatedProducts: { id: string; slug: string; name: string }[];
 };
+
+/** Select value for an edited product's warranty that is not an active preset. */
+const CURRENT_WARRANTY_OPTION_ID = "__current-warranty__";
 
 function emptyVariant(): ProductVariantInputFields {
   return {
@@ -336,14 +340,40 @@ export function AdminProductForm({
   const [warrantyEnabled, setWarrantyEnabled] = useState(
     product ? Boolean(product.warrantyLabel) : true,
   );
-  const [warrantyOptionId, setWarrantyOptionId] = useState(() =>
-    matchWarrantyOptionId(product?.warrantyLabel, warranties) ||
-    warranties.find((item) => item.id === "warranty-3y")?.id ||
-    warranties[0]?.id ||
-    "",
+  // The edited product's current warranty stays selectable even when it is
+  // not an active preset (deactivated, or a legacy label) — otherwise the
+  // closest active preset got preselected and silently replaced it on save.
+  const warrantyOptions = useMemo<ProductWarrantyOption[]>(() => {
+    const current = product?.warrantyLabel?.trim();
+    if (
+      !current ||
+      warranties.some(
+        (item) => item.text.trim().toLowerCase() === current.toLowerCase(),
+      )
+    ) {
+      return warranties;
+    }
+    return [
+      {
+        id: CURRENT_WARRANTY_OPTION_ID,
+        text: current,
+        badge: product?.warrantyBadge?.trim() || warrantyBadgeFromLabel(current),
+        logoSrc: product?.warrantyLogoSrc ?? null,
+      },
+      ...warranties,
+    ];
+  }, [product, warranties]);
+  const [warrantyOptionId, setWarrantyOptionId] = useState(
+    () =>
+      (product?.warrantyLabel
+        ? matchWarrantyOptionId(product.warrantyLabel, warrantyOptions)
+        : "") ||
+      matchWarrantyOptionId("3 Year", warrantyOptions) ||
+      warrantyOptions[0]?.id ||
+      "",
   );
   const warrantyLabel =
-    warranties.find((item) => item.id === warrantyOptionId)?.text ??
+    warrantyOptions.find((item) => item.id === warrantyOptionId)?.text ??
     product?.warrantyLabel ??
     "";
   const [noteIds, setNoteIds] = useState<string[]>(
@@ -480,6 +510,12 @@ export function AdminProductForm({
           isPreOrder: preOrder,
           warrantyEnabled,
           warrantyLabel,
+          // The synthetic "current" option has no row id; its label resolves
+          // it server-side instead.
+          warrantyId:
+            warrantyOptionId === CURRENT_WARRANTY_OPTION_ID
+              ? undefined
+              : warrantyOptionId,
           noteIds,
           labelIds,
           barcode,
@@ -832,7 +868,7 @@ export function AdminProductForm({
                         ? "Select warranty"
                         : "Warranty disabled"}
                     </option>
-                    {warranties.map((item) => (
+                    {warrantyOptions.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.badge} — {item.text}
                       </option>
@@ -1595,7 +1631,7 @@ export function AdminProductForm({
           setRefundable={setRefundable}
           warrantyEnabled={warrantyEnabled}
           setWarrantyEnabled={setWarrantyEnabled}
-          warranties={warranties}
+          warranties={warrantyOptions}
           warrantyOptionId={warrantyOptionId}
           setWarrantyOptionId={setWarrantyOptionId}
           notes={notes}

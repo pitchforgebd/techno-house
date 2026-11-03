@@ -195,6 +195,9 @@ export type ProductInputFields = {
   isPreOrder: boolean;
   warrantyEnabled: boolean;
   warrantyLabel: string;
+  /** The picked `ProductWarranty` id. Preferred over `warrantyLabel` when it
+   * resolves; the label stays the fallback (bulk CSV, mock catalogue). */
+  warrantyId?: string;
   noteIds?: string[];
   labelIds?: string[];
   /** Blank clears it. Nullable + unique in the schema. */
@@ -257,6 +260,7 @@ export type ParsedProductInput = {
   isComingSoon: boolean;
   isPreOrder: boolean;
   warrantyLabel: string | null;
+  warrantyId: string | null;
   noteIds: string[];
   labelIds: string[];
   barcode: string | null;

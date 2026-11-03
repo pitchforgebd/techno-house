@@ -4,6 +4,8 @@ export type ProductWarrantyOption = {
   id: string;
   text: string;
   badge: string;
+  /** Uploaded mark from Admin -> Warranty, shown instead of `badge`. */
+  logoSrc?: string | null;
 };
 
 /** Short logo text for the circular warranty mark (Admin + storefront). */
