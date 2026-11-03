@@ -42,7 +42,9 @@ warranty now defaults to 3 Year instead of 1 Year), and AD-384 (Offers page
 redesign: square cards with a real live DAY/HRS/MIN/SEC countdown, and a
 new `Promotion.descriptionHtml` field + T&C button/section on
 `/offers/[slug]`, edited via the same shared RichTextEditor the product
-form uses) are also complete — full detail in `project-memory/TASKS.md`,
+form uses), and AD-385 (mega-menu brand flyout: hover bridge, close/switch
+delays, menu-aim, and single-column panels no longer open it off-screen)
+are also complete — full detail in `project-memory/TASKS.md`,
 not narrated here.
 
 ## Status

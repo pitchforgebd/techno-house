@@ -8555,3 +8555,32 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       promotion (and its `PromotionProduct` rows) were deleted and
       confirmed gone. Admin promotion edit/new pages still correctly
       307-redirect signed-out.
+
+- [x] AD-385 Mega-menu brand flyout closed before the pointer could reach
+      it (operator screenshot: the "All brands / Acer / Apple ..." flyout).
+      Three causes in `components/layout/category-mega-nav.tsx`, all fixed:
+      (1) the flyout sat `ml-2` from its row, so crossing that 8px margin
+      fired the row's `mouseleave` and closed it instantly — the gap is now
+      `pl-2`/`pr-2` padding on a wrapper inside the `<li>`, so it counts as
+      hovering the row; (2) no grace period — leaving a row now closes after
+      220ms and moving to a different nested row switches after 120ms;
+      (3) rows are 320px wide, so a natural diagonal move crosses sibling
+      rows (and, for a long flyout that hangs below the panel, the page
+      banner outside the panel) for longer than any fixed delay — added a
+      lightweight "menu aim": a window `mousemove` listener (only mounted
+      while a panel is open) that, while the pointer is heading for the open
+      flyout's near edge, keeps re-arming both the flyout's pending
+      close/switch and the whole menu's pending close. Also fixed a
+      pre-existing bug found while testing: a single-column panel (Phone,
+      Gaming, TV) counted its only column as "rightmost" and opened the
+      flyout leftward at x=-184, i.e. completely off-screen — flipping left
+      now requires more than one column.
+
+      Verified with a headless puppeteer script (written, run, deleted)
+      against `npm run dev`: for every one of the 18 panels, the first two
+      flyout rows each — open the row, move diagonally into the flyout over
+      ~650ms, confirm the same row's flyout is still open and on-screen —
+      plus "closes after leaving" and "switches when resting on another
+      nested row": 32/32 rows pass. The same diagonal check on the old code
+      failed on every panel tried (bug reproduced). eslint clean,
+      `tsc --noEmit` clean.

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   hasMegaMenu,
@@ -11,6 +11,36 @@ import {
 import { cn } from "@/lib/cn";
 
 const CLOSE_DELAY_MS = 140;
+/** Grace period before a brand flyout closes, so the pointer can cross from
+ * its row into the flyout without it vanishing on the way. */
+const FLYOUT_CLOSE_DELAY_MS = 220;
+/** While one flyout is open, hovering a different row waits this long before
+ * switching — a diagonal move toward the open flyout brushes past sibling
+ * rows, and those shouldn't steal it. */
+const FLYOUT_SWITCH_DELAY_MS = 120;
+/** Pointer travel needed before its direction is trusted for menu aim. */
+const AIM_MIN_STEP_PX = 5;
+/** How far above/below the flyout a heading still counts as "toward it". */
+const AIM_SLACK_PX = 24;
+
+/**
+ * Whether the move `from` -> `to`, extended in a straight line, reaches the
+ * flyout's near vertical edge (with some slack above and below).
+ */
+function isHeadingToward(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  rect: DOMRect,
+): boolean {
+  const nearX = rect.left >= from.x ? rect.left : rect.right;
+  const toEdge = nearX - from.x;
+  const stepX = to.x - from.x;
+  if (toEdge === 0 || stepX === 0 || Math.sign(stepX) !== Math.sign(toEdge)) {
+    return false;
+  }
+  const hitY = from.y + ((to.y - from.y) * toEdge) / stepX;
+  return hitY >= rect.top - AIM_SLACK_PX && hitY <= rect.bottom + AIM_SLACK_PX;
+}
 
 /**
  * The row scrolls horizontally with a hidden scrollbar, so anything past the
@@ -64,9 +94,24 @@ export function CategoryMegaNav({
   function scheduleClose() {
     cancelClose();
     closeTimer.current = setTimeout(() => {
+      closeTimer.current = null;
       setOpenSlug(null);
     }, CLOSE_DELAY_MS);
   }
+
+  // A long brand flyout hangs below the panel, so heading for its lower
+  // rows leaves this container; the panel's menu aim calls this to push a
+  // pending close back while the pointer is still on its way there.
+  const extendPendingClose = useCallback(() => {
+    if (!closeTimer.current) {
+      return;
+    }
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      closeTimer.current = null;
+      setOpenSlug(null);
+    }, CLOSE_DELAY_MS);
+  }, []);
 
   function openPanel(slug: string) {
     cancelClose();
@@ -154,6 +199,7 @@ export function CategoryMegaNav({
           id={`${navId}-${openPanelData.slug}`}
           panel={openPanelData}
           onEnter={cancelClose}
+          onAimAtFlyout={extendPendingClose}
         />
       ) : null}
     </div>
@@ -164,15 +210,107 @@ function MegaPanel({
   id,
   panel,
   onEnter,
+  onAimAtFlyout,
 }: {
   id: string;
   panel: MegaMenuPanel;
   onEnter: () => void;
+  /** Called while the pointer is heading for the open flyout. */
+  onAimAtFlyout: () => void;
 }) {
   const [flyoutHref, setFlyoutHref] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const flyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The close/switch waiting to happen, so pointer movement toward the open
+  // flyout can keep re-arming it (see the menu-aim effect below).
+  const pendingFlyout = useRef<{ next: string | null; delay: number } | null>(
+    null,
+  );
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (flyoutTimer.current) {
+        clearTimeout(flyoutTimer.current);
+      }
+    };
+  }, []);
+
+  function clearFlyoutTimer() {
+    if (flyoutTimer.current) {
+      clearTimeout(flyoutTimer.current);
+      flyoutTimer.current = null;
+    }
+    pendingFlyout.current = null;
+  }
+
+  const scheduleFlyout = useCallback((next: string | null, delay: number) => {
+    if (flyoutTimer.current) {
+      clearTimeout(flyoutTimer.current);
+    }
+    pendingFlyout.current = { next, delay };
+    flyoutTimer.current = setTimeout(() => {
+      flyoutTimer.current = null;
+      pendingFlyout.current = null;
+      setFlyoutHref(next);
+    }, delay);
+  }, []);
+
+  function enterFlyoutRow(key: string) {
+    if (flyoutHref === null || flyoutHref === key) {
+      clearFlyoutTimer();
+      setFlyoutHref(key);
+      return;
+    }
+    scheduleFlyout(key, FLYOUT_SWITCH_DELAY_MS);
+  }
+
+  function leaveFlyoutRow() {
+    scheduleFlyout(null, FLYOUT_CLOSE_DELAY_MS);
+  }
+
+  // "Menu aim": rows are wide and the flyout sits past their far edge, so a
+  // natural diagonal move toward it crosses sibling rows (and, for a long
+  // flyout, the page below the panel) for longer than any sane fixed delay.
+  // While the pointer keeps heading for the open flyout, pending closes —
+  // this panel's and the whole menu's — are pushed back; they fire once the
+  // pointer stops or turns away. Listens on window because the path can run
+  // outside the panel.
+  useEffect(() => {
+    function onMove(event: MouseEvent) {
+      const point = { x: event.clientX, y: event.clientY };
+      const previous = lastPointer.current;
+      // Direction from single-pixel steps is mostly noise; judge it over a
+      // few pixels of travel instead.
+      if (
+        previous &&
+        Math.hypot(point.x - previous.x, point.y - previous.y) <
+          AIM_MIN_STEP_PX
+      ) {
+        return;
+      }
+      lastPointer.current = point;
+      const flyout = panelRef.current?.querySelector(".th-mega-flyout");
+      if (
+        !previous ||
+        !flyout ||
+        !isHeadingToward(previous, point, flyout.getBoundingClientRect())
+      ) {
+        return;
+      }
+      onAimAtFlyout();
+      const pending = pendingFlyout.current;
+      if (pending) {
+        scheduleFlyout(pending.next, pending.delay);
+      }
+    }
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [onAimAtFlyout, scheduleFlyout]);
 
   return (
     <div
+      ref={panelRef}
       id={id}
       role="region"
       aria-label={`${panel.name} categories`}
@@ -202,9 +340,13 @@ function MegaPanel({
           );
           // A flyout in the rightmost column has nowhere to open but off the
           // edge of the panel (or the viewport), so it opens leftward there
-          // instead — every other column keeps opening to the right.
+          // instead — every other column keeps opening to the right. A lone
+          // column sits at the panel's left edge (the grid is never narrower
+          // than 2 tracks), so it must open right or it lands off-screen.
           const flyoutAlign =
-            index === panel.columns.length - 1 ? "left" : "right";
+            panel.columns.length > 1 && index === panel.columns.length - 1
+              ? "left"
+              : "right";
           return (
           <div
             key={`${column.title}-${index}`}
@@ -234,13 +376,9 @@ function MegaPanel({
                   flyoutAlign={flyoutAlign}
                   flyoutOpen={flyoutHref === `${link.href}-${link.label}`}
                   onFlyoutEnter={() =>
-                    setFlyoutHref(
-                      link.children?.length
-                        ? `${link.href}-${link.label}`
-                        : null,
-                    )
+                    enterFlyoutRow(`${link.href}-${link.label}`)
                   }
-                  onFlyoutLeave={() => setFlyoutHref(null)}
+                  onFlyoutLeave={leaveFlyoutRow}
                 />
               ))}
             </ul>
@@ -295,23 +433,28 @@ function MegaRow({
         ) : null}
       </Link>
       {nested && flyoutOpen ? (
-        <ul
+        // The gap between row and flyout is padding on this wrapper, not a
+        // margin: it stays inside the <li>, so crossing it never fires the
+        // row's mouseleave (a margin gap closed the flyout mid-move).
+        <div
           className={cn(
-            "th-mega-flyout absolute top-0 z-50 min-w-48 rounded-lg border border-border bg-surface p-2 shadow-[0_16px_32px_-10px_rgba(14,26,36,0.3)]",
-            flyoutAlign === "left" ? "right-full mr-2" : "left-full ml-2",
+            "absolute top-0 z-50",
+            flyoutAlign === "left" ? "right-full pr-2" : "left-full pl-2",
           )}
         >
-          {link.children?.map((child) => (
-            <li key={`${child.href}-${child.label}`}>
-              <Link
-                href={child.href}
-                className="block rounded-md px-2.5 py-1.5 text-label text-text/85 transition-colors duration-150 hover:bg-primary-soft/60 hover:text-primary"
-              >
-                {child.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+          <ul className="th-mega-flyout min-w-48 rounded-lg border border-border bg-surface p-2 shadow-[0_16px_32px_-10px_rgba(14,26,36,0.3)]">
+            {link.children?.map((child) => (
+              <li key={`${child.href}-${child.label}`}>
+                <Link
+                  href={child.href}
+                  className="block rounded-md px-2.5 py-1.5 text-label text-text/85 transition-colors duration-150 hover:bg-primary-soft/60 hover:text-primary"
+                >
+                  {child.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </li>
   );
