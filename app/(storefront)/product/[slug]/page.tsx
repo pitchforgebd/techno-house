@@ -249,6 +249,8 @@ export default async function ProductPage({
         averageRating={averageRating}
         reviewCount={reviews.length}
         colors={product.colors}
+        variantOptions={product.variantOptions}
+        variantChoices={product.variantChoices}
         discountStartsAt={product.discountStartsAt}
         discountEndsAt={product.discountEndsAt}
         whatsappNumber={chatWidgetTag.whatsappNumber}

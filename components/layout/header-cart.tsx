@@ -13,7 +13,11 @@ import { loadCartProducts } from "@/features/cart/actions";
 import { useCartStore } from "@/features/cart/use-cart-store";
 import { useCustomerSession } from "@/features/account/customer-session-provider";
 import type { ProductSummary } from "@/lib/data";
-import { cartItemCount, cartLineKey } from "@/lib/cart/cart";
+import {
+  cartItemCount,
+  cartLineKey,
+  cartLineUnitAmount,
+} from "@/lib/cart/cart";
 import { loginHref } from "@/lib/account/return-path";
 import { formatMoney } from "@/lib/format/currency";
 
@@ -64,7 +68,8 @@ export function HeaderCart() {
       return {
         line,
         product,
-        lineTotal: product.price.amount * line.quantity,
+        unitAmount: cartLineUnitAmount(line, product.price.amount),
+        lineTotal: cartLineUnitAmount(line, product.price.amount) * line.quantity,
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
@@ -115,14 +120,14 @@ export function HeaderCart() {
                 <p className="text-body text-text-muted">Loading…</p>
               ) : (
                 <ul className="space-y-3">
-                  {rows.map(({ line, product, lineTotal }) => (
+                  {rows.map(({ line, product, unitAmount, lineTotal }) => (
                     <li
                       key={cartLineKey(line)}
                       className="flex gap-3 border-b border-border pb-3 last:border-0"
                     >
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-surface-muted">
                         <Image
-                          src={product.image.src}
+                          src={line.variant?.imageSrc ?? product.image.src}
                           alt=""
                           fill
                           sizes="56px"
@@ -144,7 +149,7 @@ export function HeaderCart() {
                             aria-label={`Remove ${product.name}`}
                             title="Remove"
                             onClick={() =>
-                              removeItem(line.slug, line.colorId)
+                              removeItem(line.slug, line.colorId, line.variantId)
                             }
                           >
                             <IconTrash className="size-4" />
@@ -155,8 +160,13 @@ export function HeaderCart() {
                             Colour: {line.colorName}
                           </p>
                         ) : null}
+                        {line.variant ? (
+                          <p className="mt-0.5 text-caption text-text-muted">
+                            Option: {line.variant.name}
+                          </p>
+                        ) : null}
                         <p className="mt-1 text-caption tabular-nums text-text-muted">
-                          {line.quantity} × {formatMoney(product.price)} ={" "}
+                          {line.quantity} × {formatMoney({ amount: unitAmount })} ={" "}
                           {formatMoney({ amount: lineTotal })}
                         </p>
                       </div>

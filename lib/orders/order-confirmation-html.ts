@@ -51,6 +51,7 @@ export function renderOrderConfirmationHtml(
       <tr>
         <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;">
           ${escapeHtml(item.productName)}
+          ${item.variantName ? `<div style="font-size:12px;color:#6b7280;">${escapeHtml(item.variantName)}</div>` : ""}
           <div style="font-size:12px;color:#6b7280;">x${item.quantity}</div>
         </td>
         <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;text-align:right;white-space:nowrap;">

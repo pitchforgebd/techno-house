@@ -394,6 +394,14 @@ export function AdminOrderDetail({
                         Colour: {line.colorName}
                       </p>
                     ) : null}
+                    {line.variantName ? (
+                      <p className="text-text-muted">
+                        Option:{" "}
+                        <span className="font-medium text-text">
+                          {line.variantName}
+                        </span>
+                      </p>
+                    ) : null}
                     <p className="text-text-muted">{line.sku}</p>
                   </TableCell>
                   <TableCell>{line.quantity}</TableCell>

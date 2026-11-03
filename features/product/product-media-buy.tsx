@@ -8,8 +8,10 @@ import type {
   Money,
   ProductColorOption,
   ProductImage,
+  ProductVariantChoice,
   StockStatus,
 } from "@/lib/data";
+import { defaultVariant } from "@/lib/catalog/variants";
 import { cn } from "@/lib/cn";
 import { buildProductGalleryImages } from "@/lib/product/gallery-images";
 import type { AdminEmiConfig } from "@/lib/payments/emi-shared";
@@ -31,6 +33,8 @@ type ProductMediaBuyProps = {
   averageRating: number;
   reviewCount: number;
   colors: ProductColorOption[];
+  variantOptions: { name: string; values: string[] }[];
+  variantChoices: ProductVariantChoice[];
   discountStartsAt: string | null;
   discountEndsAt: string | null;
   whatsappNumber?: string | null;
@@ -77,6 +81,8 @@ export function ProductMediaBuy({
   averageRating,
   reviewCount,
   colors,
+  variantOptions,
+  variantChoices,
   discountStartsAt,
   discountEndsAt,
   whatsappNumber,
@@ -104,16 +110,40 @@ export function ProductMediaBuy({
   const selectedColor =
     colors.find((color) => color.id === selectedColorId) ?? null;
 
+  // Starts on the cheapest in-stock variant — the price the product card
+  // showed (see `defaultVariant`).
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    () =>
+      defaultVariant(
+        variantChoices.map((choice) => ({
+          ...choice,
+          priceAmount: choice.price.amount,
+          available: choice.stockStatus !== "out_of_stock",
+        })),
+      )?.id ?? null,
+  );
+  const selectedVariant =
+    variantChoices.find((choice) => choice.id === selectedVariantId) ?? null;
+
   const galleryImages = useMemo(() => {
-    if (selectedColor && selectedColor.images.length > 0) {
-      return buildProductGalleryImages(
-        selectedColor.images,
-        selectedColor.images[0] ?? primaryImage,
-        `${name} — ${selectedColor.name}`,
-      );
+    const base =
+      selectedColor && selectedColor.images.length > 0
+        ? buildProductGalleryImages(
+            selectedColor.images,
+            selectedColor.images[0] ?? primaryImage,
+            `${name} — ${selectedColor.name}`,
+          )
+        : buildProductGalleryImages(productImages, primaryImage, name);
+    // The chosen variant's own picture leads; the rest of the gallery stays.
+    const variantImage = selectedVariant?.image;
+    if (!variantImage) {
+      return base;
     }
-    return buildProductGalleryImages(productImages, primaryImage, name);
-  }, [selectedColor, productImages, primaryImage, name]);
+    return [
+      variantImage,
+      ...base.filter((image) => image.src !== variantImage.src),
+    ];
+  }, [selectedColor, selectedVariant, productImages, primaryImage, name]);
 
   const hasOptions = colors.length > 0;
   // Where the delivery cards go on large screens, chosen to keep the columns
@@ -159,7 +189,7 @@ export function ProductMediaBuy({
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:gap-x-8">
           <div className="lg:col-span-5 lg:col-start-1 lg:row-span-2 lg:row-start-1">
             <ProductGallery
-              key={selectedColorId ?? "default"}
+              key={`${selectedColorId ?? "default"}:${selectedVariant?.image ? selectedVariant.id : ""}`}
               images={galleryImages}
               productName={
                 selectedColor ? `${name} — ${selectedColor.name}` : name
@@ -201,6 +231,10 @@ export function ProductMediaBuy({
             colors={colors}
             selectedColorId={selectedColorId}
             onSelectedColorIdChange={setSelectedColorId}
+            variantOptions={variantOptions}
+            variantChoices={variantChoices}
+            selectedVariantId={selectedVariantId}
+            onSelectedVariantIdChange={setSelectedVariantId}
             discountStartsAt={discountStartsAt}
             discountEndsAt={discountEndsAt}
             whatsappNumber={whatsappNumber}

@@ -38,7 +38,11 @@ import { computeOrderTax } from "@/lib/business/tax";
 import { computeServiceCharge } from "@/lib/business/service-charge";
 import { belowMinimumOrder } from "@/lib/business/minimum-order";
 import type { PublicOrderCharges } from "@/lib/business/operations-config";
-import { cartItemCount, cartLineKey } from "@/lib/cart/cart";
+import {
+  cartItemCount,
+  cartLineKey,
+  cartLineUnitAmount,
+} from "@/lib/cart/cart";
 import { validateCheckoutContact } from "@/lib/cart/checkout";
 import { applyCouponToSubtotal } from "@/lib/cart/coupons";
 import {
@@ -330,7 +334,7 @@ export function CheckoutView({
       return {
         line,
         product,
-        lineTotal: product.price.amount * line.quantity,
+        lineTotal: cartLineUnitAmount(line, product.price.amount) * line.quantity,
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
@@ -897,6 +901,11 @@ export function CheckoutView({
                         {line.colorName ? (
                           <p className="text-text-muted">
                             Colour: {line.colorName}
+                          </p>
+                        ) : null}
+                        {line.variant ? (
+                          <p className="text-text-muted">
+                            Option: {line.variant.name}
                           </p>
                         ) : null}
                         <p className="text-text-muted">Qty {line.quantity}</p>

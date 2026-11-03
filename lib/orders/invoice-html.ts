@@ -41,7 +41,11 @@ export function renderInvoiceHtml(
 
   const rows = invoice.lines
     .map((line, index) => {
-      const sub = [line.colorName ? `Colour: ${line.colorName}` : null, line.sku]
+      const sub = [
+        line.variantName ? `Option: ${line.variantName}` : null,
+        line.colorName ? `Colour: ${line.colorName}` : null,
+        line.sku,
+      ]
         .filter(Boolean)
         .join(" · ");
       const finalAmount = line.totalAmount - line.discountAmount;

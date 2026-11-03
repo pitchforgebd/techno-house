@@ -49,7 +49,7 @@ function buildOrderConfirmationText(
 ): string {
   const lines = order.items.map(
     (item) =>
-      `  - ${item.productName} x${item.quantity} — ${formatMoney({ amount: item.totalAmount })}`,
+      `  - ${item.productName}${item.variantName ? ` (${item.variantName})` : ""} x${item.quantity} — ${formatMoney({ amount: item.totalAmount })}`,
   );
 
   const opening =

@@ -24,6 +24,7 @@ export type {
   ProductSearchSuggestion,
   ProductSort,
   ProductSummary,
+  ProductVariantChoice,
 } from "@/lib/data/types/catalog";
 
 export type { ProductQuestion, ProductReview } from "@/lib/data/types/reviews";

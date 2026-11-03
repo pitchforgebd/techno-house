@@ -58,6 +58,7 @@ type OrderRow = {
     totalAmount: number;
     colorName: string | null;
     colorHex: string | null;
+    variantName: string | null;
     product: { slug: string } | null;
   }[];
   payments: { method: string | null; provider: string }[];
@@ -134,6 +135,7 @@ export function toCustomerOrderView(row: OrderRow): CustomerOrderView {
       totalAmount: item.totalAmount,
       colorName: item.colorName,
       colorHex: item.colorHex,
+      variantName: item.variantName,
     })),
   };
 }

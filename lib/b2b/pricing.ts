@@ -53,3 +53,24 @@ export function resolveB2BPricing(input: {
     fromProductTerms: false,
   };
 }
+
+/**
+ * Wholesale price of one variant (AD-388). A per-product wholesale row is a
+ * single negotiated figure for the whole product, so it cannot price an
+ * 8GB and a 16GB variant alike; variants always get the account
+ * percentage off their own retail price. The product row's minimum order
+ * quantity still applies.
+ */
+export function resolveVariantB2BPricing(input: {
+  retail: Money;
+  discountPercent: number;
+  terms?: B2BProductTerms | null;
+}): B2BPricing {
+  return {
+    price: computeWholesalePrice(input.retail, input.discountPercent),
+    minQuantity: input.terms
+      ? Math.max(1, Math.round(input.terms.minQuantity))
+      : 1,
+    fromProductTerms: false,
+  };
+}

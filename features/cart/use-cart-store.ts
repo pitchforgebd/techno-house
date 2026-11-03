@@ -21,6 +21,7 @@ import {
   cartLineKey,
   clampQuantity,
   type CartLine,
+  type CartLineVariant,
   type CartState,
 } from "@/lib/cart/cart";
 import {
@@ -65,8 +66,34 @@ function sameCart(a: CartState, b: CartState): boolean {
     (line, index) =>
       line.slug === b.lines[index]?.slug &&
       line.colorId === b.lines[index]?.colorId &&
+      line.variantId === b.lines[index]?.variantId &&
       line.quantity === b.lines[index]?.quantity,
   );
+}
+
+/** Device-local (mock-mode) carts only — display data, never a charge. */
+function normalizeLineVariant(raw: unknown): CartLineVariant | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const value = raw as CartLineVariant;
+  if (
+    typeof value.name !== "string" ||
+    typeof value.priceAmount !== "number" ||
+    !Number.isFinite(value.priceAmount)
+  ) {
+    return null;
+  }
+  return {
+    name: value.name.slice(0, 200),
+    priceAmount: Math.max(0, Math.round(value.priceAmount)),
+    compareAtAmount:
+      typeof value.compareAtAmount === "number" &&
+      Number.isFinite(value.compareAtAmount)
+        ? Math.round(value.compareAtAmount)
+        : null,
+    imageSrc: typeof value.imageSrc === "string" ? value.imageSrc : null,
+  };
 }
 
 function normalizeLines(raw: unknown): CartLine[] {
@@ -100,12 +127,19 @@ function normalizeLines(raw: unknown): CartLine[] {
         typeof colorHexRaw === "string" && colorHexRaw.trim()
           ? colorHexRaw.trim()
           : null;
+      const variantIdRaw = (item as CartLine).variantId;
+      const variantId =
+        typeof variantIdRaw === "string" && variantIdRaw.trim()
+          ? variantIdRaw.trim()
+          : null;
       lines.push({
         slug,
         quantity: clampQuantity((item as CartLine).quantity),
         colorId,
         colorName,
         colorHex,
+        variantId,
+        variant: variantId ? normalizeLineVariant((item as CartLine).variant) : null,
       });
     }
   }
@@ -228,6 +262,9 @@ type LocalAddColor = {
   colorId: string | null;
   colorName: string | null;
   colorHex: string | null;
+  /** The chosen variant (AD-388); omitted for products without variants. */
+  variantId?: string | null;
+  variant?: CartLineVariant | null;
 };
 
 function localAddItem(
@@ -241,7 +278,11 @@ function localAddItem(
   },
 ): CartState | { ok: false; reason: string } {
   const qty = clampQuantity(quantity);
-  const key = cartLineKey({ slug, colorId: color.colorId });
+  const key = cartLineKey({
+    slug,
+    colorId: color.colorId,
+    variantId: color.variantId ?? null,
+  });
   const existing = current.lines.find(
     (line) => cartLineKey(line) === key,
   );
@@ -268,6 +309,8 @@ function localAddItem(
         colorId: color.colorId,
         colorName: color.colorName,
         colorHex: color.colorHex,
+        variantId: color.variantId ?? null,
+        variant: color.variantId ? (color.variant ?? null) : null,
       },
     ],
   };
@@ -313,6 +356,7 @@ export function useCartStore() {
         quantity,
         color.colorId,
         wantsEmi,
+        color.variantId ?? null,
       );
       if (!result.ok) {
         ctx.replacePersisted(previous);
@@ -407,9 +451,10 @@ export function useCartStore() {
       slug: string,
       quantity: number,
       colorId: string | null = null,
+      variantId: string | null = null,
     ): Promise<CartWriteResult> => {
       const qty = clampQuantity(quantity);
-      const key = cartLineKey({ slug, colorId });
+      const key = cartLineKey({ slug, colorId, variantId });
       if (!persist) {
         const current = readStorage();
         writeStorage({
@@ -428,7 +473,12 @@ export function useCartStore() {
           cartLineKey(line) === key ? { ...line, quantity: qty } : line,
         ),
       });
-      const result = await setCartQuantityAction(slug, quantity, colorId);
+      const result = await setCartQuantityAction(
+        slug,
+        quantity,
+        colorId,
+        variantId,
+      );
       if (!result.ok) {
         ctx.replacePersisted(previous);
         return result;
@@ -443,8 +493,9 @@ export function useCartStore() {
     async (
       slug: string,
       colorId: string | null = null,
+      variantId: string | null = null,
     ): Promise<CartWriteResult> => {
-      const key = cartLineKey({ slug, colorId });
+      const key = cartLineKey({ slug, colorId, variantId });
       if (!persist) {
         const current = readStorage();
         const lines = current.lines.filter(
@@ -461,7 +512,7 @@ export function useCartStore() {
           ? { ...EMPTY_CART, paymentMethodId: previous.paymentMethodId }
           : { ...previous, lines },
       );
-      const result = await removeCartItemAction(slug, colorId);
+      const result = await removeCartItemAction(slug, colorId, variantId);
       if (!result.ok) {
         ctx.replacePersisted(previous);
         return result;

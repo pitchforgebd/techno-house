@@ -76,6 +76,7 @@
     "test:listing": "tsx scripts/catalog/check-listing.ts",
     "test:dashboard": "tsx scripts/admin/check-dashboard.ts",
     "test:inventory": "tsx scripts/inventory/check-stock-integrity.ts",
+    "test:variants": "tsx scripts/inventory/check-variants.ts",
     "test:staleorders": "tsx scripts/orders/check-stale-orders.ts",
     "test:orderid": "tsx scripts/orders/check-order-identity.ts",
     "orders:stale": "tsx scripts/orders/sweep-stale-orders.ts",

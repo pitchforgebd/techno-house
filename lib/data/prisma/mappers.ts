@@ -24,6 +24,11 @@ import type {
   StockStatus,
 } from "@/lib/data/types/common";
 import { effectiveStorefrontPricing } from "@/lib/catalog/discount-pricing";
+import { deriveStockStatus } from "@/lib/catalog/inventory-input";
+import {
+  resolveVariantOptionGroups,
+  variantValuesFor,
+} from "@/lib/catalog/variants";
 import { isWithinNewArrivalWindow } from "@/lib/catalog/new-arrival";
 import { warrantyBadgeFromLabel } from "@/lib/catalog/warranty-badge";
 import {
@@ -266,7 +271,73 @@ export type ProductDetailRow = ProductCandidateRow & {
     attribute: { key: string; label: string };
   }[];
   relatedTo: { slug: string }[];
+  /** Absent on selects that don't load variants (treated as none). */
+  variantOptionNames?: string[];
+  variants?: {
+    id: string;
+    name: string;
+    sku: string;
+    optionValues: string[];
+    imageSrc: string | null;
+    priceAmount: number;
+    compareAtAmount: number | null;
+    isActive: boolean;
+    stock: { quantity: number; reserved: number; lowStockThreshold: number } | null;
+  }[];
 };
+
+/**
+ * The product page's variant selector data. Only active variants are
+ * offered; each is priced like the product (its own regular/sale prices,
+ * the product's discount window) and carries its own stock status.
+ */
+function toVariantChoices(row: ProductDetailRow): Pick<
+  ProductDetail,
+  "variantOptions" | "variantChoices"
+> {
+  const active = (row.variants ?? []).filter((variant) => variant.isActive);
+  if (active.length === 0) {
+    return { variantOptions: [], variantChoices: [] };
+  }
+  const optionNames = row.variantOptionNames ?? [];
+  const groups = resolveVariantOptionGroups(optionNames, active);
+  // Same rule resolveVariantOptionGroups applies: options only when every
+  // variant carries a value for each; otherwise all are legacy name-only.
+  const usesOptions =
+    optionNames.length > 0 &&
+    active.every((variant) => variant.optionValues.length === optionNames.length);
+  return {
+    variantOptions: groups,
+    variantChoices: active.map((variant) => {
+      const priced = effectiveStorefrontPricing({
+        priceAmount: variant.priceAmount,
+        compareAtAmount: variant.compareAtAmount,
+        discountStartsAt: row.discountStartsAt,
+        discountEndsAt: row.discountEndsAt,
+        isSale: row.isSale,
+      });
+      return {
+        id: variant.id,
+        name: variant.name,
+        values: variantValuesFor(usesOptions ? optionNames : [], variant),
+        sku: variant.sku,
+        price: money(priced.priceAmount),
+        compareAtPrice:
+          priced.compareAtAmount == null ? null : money(priced.compareAtAmount),
+        stockStatus: variant.stock
+          ? deriveStockStatus(
+              variant.stock.quantity,
+              variant.stock.reserved,
+              variant.stock.lowStockThreshold,
+            )
+          : "out_of_stock",
+        image: variant.imageSrc
+          ? { src: variant.imageSrc, alt: `${row.name} — ${variant.name}` }
+          : null,
+      };
+    }),
+  };
+}
 
 export function toProductDetail(
   row: ProductDetailRow,
@@ -304,6 +375,7 @@ export function toProductDetail(
     pdfSpecificationSrc: row.pdfSpecificationSrc,
     notes: resolveProductNotes(row.noteIds ?? [], presets),
     modelNumber: row.modelNumber,
+    ...toVariantChoices(row),
   };
 }
 

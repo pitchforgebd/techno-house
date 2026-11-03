@@ -29,7 +29,6 @@ import {
   PRODUCT_BARCODE_MAX,
   PRODUCT_MODEL_NUMBER_MAX,
   slugifyProduct,
-  type ProductVariantInputFields,
 } from "@/lib/catalog/product-input";
 import { AdminBuilderMultiSelect } from "@/features/admin/products/admin-builder-multi-select";
 import {
@@ -53,7 +52,6 @@ import {
 import {
   AdminFormCard,
   AdminFormDivider,
-  AdminFormDashedButton,
   AdminFormInlineLink,
   AdminFormLabel,
   AdminFormUploadBox,
@@ -98,6 +96,13 @@ import {
   categoryRootSlug,
 } from "@/lib/catalog/category-tree";
 import { AdminSearchableSelect } from "@/features/admin/products/admin-searchable-select";
+import {
+  AdminProductVariantsFields,
+  variantFormFromProduct,
+  variantFormSummary,
+  variantFormToInput,
+  type VariantFormState,
+} from "@/features/admin/products/admin-product-variants-fields";
 import type { SearchableOption } from "@/lib/admin/searchable-options";
 import {
   formatDiscountDateInput,
@@ -124,29 +129,22 @@ type EditorProduct = ProductDetail & {
   variants: Array<{
     id: string;
     name: string;
+    optionValues?: string[];
     sku: string;
     priceAmount: number;
     compareAtAmount: number | null;
     isActive: boolean;
     quantity: number;
+    reserved?: number;
+    imageSrc?: string | null;
   }>;
+  variantOptionNames?: string[];
   barcode: string;
   relatedProducts: { id: string; slug: string; name: string }[];
 };
 
 /** Select value for an edited product's warranty that is not an active preset. */
 const CURRENT_WARRANTY_OPTION_ID = "__current-warranty__";
-
-function emptyVariant(): ProductVariantInputFields {
-  return {
-    name: "",
-    sku: "",
-    price: "",
-    compareAt: "",
-    isActive: true,
-    quantity: "",
-  };
-}
 
 function stockQtyFromStatus(status: StockStatus | undefined): string {
   if (status === "out_of_stock") {
@@ -237,19 +235,8 @@ export function AdminProductForm({
   const [position, setPosition] = useState(
     product ? String(product.position) : "0",
   );
-  const [variants, setVariants] = useState<ProductVariantInputFields[]>(
-    () =>
-      product?.variants.map((variant) => ({
-        name: variant.name,
-        sku: variant.sku,
-        price: String(variant.priceAmount),
-        compareAt:
-          variant.compareAtAmount != null
-            ? String(variant.compareAtAmount)
-            : "",
-        isActive: variant.isActive,
-        quantity: String(variant.quantity),
-      })) ?? [],
+  const [variantForm, setVariantForm] = useState<VariantFormState>(() =>
+    variantFormFromProduct(product?.variantOptionNames, product?.variants),
   );
   const [attributeRows, setAttributeRows] = useState<ProductAttributeFormRow[]>(
     () => attributeRowsFromProduct(product?.attributes),
@@ -316,10 +303,10 @@ export function AdminProductForm({
   // Not stored yet (see the note under "Related categories"); kept in state
   // only so the searchable picker behaves like a real control.
   const [relatedCategorySlug, setRelatedCategorySlug] = useState("");
-  const [specialPrice, setSpecialPrice] = useState(
+  const [specialPriceInput, setSpecialPrice] = useState(
     product ? String(product.price.amount) : "0",
   );
-  const [regularPrice, setRegularPrice] = useState(
+  const [regularPriceInput, setRegularPrice] = useState(
     product?.compareAtPrice ? String(product.compareAtPrice.amount) : "",
   );
   const [discountStartsAt, setDiscountStartsAt] = useState(
@@ -328,9 +315,23 @@ export function AdminProductForm({
   const [discountEndsAt, setDiscountEndsAt] = useState(
     formatDiscountDateInput(product?.discountEndsAt),
   );
-  const [stockQty, setStockQty] = useState(
+  const [stockQtyInput, setStockQty] = useState(
     product ? String(product.quantity) : "25",
   );
+  // While any variant is active the product's own price is its cheapest
+  // variant and its stock the variants' total (the server enforces both,
+  // see AD-388) — the fields show that and lock instead of being ignored.
+  const variantSummary = variantFormSummary(variantForm);
+  const variantsDrivePricing = variantSummary.active > 0;
+  const specialPrice = variantsDrivePricing
+    ? (variantSummary.lowestPrice?.price ?? "")
+    : specialPriceInput;
+  const regularPrice = variantsDrivePricing
+    ? (variantSummary.lowestPrice?.compareAt ?? "")
+    : regularPriceInput;
+  const stockQty = variantsDrivePricing
+    ? String(variantSummary.totalStock)
+    : stockQtyInput;
   const [stockStatus, setStockStatus] = useState<StockStatus>(
     product?.stockStatus ?? "in_stock",
   );
@@ -575,7 +576,7 @@ export function AdminProductForm({
           barcode,
           modelNumber,
           relatedProductIds: relatedProducts.map((item) => item.id),
-          variants,
+          ...variantFormToInput(variantForm),
           attributes: attributeRows
             .filter((row) => row.key.trim().length > 0)
             .map((row) => ({
@@ -1178,10 +1179,13 @@ export function AdminProductForm({
                   value={specialPrice}
                   onChange={(event) => setSpecialPrice(event.target.value)}
                   className={adminFormControlClass}
+                  disabled={variantsDrivePricing}
                   required
                 />
                 <p className="text-xs text-neutral-500">
-                  Price customers pay (storefront “Special price”).
+                  {variantsDrivePricing
+                    ? "Set by the variants below — the lowest active variant price."
+                    : "Price customers pay (storefront “Special price”)."}
                 </p>
               </div>
               <div className="space-y-1.5">
@@ -1194,6 +1198,7 @@ export function AdminProductForm({
                   value={regularPrice}
                   onChange={(event) => setRegularPrice(event.target.value)}
                   className={adminFormControlClass}
+                  disabled={variantsDrivePricing}
                   placeholder="Optional — higher than special"
                 />
                 <p className="text-xs text-neutral-500">
@@ -1241,6 +1246,11 @@ export function AdminProductForm({
                 <Input
                   id="stock-qty"
                   inputMode="numeric"
+                  title={
+                    variantsDrivePricing
+                      ? "The total of the variants' stock"
+                      : undefined
+                  }
                   value={stockQty}
                   onChange={(event) => {
                     const next = event.target.value;
@@ -1258,9 +1268,12 @@ export function AdminProductForm({
                     );
                   }}
                   className={adminFormControlClass}
-                  disabled={pending}
+                  disabled={pending || variantsDrivePricing}
                 />
                 <p className="text-xs text-neutral-500">
+                  {variantsDrivePricing
+                    ? "The total of the variants' stock. "
+                    : ""}
                   Status is calculated from quantity minus reserved units.
                   {product && product.reserved > 0
                     ? ` ${product.reserved} unit(s) are reserved.`
@@ -1280,7 +1293,7 @@ export function AdminProductForm({
                     setStockQty(stockQtyFromStatus(next));
                   }}
                   className={adminFormControlClass}
-                  disabled={pending}
+                  disabled={pending || variantsDrivePricing}
                 >
                   <option value="in_stock">In stock</option>
                   <option value="low_stock">Low stock</option>
@@ -1485,138 +1498,13 @@ export function AdminProductForm({
             ),
             variants: (
           <AdminFormCard title="Variants">
-            <p className="text-xs text-neutral-500">
-              Optional SKU rows for this product. Leave empty if the product has
-              a single price.
-            </p>
-            {variants.map((variant, index) => (
-              <div
-                key={`variant-${index}`}
-                className="grid gap-3 rounded-md border border-neutral-200 p-3 sm:grid-cols-2"
-              >
-                <div className="space-y-1.5">
-                  <AdminFormLabel htmlFor={`variant-name-${index}`}>
-                    Name
-                  </AdminFormLabel>
-                  <Input
-                    id={`variant-name-${index}`}
-                    value={variant.name}
-                    onChange={(event) => {
-                      const next = [...variants];
-                      next[index] = { ...variant, name: event.target.value };
-                      setVariants(next);
-                    }}
-                    className={adminFormControlClass}
-                    disabled={pending}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <AdminFormLabel htmlFor={`variant-sku-${index}`}>
-                    SKU
-                  </AdminFormLabel>
-                  <Input
-                    id={`variant-sku-${index}`}
-                    value={variant.sku}
-                    onChange={(event) => {
-                      const next = [...variants];
-                      next[index] = { ...variant, sku: event.target.value };
-                      setVariants(next);
-                    }}
-                    className={adminFormControlClass}
-                    disabled={pending}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <AdminFormLabel htmlFor={`variant-price-${index}`}>
-                    Price
-                  </AdminFormLabel>
-                  <Input
-                    id={`variant-price-${index}`}
-                    inputMode="numeric"
-                    value={variant.price}
-                    onChange={(event) => {
-                      const next = [...variants];
-                      next[index] = { ...variant, price: event.target.value };
-                      setVariants(next);
-                    }}
-                    className={adminFormControlClass}
-                    disabled={pending}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <AdminFormLabel htmlFor={`variant-compare-${index}`}>
-                    Compare-at
-                  </AdminFormLabel>
-                  <Input
-                    id={`variant-compare-${index}`}
-                    inputMode="numeric"
-                    value={variant.compareAt}
-                    onChange={(event) => {
-                      const next = [...variants];
-                      next[index] = {
-                        ...variant,
-                        compareAt: event.target.value,
-                      };
-                      setVariants(next);
-                    }}
-                    className={adminFormControlClass}
-                    disabled={pending}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <AdminFormLabel htmlFor={`variant-qty-${index}`}>
-                    Stock
-                  </AdminFormLabel>
-                  <Input
-                    id={`variant-qty-${index}`}
-                    inputMode="numeric"
-                    value={variant.quantity}
-                    onChange={(event) => {
-                      const next = [...variants];
-                      next[index] = {
-                        ...variant,
-                        quantity: event.target.value,
-                      };
-                      setVariants(next);
-                    }}
-                    className={adminFormControlClass}
-                    disabled={pending}
-                  />
-                </div>
-                <label className="flex items-center gap-2 text-sm text-neutral-700 sm:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={variant.isActive}
-                    onChange={(event) => {
-                      const next = [...variants];
-                      next[index] = {
-                        ...variant,
-                        isActive: event.target.checked,
-                      };
-                      setVariants(next);
-                    }}
-                    className="size-4 rounded border-border accent-[#3897f0]"
-                    disabled={pending}
-                  />
-                  Active
-                  <button
-                    type="button"
-                    className="ml-auto text-xs font-medium text-red-600 hover:underline"
-                    onClick={() =>
-                      setVariants(variants.filter((_, i) => i !== index))
-                    }
-                    disabled={pending}
-                  >
-                    Remove
-                  </button>
-                </label>
-              </div>
-            ))}
-            <AdminFormDashedButton
-              onClick={() => setVariants([...variants, emptyVariant()])}
-            >
-              Add variant
-            </AdminFormDashedButton>
+            <AdminProductVariantsFields
+              value={variantForm}
+              onChange={setVariantForm}
+              productSku={sku}
+              defaultPrice={specialPriceInput}
+              disabled={pending}
+            />
           </AdminFormCard>
             ),
             labels: (

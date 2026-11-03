@@ -1303,9 +1303,13 @@ export const mockProducts: ProductDetail[] = (
   | "notes"
   | "isNewArrival"
   | "hasActiveOffer"
+  | "variantOptions"
+  | "variantChoices"
 >[]
 ).map((product) => ({
   ...product,
+  variantOptions: [],
+  variantChoices: [],
   youtubeUrl: null,
   pdfSpecificationSrc: null,
   colors: [],

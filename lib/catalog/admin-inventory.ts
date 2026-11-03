@@ -17,6 +17,7 @@ import type {
   ProductMutationResult,
   ProductActor,
 } from "@/lib/catalog/admin-products";
+import { VARIANT_MANAGED_ERROR } from "@/lib/catalog/variants";
 
 export const INVENTORY_DB_REQUIRED =
   "Inventory changes need the database. Turn off DATA_SOURCE=mock to save.";
@@ -121,10 +122,20 @@ export async function updateAdminProductStock(input: {
 
   const existing = await getPrisma().product.findUnique({
     where: { id: input.productId.trim() },
-    select: { id: true, slug: true, name: true },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      _count: { select: { variants: { where: { isActive: true } } } },
+    },
   });
   if (!existing) {
     return { ok: false, formError: "That product no longer exists." };
+  }
+  // Its stock is the sum of its variants' (AD-388) — editing the total here
+  // would be overwritten by the next aggregate sync.
+  if (existing._count.variants > 0) {
+    return { ok: false, formError: VARIANT_MANAGED_ERROR };
   }
 
   const synced = await upsertProductStock({

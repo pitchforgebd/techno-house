@@ -4,6 +4,15 @@ export const CART_PAYMENT_STORAGE_KEY = "techno-house-cart-payment-v1";
 export const MAX_CART_LINES = 24;
 export const MAX_LINE_QTY = 10;
 
+/** Display data for a line's chosen variant (AD-388). */
+export type CartLineVariant = {
+  name: string;
+  /** Effective unit price — the product's discount window applied. */
+  priceAmount: number;
+  compareAtAmount: number | null;
+  imageSrc: string | null;
+};
+
 export type CartLine = {
   slug: string;
   quantity: number;
@@ -11,12 +20,31 @@ export type CartLine = {
   colorId: string | null;
   colorName: string | null;
   colorHex: string | null;
+  /** Selected variant id when the product has variants. */
+  variantId: string | null;
+  /** Resolved by the server for persisted carts; `null` for plain lines. */
+  variant: CartLineVariant | null;
 };
 
 export function cartLineKey(
-  line: Pick<CartLine, "slug" | "colorId">,
+  line: Pick<CartLine, "slug" | "colorId"> & { variantId?: string | null },
 ): string {
-  return line.colorId ? `${line.slug}::${line.colorId}` : line.slug;
+  const parts = [line.slug];
+  if (line.colorId) {
+    parts.push(line.colorId);
+  }
+  if (line.variantId) {
+    parts.push(`v:${line.variantId}`);
+  }
+  return parts.join("::");
+}
+
+/** What one unit of a cart line costs: its variant's price, else the product's. */
+export function cartLineUnitAmount(
+  line: Pick<CartLine, "variant">,
+  productPriceAmount: number,
+): number {
+  return line.variant ? line.variant.priceAmount : productPriceAmount;
 }
 
 export type CartCouponPreview = {

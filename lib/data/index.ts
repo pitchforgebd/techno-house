@@ -30,6 +30,7 @@ export type {
   ProductSearchSuggestion,
   ProductSort,
   ProductSummary,
+  ProductVariantChoice,
   SpecChip,
   SpecGroup,
   SpecRow,

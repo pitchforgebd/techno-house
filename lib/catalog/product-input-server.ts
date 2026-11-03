@@ -32,6 +32,8 @@ import {
 } from "@/lib/catalog/product-notes-labels-server";
 import { parseRelatedProductIds } from "@/lib/catalog/product-related";
 import {
+  cheapestActiveVariant,
+  normalizeProductImageSrc,
   normalizeSku,
   parseBuilderFields,
   parseOverview,
@@ -39,6 +41,7 @@ import {
   parseProductPosition,
   parseProductWeightGrams,
   parseTaka,
+  parseVariantOptionNames,
   parseVariants,
   slugifyProduct,
   PRODUCT_BARCODE_MAX,
@@ -307,12 +310,33 @@ export async function parseProductInput(
   // these four) skips validation entirely and passes `undefined` straight
   // through, so the sync step in admin-products.ts leaves whatever the
   // product already has untouched instead of wiping it on every re-import.
+  const optionNames =
+    input.variants === undefined
+      ? { ok: true as const, value: undefined }
+      : parseVariantOptionNames(input.variantOptionNames);
+  if (!optionNames.ok) {
+    return optionNames;
+  }
   const variants =
     input.variants === undefined
       ? { ok: true as const, value: undefined }
-      : parseVariants(input.variants, sku);
+      : parseVariants(input.variants, sku, optionNames.value);
   if (!variants.ok) {
     return variants;
+  }
+  // With active variants the product's own price is the cheapest variant's
+  // (what the card shows and the product page preselects) — the variants
+  // are what is actually sold. The discount window still comes from the
+  // product and applies to every variant's regular price.
+  const listingVariant = variants.value
+    ? cheapestActiveVariant(variants.value)
+    : null;
+  if (listingVariant) {
+    priceAmount = listingVariant.priceAmount;
+    compareAtAmount = listingVariant.compareAtAmount;
+    pricedAsSale = (variants.value ?? []).some(
+      (variant) => variant.isActive && variant.compareAtAmount != null,
+    );
   }
 
   const attributes =
@@ -347,37 +371,7 @@ export async function parseProductInput(
   function normalizeProductImage(
     raw: string | undefined,
   ): string | null | undefined {
-    if (raw === undefined) {
-      return undefined;
-    }
-    const value = raw.trim();
-    if (!value) {
-      return null;
-    }
-    if (value.includes("..") || value.includes("\\")) {
-      return undefined;
-    }
-
-    // Local public path: /products/…, /uploads/…, etc.
-    if (value.startsWith("/") && !value.startsWith("//")) {
-      return value.slice(0, 240);
-    }
-
-    // Absolute http(s) — seeded catalogue images use Unsplash (and similar)
-    // CDNs. Staff can keep those when editing other fields, or replace with
-    // a media-library local path.
-    try {
-      const url = new URL(value);
-      if (url.protocol !== "https:" && url.protocol !== "http:") {
-        return undefined;
-      }
-      if (!url.hostname) {
-        return undefined;
-      }
-      return value.slice(0, 500);
-    } catch {
-      return undefined;
-    }
+    return raw === undefined ? undefined : normalizeProductImageSrc(raw);
   }
 
   const thumbnailSrc = normalizeProductImage(input.thumbnailSrc);
@@ -442,6 +436,9 @@ export async function parseProductInput(
       modelNumber,
       relatedProductIds: relatedProductIds.value,
       variants: variants.value,
+      ...(variants.value !== undefined
+        ? { variantOptionNames: optionNames.value ?? [] }
+        : {}),
       attributes: attributes.value,
       colors: colors.value,
       specGroups: specGroups.value,

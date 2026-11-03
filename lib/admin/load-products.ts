@@ -198,6 +198,7 @@ export async function getAdminProductById(
     reserved: 0,
     lowStockThreshold: 5,
     variants: [],
+    variantOptionNames: [],
     barcode: "",
     relatedProducts: [],
   };

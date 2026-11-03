@@ -32,6 +32,7 @@ import {
   GUEST_CART_TTL_MS,
 } from "@/lib/cart/guest-cart-cookie";
 import { findShippingArea } from "@/lib/cart/shipping";
+import { effectiveStorefrontPricing } from "@/lib/catalog/discount-pricing";
 import { toDbBuilderSlot } from "@/lib/data/prisma/mappers";
 import type { BuilderSlot } from "@/lib/data/types/catalog";
 import { getPrisma } from "@/lib/db/prisma";
@@ -68,7 +69,21 @@ type CartRecord = {
     quantity: number;
     colorId: string | null;
     color: { id: string; name: string; hex: string | null } | null;
-    product: { slug: string; isActive: boolean };
+    variantId: string | null;
+    variant: {
+      name: string;
+      isActive: boolean;
+      priceAmount: number;
+      compareAtAmount: number | null;
+      imageSrc: string | null;
+    } | null;
+    product: {
+      slug: string;
+      isActive: boolean;
+      isSale: boolean;
+      discountStartsAt: Date | null;
+      discountEndsAt: Date | null;
+    };
   }[];
 };
 
@@ -78,8 +93,25 @@ const cartInclude = {
   items: {
     orderBy: { createdAt: "asc" as const },
     include: {
-      product: { select: { slug: true, isActive: true } },
+      product: {
+        select: {
+          slug: true,
+          isActive: true,
+          isSale: true,
+          discountStartsAt: true,
+          discountEndsAt: true,
+        },
+      },
       color: { select: { id: true, name: true, hex: true } },
+      variant: {
+        select: {
+          name: true,
+          isActive: true,
+          priceAmount: true,
+          compareAtAmount: true,
+          imageSrc: true,
+        },
+      },
     },
   },
 };
@@ -90,6 +122,49 @@ export function usesCartDatabase(): boolean {
 
 function fail(reason: string): CartMutationResult {
   return { ok: false, reason };
+}
+
+/** Sellable units on a variant's own stock row (none without one). */
+function variantAvailableUnits(
+  stock: { quantity: number; reserved: number } | null,
+): number {
+  return stock ? Math.max(0, stock.quantity - stock.reserved) : 0;
+}
+
+type CartVariant = {
+  id: string;
+  stock: { quantity: number; reserved: number } | null;
+};
+
+/**
+ * The variant a line must carry (AD-388): a product with active variants
+ * can only be added as one of them, and an id must belong to this product
+ * — never trusted from the browser as-is.
+ */
+async function resolveCartVariant(
+  productId: string,
+  variantId: string | null,
+): Promise<{ ok: true; variant: CartVariant | null } | { ok: false; reason: string }> {
+  const variants = await getPrisma().productVariant.findMany({
+    where: { productId, isActive: true },
+    select: { id: true, stock: { select: { quantity: true, reserved: true } } },
+  });
+  if (variants.length === 0) {
+    return variantId
+      ? { ok: false, reason: "This product has no options to choose." }
+      : { ok: true, variant: null };
+  }
+  if (!variantId) {
+    return {
+      ok: false,
+      reason: "Choose an option (e.g. colour or storage) on the product page first.",
+    };
+  }
+  const match = variants.find((variant) => variant.id === variantId);
+  if (!match) {
+    return { ok: false, reason: "That option is not available for this product." };
+  }
+  return { ok: true, variant: match };
 }
 
 function availableUnits(product: CartProduct): number {
@@ -104,15 +179,41 @@ function availableUnits(product: CartProduct): number {
 
 async function toCartState(cart: CartRecord): Promise<CartState> {
   const lines = cart.items
-    .filter((item) => item.product.isActive)
+    // A switched-off variant drops out of the cart just like a switched-off
+    // product; checkout re-checks both regardless.
+    .filter(
+      (item) =>
+        item.product.isActive && (!item.variantId || item.variant?.isActive),
+    )
     .slice(0, MAX_CART_LINES)
-    .map((item) => ({
-      slug: item.product.slug,
-      quantity: clampQuantity(item.quantity),
-      colorId: item.colorId ?? item.color?.id ?? null,
-      colorName: item.color?.name ?? null,
-      colorHex: item.color?.hex ?? null,
-    }));
+    .map((item) => {
+      const priced = item.variant
+        ? effectiveStorefrontPricing({
+            priceAmount: item.variant.priceAmount,
+            compareAtAmount: item.variant.compareAtAmount,
+            discountStartsAt: item.product.discountStartsAt,
+            discountEndsAt: item.product.discountEndsAt,
+            isSale: item.product.isSale,
+          })
+        : null;
+      return {
+        slug: item.product.slug,
+        quantity: clampQuantity(item.quantity),
+        colorId: item.colorId ?? item.color?.id ?? null,
+        colorName: item.color?.name ?? null,
+        colorHex: item.color?.hex ?? null,
+        variantId: item.variant ? item.variantId : null,
+        variant:
+          item.variant && priced
+            ? {
+                name: item.variant.name,
+                priceAmount: priced.priceAmount,
+                compareAtAmount: priced.compareAtAmount,
+                imageSrc: item.variant.imageSrc,
+              }
+            : null,
+      };
+    });
 
   const appliedCoupon = cart.couponCode
     ? await getCouponDefinitionByCode(cart.couponCode)
@@ -310,6 +411,7 @@ export async function addCartItem(
   quantity = 1,
   colorId: string | null = null,
   wantsEmi = false,
+  variantId: string | null = null,
 ): Promise<CartMutationResult> {
   if (!usesCartDatabase()) {
     return fail(CART_DB_REQUIRED);
@@ -318,7 +420,15 @@ export async function addCartItem(
   if (!owner) {
     return fail("The cart could not be opened.");
   }
-  return addCartItemForOwner(owner, slug, quantity, colorId, undefined, wantsEmi);
+  return addCartItemForOwner(
+    owner,
+    slug,
+    quantity,
+    colorId,
+    undefined,
+    wantsEmi,
+    variantId,
+  );
 }
 
 export async function addCartItemForOwner(
@@ -328,13 +438,24 @@ export async function addCartItemForOwner(
   colorId: string | null = null,
   buildMeta?: { buildBatchId: string; builderSlot: BuilderSlot },
   wantsEmi = false,
+  variantId: string | null = null,
 ): Promise<CartMutationResult> {
   const product = await loadSellableProduct(slug);
   if (!product) {
     return fail("That product is not available.");
   }
 
-  const available = availableUnits(product);
+  const resolvedVariant = await resolveCartVariant(product.id, variantId);
+  if (!resolvedVariant.ok) {
+    return fail(resolvedVariant.reason);
+  }
+  const variant = resolvedVariant.variant;
+
+  // A variant sells from its own stock row; the product's row is only the
+  // sum of its variants then (see lib/catalog/variant-stock.ts).
+  const available = variant
+    ? variantAvailableUnits(variant.stock)
+    : availableUnits(product);
   if (available <= 0) {
     return fail("This item cannot be added while it is out of stock.");
   }
@@ -359,7 +480,12 @@ export async function addCartItemForOwner(
   }
 
   const cart = await getOrCreateCart(owner);
-  const existing = await findLine(cart.id, product.id, null, resolvedColorId);
+  const existing = await findLine(
+    cart.id,
+    product.id,
+    variant?.id ?? null,
+    resolvedColorId,
+  );
   if (!existing) {
     const lineCount = await getPrisma().cartItem.count({
       where: { cartId: cart.id },
@@ -388,6 +514,7 @@ export async function addCartItemForOwner(
       data: {
         cartId: cart.id,
         productId: product.id,
+        variantId: variant?.id ?? null,
         colorId: resolvedColorId,
         quantity: capped,
         buildBatchId: buildMeta?.buildBatchId ?? null,
@@ -477,6 +604,7 @@ export async function setCartQuantity(
   slug: string,
   quantity: number,
   colorId: string | null = null,
+  variantId: string | null = null,
 ): Promise<CartMutationResult> {
   if (!usesCartDatabase()) {
     return fail(CART_DB_REQUIRED);
@@ -485,7 +613,7 @@ export async function setCartQuantity(
   if (!owner) {
     return { ok: true, state: EMPTY_CART };
   }
-  return setCartQuantityForOwner(owner, slug, quantity, colorId);
+  return setCartQuantityForOwner(owner, slug, quantity, colorId, variantId);
 }
 
 export async function setCartQuantityForOwner(
@@ -493,6 +621,7 @@ export async function setCartQuantityForOwner(
   slug: string,
   quantity: number,
   colorId: string | null = null,
+  variantId: string | null = null,
 ): Promise<CartMutationResult> {
   const cart = await findCart(owner);
   if (!cart) {
@@ -506,6 +635,7 @@ export async function setCartQuantityForOwner(
         cartId: cart.id,
         product: { slug: slug.trim() },
         colorId,
+        variantId,
       },
     });
     if (stale) {
@@ -514,12 +644,26 @@ export async function setCartQuantityForOwner(
     return { ok: true, state: await loadCartRecord(cart.id) };
   }
 
-  const existing = await findLine(cart.id, product.id, null, colorId);
+  const existing = await findLine(cart.id, product.id, variantId, colorId);
   if (!existing) {
     return { ok: true, state: await loadCartRecord(cart.id) };
   }
 
-  const available = availableUnits(product);
+  let available: number;
+  if (variantId) {
+    const variant = await getPrisma().productVariant.findFirst({
+      where: { id: variantId, productId: product.id, isActive: true },
+      select: { stock: { select: { quantity: true, reserved: true } } },
+    });
+    if (!variant) {
+      // The option was switched off or removed — the line cannot be bought.
+      await getPrisma().cartItem.delete({ where: { id: existing.id } });
+      return { ok: true, state: await loadCartRecord(cart.id) };
+    }
+    available = variantAvailableUnits(variant.stock);
+  } else {
+    available = availableUnits(product);
+  }
   if (available <= 0) {
     return fail("This item is out of stock.");
   }
@@ -535,6 +679,7 @@ export async function setCartQuantityForOwner(
 export async function removeCartItem(
   slug: string,
   colorId: string | null = null,
+  variantId: string | null = null,
 ): Promise<CartMutationResult> {
   if (!usesCartDatabase()) {
     return fail(CART_DB_REQUIRED);
@@ -543,13 +688,14 @@ export async function removeCartItem(
   if (!owner) {
     return { ok: true, state: EMPTY_CART };
   }
-  return removeCartItemForOwner(owner, slug, colorId);
+  return removeCartItemForOwner(owner, slug, colorId, variantId);
 }
 
 export async function removeCartItemForOwner(
   owner: CartOwner,
   slug: string,
   colorId: string | null = null,
+  variantId: string | null = null,
 ): Promise<CartMutationResult> {
   const cart = await findCart(owner);
   if (!cart) {
@@ -561,6 +707,7 @@ export async function removeCartItemForOwner(
       cartId: cart.id,
       product: { slug: slug.trim() },
       colorId,
+      variantId,
     },
   });
 
@@ -741,6 +888,12 @@ export async function mergeGuestCartIntoUser(
               stock: { select: { quantity: true, reserved: true } },
             },
           },
+          variant: {
+            select: {
+              isActive: true,
+              stock: { select: { quantity: true, reserved: true } },
+            },
+          },
         },
       },
     },
@@ -775,7 +928,12 @@ export async function mergeGuestCartIntoUser(
       if (!item.product.isActive) {
         continue;
       }
-      const available = availableUnits(item.product);
+      if (item.variantId && !item.variant?.isActive) {
+        continue;
+      }
+      const available = item.variant
+        ? variantAvailableUnits(item.variant.stock)
+        : availableUnits(item.product);
       if (available <= 0) {
         continue;
       }

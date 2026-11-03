@@ -8669,3 +8669,101 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       Arm / …, ArrowDown+Enter picks the second; the edit page of `p-gpu`
       shows its stored "Component / Graphics Card"; no page errors.
       `tsc --noEmit` + eslint clean.
+
+- [x] AD-388 Real product variants (security-critical: checkout pricing and
+      stock) — operator: a variant can be anything (RAM/ROM, colour, size,
+      inch …), and colour-wise AND storage-wise prices, per-variant images,
+      etc. must be managed "professionally". Before this, `ProductVariant`
+      rows (name/SKU/price/stock) could be saved but were dead data: the
+      storefront never showed them, the cart always wrote `variantId = null`,
+      and checkout charged and reserved the base product.
+
+      Model (additive migration `20261103131127_product_variant_options`):
+      `Product.variantOptionNames String[]` (up to 3, e.g. Color, Storage),
+      `ProductVariant.optionValues String[]` (one per option), `imageSrc`,
+      `position`; `OrderItem.variantName` snapshot. Shared client-safe logic in
+      `lib/catalog/variants.ts` (combinations, option groups, selection rules).
+      Legacy name-only variants read as one implicit "Variant" option, so
+      anything already saved in production keeps working (and becomes
+      selectable — see the deploy note below).
+
+      Admin (`admin-product-variants-fields.tsx`): name up to 3 options (with
+      suggestions), add values as chips (Enter/comma; Enter never submits the
+      form); the table keeps exactly one row per combination as options
+      change — existing rows keep their data, a new combination inherits the
+      row it extends (adding a 2nd option doesn't wipe prices/stock), new rows
+      get an auto SKU. Per row: image (media picker), SKU, price, regular
+      price, stock (shows reserved units), active. Bulk "apply to all" price/
+      regular/stock and "Fill empty SKUs". While any variant is active the
+      product's Special/Regular price and Stock fields are locked and show the
+      cheapest active variant / the variants' total. Server
+      (`parseVariants`/`parseVariantOptionNames`): names unique ≤3, every
+      variant has a value per option, no duplicate combination, SKU unique and
+      ≠ product SKU, price > 0, image a local path or http(s) URL; variants are
+      matched by id first (identity survives a SKU edit), then SKU; the
+      product's price is forced to the cheapest active variant. Quick edit and
+      the stock drawer refuse variant products (`VARIANT_MANAGED_ERROR`).
+
+      Stock: each variant sells from its own `ProductStock` row; the product's
+      row is kept as the SUM of its active variants by
+      `syncVariantAggregateStock` (`lib/catalog/variant-stock.ts`), called
+      after admin saves, order placement and every release/convert/re-reserve
+      in `stock-reservation.ts` (which now groups by product AND variant and
+      moves the variant's row). All four ProductStock writers are covered.
+
+      Storefront: `ProductDetail.variantOptions` / `variantChoices` (effective
+      price with the product's discount window, per-variant stock status and
+      image). The product page shows one chip group per option; it starts on
+      the cheapest in-stock variant (= the card price), every click lands on a
+      real variant (closest match when the exact combination doesn't exist),
+      out-of-stock values are struck through; price, savings, Sale badge,
+      stock pill, SKU and the gallery's lead image follow the selection.
+
+      Cart: `CartLine.variantId` + server-resolved `variant` display data;
+      add/qty/remove/merge all carry the variant; the server requires a
+      variant for a variant product, checks it belongs to the product and is
+      active, caps by the variant's own stock; a switched-off variant drops
+      out. Cart, mini-cart and checkout price lines at the variant price and
+      show "Option: …".
+
+      Checkout (`create-order.ts`), re-checked inside the order transaction:
+      refuses a variant product without an option, a foreign/switched-off
+      variant; locks and checks the VARIANT's stock row; charges the
+      variant's price (product discount window); B2B gets the account % off
+      the variant price (`resolveVariantB2BPricing` — a per-product wholesale
+      row is one figure and can't price 8GB vs 16GB; its minimum quantity
+      still applies); order lines snapshot variantId, variantName and the
+      variant SKU. Order displays (customer order page, admin order,
+      invoice + HTML/QR, confirmation email/HTML) show "Option: …".
+
+      Verified: `prisma validate`, `tsc --noEmit` and eslint clean (the one
+      warning, `shippingZones` in checkout-view, is pre-existing). New
+      `npm run test:variants` — 51 checks against real Postgres (fixtures
+      cleaned up): pure helpers; admin save/price/stock/identity/refusals;
+      product page data; cart rules; checkout charges variant prices, checks
+      the variant's own stock (3 of a variant holding 2 refused although the
+      product total is 10), refuses missing/foreign/switched-off variants,
+      snapshots; release and delivery move the variant rows and the aggregate;
+      B2B = 45000 for a 50000 variant at 10% despite a ৳100 product wholesale
+      row. Mutation check: charging the product price instead fails the suite.
+      Existing suites still pass: inventory 33, stale-orders 36, tax 35,
+      payments 51, privilege 11, hardening 63, product-quick-edit 27,
+      product-gallery 47, product-layout 28, pc-builder 121. Three failures
+      seen are pre-existing at HEAD and in untouched files: security
+      (dangerouslySetInnerHTML in offers/[slug] + marquee bar), coming-soon
+      (looks for a removed price-card class) and listing (product-card has no
+      `{product.sku}`). Headless Chrome with a temp product (deleted after):
+      selector starts on Black/128GB ৳50,000, Blue → ৳52,000, 256GB →
+      ৳57,000 with the variant SKU, struck-through out-of-stock value, Sale
+      badge only on the discounted variant; cart and checkout show "Option:
+      Blue / 256GB" at ৳57,000; admin editor loads options/rows with price and
+      stock locked, typing "512GB"+Enter adds two rows without submitting,
+      auto SKU, total follows, and Save persisted all six variants; a real
+      order's customer page, admin page and invoice all show the option (the
+      order was then released and deleted, the demo customer's three other
+      cart lines restored).
+
+      DEPLOY: run `npx prisma migrate deploy` on the server after pulling.
+      Products that already have variants in production will start showing a
+      selector (one "Variant" option of their names) and require a choice —
+      check them in the admin form.

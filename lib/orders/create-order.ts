@@ -39,7 +39,11 @@ import {
   deriveStockStatus,
 } from "@/lib/catalog/inventory-input";
 import { toDbStockStatus } from "@/lib/data/prisma/mappers";
-import { resolveB2BPricing } from "@/lib/b2b/pricing";
+import {
+  resolveB2BPricing,
+  resolveVariantB2BPricing,
+} from "@/lib/b2b/pricing";
+import { syncVariantAggregateStock } from "@/lib/catalog/variant-stock";
 import { getPrisma } from "@/lib/db/prisma";
 import { getStoreOperationsSettings } from "@/lib/business/operations-config";
 import { computeOrderTax } from "@/lib/business/tax";
@@ -167,6 +171,25 @@ export async function placeCustomerOrderForUser(
             orderBy: { createdAt: "asc" },
             include: {
               color: { select: { name: true, hex: true } },
+              variant: {
+                select: {
+                  id: true,
+                  productId: true,
+                  name: true,
+                  sku: true,
+                  isActive: true,
+                  priceAmount: true,
+                  compareAtAmount: true,
+                  stock: {
+                    select: {
+                      id: true,
+                      quantity: true,
+                      reserved: true,
+                      lowStockThreshold: true,
+                    },
+                  },
+                },
+              },
               product: {
                 select: {
                   id: true,
@@ -230,10 +253,15 @@ export async function placeCustomerOrderForUser(
       // each hold the lock the other wanted — a deadlock Postgres resolves by
       // aborting one checkout. De-duplication also matters now that several
       // cart lines can share one stock row (see DSA-01).
+      // A variant line sells from its variant's own row (AD-388), so that is
+      // the row to lock; the product-level row is then only an aggregate,
+      // re-derived after the reservations below.
       const stockIds = [
         ...new Set(
           locked.items
-            .map((item) => item.product.stock?.id)
+            .map((item) =>
+              item.variantId ? item.variant?.stock?.id : item.product.stock?.id,
+            )
             .filter((id): id is string => Boolean(id)),
         ),
       ].sort();
@@ -287,6 +315,8 @@ export async function placeCustomerOrderForUser(
 
       const lines: {
         productId: string;
+        variantId: string | null;
+        variantName: string | null;
         slug: string;
         name: string;
         sku: string;
@@ -329,6 +359,28 @@ export async function placeCustomerOrderForUser(
             `Choose a colour for ${product.name} before placing the order.`,
           );
         }
+        // Re-checked here, inside the order transaction, whatever the cart
+        // said: a product with active variants can only be bought as one of
+        // them, and the variant must still be active and belong to it.
+        const activeVariants = await tx.productVariant.count({
+          where: { productId: product.id, isActive: true },
+        });
+        const variant = item.variant;
+        if (variant) {
+          if (variant.productId !== product.id || !variant.isActive) {
+            throw new OrderPlaceError(
+              `The option chosen for ${product.name} is no longer available.`,
+            );
+          }
+        } else if (item.variantId) {
+          throw new OrderPlaceError(
+            `The option chosen for ${product.name} is no longer available.`,
+          );
+        } else if (activeVariants > 0) {
+          throw new OrderPlaceError(
+            `Choose an option for ${product.name} before placing the order.`,
+          );
+        }
         const quantity = item.quantity;
         if (
           !Number.isInteger(quantity) ||
@@ -337,7 +389,7 @@ export async function placeCustomerOrderForUser(
         ) {
           throw new OrderPlaceError("A cart quantity is not valid.");
         }
-        const stockRow = product.stock;
+        const stockRow = variant ? variant.stock : product.stock;
         if (!stockRow) {
           throw new OrderPlaceError(
             `${product.name} is not available to order.`,
@@ -362,12 +414,13 @@ export async function placeCustomerOrderForUser(
           );
         }
         claimedByStock.set(stock.id, alreadyClaimed + quantity);
-        if (product.priceAmount < 0) {
+        const basePrice = variant ?? product;
+        if (basePrice.priceAmount < 0) {
           throw new OrderPlaceError("A product price is not valid.");
         }
         const priced = effectiveStorefrontPricing({
-          priceAmount: product.priceAmount,
-          compareAtAmount: product.compareAtAmount,
+          priceAmount: basePrice.priceAmount,
+          compareAtAmount: basePrice.compareAtAmount,
           discountStartsAt: product.discountStartsAt,
           discountEndsAt: product.discountEndsAt,
           isSale: product.isSale,
@@ -375,11 +428,12 @@ export async function placeCustomerOrderForUser(
 
         let unitAmount = priced.priceAmount;
         if (b2bActive) {
-          const b2bPricing = resolveB2BPricing({
-            retail: { amount: priced.priceAmount, currency: "BDT" },
-            discountPercent: b2bAccount?.discountPercent ?? 0,
-            terms: b2bTermsByProduct.get(product.id) ?? null,
-          });
+          const retail = { amount: priced.priceAmount, currency: "BDT" as const };
+          const discountPercent = b2bAccount?.discountPercent ?? 0;
+          const terms = b2bTermsByProduct.get(product.id) ?? null;
+          const b2bPricing = variant
+            ? resolveVariantB2BPricing({ retail, discountPercent, terms })
+            : resolveB2BPricing({ retail, discountPercent, terms });
           if (quantity < b2bPricing.minQuantity) {
             throw new OrderPlaceError(
               `${product.name} has a wholesale minimum of ${b2bPricing.minQuantity} — update the quantity in your cart.`,
@@ -390,9 +444,11 @@ export async function placeCustomerOrderForUser(
 
         lines.push({
           productId: product.id,
+          variantId: variant?.id ?? null,
+          variantName: variant?.name ?? null,
           slug: product.slug,
           name: product.name,
-          sku: product.sku,
+          sku: variant?.sku ?? product.sku,
           quantity,
           unitAmount,
           totalAmount: unitAmount * quantity,
@@ -527,6 +583,8 @@ export async function placeCustomerOrderForUser(
               items: {
                 create: lines.map((line) => ({
                   productId: line.productId,
+                  variantId: line.variantId,
+                  variantName: line.variantName,
                   productName: line.name,
                   sku: line.sku,
                   unitAmount: line.unitAmount,
@@ -596,6 +654,10 @@ export async function placeCustomerOrderForUser(
           continue;
         }
         seenProducts.add(line.productId);
+        // The product row of a variant product is the sum of its variants.
+        if (await syncVariantAggregateStock(tx, line.productId)) {
+          continue;
+        }
         const status = deriveStockStatus(
           line.quantityOnHand,
           line.reserved + (claimedByStock.get(line.stockId) ?? 0),

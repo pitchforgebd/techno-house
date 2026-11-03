@@ -535,6 +535,11 @@ model Product {
   /// SSD/HDD <-> motherboard interface (AD-276). "NVMe" | "SATA".
   builderStorageInterface String?
 
+  /// Variant option names in display order (AD-388), e.g. ["Color",
+  /// "Storage"]. Each ProductVariant.optionValues lines up with this. Empty
+  /// with variants present = legacy name-only variants (one implicit option).
+  variantOptionNames String[] @default([])
+
   /// Optional YouTube watch / Shorts / youtu.be URL for the product page.
   youtubeUrl           String?
   /// Local public path or https URL to a PDF specification sheet.
@@ -601,7 +606,14 @@ model ProductVariant {
   id              String   @id @default(cuid())
   productId       String
   sku             String   @unique
+  /// Display name — the option values joined ("Black / 256GB") when the
+  /// product has variant options, otherwise typed by hand (legacy).
   name            String
+  /// One value per Product.variantOptionNames entry, same order (AD-388).
+  optionValues    String[] @default([])
+  /// Shown first in the product gallery while this variant is selected.
+  imageSrc        String?
+  position        Int      @default(0)
   priceAmount     Int
   compareAtAmount Int?
   isActive        Boolean  @default(true)
@@ -1033,6 +1045,8 @@ model OrderItem {
   /// Selected colour snapshot (name + optional hex) when ordered.
   colorName   String?
   colorHex    String?
+  /// Selected variant snapshot ("Black / 256GB") when ordered (AD-388).
+  variantName String?
   /// Set when this line came from "Add build to cart" (AD-276) — real PC
   /// Builder order traceability, carried from the cart line at checkout.
   buildBatchId String?

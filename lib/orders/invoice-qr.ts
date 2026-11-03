@@ -37,6 +37,7 @@ export type InvoiceQrSource = {
     unitAmount: number;
     totalAmount: number;
     colorName?: string | null;
+    variantName?: string | null;
   }[];
   store: {
     storeName: string;
@@ -113,6 +114,7 @@ export function invoiceQrSourceFromOrder(order: AdminOrder): InvoiceQrSource {
       unitAmount: line.unitPrice.amount,
       totalAmount: line.unitPrice.amount * line.quantity,
       colorName: line.colorName,
+      variantName: line.variantName ?? null,
     })),
     store: {
       storeName: "Techno House",
@@ -140,7 +142,8 @@ export function buildInvoiceQrPayload(source: InvoiceQrSource): string {
 
   const itemLines = source.lines.slice(0, MAX_LINES).map((line, index) => {
     const color = line.colorName ? ` [${line.colorName}]` : "";
-    return `${index + 1}. ${line.productName}${color} ×${line.quantity} · ${money(line.totalAmount)} (SKU ${line.sku})`;
+    const option = line.variantName ? ` (${line.variantName})` : "";
+    return `${index + 1}. ${line.productName}${option}${color} ×${line.quantity} · ${money(line.totalAmount)} (SKU ${line.sku})`;
   });
   if (source.lines.length > MAX_LINES) {
     itemLines.push(`… +${source.lines.length - MAX_LINES} more item(s)`);

@@ -216,6 +216,11 @@ export function AdminOrderInvoiceView({
                         Colour: {line.colorName}
                       </p>
                     ) : null}
+                    {line.variantName ? (
+                      <p className="text-xs text-neutral-600">
+                        Option: {line.variantName}
+                      </p>
+                    ) : null}
                     <p className="text-xs text-neutral-500">{line.sku}</p>
                   </td>
                   <td className="py-2.5 px-1 text-right align-top tabular-nums">

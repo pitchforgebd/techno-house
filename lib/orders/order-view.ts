@@ -24,6 +24,8 @@ export type CustomerOrderItemView = {
   totalAmount: number;
   colorName: string | null;
   colorHex: string | null;
+  /** Chosen variant snapshot ("Black / 256GB"), AD-388. */
+  variantName: string | null;
 };
 
 export type CustomerOrderView = {

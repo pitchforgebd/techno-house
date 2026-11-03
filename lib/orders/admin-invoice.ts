@@ -15,6 +15,7 @@ export type AdminInvoiceLine = {
   totalAmount: number;
   colorName: string | null;
   colorHex: string | null;
+  variantName: string | null;
   /** Post-placement per-line discount (AD-379) — 0 unless an admin applied
    * one. The line's own "price actually charged" is `totalAmount -
    * discountAmount`, shown instead of `totalAmount` whenever it's set. */
@@ -134,6 +135,7 @@ export async function getAdminOrderInvoice(
           totalAmount: true,
           colorName: true,
           colorHex: true,
+          variantName: true,
           discountAmount: true,
         },
       },

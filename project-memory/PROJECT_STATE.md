@@ -46,7 +46,10 @@ form uses), and AD-385 (mega-menu brand flyout: hover bridge, close/switch
 delays, menu-aim, and single-column panels no longer open it off-screen),
 and AD-386 (product form warranty dropdown reads the real ProductWarranty
 presets and saves by id), and AD-387 (searchable Main category /
-Subcategory / Related categories pickers on the product form) are also
+Subcategory / Related categories pickers on the product form), and
+AD-388 (real product variants: up to 3 options per product, per-variant
+price/stock/image, product page selector, variant-aware cart/checkout/stock
+lifecycle — needs `prisma migrate deploy` on the server) are also
 complete — full detail in `project-memory/TASKS.md`,
 not narrated here.
 

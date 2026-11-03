@@ -19,26 +19,56 @@
  * read-modify-write, so it is safe under concurrency and can never drive a row
  * past the `ProductStock_reserved_within_quantity` constraint.
  */
+import { syncVariantAggregateStock } from "@/lib/catalog/variant-stock";
 import type { Prisma } from "@/lib/generated/prisma/client";
 
-/** Units this order claimed, summed per product. */
-async function claimedUnitsByProduct(
+/**
+ * Units this order claimed, per stock row it drew on: a variant line on its
+ * variant's row, any other line on its product's row (AD-388).
+ */
+type ClaimedUnits = {
+  productId: string;
+  variantId: string | null;
+  quantity: number;
+};
+
+async function claimedUnits(
   tx: Prisma.TransactionClient,
   orderId: string,
-): Promise<Map<string, number>> {
+): Promise<ClaimedUnits[]> {
   const rows = await tx.orderItem.groupBy({
-    by: ["productId"],
+    by: ["productId", "variantId"],
     where: { orderId, productId: { not: null } },
     _sum: { quantity: true },
   });
-  const byProduct = new Map<string, number>();
+  const claimed: ClaimedUnits[] = [];
   for (const row of rows) {
     const quantity = row._sum.quantity ?? 0;
     if (row.productId && quantity > 0) {
-      byProduct.set(row.productId, quantity);
+      claimed.push({
+        productId: row.productId,
+        variantId: row.variantId,
+        quantity,
+      });
     }
   }
-  return byProduct;
+  return claimed;
+}
+
+/**
+ * A variant product's own row is the sum of its variants', so it is
+ * re-derived after any of them moves rather than adjusted separately.
+ */
+async function resyncVariantProducts(
+  tx: Prisma.TransactionClient,
+  claimed: ClaimedUnits[],
+): Promise<void> {
+  const productIds = new Set(
+    claimed.filter((entry) => entry.variantId).map((entry) => entry.productId),
+  );
+  for (const productId of productIds) {
+    await syncVariantAggregateStock(tx, productId);
+  }
 }
 
 /**
@@ -50,15 +80,24 @@ async function claimedUnitsByProduct(
  */
 async function releaseUnits(
   tx: Prisma.TransactionClient,
-  byProduct: Map<string, number>,
+  claimed: ClaimedUnits[],
 ): Promise<void> {
-  for (const [productId, quantity] of byProduct) {
-    await tx.$executeRaw`
-      UPDATE "ProductStock"
-      SET "reserved" = GREATEST(0, "reserved" - ${quantity})
-      WHERE "productId" = ${productId}
-    `;
+  for (const { productId, variantId, quantity } of claimed) {
+    if (variantId) {
+      await tx.$executeRaw`
+        UPDATE "ProductStock"
+        SET "reserved" = GREATEST(0, "reserved" - ${quantity})
+        WHERE "variantId" = ${variantId}
+      `;
+    } else {
+      await tx.$executeRaw`
+        UPDATE "ProductStock"
+        SET "reserved" = GREATEST(0, "reserved" - ${quantity})
+        WHERE "productId" = ${productId}
+      `;
+    }
   }
+  await resyncVariantProducts(tx, claimed);
 }
 
 /**
@@ -69,30 +108,49 @@ async function releaseUnits(
  */
 async function convertUnits(
   tx: Prisma.TransactionClient,
-  byProduct: Map<string, number>,
+  claimed: ClaimedUnits[],
 ): Promise<void> {
-  for (const [productId, quantity] of byProduct) {
-    await tx.$executeRaw`
-      UPDATE "ProductStock"
-      SET "reserved" = GREATEST(0, "reserved" - ${quantity}),
-          "quantity" = GREATEST(0, "quantity" - ${quantity})
-      WHERE "productId" = ${productId}
-    `;
+  for (const { productId, variantId, quantity } of claimed) {
+    if (variantId) {
+      await tx.$executeRaw`
+        UPDATE "ProductStock"
+        SET "reserved" = GREATEST(0, "reserved" - ${quantity}),
+            "quantity" = GREATEST(0, "quantity" - ${quantity})
+        WHERE "variantId" = ${variantId}
+      `;
+    } else {
+      await tx.$executeRaw`
+        UPDATE "ProductStock"
+        SET "reserved" = GREATEST(0, "reserved" - ${quantity}),
+            "quantity" = GREATEST(0, "quantity" - ${quantity})
+        WHERE "productId" = ${productId}
+      `;
+    }
   }
+  await resyncVariantProducts(tx, claimed);
 }
 
 /** Re-claims units, used when a cancelled order is reopened. */
 async function reserveUnits(
   tx: Prisma.TransactionClient,
-  byProduct: Map<string, number>,
+  claimed: ClaimedUnits[],
 ): Promise<void> {
-  for (const [productId, quantity] of byProduct) {
-    await tx.$executeRaw`
-      UPDATE "ProductStock"
-      SET "reserved" = LEAST("quantity", "reserved" + ${quantity})
-      WHERE "productId" = ${productId}
-    `;
+  for (const { productId, variantId, quantity } of claimed) {
+    if (variantId) {
+      await tx.$executeRaw`
+        UPDATE "ProductStock"
+        SET "reserved" = LEAST("quantity", "reserved" + ${quantity})
+        WHERE "variantId" = ${variantId}
+      `;
+    } else {
+      await tx.$executeRaw`
+        UPDATE "ProductStock"
+        SET "reserved" = LEAST("quantity", "reserved" + ${quantity})
+        WHERE "productId" = ${productId}
+      `;
+    }
   }
+  await resyncVariantProducts(tx, claimed);
 }
 
 /**
@@ -123,7 +181,7 @@ export async function releaseOrderStock(
   if (!(await claimTransition(tx, orderId, "RESERVED", "RELEASED"))) {
     return false;
   }
-  await releaseUnits(tx, await claimedUnitsByProduct(tx, orderId));
+  await releaseUnits(tx, await claimedUnits(tx, orderId));
   return true;
 }
 
@@ -139,7 +197,7 @@ export async function convertOrderStock(
   if (!(await claimTransition(tx, orderId, "RESERVED", "CONVERTED"))) {
     return false;
   }
-  await convertUnits(tx, await claimedUnitsByProduct(tx, orderId));
+  await convertUnits(tx, await claimedUnits(tx, orderId));
   return true;
 }
 
@@ -155,6 +213,6 @@ export async function reReserveOrderStock(
   if (!(await claimTransition(tx, orderId, "RELEASED", "RESERVED"))) {
     return false;
   }
-  await reserveUnits(tx, await claimedUnitsByProduct(tx, orderId));
+  await reserveUnits(tx, await claimedUnits(tx, orderId));
   return true;
 }

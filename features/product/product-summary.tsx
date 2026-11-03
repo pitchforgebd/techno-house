@@ -29,10 +29,22 @@ import { ProductShareBar } from "@/features/product/product-share-bar";
 import { RatingStars } from "@/features/product/rating-stars";
 import {
   resolveB2BPricing,
+  resolveVariantB2BPricing,
   type B2BProductTerms,
 } from "@/lib/b2b/pricing";
 import type { B2BStatus } from "@/lib/generated/prisma/enums";
-import type { Money, ProductColorOption, StockStatus } from "@/lib/data";
+import type {
+  Money,
+  ProductColorOption,
+  ProductVariantChoice,
+  StockStatus,
+} from "@/lib/data";
+import {
+  findVariantBySelection,
+  normalizeVariantValue,
+  selectVariantValue,
+  variantValueState,
+} from "@/lib/catalog/variants";
 import type { AdminEmiConfig } from "@/lib/payments/emi-shared";
 import { cartItemCount, cartLineKey } from "@/lib/cart/cart";
 import { formatMoney } from "@/lib/format/currency";
@@ -63,6 +75,12 @@ type ProductSummaryProps = {
   colors: ProductColorOption[];
   selectedColorId?: string | null;
   onSelectedColorIdChange?: (colorId: string | null) => void;
+  /** Variant option groups and the active variants (AD-388). With any,
+   * the price, stock, SKU and cart line are the selected variant's. */
+  variantOptions?: { name: string; values: string[] }[];
+  variantChoices?: ProductVariantChoice[];
+  selectedVariantId?: string | null;
+  onSelectedVariantIdChange?: (variantId: string | null) => void;
   discountStartsAt?: string | null;
   discountEndsAt?: string | null;
   /** Digits only, wa.me-ready — same source as the floating chat widget. */
@@ -141,13 +159,13 @@ export function ProductSummary({
   slug,
   categorySlug,
   brandName,
-  sku,
+  sku: productSku,
   name,
-  price,
-  compareAtPrice,
-  stockStatus,
+  price: productPrice,
+  compareAtPrice: productCompareAtPrice,
+  stockStatus: productStockStatus,
   isNew,
-  isSale,
+  isSale: productIsSale,
   warrantyLabel,
   overviewHtml,
   averageRating,
@@ -155,6 +173,10 @@ export function ProductSummary({
   colors,
   selectedColorId: selectedColorIdProp,
   onSelectedColorIdChange,
+  variantOptions = [],
+  variantChoices = [],
+  selectedVariantId: selectedVariantIdProp = null,
+  onSelectedVariantIdChange,
   discountStartsAt = null,
   discountEndsAt = null,
   whatsappNumber = null,
@@ -199,6 +221,34 @@ export function ProductSummary({
       setInternalColorId(next);
     }
   }
+  const [internalVariantId, setInternalVariantId] = useState<string | null>(
+    variantChoices[0]?.id ?? null,
+  );
+  const selectedVariantId =
+    onSelectedVariantIdChange != null ? selectedVariantIdProp : internalVariantId;
+  function setSelectedVariantId(next: string | null) {
+    if (onSelectedVariantIdChange) {
+      onSelectedVariantIdChange(next);
+    } else {
+      setInternalVariantId(next);
+    }
+  }
+  const selectedVariant =
+    variantChoices.find((choice) => choice.id === selectedVariantId) ?? null;
+  const needsVariant = variantChoices.length > 0;
+  // Everything below prices, stocks and identifies the selected variant
+  // when the product has variants, and the product itself otherwise.
+  const price = selectedVariant?.price ?? productPrice;
+  const compareAtPrice = selectedVariant
+    ? selectedVariant.compareAtPrice
+    : productCompareAtPrice;
+  const stockStatus = selectedVariant?.stockStatus ?? productStockStatus;
+  const sku = selectedVariant?.sku ?? productSku;
+  // The product's flag is set when ANY variant is discounted; the badge
+  // must speak for the one on screen.
+  const isSale = selectedVariant
+    ? selectedVariant.compareAtPrice != null
+    : productIsSale;
   const [b2bOpen, setB2bOpen] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const [compareMessage, setCompareMessage] = useState<string | null>(null);
@@ -220,7 +270,11 @@ export function ProductSummary({
   const inCart = cartState.lines.some(
     (line) =>
       cartLineKey(line) ===
-      cartLineKey({ slug, colorId: selectedColorId }),
+      cartLineKey({
+        slug,
+        colorId: selectedColorId,
+        variantId: selectedVariant?.id ?? null,
+      }),
   );
   const cartCount = cartItemCount(cartState);
   const onWishlist = listState.wishlist.includes(slug);
@@ -229,8 +283,10 @@ export function ProductSummary({
   const b2bActive = b2bAccount?.status === "ACTIVE";
   // A per-product wholesale row wins over the account's flat discount; only a
   // verified account sees either.
+  // Same rule as checkout: a per-product wholesale price can't price a
+  // variant, so variants get the account percentage (resolveVariantB2BPricing).
   const b2bPricing = b2bActive
-    ? resolveB2BPricing({
+    ? (selectedVariant ? resolveVariantB2BPricing : resolveB2BPricing)({
         retail: price,
         discountPercent: b2bAccount?.discountPercent ?? 0,
         terms: b2bTerms,
@@ -287,6 +343,13 @@ export function ProductSummary({
       });
       return;
     }
+    if (needsVariant && !selectedVariant) {
+      notifyError({
+        title: "Choose an option",
+        description: "Select an option before adding this product to cart.",
+      });
+      return;
+    }
     if (quantity < minQuantity) {
       notifyError({
         title: "Below the wholesale minimum",
@@ -303,6 +366,15 @@ export function ProductSummary({
         colorId: selectedColor?.id ?? null,
         colorName: selectedColor?.name ?? null,
         colorHex: selectedColor?.hex ?? null,
+        variantId: selectedVariant?.id ?? null,
+        variant: selectedVariant
+          ? {
+              name: selectedVariant.name,
+              priceAmount: selectedVariant.price.amount,
+              compareAtAmount: selectedVariant.compareAtPrice?.amount ?? null,
+              imageSrc: selectedVariant.image?.src ?? null,
+            }
+          : null,
       },
       emiSelected,
     ).then((result) => {
@@ -324,6 +396,93 @@ export function ProductSummary({
       description: `${warrantyLabel}. Branch stock checks are display-only in this build.`,
     });
   }
+
+  // Option groups ("Storage: 128GB 256GB …"). Every click lands on a real
+  // variant (`selectVariantValue` jumps to the closest one when the exact
+  // combination doesn't exist); an out-of-stock value stays clickable but
+  // is struck through, a combination that doesn't exist is dimmed.
+  const variantSelectorChoices = variantChoices.map((choice) => ({
+    id: choice.id,
+    values: choice.values,
+    priceAmount: choice.price.amount,
+    available: choice.stockStatus !== "out_of_stock",
+  }));
+  const selectedValues: (string | null)[] = variantOptions.map(
+    (_, index) => selectedVariant?.values[index] ?? null,
+  );
+  const variantSelector =
+    variantOptions.length > 0 ? (
+      <div className="space-y-3">
+        {variantOptions.map((option, optionIndex) => (
+          <div key={option.name} className="space-y-1.5">
+            <p className="text-label text-text">
+              <span className="font-semibold">{option.name}:</span>{" "}
+              <span className="text-text-muted">
+                {selectedValues[optionIndex] ?? "Choose one"}
+              </span>
+            </p>
+            <div
+              className="flex flex-wrap gap-2"
+              role="radiogroup"
+              aria-label={option.name}
+            >
+              {option.values.map((value) => {
+                const selected =
+                  normalizeVariantValue(selectedValues[optionIndex] ?? "") ===
+                  normalizeVariantValue(value);
+                const state = variantValueState(
+                  variantSelectorChoices,
+                  selectedValues,
+                  optionIndex,
+                  value,
+                );
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    title={
+                      state === "out_of_stock"
+                        ? `${value} — out of stock`
+                        : state === "unavailable"
+                          ? `${value} — not available with the current choice`
+                          : value
+                    }
+                    onClick={() => {
+                      const next = selectVariantValue(
+                        variantSelectorChoices,
+                        selectedValues,
+                        optionIndex,
+                        value,
+                      );
+                      const match = findVariantBySelection(
+                        variantSelectorChoices,
+                        next,
+                      );
+                      if (match) {
+                        setSelectedVariantId(match.id);
+                        setJustAdded(false);
+                      }
+                    }}
+                    className={cn(
+                      "min-h-9 rounded-md border px-3 py-1.5 text-label font-medium transition-colors",
+                      selected
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border bg-surface text-text hover:border-primary/40",
+                      state === "out_of_stock" && "text-text-muted line-through",
+                      state === "unavailable" && !selected && "opacity-50",
+                    )}
+                  >
+                    {value}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : null;
 
   // One element, rendered in two places (see `lg:hidden` / `hidden lg:block`
   // below); only one of them is ever displayed, and both share this state.
@@ -648,6 +807,8 @@ export function ProductSummary({
 
         {/* Below `xl` the colour options stay in the buy box, before the cart
             controls; from `xl` they move to their own column (see below). */}
+        {variantSelector}
+
         {colorVariations ? <div className="xl:hidden">{colorVariations}</div> : null}
 
         {minQuantity > 1 ? (

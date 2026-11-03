@@ -15,7 +15,12 @@ import { CartCouponForm } from "@/features/cart/cart-coupon-form";
 import { useCartStore } from "@/features/cart/use-cart-store";
 import { useCustomerSession } from "@/features/account/customer-session-provider";
 import type { ProductSummary } from "@/lib/data";
-import { cartItemCount, cartLineKey, MAX_LINE_QTY } from "@/lib/cart/cart";
+import {
+  cartItemCount,
+  cartLineKey,
+  cartLineUnitAmount,
+  MAX_LINE_QTY,
+} from "@/lib/cart/cart";
 import { loginHref } from "@/lib/account/return-path";
 import { applyCouponToSubtotal } from "@/lib/cart/coupons";
 import { formatMoney } from "@/lib/format/currency";
@@ -54,6 +59,7 @@ export function CartView({
     slug: string,
     name: string,
     colorId: string | null,
+    variantId: string | null,
   ) {
     const ok = await confirm({
       title: "Remove item?",
@@ -63,7 +69,7 @@ export function CartView({
       tone: "danger",
     });
     if (ok) {
-      removeItem(slug, colorId);
+      removeItem(slug, colorId, variantId);
       notifySuccess({
         title: "Removed",
         description: "Item removed from your cart.",
@@ -106,7 +112,8 @@ export function CartView({
       return {
         line,
         product,
-        lineTotal: product.price.amount * line.quantity,
+        unitAmount: cartLineUnitAmount(line, product.price.amount),
+        lineTotal: cartLineUnitAmount(line, product.price.amount) * line.quantity,
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
@@ -193,7 +200,7 @@ export function CartView({
             </div>
 
             <ul className="divide-y divide-border">
-              {rows.map(({ line, product, lineTotal }) => (
+              {rows.map(({ line, product, unitAmount, lineTotal }) => (
                 <li
                   key={cartLineKey(line)}
                   className="flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap"
@@ -203,8 +210,12 @@ export function CartView({
                     className="relative size-16 shrink-0 overflow-hidden border border-border bg-surface-muted sm:size-20"
                   >
                     <Image
-                      src={product.image.src}
-                      alt={product.image.alt}
+                      src={line.variant?.imageSrc ?? product.image.src}
+                      alt={
+                        line.variant
+                          ? `${product.name} — ${line.variant.name}`
+                          : product.image.alt
+                      }
                       fill
                       sizes="80px"
                       className="object-contain p-1.5"
@@ -230,8 +241,16 @@ export function CartView({
                         Colour: {line.colorName}
                       </p>
                     ) : null}
+                    {line.variant ? (
+                      <p className="mt-0.5 text-caption text-text-muted">
+                        Option:{" "}
+                        <span className="font-medium text-text">
+                          {line.variant.name}
+                        </span>
+                      </p>
+                    ) : null}
                     <p className="mt-1 text-caption tabular-nums text-text-muted">
-                      {formatMoney(product.price)}
+                      {formatMoney({ amount: unitAmount })}
                     </p>
                   </div>
 
@@ -247,6 +266,7 @@ export function CartView({
                             line.slug,
                             line.quantity - 1,
                             line.colorId,
+                            line.variantId,
                           )
                         }
                       >
@@ -265,6 +285,7 @@ export function CartView({
                             line.slug,
                             line.quantity + 1,
                             line.colorId,
+                            line.variantId,
                           )
                         }
                       >
@@ -289,6 +310,7 @@ export function CartView({
                           line.slug,
                           product.name,
                           line.colorId,
+                          line.variantId,
                         );
                       }}
                     >

@@ -44,6 +44,13 @@ import type {
   ParsedSpecGroup,
   SpecGroupInputFields,
 } from "@/lib/catalog/spec-group-input";
+import {
+  VARIANT_OPTION_MAX,
+  VARIANT_OPTION_NAME_MAX,
+  VARIANT_OPTION_VALUE_MAX,
+  variantComboKey,
+  variantDisplayName,
+} from "@/lib/catalog/variants";
 
 export const PRODUCT_NAME_MAX = 200;
 export const PRODUCT_SLUG_MAX = 80;
@@ -55,7 +62,8 @@ export const PRODUCT_OVERVIEW_MAX = 8_000;
 export const PRODUCT_OVERVIEW_PARAGRAPHS = 12;
 /** Same cap as the other rich-text admin fields (category SEO content). */
 export const PRODUCT_CONTENT_HTML_MAX = 60_000;
-export const PRODUCT_VARIANT_MAX = 20;
+/** Room for a full 3-option grid (e.g. 4 colours x 4 storages x 3 RAMs). */
+export const PRODUCT_VARIANT_MAX = 60;
 export const PRODUCT_WARRANTY_MAX = 80;
 /** Max length of one builder attribute's stored string — now a comma-joined list (AD-346). */
 export const BUILDER_ATTR_MAX = 120;
@@ -144,21 +152,33 @@ export function parseOverview(value: string): string[] | string {
 }
 
 export type ProductVariantInputFields = {
+  /** Existing row id when editing — keeps the variant (and the cart lines
+   * and order history pointing at it) when its SKU is changed. */
+  id?: string;
+  /** Typed name; ignored (derived from `optionValues`) when the product
+   * has variant options. */
   name: string;
+  /** One value per `ProductInputFields.variantOptionNames` entry. */
+  optionValues?: string[];
   sku: string;
   price: string;
   compareAt: string;
   isActive: boolean;
   quantity: string;
+  /** Media-library path or http(s) URL; blank = no variant image. */
+  imageSrc?: string;
 };
 
 export type ParsedProductVariant = {
+  id: string | null;
   name: string;
+  optionValues: string[];
   sku: string;
   priceAmount: number;
   compareAtAmount: number | null;
   isActive: boolean;
   quantity: number;
+  imageSrc: string | null;
 };
 
 export type ProductInputFields = {
@@ -215,6 +235,8 @@ export type ProductInputFields = {
    * clear a section — see `saveAdminProduct`.
    */
   variants?: ProductVariantInputFields[];
+  /** Variant option names ("Color", "Storage"); read with `variants`. */
+  variantOptionNames?: string[];
   attributes?: ProductAttributeInputFields[];
   colors?: ProductColorInputFields[];
   specGroups?: SpecGroupInputFields[];
@@ -268,6 +290,8 @@ export type ParsedProductInput = {
   relatedProductIds: string[];
   /** `undefined` = leave whatever this product already has untouched. */
   variants?: ParsedProductVariant[];
+  /** Set exactly when `variants` is. */
+  variantOptionNames?: string[];
   attributes?: ParsedProductAttribute[];
   colors?: ParsedProductColor[];
   specGroups?: ParsedSpecGroup[];
@@ -284,9 +308,76 @@ export function normalizeSku(value: string): string {
   return value.trim().replace(/\s+/g, "-").slice(0, PRODUCT_SKU_MAX);
 }
 
+/**
+ * A product image source as staff may enter it: a local public path
+ * (`/uploads/…`) or an http(s) URL. `null` = blank (clear it), `undefined`
+ * = not acceptable.
+ */
+export function normalizeProductImageSrc(raw: string): string | null | undefined {
+  const value = raw.trim();
+  if (!value) {
+    return null;
+  }
+  if (value.includes("..") || value.includes("\\")) {
+    return undefined;
+  }
+  // Local public path: /products/…, /uploads/…, etc.
+  if (value.startsWith("/") && !value.startsWith("//")) {
+    return value.slice(0, 240);
+  }
+  // Absolute http(s) — seeded catalogue images use Unsplash (and similar)
+  // CDNs. Staff can keep those when editing other fields, or replace with
+  // a media-library local path.
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return undefined;
+    }
+    if (!url.hostname) {
+      return undefined;
+    }
+    return value.slice(0, 500);
+  } catch {
+    return undefined;
+  }
+}
+
+function collapseSpaces(value: string): string {
+  return value.trim().split(/\s+/).join(" ");
+}
+
+/** Variant option names: trimmed, non-empty, unique, at most three. */
+export function parseVariantOptionNames(
+  raw: string[] | undefined,
+): { ok: true; value: string[] } | { ok: false; formError: string } {
+  const names = (raw ?? []).map(collapseSpaces);
+  if (names.length > VARIANT_OPTION_MAX) {
+    return {
+      ok: false,
+      formError: `A product can have at most ${VARIANT_OPTION_MAX} variant options.`,
+    };
+  }
+  const seen = new Set<string>();
+  for (const name of names) {
+    if (!name) {
+      return { ok: false, formError: "Each variant option needs a name." };
+    }
+    if (name.length > VARIANT_OPTION_NAME_MAX) {
+      return { ok: false, formError: "A variant option name is too long." };
+    }
+    const key = name.toLowerCase();
+    if (seen.has(key)) {
+      return { ok: false, formError: "Variant option names must be unique." };
+    }
+    seen.add(key);
+  }
+  return { ok: true, value: names };
+}
+
 export function parseVariants(
   rows: ProductVariantInputFields[],
   productSku: string,
+  optionNames: string[] = [],
 ):
   | { ok: true; value: ParsedProductVariant[] }
   | { ok: false; formError: string } {
@@ -299,15 +390,44 @@ export function parseVariants(
 
   const variants: ParsedProductVariant[] = [];
   const seen = new Set<string>([productSku.toLowerCase()]);
+  const seenCombos = new Set<string>();
+  const usesOptions = optionNames.length > 0;
 
   for (const row of rows) {
-    const name = row.name.trim();
+    const values = (row.optionValues ?? []).map(collapseSpaces);
+    const typedName = row.name.trim();
     const sku = normalizeSku(row.sku);
     const priceRaw = row.price.trim();
     const compareRaw = row.compareAt.trim();
     const quantityRaw = row.quantity.trim();
-    if (!name && !sku && !priceRaw && !compareRaw && !quantityRaw) {
+    if (
+      !usesOptions &&
+      !typedName &&
+      !sku &&
+      !priceRaw &&
+      !compareRaw &&
+      !quantityRaw
+    ) {
       continue;
+    }
+
+    let name = typedName;
+    let optionValues: string[] = [];
+    if (usesOptions) {
+      if (
+        values.length !== optionNames.length ||
+        values.some((value) => !value)
+      ) {
+        return {
+          ok: false,
+          formError: `Each variant needs a value for every option (${optionNames.join(", ")}).`,
+        };
+      }
+      if (values.some((value) => value.length > VARIANT_OPTION_VALUE_MAX)) {
+        return { ok: false, formError: "A variant option value is too long." };
+      }
+      optionValues = values;
+      name = variantDisplayName(values);
     }
     if (!name) {
       return { ok: false, formError: "Each variant needs a name." };
@@ -315,11 +435,23 @@ export function parseVariants(
     if (name.length > PRODUCT_NAME_MAX) {
       return { ok: false, formError: "A variant name is too long." };
     }
+    const comboKey = variantComboKey(usesOptions ? optionValues : [name]);
+    if (seenCombos.has(comboKey)) {
+      return {
+        ok: false,
+        formError: `Two variants are both "${name}" — each combination can appear once.`,
+      };
+    }
+    seenCombos.add(comboKey);
     if (!sku) {
-      return { ok: false, formError: "Each variant needs a SKU." };
+      return { ok: false, formError: `Variant "${name}" needs a SKU.` };
     }
     if (seen.has(sku.toLowerCase())) {
-      return { ok: false, formError: "Variant SKUs must be unique." };
+      return {
+        ok: false,
+        formError:
+          "Variant SKUs must be unique and differ from the product SKU.",
+      };
     }
     seen.add(sku.toLowerCase());
 
@@ -327,8 +459,11 @@ export function parseVariants(
     if (typeof price === "string") {
       return { ok: false, formError: price };
     }
+    if (price <= 0) {
+      return { ok: false, formError: `Variant "${name}" needs a price.` };
+    }
 
-    const compareParsed = parseTaka(row.compareAt, "variant compare-at price");
+    const compareParsed = parseTaka(row.compareAt, "variant regular price");
     if (typeof compareParsed === "string") {
       return { ok: false, formError: compareParsed };
     }
@@ -344,17 +479,46 @@ export function parseVariants(
       return { ok: false, formError: quantity };
     }
 
+    const imageSrc = normalizeProductImageSrc(row.imageSrc ?? "");
+    if (imageSrc === undefined) {
+      return {
+        ok: false,
+        formError: `Variant "${name}" image must be a local public path (e.g. /uploads/…) or an http(s) image URL.`,
+      };
+    }
+
+    const id = typeof row.id === "string" ? row.id.trim() : "";
     variants.push({
+      id: id && id.length <= 64 ? id : null,
       name,
+      optionValues,
       sku,
       priceAmount: price,
       compareAtAmount,
       isActive: row.isActive,
       quantity,
+      imageSrc,
     });
   }
 
   return { ok: true, value: variants };
+}
+
+/**
+ * The listing price of a product with variants: its cheapest active
+ * variant, so the card, sorting and price filters match what the product
+ * page preselects. `null` when no variant is active.
+ */
+export function cheapestActiveVariant(
+  variants: readonly ParsedProductVariant[],
+): ParsedProductVariant | null {
+  let best: ParsedProductVariant | null = null;
+  for (const variant of variants) {
+    if (variant.isActive && (!best || variant.priceAmount < best.priceAmount)) {
+      best = variant;
+    }
+  }
+  return best;
 }
 
 export function parseProductAttributes(

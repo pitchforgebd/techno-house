@@ -126,6 +126,21 @@ export type ProductColorOption = {
   images: ProductImage[];
 };
 
+/** One purchasable variant on the product page (AD-388). */
+export type ProductVariantChoice = {
+  id: string;
+  name: string;
+  /** One value per `ProductDetail.variantOptions` group, same order. */
+  values: string[];
+  sku: string;
+  /** Effective price — the product's discount window already applied. */
+  price: Money;
+  compareAtPrice: Money | null;
+  stockStatus: StockStatus;
+  /** Shown first in the gallery while selected; `null` = product images. */
+  image: ProductImage | null;
+};
+
 export type ProductDetail = ProductSummary & {
   /** Legacy plain-text bullets — <meta description> fallback only now. */
   overview: string[];
@@ -146,6 +161,10 @@ export type ProductDetail = ProductSummary & {
   notes: ProductNoteItem[];
   /** Manufacturer model number, shown in the product page's info chip row. */
   modelNumber: string | null;
+  /** Variant option groups ("Color": [Black, Blue]); empty = no variants. */
+  variantOptions: { name: string; values: string[] }[];
+  /** Active variants, in admin order. Non-empty means one must be chosen. */
+  variantChoices: ProductVariantChoice[];
 };
 
 /** One slot candidate — catalogue card plus builder fields. Never a full catalog. */

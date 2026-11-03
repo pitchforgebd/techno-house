@@ -143,6 +143,24 @@ const DETAIL_SELECT = {
     // The link table carries no ordering, so fall back to catalogue order.
     orderBy: { createdAt: "asc" },
   },
+  variantOptionNames: true,
+  variants: {
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      sku: true,
+      optionValues: true,
+      imageSrc: true,
+      priceAmount: true,
+      compareAtAmount: true,
+      isActive: true,
+      stock: {
+        select: { quantity: true, reserved: true, lowStockThreshold: true },
+      },
+    },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+  },
 } satisfies Prisma.ProductSelect;
 
 /**

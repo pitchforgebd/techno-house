@@ -289,6 +289,11 @@ function ServerOrderReceipt({ order }: { order: CustomerOrderView }) {
                       Colour: {line.colorName}
                     </p>
                   ) : null}
+                  {line.variantName ? (
+                    <p className="mt-0.5 text-caption text-text-muted">
+                      Option: {line.variantName}
+                    </p>
+                  ) : null}
                   <p className="mt-0.5 text-caption text-text-muted">
                     Qty {line.quantity}
                   </p>

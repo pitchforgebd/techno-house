@@ -21,6 +21,8 @@ export type AdminOrderLine = {
   unitPrice: Money;
   colorName: string | null;
   colorHex: string | null;
+  /** Chosen variant snapshot ("Black / 256GB"), AD-388. */
+  variantName?: string | null;
   /** Set when this line was added via "Add build to cart" (AD-276) — lines sharing the same id came from one PC build. */
   buildBatchId: string | null;
   /** Customer ticked "Avail EMI offer" for this line on the product page. */

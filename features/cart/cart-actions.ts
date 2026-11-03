@@ -20,6 +20,13 @@ function originBlocked(): CartMutationResult {
   return { ok: false, reason: CROSS_ORIGIN_ERROR };
 }
 
+/** Server-action input is untrusted: only a short id string or null. */
+function cleanId(value: unknown): string | null {
+  return typeof value === "string" && value.trim() && value.length <= 64
+    ? value.trim()
+    : null;
+}
+
 export type { CartMutationResult };
 
 export async function addCartItemAction(
@@ -27,11 +34,18 @@ export async function addCartItemAction(
   quantity = 1,
   colorId: string | null = null,
   wantsEmi = false,
+  variantId: string | null = null,
 ): Promise<CartMutationResult> {
   if (!(await isSameOriginRequest())) {
     return originBlocked();
   }
-  return addCartItem(slug, quantity, colorId, wantsEmi);
+  return addCartItem(
+    slug,
+    quantity,
+    colorId,
+    wantsEmi === true,
+    cleanId(variantId),
+  );
 }
 
 export async function addCartItemsAction(
@@ -47,21 +61,23 @@ export async function setCartQuantityAction(
   slug: string,
   quantity: number,
   colorId: string | null = null,
+  variantId: string | null = null,
 ): Promise<CartMutationResult> {
   if (!(await isSameOriginRequest())) {
     return originBlocked();
   }
-  return setCartQuantity(slug, quantity, colorId);
+  return setCartQuantity(slug, quantity, colorId, cleanId(variantId));
 }
 
 export async function removeCartItemAction(
   slug: string,
   colorId: string | null = null,
+  variantId: string | null = null,
 ): Promise<CartMutationResult> {
   if (!(await isSameOriginRequest())) {
     return originBlocked();
   }
-  return removeCartItem(slug, colorId);
+  return removeCartItem(slug, colorId, cleanId(variantId));
 }
 
 export async function clearCartAction(): Promise<CartMutationResult> {

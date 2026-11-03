@@ -6,6 +6,8 @@
  */
 import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/auth/audit-log";
 import { parseProductInput } from "@/lib/catalog/product-input-server";
+import { syncVariantAggregateStock } from "@/lib/catalog/variant-stock";
+import { VARIANT_MANAGED_ERROR } from "@/lib/catalog/variants";
 import type {
   ParsedProductInput,
   ProductInputFields,
@@ -51,11 +53,16 @@ export type ProductActor = {
 export type AdminProductVariantView = {
   id: string;
   name: string;
+  /** One value per `AdminProductEditor.variantOptionNames` entry. */
+  optionValues: string[];
   sku: string;
   priceAmount: number;
   compareAtAmount: number | null;
   isActive: boolean;
   quantity: number;
+  /** Units held by open orders — the form keeps stock at or above this. */
+  reserved: number;
+  imageSrc: string | null;
 };
 
 export type AdminProductListItem = ProductSummary & {
@@ -76,6 +83,7 @@ export type AdminProductEditor = ProductDetail & {
   reserved: number;
   lowStockThreshold: number;
   variants: AdminProductVariantView[];
+  variantOptionNames: string[];
   barcode: string;
   /** Full records (not just `relatedSlugs`) so the picker can show real names. */
   relatedProducts: { id: string; slug: string; name: string }[];
@@ -180,17 +188,24 @@ const DETAIL_SELECT = {
     select: { id: true, slug: true, name: true },
     orderBy: { createdAt: "asc" },
   },
+  variantOptionNames: true,
+  // Every variant, inactive ones too — the editor must be able to switch
+  // them back on.
   variants: {
     select: {
       id: true,
       name: true,
       sku: true,
+      optionValues: true,
+      imageSrc: true,
       priceAmount: true,
       compareAtAmount: true,
       isActive: true,
-      stock: { select: { quantity: true } },
+      stock: {
+        select: { quantity: true, reserved: true, lowStockThreshold: true },
+      },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   },
 } satisfies Prisma.ProductSelect;
 
@@ -310,9 +325,14 @@ function toEditor(
       reserved: number;
       lowStockThreshold: number;
     } | null;
+    variantOptionNames: string[];
     variants: Array<
-      Omit<AdminProductVariantView, "quantity"> & {
-        stock: { quantity: number } | null;
+      Omit<AdminProductVariantView, "quantity" | "reserved"> & {
+        stock: {
+          quantity: number;
+          reserved: number;
+          lowStockThreshold: number;
+        } | null;
       }
     >;
   },
@@ -339,12 +359,16 @@ function toEditor(
     variants: row.variants.map((variant) => ({
       id: variant.id,
       name: variant.name,
+      optionValues: variant.optionValues,
       sku: variant.sku,
       priceAmount: variant.priceAmount,
       compareAtAmount: variant.compareAtAmount,
       isActive: variant.isActive,
       quantity: variant.stock?.quantity ?? 0,
+      reserved: variant.stock?.reserved ?? 0,
+      imageSrc: variant.imageSrc,
     })),
+    variantOptionNames: row.variantOptionNames,
     barcode: row.barcode ?? "",
     relatedProducts: row.relatedTo,
   };
@@ -499,7 +523,7 @@ async function syncVariants(
   const keepIds = new Set<string>();
   const variantStocks: { variantId: string; quantity: number }[] = [];
 
-  for (const variant of variants) {
+  for (const [position, variant] of variants.entries()) {
     const clash = await prisma.productVariant.findUnique({
       where: { sku: variant.sku },
       select: { id: true, productId: true },
@@ -507,33 +531,38 @@ async function syncVariants(
     if (clash && clash.productId !== productId) {
       return { ok: false, formError: "A variant SKU is already in use." };
     }
-    const match = existing.find(
-      (row) => row.sku.toLowerCase() === variant.sku.toLowerCase(),
-    );
+    // Same row by id first (survives a SKU edit), else by SKU. An id from
+    // another product is ignored, never trusted.
+    const match =
+      (variant.id && !keepIds.has(variant.id)
+        ? existing.find((row) => row.id === variant.id)
+        : undefined) ??
+      existing.find(
+        (row) =>
+          !keepIds.has(row.id) &&
+          row.sku.toLowerCase() === variant.sku.toLowerCase(),
+      );
+    if (clash && clash.productId === productId && clash.id !== match?.id) {
+      return { ok: false, formError: "Variant SKUs must be unique." };
+    }
+    const data = {
+      sku: variant.sku,
+      name: variant.name,
+      optionValues: variant.optionValues,
+      imageSrc: variant.imageSrc,
+      position,
+      priceAmount: variant.priceAmount,
+      compareAtAmount: variant.compareAtAmount,
+      isActive: variant.isActive,
+    };
     if (match) {
-      await prisma.productVariant.update({
-        where: { id: match.id },
-        data: {
-          sku: variant.sku,
-          name: variant.name,
-          priceAmount: variant.priceAmount,
-          compareAtAmount: variant.compareAtAmount,
-          isActive: variant.isActive,
-        },
-      });
+      await prisma.productVariant.update({ where: { id: match.id }, data });
       keepIds.add(match.id);
       variantStocks.push({ variantId: match.id, quantity: variant.quantity });
       continue;
     }
     const created = await prisma.productVariant.create({
-      data: {
-        productId,
-        sku: variant.sku,
-        name: variant.name,
-        priceAmount: variant.priceAmount,
-        compareAtAmount: variant.compareAtAmount,
-        isActive: variant.isActive,
-      },
+      data: { productId, ...data },
       select: { id: true },
     });
     keepIds.add(created.id);
@@ -766,6 +795,8 @@ function productData(
     labelIds: parsed.labelIds,
     barcode: parsed.barcode,
     modelNumber: parsed.modelNumber,
+    // `undefined` (variants not submitted) leaves the column untouched.
+    variantOptionNames: parsed.variantOptionNames,
     // `relatedTo` is an implicit self-relation, not a scalar column, so it
     // must go through relation syntax even in an "Unchecked" update input.
     // `set` replaces the full list — correct for a form that submits the
@@ -942,6 +973,7 @@ async function persistParsed(
         if (!stockResult.ok) {
           throw new PersistRollback(stockResult);
         }
+        await syncVariantAggregateStock(tx, existing.id);
       });
     } catch (err) {
       if (err instanceof PersistRollback) {
@@ -988,6 +1020,7 @@ async function persistParsed(
           detailsHtml: parsed.detailsHtml ?? null,
           priceAmount: parsed.priceAmount,
           compareAtAmount: parsed.compareAtAmount,
+          variantOptionNames: parsed.variantOptionNames ?? [],
           stockStatus: toDbStockStatus(parsed.stockStatus),
           isNew: parsed.isNew,
           isSale: parsed.isSale,
@@ -1088,6 +1121,7 @@ async function persistParsed(
       if (!stockResult.ok) {
         throw new PersistRollback(stockResult);
       }
+      await syncVariantAggregateStock(tx, createdRow.id);
 
       return createdRow;
     });
@@ -1299,15 +1333,19 @@ const CLONE_SELECT = {
   attributeValues: {
     select: { value: true, attribute: { select: { key: true } } },
   },
+  variantOptionNames: true,
   variants: {
     select: {
       name: true,
       sku: true,
+      optionValues: true,
+      imageSrc: true,
       priceAmount: true,
       compareAtAmount: true,
       isActive: true,
       stock: { select: { quantity: true } },
     },
+    orderBy: [{ position: "asc" as const }, { createdAt: "asc" as const }],
   },
   relatedTo: { select: { id: true } },
 } satisfies Prisma.ProductSelect;
@@ -1398,13 +1436,17 @@ export async function cloneAdminProduct(
     barcode: null,
     relatedProductIds: source.relatedTo.map((related) => related.id),
     variants: source.variants.map((variant) => ({
+      id: null,
       name: variant.name,
+      optionValues: variant.optionValues,
       sku: `${variant.sku}-COPY-${Date.now().toString(36)}`,
       priceAmount: variant.priceAmount,
       compareAtAmount: variant.compareAtAmount,
       isActive: variant.isActive,
       quantity: variant.stock?.quantity ?? 0,
+      imageSrc: variant.imageSrc,
     })),
+    variantOptionNames: source.variantOptionNames,
     attributes: source.attributeValues.map((attributeValue) => ({
       key: attributeValue.attribute.key,
       value: attributeValue.value,
@@ -1532,10 +1574,21 @@ export async function updateAdminProductQuickFields(input: {
   const id = input.productId.trim();
   const existing = await getPrisma().product.findUnique({
     where: { id },
-    select: { id: true, slug: true, name: true, isSale: true },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      isSale: true,
+      _count: { select: { variants: { where: { isActive: true } } } },
+    },
   });
   if (!existing) {
     return { ok: false, formError: "That product no longer exists." };
+  }
+  // Its price and stock come from its variants (AD-388); a quick edit here
+  // would be overwritten by the next aggregate sync anyway.
+  if (existing._count.variants > 0) {
+    return { ok: false, formError: VARIANT_MANAGED_ERROR };
   }
 
   try {
