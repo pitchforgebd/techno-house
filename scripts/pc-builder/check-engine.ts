@@ -115,6 +115,7 @@ function candidate(
     brandSlug: "brand",
     brandName: "Brand",
     categorySlug: "category",
+    categoryNames: [],
     sku: slug.toUpperCase(),
     price: { amount: 1000, currency: "BDT" },
     compareAtPrice: null,

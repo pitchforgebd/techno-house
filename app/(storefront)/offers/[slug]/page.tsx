@@ -89,6 +89,10 @@ export default async function OfferDetailPage({
       ) : null}
 
       <CatalogListingBody
+        trackList={{
+          id: `offer_${promotion.id}`,
+          name: `Offer: ${promotion.name}`,
+        }}
         pathname={pathname}
         preserved={{}}
         parsed={parsed}

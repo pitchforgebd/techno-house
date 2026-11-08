@@ -12,6 +12,8 @@ import {
 import { useCartStore } from "@/features/cart/use-cart-store";
 import type { ProductSummary } from "@/lib/data";
 import { MAX_CART_LINES } from "@/lib/cart/cart";
+import { trackItemFromSummary } from "@/lib/tracking/items";
+import { track } from "@/lib/tracking/track";
 import {
   countFilledSlots,
   planValidatedBuildToCart,
@@ -119,6 +121,17 @@ export function PcBuilderAddToCart({
                 return;
               }
               setAddedKey(plan.slugs.join("|"));
+              // One add_to_cart for the whole build (AD-389), one unit per part.
+              const bySlug = new Map(
+                products.map((product) => [product.slug, product]),
+              );
+              const buildItems = plan.slugs
+                .map((slug) => bySlug.get(slug))
+                .filter((product): product is ProductSummary => Boolean(product))
+                .map((product) => trackItemFromSummary(product));
+              if (buildItems.length > 0) {
+                track("AddToCart", { items: buildItems });
+              }
               const text = plan.hasUnknownCompatibility
                 ? "Build added. Some compatibility checks still need more data."
                 : persist

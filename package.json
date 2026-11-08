@@ -60,6 +60,7 @@
     "db:drift": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
     "payments:security": "tsx scripts/payments/check-security.ts",
     "test:payments": "tsx scripts/payments/check-security.ts",
+    "test:datalayer": "tsx scripts/analytics/check-tracking.ts",
     "test:security": "tsx scripts/security/check-baseline.ts",
     "test:privilege": "tsx scripts/security/check-privilege-containment.ts",
     "test:wallet": "tsx scripts/security/check-wallet-consistency.ts",

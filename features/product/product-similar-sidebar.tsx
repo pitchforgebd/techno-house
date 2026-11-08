@@ -10,6 +10,8 @@ import { useCartStore } from "@/features/cart/use-cart-store";
 import type { ProductSummary } from "@/lib/data";
 import { formatMoney } from "@/lib/format/currency";
 import { cn } from "@/lib/cn";
+import { trackItemFromSummary } from "@/lib/tracking/items";
+import { track } from "@/lib/tracking/track";
 
 /**
  * No price exists to quote for an Up Coming product, and an out-of-stock
@@ -87,6 +89,9 @@ function SimilarProductCard({ product }: { product: ProductSummary }) {
                     });
                     return;
                   }
+                  track("AddToCart", {
+                    items: [trackItemFromSummary(product)],
+                  });
                   notifyToast("Added to cart");
                 });
               }}

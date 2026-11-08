@@ -15,6 +15,8 @@ export type { PlaceOrderResult };
 export async function placeOrderAction(input: {
   contact: CheckoutContact;
   paymentMethodId: string | null;
+  /** Meta `_fbp` / `_fbc` from the browser; format-checked server-side. */
+  adIds?: { fbp: string | null; fbc: string | null } | null;
 }): Promise<PlaceOrderResult> {
   if (!(await isSameOriginRequest())) {
     return { ok: false, reason: CROSS_ORIGIN_ERROR };
@@ -22,5 +24,6 @@ export async function placeOrderAction(input: {
   return placeCustomerOrder({
     ...input.contact,
     paymentMethodId: input.paymentMethodId,
+    adIds: input.adIds ?? null,
   });
 }

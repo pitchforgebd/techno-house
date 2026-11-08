@@ -13,6 +13,7 @@ import {
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
   type FormEvent,
@@ -68,6 +69,8 @@ import {
 import { formatMoney } from "@/lib/format/currency";
 import { notifyError, notifySuccess } from "@/components/ui/feedback-provider";
 import { cn } from "@/lib/cn";
+import { trackItemFromCartLine } from "@/lib/tracking/items";
+import { readAdIdentifiers, track } from "@/lib/tracking/track";
 
 function SectionCard({
   step,
@@ -397,6 +400,22 @@ export function CheckoutView({
     shippingMethods[0] ??
     null;
 
+  // begin_checkout once per visit, when every cart line has loaded (AD-389).
+  const checkoutTracked = useRef(false);
+  const checkoutReady = rows.length > 0 && rows.length === state.lines.length;
+  useEffect(() => {
+    if (!checkoutReady || checkoutTracked.current) {
+      return;
+    }
+    checkoutTracked.current = true;
+    track("InitiateCheckout", {
+      items: rows.map((row) => trackItemFromCartLine(row.line, row.product)),
+      value: Math.max(0, subtotal - discountAmount),
+      coupon: couponResult?.ok === true ? state.couponCode : null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once, when the checkout first becomes ready
+  }, [checkoutReady]);
+
   async function placeOrder() {
     if (
       state.lines.length === 0 ||
@@ -409,6 +428,24 @@ export function CheckoutView({
     setPlaceError(null);
     setPlacing(true);
 
+    // Shipping + payment choice are final at submit (AD-389).
+    const checkoutItems = rows.map((row) =>
+      trackItemFromCartLine(row.line, row.product),
+    );
+    const checkoutCoupon = couponResult?.ok === true ? state.couponCode : null;
+    track("AddShippingInfo", {
+      items: checkoutItems,
+      value: displayTotal,
+      coupon: checkoutCoupon,
+      shippingTier: selectedMethod?.name ?? null,
+    });
+    track("AddPaymentInfo", {
+      items: checkoutItems,
+      value: displayTotal,
+      coupon: checkoutCoupon,
+      paymentType: paymentMethod.id,
+    });
+
     // Always the real server action. There used to be a `DATA_SOURCE=mock`
     // branch below that fabricated a `TH-<base36>` id client-side, which was a
     // second order-number generator sitting in the checkout path. `Order.number`
@@ -419,6 +456,7 @@ export function CheckoutView({
       const result = await placeOrderAction({
         contact: { ...contact, notes: "" },
         paymentMethodId: state.paymentMethodId,
+        adIds: readAdIdentifiers(),
       });
       if (!result.ok) {
         setPlacing(false);

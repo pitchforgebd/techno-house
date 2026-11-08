@@ -4,14 +4,20 @@
  * Google Merchant Center: `/feeds/google.xml` when MERCHANT_CENTER is on.
  * Facebook catalog: `/feeds/facebook.xml` when META_PIXEL is on.
  * Display fields only. `DATA_SOURCE=mock` keeps both feeds off.
+ *
+ * Every active product is published (the old 200-row cap left the rest out
+ * of the Meta catalog, so their pixel/CAPI `content_ids` matched nothing —
+ * AD-389). `<g:id>` is the parent `Product.sku`, the same id the dataLayer
+ * and Conversions API send. `<g:price>` is the regular price; while a
+ * discount window is running, `<g:sale_price>` carries the price actually
+ * charged (same `effectiveStorefrontPricing` rule as the storefront).
  */
 import {
   getAdminMerchantConfig,
   getAdminMetaConfig,
 } from "@/lib/analytics/config";
+import { effectiveStorefrontPricing } from "@/lib/catalog/discount-pricing";
 import { getPrisma } from "@/lib/db/prisma";
-
-const FEED_LIMIT = 200;
 
 export const GOOGLE_FEED_PATH = "/feeds/google.xml";
 export const FACEBOOK_FEED_PATH = "/feeds/facebook.xml";
@@ -20,7 +26,12 @@ export type FeedProduct = {
   sku: string;
   name: string;
   slug: string;
+  /** What a shopper is charged today (sale price inside the window). */
   priceAmount: number;
+  /** Regular (list) price — `<g:price>`. */
+  regularPriceAmount: number;
+  /** Set only while a discount window is running — `<g:sale_price>`. */
+  salePriceAmount: number | null;
   currency: string;
   stockStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
   brandName: string;
@@ -63,8 +74,8 @@ function availability(
   return status === "OUT_OF_STOCK" ? "out_of_stock" : "in_stock";
 }
 
-function priceLabel(product: FeedProduct): string {
-  return `${product.priceAmount.toFixed(2)} ${product.currency}`;
+function priceLabel(amount: number, currency: string): string {
+  return `${amount.toFixed(2)} ${currency}`;
 }
 
 /**
@@ -79,13 +90,16 @@ export async function listFeedProducts(): Promise<FeedProduct[]> {
   }
   const rows = await getPrisma().product.findMany({
     where: { isActive: true },
-    orderBy: { position: "asc" },
-    take: FEED_LIMIT,
+    orderBy: [{ position: "asc" }, { id: "asc" }],
     select: {
       sku: true,
       name: true,
       slug: true,
       priceAmount: true,
+      compareAtAmount: true,
+      discountStartsAt: true,
+      discountEndsAt: true,
+      isSale: true,
       currency: true,
       stockStatus: true,
       brand: { select: { name: true } },
@@ -98,17 +112,28 @@ export async function listFeedProducts(): Promise<FeedProduct[]> {
     },
   });
 
-  return rows.map((row) => ({
-    sku: row.sku,
-    name: row.name,
-    slug: row.slug,
-    priceAmount: row.priceAmount,
-    currency: row.currency,
-    stockStatus: row.stockStatus,
-    brandName: row.brand.name,
-    categoryName: row.category.name,
-    imageSrc: row.images[0]?.src ?? null,
-  }));
+  return rows.map((row) => {
+    const priced = effectiveStorefrontPricing({
+      priceAmount: row.priceAmount,
+      compareAtAmount: row.compareAtAmount,
+      discountStartsAt: row.discountStartsAt,
+      discountEndsAt: row.discountEndsAt,
+      isSale: row.isSale,
+    });
+    return {
+      sku: row.sku,
+      name: row.name,
+      slug: row.slug,
+      priceAmount: priced.priceAmount,
+      regularPriceAmount: priced.compareAtAmount ?? priced.priceAmount,
+      salePriceAmount: priced.discountActive ? priced.priceAmount : null,
+      currency: row.currency,
+      stockStatus: row.stockStatus,
+      brandName: row.brand.name,
+      categoryName: row.category.name,
+      imageSrc: row.images[0]?.src ?? null,
+    };
+  });
 }
 
 function itemXml(product: FeedProduct): string {
@@ -123,7 +148,8 @@ function itemXml(product: FeedProduct): string {
       <g:product_type>${xmlEscape(product.categoryName)}</g:product_type>
       <g:condition>new</g:condition>
       <g:availability>${availability(product.stockStatus)}</g:availability>
-      <g:price>${xmlEscape(priceLabel(product))}</g:price>
+      <g:price>${xmlEscape(priceLabel(product.regularPriceAmount, product.currency))}</g:price>
+      ${product.salePriceAmount != null ? `<g:sale_price>${xmlEscape(priceLabel(product.salePriceAmount, product.currency))}</g:sale_price>` : ""}
       ${image ? `<g:image_link>${xmlEscape(image)}</g:image_link>` : ""}
     </item>`;
 }

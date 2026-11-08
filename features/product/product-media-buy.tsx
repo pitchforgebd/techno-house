@@ -20,6 +20,8 @@ import type { B2BStatus } from "@/lib/generated/prisma/enums";
 type ProductMediaBuyProps = {
   slug: string;
   categorySlug: string;
+  /** Root → leaf category names, for tracking (AD-389). */
+  categoryNames?: string[];
   brandName: string;
   sku: string;
   name: string;
@@ -68,6 +70,7 @@ type ProductMediaBuyProps = {
 export function ProductMediaBuy({
   slug,
   categorySlug,
+  categoryNames = [],
   brandName,
   sku,
   name,
@@ -216,6 +219,7 @@ export function ProductMediaBuy({
           <ProductSummary
             slug={slug}
             categorySlug={categorySlug}
+            categoryNames={categoryNames}
             brandName={brandName}
             sku={sku}
             name={name}

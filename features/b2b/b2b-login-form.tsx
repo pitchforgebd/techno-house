@@ -12,6 +12,7 @@ import {
   ACCOUNT_EMAIL_MAX,
   ACCOUNT_PASSWORD_MAX,
 } from "@/lib/account/validation";
+import { track } from "@/lib/tracking/track";
 
 /**
  * Wholesale sign-in. The credentials are the same customer identity used for
@@ -43,6 +44,7 @@ export function B2BLoginForm() {
         return;
       }
       setErrors({});
+      track("Login", { method: "b2b" });
       router.push("/b2b/profile");
       router.refresh();
     });

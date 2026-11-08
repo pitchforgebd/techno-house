@@ -26,6 +26,11 @@ import {
   decodeOAuthStateCookie,
   encodeOAuthStateCookie,
 } from "@/lib/social/oauth-state";
+import {
+  AUTH_EVENT_COOKIE,
+  AUTH_EVENT_MAX_AGE_SECONDS,
+  encodeAuthEvent,
+} from "@/lib/tracking/auth-event";
 
 function redirectUriFor(provider: OAuthProviderId): string {
   return `${publicOrigin()}/api/auth/social/${provider.toLowerCase()}/callback`;
@@ -131,5 +136,19 @@ export async function handleOAuthCallback(
     );
   }
 
-  return NextResponse.redirect(`${publicOrigin()}${saved.next}`);
+  const response = NextResponse.redirect(`${publicOrigin()}${saved.next}`);
+  // One-shot flag the next storefront page turns into sign_up / login in the
+  // dataLayer (AD-389) — the sign-in finished here, where no browser JS runs.
+  response.cookies.set(
+    AUTH_EVENT_COOKIE,
+    encodeAuthEvent(completed.created ? "sign_up" : "login", provider),
+    {
+      path: "/",
+      maxAge: AUTH_EVENT_MAX_AGE_SECONDS,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: false,
+    },
+  );
+  return response;
 }

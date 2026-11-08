@@ -49,7 +49,14 @@ presets and saves by id), and AD-387 (searchable Main category /
 Subcategory / Related categories pickers on the product form), and
 AD-388 (real product variants: up to 3 options per product, per-variant
 price/stock/image, product page selector, variant-aware cart/checkout/stock
-lifecycle — needs `prisma migrate deploy` on the server) are also
+lifecycle — needs `prisma migrate deploy` on the server), and AD-389
+(GA4 ecommerce dataLayer events for GTM + Meta Conversions API: browser
+`track()` in `lib/tracking/`, `/api/tracking` relay, server Purchase from the
+order row with event_id = order number — COD at placement, online payment
+on gateway PAID; 4 nullable Order columns `fbp`/`fbc`/`clientIp`/
+`clientUserAgent` — needs `prisma migrate deploy`; catalog feeds now list
+every active product with `g:price` = regular and `g:sale_price` in the
+discount window; spec in `TECHNOHOUSE_TRACKING.md`) are also
 complete — full detail in `project-memory/TASKS.md`,
 not narrated here.
 

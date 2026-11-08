@@ -19,7 +19,11 @@ export const SOCIAL_LINK_REQUIRES_SIGN_IN =
   "An account already uses this email. Sign in with your password first, then use this button again to link it.";
 
 export type CompleteSocialLoginResult =
-  | { ok: true }
+  | {
+      ok: true;
+      /** A new customer account was created by this sign-in (AD-389 tracking). */
+      created?: boolean;
+    }
   | { ok: false; formError: string };
 
 export async function completeSocialLogin(input: {
@@ -49,6 +53,7 @@ export async function completeSocialLogin(input: {
   });
 
   let userId: string;
+  let createdAccount = false;
 
   if (linked) {
     userId = linked.userId;
@@ -125,6 +130,7 @@ export async function completeSocialLogin(input: {
         select: { id: true },
       });
       userId = created.id;
+      createdAccount = true;
     }
 
     await prisma.socialLoginAccount.create({
@@ -162,5 +168,5 @@ export async function completeSocialLogin(input: {
     // Login still succeeds if cart merge cannot run.
   }
 
-  return { ok: true };
+  return { ok: true, created: createdAccount };
 }

@@ -35,7 +35,15 @@ export type ApplyPaymentInput = {
 };
 
 export type ApplyPaymentResult =
-  | { ok: true; status: PaymentStatus; paymentId: string }
+  | {
+      ok: true;
+      status: PaymentStatus;
+      paymentId: string;
+      /** True only for the call that actually moved the payment to `status`
+       * (false on an idempotent replay) — lets a caller act exactly once on
+       * a transition, e.g. the server Purchase event (AD-389). */
+      changed: boolean;
+    }
   | { ok: false; reason: string };
 
 export type StartHostedCheckoutResult =
@@ -223,7 +231,12 @@ export async function applyPaymentTransition(
     ) {
       return { ok: false, reason: "That transaction was already recorded." };
     }
-    return { ok: true, status: payment.status, paymentId: payment.id };
+    return {
+      ok: true,
+      status: payment.status,
+      paymentId: payment.id,
+      changed: false,
+    };
   }
 
   const illegal = paymentTransitionError(payment.status, input.next);
@@ -291,6 +304,7 @@ export async function applyPaymentTransition(
   // notification exactly once, the same "confirmedAt just got set" moment
   // lib/orders/admin-orders.ts fires it on for the staff-driven path.
   let autoConfirmedOrderId: string | null = null;
+  let changed = false;
 
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${payment.id} FOR UPDATE`;
@@ -331,6 +345,7 @@ export async function applyPaymentTransition(
       where: { id: payment.order.id },
       data: { paymentStatus: input.next },
     });
+    changed = true;
 
     // `autoConfirmPaidOrders` in Admin -> Settings was another value in the
     // persist-only group (F17-01): it saved and reloaded and nothing read it.
@@ -373,5 +388,5 @@ export async function applyPaymentTransition(
     }
   }
 
-  return { ok: true, status: input.next, paymentId: payment.id };
+  return { ok: true, status: input.next, paymentId: payment.id, changed };
 }

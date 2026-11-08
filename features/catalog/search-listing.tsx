@@ -11,6 +11,8 @@ import {
 } from "@/lib/catalog/listing-params";
 import { brandRepository, productRepository } from "@/lib/data";
 import { recordSearchQuery } from "@/lib/search/log-search";
+import { TrackEvent } from "@/components/tracking/track-event";
+import { trackItemFromSummary } from "@/lib/tracking/items";
 
 const PATHNAME = "/search";
 
@@ -69,11 +71,23 @@ export async function SearchListing({
         ]}
       />
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Search</h1>
+      {/* One search event per term + results page (AD-389). */}
+      <TrackEvent
+        name="Search"
+        eventKey={`${q}|${result.page}`}
+        data={{
+          searchTerm: q,
+          items: result.items
+            .slice(0, 10)
+            .map((product, index) => trackItemFromSummary(product, { index })),
+        }}
+      />
       <p className="mt-2 text-body text-text-muted">
         Results for “{q}”. Prices in ৳ are for display and are not a
         charge.
       </p>
       <CatalogListingBody
+        trackList={{ id: "search_results", name: "Search results" }}
         pathname={PATHNAME}
         preserved={{ q }}
         parsed={parsed}

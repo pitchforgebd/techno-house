@@ -32,6 +32,7 @@ import {
 import { isWithinNewArrivalWindow } from "@/lib/catalog/new-arrival";
 import { warrantyBadgeFromLabel } from "@/lib/catalog/warranty-badge";
 import {
+  categoryNameChain,
   resolveProductLabels,
   resolveProductNotes,
   type ProductPresetLookup,
@@ -199,6 +200,7 @@ export function toProductSummary(
     brandSlug: row.brand.slug,
     brandName: row.brand.name,
     categorySlug: row.category.slug,
+    categoryNames: categoryNameChain(row.category.slug, presets.categories),
     sku: row.sku,
     price: money(priced.priceAmount),
     compareAtPrice:

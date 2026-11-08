@@ -18,6 +18,7 @@ import {
 import { safeReturnPath } from "@/lib/account/return-path";
 import { notifySuccess } from "@/components/ui/feedback-provider";
 import { SocialLoginButtons } from "@/features/account/social-login-buttons";
+import { track } from "@/lib/tracking/track";
 
 const SOCIAL_ERROR_MESSAGES: Record<string, string> = {
   social_unavailable: "That sign-in method is not available right now.",
@@ -69,6 +70,7 @@ export function LoginForm({
         title: "Signed in",
         description: "Your session is stored securely on the server.",
       });
+      track("Login", { method: "password" });
       router.push(returnTo);
       router.refresh();
     });
@@ -93,6 +95,7 @@ export function LoginForm({
         title: "Signed in",
         description: "Your session is stored securely on the server.",
       });
+      track("Login", { method: "password" });
       router.push(returnTo);
       router.refresh();
     });

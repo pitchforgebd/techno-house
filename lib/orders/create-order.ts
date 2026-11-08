@@ -56,7 +56,8 @@ import { toCustomerOrderView } from "@/lib/orders/customer-orders";
 import { notifyStaffOfNewOrder } from "@/lib/orders/staff-order-alerts";
 import { sendCustomerOrderConfirmationSafe } from "@/lib/orders/order-confirmation-email";
 import { sendCustomerOrderConfirmationSmsSafe } from "@/lib/orders/order-confirmation-sms";
-import { sendMetaCapiPurchaseSafe } from "@/lib/analytics/meta-capi";
+import { queueMetaPurchaseForOrder } from "@/lib/analytics/meta-capi";
+import { sanitizeFbCookie } from "@/lib/tracking/match-keys";
 import { getRequestMeta } from "@/lib/auth/request-meta";
 
 export const ORDER_DB_REQUIRED =
@@ -64,6 +65,9 @@ export const ORDER_DB_REQUIRED =
 
 export type PlaceOrderInput = CheckoutContact & {
   paymentMethodId: string | null;
+  /** Meta browser ids (`_fbp` / `_fbc`) from the checkout page — untrusted,
+   * format-checked before they are stored (AD-389). */
+  adIds?: { fbp?: unknown; fbc?: unknown } | null;
 };
 
 export type PlaceOrderResult =
@@ -133,6 +137,26 @@ export async function placeCustomerOrderForUser(
   if (!paymentPlan) {
     return fail("Select a payment method.");
   }
+
+  // Meta CAPI match keys, saved on the order so the server Purchase — sent
+  // later for an online payment — carries the same browser identity. The IP
+  // comes from getRequestMeta()'s TRUSTED_PROXY_HOPS rules (F-04), never the
+  // spoofable left-most X-Forwarded-For entry.
+  let requestMeta: { ip: string | null; userAgent: string | null } = {
+    ip: null,
+    userAgent: null,
+  };
+  try {
+    requestMeta = await getRequestMeta();
+  } catch {
+    // Outside a request (scripts/tests): no IP or user agent to record.
+  }
+  const matchKeys = {
+    fbp: sanitizeFbCookie(input.adIds?.fbp),
+    fbc: sanitizeFbCookie(input.adIds?.fbc),
+    clientIp: requestMeta.ip?.slice(0, 64) ?? null,
+    clientUserAgent: requestMeta.userAgent?.slice(0, 512) ?? null,
+  };
 
   const prisma = getPrisma();
   const cart = await prisma.cart.findFirst({
@@ -580,6 +604,10 @@ export async function placeCustomerOrderForUser(
               shippingAddress: contact.addressLine,
               billingAddress: contact.billingAddress || null,
               notes: contact.notes || null,
+              fbp: matchKeys.fbp,
+              fbc: matchKeys.fbc,
+              clientIp: matchKeys.clientIp,
+              clientUserAgent: matchKeys.clientUserAgent,
               items: {
                 create: lines.map((line) => ({
                   productId: line.productId,
@@ -706,20 +734,11 @@ export async function placeCustomerOrderForUser(
     } catch {
       // Order is already placed; never fail checkout on confirmation SMS delivery.
     }
-    try {
-      const requestMeta = await getRequestMeta();
-      sendMetaCapiPurchaseSafe({
-        orderNumber: view.number,
-        value: view.totalAmount,
-        currency: "BDT",
-        contentIds: view.items.map((item) => item.sku),
-        email: view.customerEmail,
-        phone: view.customerPhone,
-        clientIpAddress: requestMeta.ip,
-        clientUserAgent: requestMeta.userAgent,
-      });
-    } catch {
-      // Order is already placed; never fail checkout on analytics delivery.
+    // Server-side Meta Purchase (AD-389). Cash on delivery is a sale once
+    // placed; an online payment is only a sale when the gateway confirms it,
+    // so those are sent from confirmGatewayPayment() instead.
+    if (paymentPlan.provider === "cod") {
+      queueMetaPurchaseForOrder(created);
     }
     const started = await startHostedCheckoutForOrder(created);
     if (started.ok && started.redirectUrl) {

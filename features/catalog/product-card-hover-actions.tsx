@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/feedback-provider";
 import { useListsStore } from "@/features/lists/use-lists-store";
 import { cn } from "@/lib/cn";
+import type { TrackItem } from "@/lib/tracking/events";
+import { track } from "@/lib/tracking/track";
 
 const iconButtonClass =
   "th-icon-hop inline-flex size-9 items-center justify-center rounded-full border border-border/70 bg-surface text-text-muted shadow-sm shadow-black/5 transition-colors duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-primary";
@@ -17,11 +19,14 @@ export function ProductCardHoverActions({
   href,
   name,
   categorySlug,
+  trackItem,
 }: {
   slug: string;
   href: string;
   name: string;
   categorySlug: string;
+  /** Tracking item for add_to_wishlist (AD-389). */
+  trackItem?: TrackItem;
 }) {
   const { state, toggleWishlist, toggleCompare } = useListsStore();
   const onWishlist = state.wishlist.includes(slug);
@@ -44,6 +49,9 @@ export function ProductCardHoverActions({
         onClick={() => {
           const nextOn = !onWishlist;
           toggleWishlist(slug);
+          if (nextOn && trackItem) {
+            track("AddToWishlist", { items: [trackItem] });
+          }
           notifyToast(nextOn ? "Added to wishlist" : "Removed from wishlist");
         }}
       >

@@ -8,6 +8,7 @@ import { AdminLabelBadge } from "@/features/admin/labels/admin-label-badge";
 import type { ProductSummary } from "@/lib/data";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format/currency";
+import { trackItemFromSummary } from "@/lib/tracking/items";
 
 /**
  * The cash a discount is actually worth on this product.
@@ -200,6 +201,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
           href={href}
           name={product.name}
           categorySlug={product.categorySlug}
+          trackItem={trackItemFromSummary(product)}
         />
       </div>
 
@@ -284,6 +286,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
             stockStatus={product.stockStatus}
             isComingSoon={product.isComingSoon}
             isPreOrder={product.isPreOrder}
+            trackItem={trackItemFromSummary(product)}
             size="sm"
             variant="ghost"
             showHint={false}
@@ -388,6 +391,7 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
           href={href}
           name={product.name}
           categorySlug={product.categorySlug}
+          trackItem={trackItemFromSummary(product)}
         />
       </div>
 
@@ -475,6 +479,7 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
             stockStatus={product.stockStatus}
             isComingSoon={product.isComingSoon}
             isPreOrder={product.isPreOrder}
+            trackItem={trackItemFromSummary(product)}
             size="sm"
           />
         </div>

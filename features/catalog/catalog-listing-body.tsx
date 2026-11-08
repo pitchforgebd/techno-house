@@ -11,6 +11,8 @@ import {
   type ParsedListingQuery,
 } from "@/lib/catalog/listing-params";
 import type { Brand, ProductListResult } from "@/lib/data";
+import { TrackedProductList } from "@/components/tracking/tracked-product-list";
+import { trackItemFromSummary } from "@/lib/tracking/items";
 
 export function CatalogListingBody({
   pathname,
@@ -24,6 +26,7 @@ export function CatalogListingBody({
   emptyDescription,
   hideSort = false,
   filterHeading = "Filters",
+  trackList,
 }: {
   pathname: string;
   preserved: { q?: string };
@@ -36,6 +39,8 @@ export function CatalogListingBody({
   emptyDescription: string;
   hideSort?: boolean;
   filterHeading?: string;
+  /** GA4 list identity for view_item_list / select_item (AD-389). */
+  trackList?: { id: string; name: string };
 }) {
   const formProps = {
     pathname,
@@ -110,11 +115,29 @@ export function CatalogListingBody({
           <EmptyState title={emptyTitle} description={emptyDescription} />
         ) : (
           <>
-            <ProductGrid
-              products={result.items}
-              density="comfortable"
-              card="detailed"
-            />
+            {trackList ? (
+              <TrackedProductList
+                listId={trackList.id}
+                listName={trackList.name}
+                items={result.items.map((product, index) =>
+                  trackItemFromSummary(product, {
+                    index: (result.page - 1) * result.pageSize + index,
+                  }),
+                )}
+              >
+                <ProductGrid
+                  products={result.items}
+                  density="comfortable"
+                  card="detailed"
+                />
+              </TrackedProductList>
+            ) : (
+              <ProductGrid
+                products={result.items}
+                density="comfortable"
+                card="detailed"
+              />
+            )}
             {/* The page-size control stays visible even when everything fits on
                 one page — that is exactly when a shopper wants to go the other
                 way and see fewer. Pagination is the part that disappears. */}

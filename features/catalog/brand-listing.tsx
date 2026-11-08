@@ -64,6 +64,7 @@ export async function BrandListing({
         )}
       </p>
       <CatalogListingBody
+        trackList={{ id: `brand_${brand.slug}`, name: `Brand: ${brand.name}` }}
         pathname={pathname}
         preserved={{}}
         parsed={listingParsed}

@@ -40,6 +40,7 @@ export async function ShopListing({
         All products. Prices in ৳ are for display and are not a charge.
       </p>
       <CatalogListingBody
+        trackList={{ id: "shop", name: "Shop" }}
         pathname={PATHNAME}
         preserved={{}}
         parsed={parsed}

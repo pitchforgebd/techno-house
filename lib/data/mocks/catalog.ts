@@ -295,6 +295,23 @@ export const mockBrands: Brand[] = [
   { slug: "frost", name: "Frost", logoSrc: "/brands/frost.svg", description: null },
 ];
 
+/** Root → leaf category names, same walk the database mapper does. */
+function mockCategoryNames(slug: string): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  let current: string | null = slug;
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    const category = mockCategories.find((item) => item.slug === current);
+    if (!category) {
+      break;
+    }
+    names.unshift(category.name);
+    current = category.parentSlug;
+  }
+  return names;
+}
+
 function brandName(slug: string): string {
   return mockBrands.find((brand) => brand.slug === slug)?.name ?? slug;
 }
@@ -1303,11 +1320,13 @@ export const mockProducts: ProductDetail[] = (
   | "notes"
   | "isNewArrival"
   | "hasActiveOffer"
+  | "categoryNames"
   | "variantOptions"
   | "variantChoices"
 >[]
 ).map((product) => ({
   ...product,
+  categoryNames: mockCategoryNames(product.categorySlug),
   variantOptions: [],
   variantChoices: [],
   youtubeUrl: null,

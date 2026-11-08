@@ -20,6 +20,7 @@ import {
 import { safeReturnPath } from "@/lib/account/return-path";
 import { notifySuccess } from "@/components/ui/feedback-provider";
 import { SocialLoginButtons } from "@/features/account/social-login-buttons";
+import { track } from "@/lib/tracking/track";
 
 export function RegisterForm({
   usableProviders,
@@ -70,6 +71,7 @@ export function RegisterForm({
         title: "Account created",
         description: "You are signed in.",
       });
+      track("CompleteRegistration", { method: "password" });
       router.push(returnTo);
       router.refresh();
     });
@@ -96,6 +98,7 @@ export function RegisterForm({
         title: "Account created",
         description: "You are signed in.",
       });
+      track("CompleteRegistration", { method: "password" });
       router.push(returnTo);
       router.refresh();
     });

@@ -15,6 +15,8 @@ import {
 import { useCartStore } from "@/features/cart/use-cart-store";
 import type { StockStatus } from "@/lib/data";
 import { cartItemCount } from "@/lib/cart/cart";
+import type { TrackItem } from "@/lib/tracking/events";
+import { track } from "@/lib/tracking/track";
 
 type AddToCartButtonProps = {
   slug: string;
@@ -29,6 +31,8 @@ type AddToCartButtonProps = {
   /** Orderable ahead of stock arriving — bypasses the usual out-of-stock
    * disable and shows "Place Pre Order" instead. */
   isPreOrder?: boolean;
+  /** Tracking item for add_to_cart (AD-389); omitted = no event. */
+  trackItem?: TrackItem;
 };
 
 export function AddToCartButton({
@@ -40,6 +44,7 @@ export function AddToCartButton({
   showHint = true,
   isComingSoon = false,
   isPreOrder = false,
+  trackItem,
 }: AddToCartButtonProps) {
   const router = useRouter();
   const { state, addItem } = useCartStore();
@@ -77,6 +82,9 @@ export function AddToCartButton({
             return;
           }
           setJustAdded(true);
+          if (trackItem) {
+            track("AddToCart", { items: [{ ...trackItem, quantity: 1 }] });
+          }
           notifyAddedToCart(() => router.push("/cart"));
         });
       }}

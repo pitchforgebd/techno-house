@@ -73,6 +73,8 @@ export type ProductSummary = {
   brandSlug: string;
   brandName: string;
   categorySlug: string;
+  /** Category names root → leaf (GA4 item_category…item_category5, AD-389). */
+  categoryNames: string[];
   sku: string;
   price: Money;
   compareAtPrice: Money | null;

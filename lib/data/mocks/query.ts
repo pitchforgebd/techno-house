@@ -20,6 +20,7 @@ export function toSummary(product: ProductDetail): ProductSummary {
     brandSlug: product.brandSlug,
     brandName: product.brandName,
     categorySlug: product.categorySlug,
+    categoryNames: product.categoryNames,
     sku: product.sku,
     price: product.price,
     compareAtPrice: product.compareAtPrice,

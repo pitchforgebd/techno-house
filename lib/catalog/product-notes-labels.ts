@@ -41,13 +41,39 @@ export type ProductPresetLookup = {
   labels: Map<string, ProductLabelView>;
   /** Product ids currently in a live Promotion campaign — drives the "Offer" ribbon. */
   activeOfferProductIds: Set<string>;
+  /**
+   * Every category (active or not) by slug — lets the mapper build the
+   * root → leaf name chain for tracking (AD-389) without a per-product join.
+   */
+  categories: Map<string, { name: string; parentSlug: string | null }>;
 };
 
 export const EMPTY_PRESET_LOOKUP: ProductPresetLookup = {
   notes: new Map(),
   labels: new Map(),
   activeOfferProductIds: new Set(),
+  categories: new Map(),
 };
+
+/** Category names root → leaf for `slug`; cycle-safe, empty when unknown. */
+export function categoryNameChain(
+  slug: string,
+  categories: ProductPresetLookup["categories"],
+): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  let current: string | null = slug;
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    const category = categories.get(current);
+    if (!category) {
+      break;
+    }
+    names.unshift(category.name);
+    current = category.parentSlug;
+  }
+  return names;
+}
 
 export function notesForType(
   notes: ProductNoteOption[],

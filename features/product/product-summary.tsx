@@ -47,6 +47,8 @@ import {
 } from "@/lib/catalog/variants";
 import type { AdminEmiConfig } from "@/lib/payments/emi-shared";
 import { cartItemCount, cartLineKey } from "@/lib/cart/cart";
+import type { TrackItem } from "@/lib/tracking/events";
+import { track } from "@/lib/tracking/track";
 import { formatMoney } from "@/lib/format/currency";
 import { cn } from "@/lib/cn";
 
@@ -59,6 +61,8 @@ const STOCK_LABEL: Record<StockStatus, string> = {
 type ProductSummaryProps = {
   slug: string;
   categorySlug: string;
+  /** Root → leaf category names, for tracking (AD-389). */
+  categoryNames?: string[];
   brandName: string;
   sku: string;
   name: string;
@@ -158,6 +162,7 @@ function WishlistHeartIcon({ filled }: { filled: boolean }) {
 export function ProductSummary({
   slug,
   categorySlug,
+  categoryNames = [],
   brandName,
   sku: productSku,
   name,
@@ -321,6 +326,21 @@ export function ProductSummary({
     emiPlans.length > 0 &&
     displayPrice.amount >= emiConfig.minOrderAmount;
 
+  // Tracking item for the selection on screen (AD-389): the PARENT SKU (the
+  // catalog feed id), the variant only as `variant`, and the price this
+  // shopper is actually charged (B2B price for a verified account).
+  function trackItem(itemQuantity: number): TrackItem {
+    return {
+      id: productSku,
+      name,
+      brand: brandName || null,
+      categories: categoryNames,
+      variant: selectedVariant?.name ?? null,
+      price: displayPrice.amount,
+      quantity: itemQuantity,
+    };
+  }
+
   if (minApplied !== minQuantity) {
     setMinApplied(minQuantity);
     if (quantity < minQuantity) {
@@ -386,6 +406,7 @@ export function ProductSummary({
         return;
       }
       setJustAdded(true);
+      track("AddToCart", { items: [trackItem(qty)] });
       notifyAddedToCart(() => router.push("/cart"));
     });
   }
@@ -942,6 +963,9 @@ export function ProductSummary({
                 onClick={() => {
                   const nextOn = !onWishlist;
                   toggleWishlist(slug);
+                  if (nextOn) {
+                    track("AddToWishlist", { items: [trackItem(1)] });
+                  }
                   notifyToast(
                     nextOn ? "Added to wishlist" : "Removed from wishlist",
                   );

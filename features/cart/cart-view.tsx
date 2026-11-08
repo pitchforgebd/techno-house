@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Headset, Minus, Plus } from "lucide-react";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { IconTrash } from "@/components/layout/chrome-icons";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { buttonClassName } from "@/components/ui/button";
@@ -25,6 +25,8 @@ import { loginHref } from "@/lib/account/return-path";
 import { applyCouponToSubtotal } from "@/lib/cart/coupons";
 import { formatMoney } from "@/lib/format/currency";
 import { cn } from "@/lib/cn";
+import { trackItemFromCartLine } from "@/lib/tracking/items";
+import { track } from "@/lib/tracking/track";
 
 export function CartView({
   couponsEnabled = true,
@@ -69,7 +71,14 @@ export function CartView({
       tone: "danger",
     });
     if (ok) {
+      const key = cartLineKey({ slug, colorId, variantId });
+      const removed = rows.find((row) => cartLineKey(row.line) === key);
       removeItem(slug, colorId, variantId);
+      if (removed) {
+        track("RemoveFromCart", {
+          items: [trackItemFromCartLine(removed.line, removed.product)],
+        });
+      }
       notifySuccess({
         title: "Removed",
         description: "Item removed from your cart.",
@@ -127,6 +136,22 @@ export function CartView({
   const discountAmount =
     couponResult?.ok === true ? couponResult.discountAmount : 0;
   const displayTotal = Math.max(0, subtotal - discountAmount);
+
+  // view_cart once per visit, after every line's product has loaded (AD-389).
+  const viewCartSent = useRef(false);
+  const cartReady = rows.length > 0 && rows.length === state.lines.length;
+  useEffect(() => {
+    if (!cartReady || viewCartSent.current) {
+      return;
+    }
+    viewCartSent.current = true;
+    track("ViewCart", {
+      items: rows.map((row) => trackItemFromCartLine(row.line, row.product)),
+      coupon: couponResult?.ok === true ? state.couponCode : null,
+      value: displayTotal,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once, when the cart first becomes ready
+  }, [cartReady]);
 
   return (
     <div className="mx-auto max-w-content px-4 py-8 md:py-10">

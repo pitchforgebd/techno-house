@@ -8767,3 +8767,70 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       Products that already have variants in production will start showing a
       selector (one "Variant" option of their names) and require a choice —
       check them in the admin form.
+
+- [x] AD-389 Data layer + Meta Conversions API (operator brief
+      `TECHNOHOUSE_TRACKING.md`, steps 1 audit → 2 browser → 3 CAPI → 2b
+      feed; operator decisions recorded in that conversation). Security-
+      relevant: touches order placement and gateway confirmation; no token
+      ever stored in DB or shipped to the client.
+
+      Browser (step 2): `lib/tracking/events.ts` (event table, `toGa4`,
+      `toMeta`, relay sanitiser — pure, shared with the server),
+      `lib/tracking/track.ts` (`track()`, `readAdIdentifiers()`, fbclid
+      capture, once-per-key), `lib/tracking/items.ts`,
+      `lib/tracking/match-keys.ts` (BD phone → 8801XXXXXXXXX, fbp/fbc shape),
+      `components/tracking/` (TrackingBootstrap in the storefront layout:
+      fbclid + social-login flag cookie + delegated Lead on every tel: /
+      wa.me/<number> link; TrackEvent; TrackedProductList = view_item_list +
+      select_item via click capture, cards stay server components). Only
+      dataLayer pushes — no gtag.js, no fbq. `{ecommerce:null}` before each
+      ecommerce push; PageView never pushed. item_id = parent Product.sku
+      everywhere (variant → item_variant); price = effective storefront price
+      (B2B price in the buy box). `ProductSummary.categoryNames` (root→leaf)
+      added via one category query in `loadProductPresetLookup` (not a
+      per-product join). Purchase on /checkout/confirmation built server-side
+      (`lib/tracking/purchase-server.ts`), event_id = order number, hashed
+      customer (em/ph/fn/country) in ecommerce.customer, only for COD or a
+      PAID online payment, once per order via localStorage.
+      Social OAuth: `completeSocialLogin` returns `created`; the callback sets
+      a 5-minute non-secret `th_auth_evt` cookie read+cleared on next load.
+
+      Server (step 3): `lib/analytics/meta-capi.ts` reworked — pixel id
+      `META_PIXEL_ID` env else DB (admin "enabled" ignored), token env only,
+      `META_TEST_EVENT_CODE`, 5 s timeout, `[meta-capi] sent/failed …` server
+      log with Meta's error code/message (token never logged; sent in the
+      POST body, not the URL), `after()` with fire-and-forget fallback.
+      Purchase built from the DB order (parent SKUs, DB value). COD: queued
+      after placement in create-order; online: queued in
+      `confirmGatewayPayment()` only when `applyPaymentTransition` reports
+      `changed` (new flag) — a replayed IPN sends nothing. New Order columns
+      fbp/fbc/clientIp/clientUserAgent (migration
+      `20261108171100_order_meta_capi_match_keys`, additive nullable), filled
+      at placement; IP from `getRequestMeta()` (TRUSTED_PROXY_HOPS, F-04) per
+      operator decision, not the brief's left-most XFF. `/api/tracking`:
+      same-origin only, 16 KB cap, relay-eligible names only, event id
+      format check, value/items sanity (sanitizeRelayData), in-memory 60/min
+      per IP, always 204.
+
+      Feed (2b): `listFeedProducts` no 200 cap (dev: 4309 items, ~3 MB,
+      ~0.2 s), `g:price` = regular, `g:sale_price` only inside the discount
+      window (effectiveStorefrontPricing). Affects /feeds/google.xml too
+      (shared list).
+
+      Verified: tsc + eslint clean (one pre-existing warning, shippingZones).
+      New `npm run test:datalayer` — 89 checks incl. a real fixture order
+      through `confirmGatewayPayment` (exactly one Purchase on PAID, none on
+      replay; mutation check removing the `changed` guard fails it). Existing
+      suites pass: payments 51, social 12, pc-builder 121, tracking-privacy
+      11, variants 51, inventory 33. Headless Chrome on `npm run dev`: search
+      → view_item_list → select_item → view_item (once) → add_to_wishlist →
+      add_to_cart → generate_lead (tel:) → login → view_cart → begin_checkout
+      (once) → add_shipping_info → add_payment_info → COD order → purchase
+      (once; reload does not repeat), no raw phone in dataLayer, relays 204
+      with the same event_id, saved order had fbc rebuilt from fbclid + IP +
+      UA. Test order released/deleted, demo cart restored, dev META_PIXEL row
+      restored.
+
+      DEPLOY: `npx prisma migrate deploy`; set META_CAPI_ACCESS_TOKEN (and
+      optionally META_PIXEL_ID) in the server env, restart. GTM tags/variables
+      are the operator's job.

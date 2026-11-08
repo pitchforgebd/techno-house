@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { TopBar } from "@/components/layout/top-bar";
 import { StorefrontAnalytics } from "@/components/analytics/storefront-analytics";
 import { CustomScriptSlot } from "@/components/analytics/custom-script-slot";
+import { TrackingBootstrap } from "@/components/tracking/tracking-bootstrap";
 import { StorefrontChatWidget } from "@/components/chat/storefront-chat-widget";
 import { DynamicPopup } from "@/components/storefront/dynamic-popup";
 import { JumpUpEffects } from "@/components/storefront/jump-up-effects";
@@ -169,6 +170,8 @@ export default async function StorefrontLayout({
             <MobileBottomNav />
           </div>
           <StorefrontAnalytics />
+          {/* dataLayer ecommerce events + Meta CAPI relay glue (AD-389). */}
+          <TrackingBootstrap />
           {/* Jump-up click feedback for the customer storefront only (AD-364). */}
           <JumpUpEffects />
           <StorefrontChatWidget pushedUpForMarquee={hasMarquee} />

@@ -137,6 +137,10 @@ export async function CategoryListing({
       />
 
       <CatalogListingBody
+        trackList={{
+          id: `category_${category.slug}`,
+          name: `Category: ${category.name}`,
+        }}
         pathname={pathname}
         preserved={{}}
         parsed={parsed}

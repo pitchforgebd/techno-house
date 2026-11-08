@@ -3,6 +3,7 @@
  * Callers must already have confirmed the event with the provider.
  * Browser return URLs must not call this.
  */
+import { queueMetaPurchaseForOrder } from "@/lib/analytics/meta-capi";
 import { getPrisma } from "@/lib/db/prisma";
 import { applyPaymentTransition } from "@/lib/payments/service";
 import type { PaymentStatus } from "@/lib/generated/prisma/enums";
@@ -40,6 +41,12 @@ export async function confirmGatewayPayment(input: {
   });
   if (!applied.ok) {
     return applied;
+  }
+  // Online-payment Purchase goes to Meta here, on the one call that actually
+  // moved the payment to PAID — never at order placement (AD-389). A replayed
+  // IPN/callback has changed=false and sends nothing.
+  if (applied.changed && applied.status === "PAID") {
+    queueMetaPurchaseForOrder(payment.orderId);
   }
   return { ok: true, status: applied.status, paid: applied.status === "PAID" };
 }
@@ -94,6 +101,7 @@ async function findOrderPayment(orderNumber: string) {
         take: 1,
         select: {
           id: true,
+          orderId: true,
           provider: true,
           status: true,
           transactionRef: true,

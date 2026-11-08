@@ -1002,6 +1002,17 @@ model Order {
   notes        String?
   staffNotes   String?
   trackingCode String?
+
+  /// Meta Conversions API match keys captured at placement (AD-389), so the
+  /// server-side Purchase can be sent later — on gateway confirmation for an
+  /// online payment — with the same browser identity. `fbp`/`fbc` are the
+  /// Meta cookies the browser sent; `clientIp` is resolved by
+  /// `getRequestMeta()` (TRUSTED_PROXY_HOPS rules, F-04). All optional:
+  /// an order never fails for lack of them.
+  fbp             String?
+  fbc             String?
+  clientIp        String?
+  clientUserAgent String?
   carrierId    String?
 
   placedAt    DateTime  @default(now())

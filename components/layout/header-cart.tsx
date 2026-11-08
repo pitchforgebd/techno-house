@@ -20,6 +20,8 @@ import {
 } from "@/lib/cart/cart";
 import { loginHref } from "@/lib/account/return-path";
 import { formatMoney } from "@/lib/format/currency";
+import { trackItemFromCartLine } from "@/lib/tracking/items";
+import { track } from "@/lib/tracking/track";
 
 export function HeaderCart() {
   const session = useCustomerSession();
@@ -148,9 +150,12 @@ export function HeaderCart() {
                             className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-danger/10 hover:text-danger"
                             aria-label={`Remove ${product.name}`}
                             title="Remove"
-                            onClick={() =>
-                              removeItem(line.slug, line.colorId, line.variantId)
-                            }
+                            onClick={() => {
+                              removeItem(line.slug, line.colorId, line.variantId);
+                              track("RemoveFromCart", {
+                                items: [trackItemFromCartLine(line, product)],
+                              });
+                            }}
                           >
                             <IconTrash className="size-4" />
                           </button>

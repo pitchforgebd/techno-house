@@ -16,6 +16,7 @@ import {
   ACCOUNT_PHONE_MAX,
 } from "@/lib/account/validation";
 import { B2B_COMPANY_MAX, B2B_NID_MAX } from "@/lib/b2b/limits";
+import { track } from "@/lib/tracking/track";
 
 export function B2BRegisterForm() {
   const router = useRouter();
@@ -54,6 +55,7 @@ export function B2BRegisterForm() {
         description:
           "You are signed in. Wholesale prices appear once an admin verifies the account.",
       });
+      track("CompleteRegistration", { method: "b2b" });
       router.push("/b2b/profile");
       router.refresh();
     });

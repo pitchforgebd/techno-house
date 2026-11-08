@@ -30,6 +30,8 @@ import { getLiveViewerCount } from "@/lib/analytics/product-views";
 import { getVisitorWidgetSettings } from "@/lib/marketing/visitor-widget-settings";
 import { getStorefrontChatWidgetTag } from "@/lib/chat/config";
 import { ProductViewTracker } from "@/features/storefront/product-view-tracker";
+import { TrackEvent } from "@/components/tracking/track-event";
+import { trackItemFromSummary } from "@/lib/tracking/items";
 import {
   listOwnPendingQuestionsForProduct,
   listOwnPendingReviewsForProduct,
@@ -233,9 +235,15 @@ export default async function ProductPage({
         <Breadcrumbs items={breadcrumbItems} />
       </div>
       <ProductViewTracker slug={product.slug} />
+      <TrackEvent
+        name="ViewContent"
+        eventKey={product.slug}
+        data={{ items: [trackItemFromSummary(product)] }}
+      />
       <ProductMediaBuy
         slug={product.slug}
         categorySlug={product.categorySlug}
+        categoryNames={product.categoryNames}
         brandName={product.brandName}
         sku={product.sku}
         name={product.name}

@@ -64,15 +64,24 @@ export async function listProductLabelOptions(): Promise<ProductLabelOption[]> {
 
 /** One query per request/list, not per product. */
 export async function loadProductPresetLookup(): Promise<ProductPresetLookup> {
-  const [notes, labels, activeOfferProductIds] = await Promise.all([
+  const [notes, labels, activeOfferProductIds, categories] = await Promise.all([
     listProductNoteOptions(),
     listProductLabelOptions(),
     loadActivePromotionProductIds(),
+    getPrisma().category.findMany({
+      select: { slug: true, name: true, parent: { select: { slug: true } } },
+    }),
   ]);
   return {
     notes: new Map(notes.map((note) => [note.id, note])),
     labels: new Map(labels.map((label) => [label.id, label])),
     activeOfferProductIds,
+    categories: new Map(
+      categories.map((category) => [
+        category.slug,
+        { name: category.name, parentSlug: category.parent?.slug ?? null },
+      ]),
+    ),
   };
 }
 
