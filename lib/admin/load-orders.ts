@@ -168,6 +168,7 @@ const orderSelect = {
       colorName: true,
       colorHex: true,
       variantName: true,
+      imageSrc: true,
       buildBatchId: true,
       wantsEmi: true,
       discountAmount: true,
@@ -211,6 +212,7 @@ type OrderRow = {
     colorName: string | null;
     colorHex: string | null;
     variantName: string | null;
+    imageSrc: string | null;
     buildBatchId: string | null;
     wantsEmi: boolean;
     discountAmount: number;
@@ -231,6 +233,7 @@ function toAdminOrder(row: OrderRow, options?: { maskPhone?: boolean }): AdminOr
     colorName: item.colorName,
     colorHex: item.colorHex,
     variantName: item.variantName,
+    imageSrc: item.imageSrc,
     buildBatchId: item.buildBatchId,
     wantsEmi: item.wantsEmi,
     discountAmount: item.discountAmount,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { Fragment, useRef, useState, type KeyboardEvent } from "react";
 import { ImagePlus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { AdminMediaPickerModal } from "@/features/admin/media/admin-media-picker";
@@ -13,6 +13,7 @@ import {
 import { AdminToggleSwitch } from "@/features/admin/products/admin-toggle-switch";
 import {
   LEGACY_VARIANT_OPTION,
+  VARIANT_IMAGES_MAX,
   VARIANT_OPTION_MAX,
   VARIANT_OPTION_NAME_MAX,
   VARIANT_OPTION_SUGGESTIONS,
@@ -22,9 +23,11 @@ import {
   variantCombinations,
   variantComboKey,
   variantDisplayName,
+  variantDisplayTitle,
   type VariantOptionGroup,
 } from "@/lib/catalog/variants";
 import {
+  PRODUCT_NAME_MAX,
   PRODUCT_SKU_MAX,
   PRODUCT_VARIANT_MAX,
   type ProductVariantInputFields,
@@ -51,7 +54,10 @@ export type VariantFormRow = {
   compareAt: string;
   quantity: string;
   isActive: boolean;
-  imageSrc: string;
+  /** This variant's own pictures, in order (AD-390). */
+  images: string[];
+  /** Optional full title; blank = "<product> — <values>". */
+  title: string;
   /** Units held by open orders; stock can't go below this. */
   reserved: number;
 };
@@ -72,6 +78,8 @@ type EditorVariant = {
   quantity: number;
   reserved?: number;
   imageSrc?: string | null;
+  imageSrcs?: string[];
+  title?: string | null;
 };
 
 /** Form state from a saved product. Legacy name-only variants become one
@@ -115,7 +123,13 @@ export function variantFormFromProduct(
         variant.compareAtAmount != null ? String(variant.compareAtAmount) : "",
       quantity: String(variant.quantity),
       isActive: variant.isActive,
-      imageSrc: variant.imageSrc ?? "",
+      images:
+        variant.imageSrcs && variant.imageSrcs.length > 0
+          ? [...variant.imageSrcs]
+          : variant.imageSrc
+            ? [variant.imageSrc]
+            : [],
+      title: variant.title ?? "",
       reserved: variant.reserved ?? 0,
     })),
   };
@@ -144,7 +158,9 @@ export function variantFormToInput(state: VariantFormState): {
       compareAt: row.compareAt,
       quantity: row.quantity,
       isActive: row.isActive,
-      imageSrc: row.imageSrc,
+      imageSrc: row.images[0] ?? "",
+      imageSrcs: row.images,
+      title: row.title,
     })),
   };
 }
@@ -243,7 +259,9 @@ function syncRows(
       compareAt: parent?.compareAt ?? "",
       quantity: parent ? "0" : "",
       isActive: true,
-      imageSrc: parent?.imageSrc ?? "",
+      images: parent ? [...parent.images] : [],
+      // A title names one exact variant, so a new combination never copies it.
+      title: "",
       reserved: 0,
     });
   }
@@ -253,12 +271,15 @@ function syncRows(
 export function AdminProductVariantsFields({
   value,
   onChange,
+  productName,
   productSku,
   defaultPrice,
   disabled,
 }: {
   value: VariantFormState;
   onChange: (next: VariantFormState) => void;
+  /** For the default-title hint ("<product> — <values>"). */
+  productName: string;
   productSku: string;
   /** Price a brand-new combination starts with (the product's price). */
   defaultPrice: string;
@@ -268,6 +289,10 @@ export function AdminProductVariantsFields({
     value.options.map(() => ""),
   );
   const [pickerRow, setPickerRow] = useState<number | null>(null);
+  // Images picked during one picker session. Several picks can arrive before
+  // this component re-renders, so merging into `value` alone dropped all but
+  // the last one; the session's own list is the source while it is open.
+  const pickerImages = useRef<string[]>([]);
   const [bulk, setBulk] = useState({ price: "", compareAt: "", quantity: "" });
 
   const combos = variantCombinations(value.options).length;
@@ -557,7 +582,6 @@ export function AdminProductVariantsFields({
             <table className="w-full text-sm">
               <thead className="bg-neutral-50 text-left text-xs font-semibold text-neutral-600">
                 <tr>
-                  <th className="px-2 py-2">Image</th>
                   <th className="px-2 py-2">Variant</th>
                   <th className="px-2 py-2">SKU</th>
                   <th className="px-2 py-2">Price (৳)</th>
@@ -566,123 +590,159 @@ export function AdminProductVariantsFields({
                   <th className="px-2 py-2">Active</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody>
                 {value.rows.map((row, index) => {
                   const label = variantDisplayName(row.optionValues);
+                  const autoTitle = variantDisplayTitle(productName || "Product", {
+                    name: label,
+                  });
                   return (
-                    <tr
-                      key={variantComboKey(row.optionValues)}
-                      className={cn(!row.isActive && "bg-neutral-50 text-neutral-400")}
-                    >
-                      <td className="px-2 py-2">
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            disabled={disabled}
-                            aria-label={`Image for ${label}`}
-                            onClick={() => setPickerRow(index)}
-                            className="relative flex size-10 items-center justify-center overflow-hidden rounded border border-dashed border-neutral-300 bg-white text-neutral-400 hover:border-neutral-400"
-                          >
-                            {row.imageSrc ? (
-                              // eslint-disable-next-line @next/next/no-img-element -- admin preview of media picker paths
-                              <img
-                                src={row.imageSrc}
-                                alt=""
-                                className="absolute inset-0 size-full object-contain p-0.5"
-                              />
-                            ) : (
-                              <ImagePlus className="size-4" aria-hidden />
-                            )}
-                          </button>
-                          {row.imageSrc ? (
-                            <button
-                              type="button"
-                              aria-label={`Remove image for ${label}`}
+                    <Fragment key={variantComboKey(row.optionValues)}>
+                      <tr
+                        className={cn(
+                          "border-t border-neutral-200",
+                          !row.isActive && "bg-neutral-50 text-neutral-400",
+                        )}
+                      >
+                        <td className="px-2 pt-2">
+                          <div className="flex flex-wrap gap-1">
+                            {row.optionValues.map((item, i) => (
+                              <span
+                                key={`${i}-${item}`}
+                                title={optionNames[i]}
+                                className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-700"
+                              >
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-2 pt-2">
+                          <div className="w-36 shrink-0">
+                            <Input
+                              aria-label={`SKU for ${label}`}
+                              value={row.sku}
+                              maxLength={PRODUCT_SKU_MAX}
                               disabled={disabled}
-                              onClick={() => updateRow(index, { imageSrc: "" })}
-                              className="text-neutral-400 hover:text-red-600"
-                            >
-                              <X className="size-3.5" aria-hidden />
-                            </button>
+                              onChange={(event) => updateRow(index, { sku: event.target.value })}
+                              className={cn(adminFormControlClass, "font-mono text-xs")}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-2 pt-2">
+                          <div className="w-24 shrink-0">
+                            <Input
+                              aria-label={`Price for ${label}`}
+                              inputMode="decimal"
+                              value={row.price}
+                              disabled={disabled}
+                              onChange={(event) => updateRow(index, { price: event.target.value })}
+                              className={adminFormControlClass}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-2 pt-2">
+                          <div className="w-24 shrink-0">
+                            <Input
+                              aria-label={`Regular price for ${label}`}
+                              inputMode="decimal"
+                              placeholder="—"
+                              value={row.compareAt}
+                              disabled={disabled}
+                              onChange={(event) => updateRow(index, { compareAt: event.target.value })}
+                              className={adminFormControlClass}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-2 pt-2">
+                          <div className="w-16 shrink-0">
+                            <Input
+                              aria-label={`Stock for ${label}`}
+                              inputMode="numeric"
+                              value={row.quantity}
+                              disabled={disabled}
+                              onChange={(event) => updateRow(index, { quantity: event.target.value })}
+                              className={adminFormControlClass}
+                            />
+                          </div>
+                          {row.reserved > 0 ? (
+                            <p className="mt-0.5 text-[0.65rem] text-neutral-500">
+                              {row.reserved} reserved
+                            </p>
                           ) : null}
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="flex flex-wrap gap-1">
-                          {row.optionValues.map((item, i) => (
-                            <span
-                              key={`${i}-${item}`}
-                              title={optionNames[i]}
-                              className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-700"
-                            >
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="w-36 shrink-0">
-                          <Input
-                            aria-label={`SKU for ${label}`}
-                            value={row.sku}
-                            maxLength={PRODUCT_SKU_MAX}
+                        </td>
+                        <td className="px-2 pt-2">
+                          <AdminToggleSwitch
+                            checked={row.isActive}
+                            onChange={(checked) => updateRow(index, { isActive: checked })}
+                            label={`${label} active`}
                             disabled={disabled}
-                            onChange={(event) => updateRow(index, { sku: event.target.value })}
-                            className={cn(adminFormControlClass, "font-mono text-xs")}
                           />
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="w-24 shrink-0">
-                          <Input
-                            aria-label={`Price for ${label}`}
-                            inputMode="decimal"
-                            value={row.price}
-                            disabled={disabled}
-                            onChange={(event) => updateRow(index, { price: event.target.value })}
-                            className={adminFormControlClass}
-                          />
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="w-24 shrink-0">
-                          <Input
-                            aria-label={`Regular price for ${label}`}
-                            inputMode="decimal"
-                            placeholder="—"
-                            value={row.compareAt}
-                            disabled={disabled}
-                            onChange={(event) => updateRow(index, { compareAt: event.target.value })}
-                            className={adminFormControlClass}
-                          />
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="w-16 shrink-0">
-                          <Input
-                            aria-label={`Stock for ${label}`}
-                            inputMode="numeric"
-                            value={row.quantity}
-                            disabled={disabled}
-                            onChange={(event) => updateRow(index, { quantity: event.target.value })}
-                            className={adminFormControlClass}
-                          />
-                        </div>
-                        {row.reserved > 0 ? (
-                          <p className="mt-0.5 text-[0.65rem] text-neutral-500">
-                            {row.reserved} reserved
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="px-2 py-2">
-                        <AdminToggleSwitch
-                          checked={row.isActive}
-                          onChange={(checked) => updateRow(index, { isActive: checked })}
-                          label={`${label} active`}
-                          disabled={disabled}
-                        />
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
+                      {/* Second line of the same variant: its own title and
+                          gallery (AD-390). */}
+                      <tr className={cn(!row.isActive && "bg-neutral-50")}>
+                        <td colSpan={6} className="px-2 pt-2 pb-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="min-w-[14rem] flex-1">
+                              <Input
+                                aria-label={`Title for ${label}`}
+                                value={row.title}
+                                maxLength={PRODUCT_NAME_MAX}
+                                disabled={disabled}
+                                placeholder={`Title (optional) — default: ${autoTitle}`}
+                                onChange={(event) => updateRow(index, { title: event.target.value })}
+                                className={cn(adminFormControlClass, "text-xs")}
+                              />
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {row.images.map((src, imageIndex) => (
+                                <div
+                                  key={`${src}-${imageIndex}`}
+                                  className="relative size-10 overflow-hidden rounded border border-neutral-200 bg-white"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element -- admin preview of media picker paths */}
+                                  <img
+                                    src={src}
+                                    alt=""
+                                    className="size-full object-contain p-0.5"
+                                  />
+                                  <button
+                                    type="button"
+                                    aria-label={`Remove image ${imageIndex + 1} of ${label}`}
+                                    disabled={disabled}
+                                    onClick={() =>
+                                      updateRow(index, {
+                                        images: row.images.filter((_, i) => i !== imageIndex),
+                                      })
+                                    }
+                                    className="absolute top-0 right-0 flex size-4 items-center justify-center rounded-bl bg-white/90 text-neutral-500 hover:text-red-600"
+                                  >
+                                    <X className="size-3" aria-hidden />
+                                  </button>
+                                </div>
+                              ))}
+                              {row.images.length < VARIANT_IMAGES_MAX ? (
+                                <button
+                                  type="button"
+                                  disabled={disabled}
+                                  aria-label={`Add images for ${label}`}
+                                  onClick={() => {
+                                    pickerImages.current = row.images;
+                                    setPickerRow(index);
+                                  }}
+                                  className="flex h-10 items-center gap-1 rounded border border-dashed border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-500 hover:border-neutral-400 hover:text-neutral-700"
+                                >
+                                  <ImagePlus className="size-4" aria-hidden />
+                                  {row.images.length ? "Add" : "Images"}
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -695,7 +755,9 @@ export function AdminProductVariantsFields({
             {summary.lowestPrice ? ` · from ৳${summary.lowestPrice.price}` : ""}. The
             product card and listings show the lowest active variant price, and the
             product&apos;s stock is the total of its variants — those two fields
-            above follow the variants automatically while any are active.
+            above follow the variants automatically while any are active. A
+            variant&apos;s title, SKU, price and pictures are what the customer
+            sees, and what the order records, when they pick it.
           </AdminFormPresetNote>
         </>
       ) : null}
@@ -703,14 +765,22 @@ export function AdminProductVariantsFields({
       {pickedRow ? (
         <AdminMediaPickerModal
           open
+          multiple
           onClose={() => setPickerRow(null)}
-          onSelect={(path) => {
-            if (pickerRow != null) {
-              updateRow(pickerRow, { imageSrc: path });
+          onSelectMany={(paths) => {
+            if (pickerRow == null) {
+              return;
             }
-            setPickerRow(null);
+            const merged = [...pickerImages.current];
+            for (const path of paths) {
+              if (!merged.includes(path)) {
+                merged.push(path);
+              }
+            }
+            pickerImages.current = merged.slice(0, VARIANT_IMAGES_MAX);
+            updateRow(pickerRow, { images: pickerImages.current });
           }}
-          title={`Image for ${variantDisplayName(pickedRow.optionValues)}`}
+          title={`Images for ${variantDisplayName(pickedRow.optionValues)}`}
           folder="products"
         />
       ) : null}

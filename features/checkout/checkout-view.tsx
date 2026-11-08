@@ -934,7 +934,7 @@ export function CheckoutView({
                     >
                       <div className="min-w-0">
                         <p className="truncate font-medium text-text">
-                          {product.name}
+                          {line.variant?.title ?? product.name}
                         </p>
                         {line.colorName ? (
                           <p className="text-text-muted">

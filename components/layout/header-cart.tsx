@@ -15,6 +15,7 @@ import { useCustomerSession } from "@/features/account/customer-session-provider
 import type { ProductSummary } from "@/lib/data";
 import {
   cartItemCount,
+  cartLineHref,
   cartLineKey,
   cartLineUnitAmount,
 } from "@/lib/cart/cart";
@@ -139,11 +140,11 @@ export function HeaderCart() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <Link
-                            href={`/product/${product.slug}`}
+                            href={cartLineHref(line)}
                             className="line-clamp-2 text-label font-medium text-text hover:text-primary"
                             onClick={close}
                           >
-                            {product.name}
+                            {line.variant?.title ?? product.name}
                           </Link>
                           <button
                             type="button"

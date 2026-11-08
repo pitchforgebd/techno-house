@@ -73,39 +73,49 @@ export function AccountOrderDetailView({
                 key={`${order.number}-${line.sku}-${index}`}
                 className="flex flex-wrap items-start justify-between gap-3 px-4 py-3"
               >
-                <div>
-                  {line.productSlug ? (
-                    <Link
-                      href={`/product/${line.productSlug}`}
-                      className="text-label font-medium text-text hover:text-primary"
-                    >
-                      {line.productName}
-                    </Link>
-                  ) : (
-                    <p className="text-label font-medium text-text">
-                      {line.productName}
-                    </p>
-                  )}
-                  {line.colorName ? (
-                    <p className="mt-0.5 flex items-center gap-1.5 text-caption text-text-muted">
-                      {line.colorHex ? (
-                        <span
-                          aria-hidden
-                          className="inline-block size-2.5 rounded-sm border border-black/10"
-                          style={{ backgroundColor: line.colorHex }}
-                        />
-                      ) : null}
-                      Colour: {line.colorName}
-                    </p>
+                <div className="flex min-w-0 items-start gap-3">
+                  {line.imageSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- order snapshot may be any stored image URL
+                    <img
+                      src={line.imageSrc}
+                      alt=""
+                      className="size-12 shrink-0 rounded border border-border bg-surface-muted object-contain p-0.5"
+                    />
                   ) : null}
-                  {line.variantName ? (
-                    <p className="mt-0.5 text-caption text-text-muted">
-                      Option: {line.variantName}
+                  <div>
+                    {line.productSlug ? (
+                      <Link
+                        href={`/product/${line.productSlug}`}
+                        className="text-label font-medium text-text hover:text-primary"
+                      >
+                        {line.productName}
+                      </Link>
+                    ) : (
+                      <p className="text-label font-medium text-text">
+                        {line.productName}
+                      </p>
+                    )}
+                    {line.colorName ? (
+                      <p className="mt-0.5 flex items-center gap-1.5 text-caption text-text-muted">
+                        {line.colorHex ? (
+                          <span
+                            aria-hidden
+                            className="inline-block size-2.5 rounded-sm border border-black/10"
+                            style={{ backgroundColor: line.colorHex }}
+                          />
+                        ) : null}
+                        Colour: {line.colorName}
+                      </p>
+                    ) : null}
+                    {line.variantName ? (
+                      <p className="mt-0.5 text-caption text-text-muted">
+                        Option: {line.variantName}
+                      </p>
+                    ) : null}
+                    <p className="text-caption text-text-muted">
+                      SKU {line.sku} · Qty {line.quantity}
                     </p>
-                  ) : null}
-                  <p className="text-caption text-text-muted">
-                    Qty {line.quantity}
-                  </p>
+                  </div>
                 </div>
                 <p className="tabular-nums text-label font-semibold">
                   {formatMoney({ amount: line.totalAmount })}

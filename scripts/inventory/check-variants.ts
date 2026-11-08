@@ -242,8 +242,10 @@ async function main(): Promise<void> {
         variants: [
           variantRow(["Black", "128GB"], "50000", "3", { compareAt: "54000" }),
           variantRow(["Black", "256GB"], "55000", "0"),
+          // Own title + a two-picture gallery (AD-390).
           variantRow(["Blue", "128GB"], "52000", "2", {
-            imageSrc: "/uploads/test-blue.png",
+            title: "  Variant Test Phone Blue 128GB Ocean Edition  ",
+            imageSrcs: ["/uploads/test-blue.png", "/uploads/test-blue-2.png"],
           }),
           variantRow(["Blue", "256GB"], "57000", "5"),
         ],
@@ -271,6 +273,8 @@ async function main(): Promise<void> {
             sku: true,
             optionValues: true,
             imageSrc: true,
+            imageSrcs: true,
+            title: true,
             position: true,
             stock: { select: { quantity: true, reserved: true } },
           },
@@ -305,6 +309,18 @@ async function main(): Promise<void> {
       "the variant image is stored",
       saved?.variants[2]?.imageSrc === "/uploads/test-blue.png",
     );
+    check(
+      "a variant keeps its whole gallery in order, imageSrc = the first",
+      saved?.variants[2]?.imageSrcs.join() ===
+        "/uploads/test-blue.png,/uploads/test-blue-2.png",
+      JSON.stringify(saved?.variants[2]?.imageSrcs),
+    );
+    check(
+      "a variant's own title is stored trimmed; blank stays empty",
+      saved?.variants[2]?.title === "Variant Test Phone Blue 128GB Ocean Edition" &&
+        saved.variants[3]?.title === null,
+      JSON.stringify(saved?.variants.map((v) => v.title)),
+    );
     const [blackSmall, blackLarge, blueSmall, blueLarge] = saved!.variants;
 
     // Edit: rename a SKU (same id), switch the cheapest variant off.
@@ -317,7 +333,8 @@ async function main(): Promise<void> {
           id: v.id,
           sku: index === 3 ? `${sku}-RENAMED` : v.sku,
           isActive: index !== 0,
-          imageSrc: v.imageSrc ?? "",
+          imageSrcs: v.imageSrcs,
+          title: v.title ?? "",
         },
       ),
     );
@@ -402,6 +419,41 @@ async function main(): Promise<void> {
     check(
       "a variant image reaches the page",
       choice(blueSmall!.id)?.image?.src === "/uploads/test-blue.png",
+    );
+    check(
+      "the page gets the variant's whole gallery",
+      choice(blueSmall!.id)?.images.map((i) => i.src).join() ===
+        "/uploads/test-blue.png,/uploads/test-blue-2.png",
+    );
+    check(
+      "the page gets the variant's own title",
+      choice(blueSmall!.id)?.title === "Variant Test Phone Blue 128GB Ocean Edition",
+      choice(blueSmall!.id)?.title,
+    );
+    check(
+      "a variant without a title is sold as \"<product> — <values>\"",
+      choice(blueLarge!.id)?.title === "Variant Test Phone — Blue / 256GB",
+      choice(blueLarge!.id)?.title,
+    );
+    check(
+      "each variant gets a readable ?variant= key",
+      choice(blueSmall!.id)?.key === "blue-128gb" &&
+        variantsLib.findVariantByUrlKey(detail!.variantChoices, "BLUE-128GB")?.id ===
+          blueSmall!.id &&
+        variantsLib.findVariantByUrlKey(detail!.variantChoices, blueLarge!.id)?.id ===
+          blueLarge!.id &&
+        variantsLib.findVariantByUrlKey(detail!.variantChoices, "nope") === null,
+    );
+    const bySearch = await productRepository.list({
+      q: "Ocean Edition",
+      page: 1,
+      pageSize: 10,
+      sort: "featured",
+    });
+    check(
+      "searching a variant's own title finds the product",
+      bySearch.items.some((item) => item.slug === slug),
+      `${bySearch.total} hits`,
     );
 
     // --- cart ---------------------------------------------------------------------
@@ -549,7 +601,15 @@ async function main(): Promise<void> {
         id: true,
         subtotalAmount: true,
         items: {
-          select: { variantId: true, variantName: true, sku: true, unitAmount: true, quantity: true },
+          select: {
+            variantId: true,
+            variantName: true,
+            productName: true,
+            imageSrc: true,
+            sku: true,
+            unitAmount: true,
+            quantity: true,
+          },
           orderBy: { unitAmount: "asc" },
         },
       },
@@ -566,6 +626,32 @@ async function main(): Promise<void> {
         placed.items[0].sku === blueSmall!.sku &&
         placed.items[1]?.sku === `${sku}-RENAMED`,
       JSON.stringify(placed?.items),
+    );
+    // What the shopper clicked is what the order records (AD-390).
+    check(
+      "the order line is titled as the clicked variant",
+      placed?.items[0]?.productName === "Variant Test Phone Blue 128GB Ocean Edition" &&
+        placed.items[1]?.productName === "Variant Test Phone — Blue / 256GB",
+      JSON.stringify(placed?.items.map((i) => i.productName)),
+    );
+    check(
+      "the order line snapshots the clicked variant's picture",
+      placed?.items[0]?.imageSrc === "/uploads/test-blue.png",
+      JSON.stringify(placed?.items.map((i) => i.imageSrc)),
+    );
+    const mainImage = await prisma.productImage.findFirst({
+      where: { productId: created.id },
+      orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+      select: { src: true },
+    });
+    check(
+      "a variant with no pictures snapshots the product's main image",
+      placed?.items[1]?.imageSrc === (mainImage?.src ?? null),
+      `${placed?.items[1]?.imageSrc} vs ${mainImage?.src}`,
+    );
+    check(
+      "each order line keeps the variant's own unit price",
+      placed?.items[0]?.unitAmount === 52000 && placed.items[1]?.unitAmount === 57000,
     );
     const reservedSmall = await variantStock(blueSmall!.id);
     const reservedAggregate = await productStock();

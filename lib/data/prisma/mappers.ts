@@ -27,6 +27,8 @@ import { effectiveStorefrontPricing } from "@/lib/catalog/discount-pricing";
 import { deriveStockStatus } from "@/lib/catalog/inventory-input";
 import {
   resolveVariantOptionGroups,
+  variantDisplayTitle,
+  variantUrlKey,
   variantValuesFor,
 } from "@/lib/catalog/variants";
 import { isWithinNewArrivalWindow } from "@/lib/catalog/new-arrival";
@@ -281,6 +283,8 @@ export type ProductDetailRow = ProductCandidateRow & {
     sku: string;
     optionValues: string[];
     imageSrc: string | null;
+    imageSrcs?: string[];
+    title?: string | null;
     priceAmount: number;
     compareAtAmount: number | null;
     isActive: boolean;
@@ -308,9 +312,26 @@ function toVariantChoices(row: ProductDetailRow): Pick<
   const usesOptions =
     optionNames.length > 0 &&
     active.every((variant) => variant.optionValues.length === optionNames.length);
+  // Readable `?variant=` keys; a rare collision ("8/128" vs "8-128") falls
+  // back to the always-unique id for the later one.
+  const usedKeys = new Set<string>();
   return {
     variantOptions: groups,
     variantChoices: active.map((variant) => {
+      const values = variantValuesFor(usesOptions ? optionNames : [], variant);
+      let key = variantUrlKey(values);
+      if (!key || usedKeys.has(key)) {
+        key = variant.id.toLowerCase();
+      }
+      usedKeys.add(key);
+      const title = variantDisplayTitle(row.name, variant);
+      const gallery = (
+        variant.imageSrcs && variant.imageSrcs.length > 0
+          ? variant.imageSrcs
+          : variant.imageSrc
+            ? [variant.imageSrc]
+            : []
+      ).map((src) => ({ src, alt: title }));
       const priced = effectiveStorefrontPricing({
         priceAmount: variant.priceAmount,
         compareAtAmount: variant.compareAtAmount,
@@ -321,7 +342,9 @@ function toVariantChoices(row: ProductDetailRow): Pick<
       return {
         id: variant.id,
         name: variant.name,
-        values: variantValuesFor(usesOptions ? optionNames : [], variant),
+        title,
+        key,
+        values,
         sku: variant.sku,
         price: money(priced.priceAmount),
         compareAtPrice:
@@ -333,9 +356,8 @@ function toVariantChoices(row: ProductDetailRow): Pick<
               variant.stock.lowStockThreshold,
             )
           : "out_of_stock",
-        image: variant.imageSrc
-          ? { src: variant.imageSrc, alt: `${row.name} — ${variant.name}` }
-          : null,
+        image: gallery[0] ?? null,
+        images: gallery,
       };
     }),
   };

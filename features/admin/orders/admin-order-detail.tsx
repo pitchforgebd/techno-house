@@ -373,6 +373,14 @@ export function AdminOrderDetail({
                 <TableRow key={line.id}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
+                    {line.imageSrc ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- order snapshot may be any stored image URL
+                      <img
+                        src={line.imageSrc}
+                        alt=""
+                        className="mb-1 size-12 rounded border border-border bg-surface-muted object-contain p-0.5"
+                      />
+                    ) : null}
                     <p className="flex flex-wrap items-center gap-1.5 font-medium text-text">
                       {line.productName}
                       {line.buildBatchId ? (

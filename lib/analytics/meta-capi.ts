@@ -327,7 +327,7 @@ export type PurchaseOrderRow = {
     productName: string;
     quantity: number;
     unitAmount: number;
-    product: { sku: string } | null;
+    product: { sku: string; name?: string } | null;
   }[];
 };
 
@@ -339,7 +339,9 @@ export type PurchaseOrderRow = {
 export function buildPurchaseEvent(order: PurchaseOrderRow): MetaEventInput {
   const items: TrackItem[] = order.items.map((line) => ({
     id: line.product?.sku ?? line.sku,
-    name: line.productName,
+    // Parent name like the browser events; the line snapshot is the variant
+    // title (AD-390).
+    name: line.product?.name ?? line.productName,
     price: line.unitAmount,
     quantity: line.quantity,
   }));
@@ -393,7 +395,7 @@ export async function sendMetaPurchaseForOrder(
           productName: true,
           quantity: true,
           unitAmount: true,
-          product: { select: { sku: true } },
+          product: { select: { sku: true, name: true } },
         },
       },
     },

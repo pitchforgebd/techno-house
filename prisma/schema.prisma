@@ -611,7 +611,13 @@ model ProductVariant {
   name            String
   /// One value per Product.variantOptionNames entry, same order (AD-388).
   optionValues    String[] @default([])
-  /// Shown first in the product gallery while this variant is selected.
+  /// Optional full title for this variant ("Apple iPhone 15 Pro 256GB
+  /// Black Titanium"); blank = "<product name> — <name>" (AD-390).
+  title           String?
+  /// This variant's own gallery, in order; replaces the product gallery
+  /// while it is selected (AD-390). Empty = product images.
+  imageSrcs       String[] @default([])
+  /// First of `imageSrcs` — kept for cart/order thumbnails.
   imageSrc        String?
   position        Int      @default(0)
   priceAmount     Int
@@ -1058,6 +1064,8 @@ model OrderItem {
   colorHex    String?
   /// Selected variant snapshot ("Black / 256GB") when ordered (AD-388).
   variantName String?
+  /// Image the customer saw for this line when ordering (AD-390).
+  imageSrc    String?
   /// Set when this line came from "Add build to cart" (AD-276) — real PC
   /// Builder order traceability, carried from the cart line at checkout.
   buildBatchId String?

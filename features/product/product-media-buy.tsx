@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { ProductGallery } from "@/features/product/product-gallery";
 import { ProductServiceCards } from "@/features/product/product-service-cards";
 import { ProductSummary } from "@/features/product/product-summary";
@@ -11,7 +11,7 @@ import type {
   ProductVariantChoice,
   StockStatus,
 } from "@/lib/data";
-import { defaultVariant } from "@/lib/catalog/variants";
+import { defaultVariant, VARIANT_URL_PARAM } from "@/lib/catalog/variants";
 import { cn } from "@/lib/cn";
 import { buildProductGalleryImages } from "@/lib/product/gallery-images";
 import type { AdminEmiConfig } from "@/lib/payments/emi-shared";
@@ -37,6 +37,8 @@ type ProductMediaBuyProps = {
   colors: ProductColorOption[];
   variantOptions: { name: string; values: string[] }[];
   variantChoices: ProductVariantChoice[];
+  /** Variant named by the page's `?variant=` link, if any (AD-390). */
+  initialVariantId?: string | null;
   discountStartsAt: string | null;
   discountEndsAt: string | null;
   whatsappNumber?: string | null;
@@ -86,6 +88,7 @@ export function ProductMediaBuy({
   colors,
   variantOptions,
   variantChoices,
+  initialVariantId = null,
   discountStartsAt,
   discountEndsAt,
   whatsappNumber,
@@ -113,10 +116,14 @@ export function ProductMediaBuy({
   const selectedColor =
     colors.find((color) => color.id === selectedColorId) ?? null;
 
-  // Starts on the cheapest in-stock variant — the price the product card
-  // showed (see `defaultVariant`).
+  // Starts on the variant a `?variant=` link named, else the cheapest in-stock
+  // one — the price the product card showed (see `defaultVariant`).
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     () =>
+      (initialVariantId &&
+      variantChoices.some((choice) => choice.id === initialVariantId)
+        ? initialVariantId
+        : null) ??
       defaultVariant(
         variantChoices.map((choice) => ({
           ...choice,
@@ -127,8 +134,34 @@ export function ProductMediaBuy({
   );
   const selectedVariant =
     variantChoices.find((choice) => choice.id === selectedVariantId) ?? null;
+  // What the tab title currently names, so a switch can swap just that part.
+  const shownTitle = useRef(
+    initialVariantId ? (selectedVariant?.title ?? name) : name,
+  );
+
+  // Picking a variant updates the address (shareable, ad-linkable) and the
+  // tab title without a navigation; the server renders the same selection
+  // for that address on a reload (AD-390).
+  function chooseVariant(variantId: string | null) {
+    setSelectedVariantId(variantId);
+    const choice = variantChoices.find((item) => item.id === variantId);
+    if (!choice) {
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set(VARIANT_URL_PARAM, choice.key);
+    window.history.replaceState(window.history.state, "", url);
+    if (document.title.includes(shownTitle.current)) {
+      document.title = document.title.replace(shownTitle.current, choice.title);
+      shownTitle.current = choice.title;
+    }
+  }
 
   const galleryImages = useMemo(() => {
+    // A variant with its own pictures shows only those (AD-390).
+    if (selectedVariant && selectedVariant.images.length > 0) {
+      return selectedVariant.images;
+    }
     const base =
       selectedColor && selectedColor.images.length > 0
         ? buildProductGalleryImages(
@@ -137,15 +170,7 @@ export function ProductMediaBuy({
             `${name} — ${selectedColor.name}`,
           )
         : buildProductGalleryImages(productImages, primaryImage, name);
-    // The chosen variant's own picture leads; the rest of the gallery stays.
-    const variantImage = selectedVariant?.image;
-    if (!variantImage) {
-      return base;
-    }
-    return [
-      variantImage,
-      ...base.filter((image) => image.src !== variantImage.src),
-    ];
+    return base;
   }, [selectedColor, selectedVariant, productImages, primaryImage, name]);
 
   const hasOptions = colors.length > 0;
@@ -192,10 +217,14 @@ export function ProductMediaBuy({
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:gap-x-8">
           <div className="lg:col-span-5 lg:col-start-1 lg:row-span-2 lg:row-start-1">
             <ProductGallery
-              key={`${selectedColorId ?? "default"}:${selectedVariant?.image ? selectedVariant.id : ""}`}
+              key={`${selectedColorId ?? "default"}:${selectedVariant?.images.length ? selectedVariant.id : ""}`}
               images={galleryImages}
               productName={
-                selectedColor ? `${name} — ${selectedColor.name}` : name
+                selectedVariant
+                  ? selectedVariant.title
+                  : selectedColor
+                    ? `${name} — ${selectedColor.name}`
+                    : name
               }
               refundStickerSrc={refundStickerSrc}
             />
@@ -238,7 +267,7 @@ export function ProductMediaBuy({
             variantOptions={variantOptions}
             variantChoices={variantChoices}
             selectedVariantId={selectedVariantId}
-            onSelectedVariantIdChange={setSelectedVariantId}
+            onSelectedVariantIdChange={chooseVariant}
             discountStartsAt={discountStartsAt}
             discountEndsAt={discountEndsAt}
             whatsappNumber={whatsappNumber}

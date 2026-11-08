@@ -8841,3 +8841,65 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       brief, .env.example and the test fixture were updated. A test CAPI event
       to 1674448247520461 with the operator's token returned
       events_received=1 (Test Events code in use).
+
+- [x] AD-390 Variant title + per-variant gallery, variant links, and an
+      order snapshot of what was clicked — operator: one product (not
+      Ryans-style separate products per colour), but each variation must
+      carry its own title, SKU, price and images, and "order er shomoy oi
+      title, sku, price, image wise e jeno hoy… test koreo dekhbe".
+
+      Additive migration `20261108212237_variant_title_images`:
+      `ProductVariant.title` (optional), `ProductVariant.imageSrcs String[]`
+      (backfilled from the old single `imageSrc`, which is kept = first
+      image), `OrderItem.imageSrc` snapshot. `variantDisplayTitle()` is the
+      one rule everywhere: the variant's own title, else "<product> — <Black
+      / 256GB>". `variantUrlKey()`/`findVariantByUrlKey()`: `?variant=` takes
+      a readable key ("blue", "black-256gb"; id on collision) or the id.
+
+      Admin: each variant row gets a second line with a Title box (placeholder
+      shows the default it will use) and its own image strip (×, "Add" opens
+      the media picker in multi-select; up to 12). Fixed during testing:
+      several picks in one picker session overwrote each other (stale
+      `value`) — the session's picks now accumulate in a ref.
+      Product page: the H1, gallery (variant's pictures replace the product
+      gallery; none → product gallery), price, SKU follow the selection; a
+      click writes `?variant=<key>` (replaceState) and swaps the tab title;
+      the page and its metadata (title, og:image) honour `?variant=` on load,
+      canonical unchanged. Search (shop + header suggest) also matches active
+      variants' title / option label / SKU.
+      Cart/mini-cart/checkout show the variant title and picture and link to
+      `?variant=<id>`. Order: `productName` = the variant title, `sku` = the
+      variant SKU, `unitAmount` = the variant price, `imageSrc` = the
+      variant's first picture (else the product's main image); customer order
+      page (now with picture + SKU), admin order (picture) and invoice show
+      them. GA4/Meta Purchase keep the PARENT product name as item name (the
+      AD-389 convention, matching ViewContent/AddToCart) via
+      `line.product.name`, variant still in `variant`.
+
+      Verified: prisma validate, `tsc --noEmit`, eslint clean (the
+      `shippingZones` warning is pre-existing). `test:variants` 62 checks
+      (11 new: gallery order, trimmed/blank titles, page title/gallery/key,
+      search by variant title, order line title + picture + price, main-image
+      fallback); a mutation (order title = product name) fails it. inventory
+      33, tax 35, payments 51, category-search 22, product-quick-edit 27,
+      product-layout 28, product-gallery 47 (its "only the gallery editor uses
+      multi-select" guard now also allows the variant editor). Headless Chrome
+      on a temp product (deleted after): Black's title + own 2 pictures by
+      default; clicking Blue switches H1, price ৳42,000, SKU, gallery,
+      `?variant=blue` and the tab title; Red (no title/pictures) shows
+      "TV390 Phone — Red" and the product gallery; a direct `?variant=blue`
+      link opens on Blue with Blue's title and og:image; signed-in cart shows
+      Blue's title/picture/price and a variant link, checkout too; an order
+      placed from that UI-built cart stored "TV390 Phone Ocean Blue" /
+      TV390-Blue / 42000 / Blue's picture, and the customer order page, admin
+      order page and invoice all showed them; admin editor loads titles and
+      pictures, shows the default title, removes a picture, adds a title and
+      two library pictures, and Save persisted all of it. Order released and
+      deleted, demo customer's three cart lines restored.
+
+      NOTE (found while testing, not changed): with META_CAPI_ACCESS_TOKEN in
+      .env.local, every locally placed COD order (incl. test suites) sends a
+      Meta Purchase — to Test Events only while META_TEST_EVENT_CODE is set.
+      Run order-placing suites with `META_CAPI_ACCESS_TOKEN=` (empty).
+
+      DEPLOY: `npx prisma migrate deploy` (additive + backfill).

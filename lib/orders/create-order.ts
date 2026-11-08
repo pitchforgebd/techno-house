@@ -44,6 +44,7 @@ import {
   resolveVariantB2BPricing,
 } from "@/lib/b2b/pricing";
 import { syncVariantAggregateStock } from "@/lib/catalog/variant-stock";
+import { variantDisplayTitle } from "@/lib/catalog/variants";
 import { getPrisma } from "@/lib/db/prisma";
 import { getStoreOperationsSettings } from "@/lib/business/operations-config";
 import { computeOrderTax } from "@/lib/business/tax";
@@ -200,6 +201,8 @@ export async function placeCustomerOrderForUser(
                   id: true,
                   productId: true,
                   name: true,
+                  title: true,
+                  imageSrc: true,
                   sku: true,
                   isActive: true,
                   priceAmount: true,
@@ -228,6 +231,11 @@ export async function placeCustomerOrderForUser(
                   discountEndsAt: true,
                   isSale: true,
                   weightGrams: true,
+                  images: {
+                    select: { src: true },
+                    orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+                    take: 1,
+                  },
                   stock: {
                     select: {
                       id: true,
@@ -341,6 +349,7 @@ export async function placeCustomerOrderForUser(
         productId: string;
         variantId: string | null;
         variantName: string | null;
+        imageSrc: string | null;
         slug: string;
         name: string;
         sku: string;
@@ -470,8 +479,11 @@ export async function placeCustomerOrderForUser(
           productId: product.id,
           variantId: variant?.id ?? null,
           variantName: variant?.name ?? null,
+          // Snapshot exactly what was chosen (AD-390): the variant's title,
+          // SKU and picture, so the order never changes if it is edited later.
+          imageSrc: variant?.imageSrc ?? product.images[0]?.src ?? null,
           slug: product.slug,
-          name: product.name,
+          name: variant ? variantDisplayTitle(product.name, variant) : product.name,
           sku: variant?.sku ?? product.sku,
           quantity,
           unitAmount,
@@ -613,6 +625,7 @@ export async function placeCustomerOrderForUser(
                   productId: line.productId,
                   variantId: line.variantId,
                   variantName: line.variantName,
+                  imageSrc: line.imageSrc,
                   productName: line.name,
                   sku: line.sku,
                   unitAmount: line.unitAmount,

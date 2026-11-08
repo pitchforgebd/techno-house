@@ -33,6 +33,58 @@ export const VARIANT_OPTION_SUGGESTIONS = [
   "Model",
 ] as const;
 
+/** Images one variant's own gallery may hold (AD-390). */
+export const VARIANT_IMAGES_MAX = 12;
+/** URL parameter that selects a variant on the product page. */
+export const VARIANT_URL_PARAM = "variant";
+
+/**
+ * The title a variant is sold under (AD-390): the staff-written title when
+ * set, otherwise "<product name> — <Black / 256GB>". Used for the product
+ * page heading, the cart and the order line, so all three always agree.
+ */
+export function variantDisplayTitle(
+  productName: string,
+  variant: { title?: string | null; name: string },
+): string {
+  const own = variant.title?.trim();
+  return own ? own : `${productName.trim()} — ${variant.name.trim()}`;
+}
+
+/** Readable URL key for a variant: ["Black", "256GB"] -> "black-256gb". */
+export function variantUrlKey(values: readonly string[]): string {
+  return values
+    .map((value) =>
+      value
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, ""),
+    )
+    .filter(Boolean)
+    .join("-");
+}
+
+/**
+ * The variant a `?variant=` value names: its URL key, or its id (always
+ * unique, used when two keys would collide). Unknown values select nothing.
+ */
+export function findVariantByUrlKey<T extends { id: string; key: string }>(
+  variants: readonly T[],
+  raw: string | null | undefined,
+): T | null {
+  const wanted = (raw ?? "").trim().toLowerCase();
+  if (!wanted) {
+    return null;
+  }
+  return (
+    variants.find((variant) => variant.key === wanted) ??
+    variants.find((variant) => variant.id.toLowerCase() === wanted) ??
+    null
+  );
+}
+
 export type VariantOptionGroup = {
   name: string;
   values: string[];

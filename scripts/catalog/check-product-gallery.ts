@@ -241,11 +241,17 @@ function mediaPickerMultiSelect(): void {
   // actual backward-compatibility guarantee, checked by absence, not just by
   // the default value.
   const callers = sourceFiles("features").filter(
-    (path) => !path.endsWith("admin-media-picker.tsx") && !path.endsWith("admin-product-gallery-fields.tsx") && source(path).includes("<AdminMediaPickerModal"),
+    // The variant table's per-variant gallery (AD-390) is the one other
+    // deliberate multi-select caller.
+    (path) =>
+      !path.endsWith("admin-media-picker.tsx") &&
+      !path.endsWith("admin-product-gallery-fields.tsx") &&
+      !path.endsWith("admin-product-variants-fields.tsx") &&
+      source(path).includes("<AdminMediaPickerModal"),
   );
   const withMultiple = callers.filter((path) => /<AdminMediaPickerModal[\s\S]{0,200}?\bmultiple\b/.test(source(path)));
   check(
-    `no caller besides the new gallery editor turns on multiple (found: ${withMultiple.join(", ") || "none"})`,
+    `no caller besides the gallery editors turns on multiple (found: ${withMultiple.join(", ") || "none"})`,
     withMultiple.length === 0,
   );
   check("AdminFormUploadBox (thumbnail, banners, logos, color images, ...) still opens the picker in plain single-select mode", source("features/admin/products/admin-product-form-primitives.tsx").includes("onSelect={(path) => onChange?.(path)}") && !source("features/admin/products/admin-product-form-primitives.tsx").includes("multiple"));

@@ -33,6 +33,7 @@ import {
 } from "@/lib/cart/guest-cart-cookie";
 import { findShippingArea } from "@/lib/cart/shipping";
 import { effectiveStorefrontPricing } from "@/lib/catalog/discount-pricing";
+import { variantDisplayTitle } from "@/lib/catalog/variants";
 import { toDbBuilderSlot } from "@/lib/data/prisma/mappers";
 import type { BuilderSlot } from "@/lib/data/types/catalog";
 import { getPrisma } from "@/lib/db/prisma";
@@ -72,6 +73,7 @@ type CartRecord = {
     variantId: string | null;
     variant: {
       name: string;
+      title: string | null;
       isActive: boolean;
       priceAmount: number;
       compareAtAmount: number | null;
@@ -79,6 +81,7 @@ type CartRecord = {
     } | null;
     product: {
       slug: string;
+      name: string;
       isActive: boolean;
       isSale: boolean;
       discountStartsAt: Date | null;
@@ -96,6 +99,7 @@ const cartInclude = {
       product: {
         select: {
           slug: true,
+          name: true,
           isActive: true,
           isSale: true,
           discountStartsAt: true,
@@ -106,6 +110,7 @@ const cartInclude = {
       variant: {
         select: {
           name: true,
+          title: true,
           isActive: true,
           priceAmount: true,
           compareAtAmount: true,
@@ -207,6 +212,7 @@ async function toCartState(cart: CartRecord): Promise<CartState> {
           item.variant && priced
             ? {
                 name: item.variant.name,
+                title: variantDisplayTitle(item.product.name, item.variant),
                 priceAmount: priced.priceAmount,
                 compareAtAmount: priced.compareAtAmount,
                 imageSrc: item.variant.imageSrc,

@@ -17,6 +17,7 @@ import { useCustomerSession } from "@/features/account/customer-session-provider
 import type { ProductSummary } from "@/lib/data";
 import {
   cartItemCount,
+  cartLineHref,
   cartLineKey,
   cartLineUnitAmount,
   MAX_LINE_QTY,
@@ -231,16 +232,12 @@ export function CartView({
                   className="flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap"
                 >
                   <Link
-                    href={`/product/${product.slug}`}
+                    href={cartLineHref(line)}
                     className="relative size-16 shrink-0 overflow-hidden border border-border bg-surface-muted sm:size-20"
                   >
                     <Image
                       src={line.variant?.imageSrc ?? product.image.src}
-                      alt={
-                        line.variant
-                          ? `${product.name} — ${line.variant.name}`
-                          : product.image.alt
-                      }
+                      alt={line.variant ? line.variant.title : product.image.alt}
                       fill
                       sizes="80px"
                       className="object-contain p-1.5"
@@ -249,10 +246,10 @@ export function CartView({
 
                   <div className="min-w-0 flex-1">
                     <Link
-                      href={`/product/${product.slug}`}
+                      href={cartLineHref(line)}
                       className="text-label font-semibold tracking-tight text-text hover:text-primary"
                     >
-                      {product.name}
+                      {line.variant?.title ?? product.name}
                     </Link>
                     {line.colorName ? (
                       <p className="mt-0.5 flex items-center gap-1.5 text-caption text-text-muted">

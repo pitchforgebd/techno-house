@@ -390,6 +390,7 @@ export function ProductSummary({
         variant: selectedVariant
           ? {
               name: selectedVariant.name,
+              title: selectedVariant.title,
               priceAmount: selectedVariant.price.amount,
               compareAtAmount: selectedVariant.compareAtPrice?.amount ?? null,
               imageSrc: selectedVariant.image?.src ?? null,
@@ -575,7 +576,8 @@ export function ProductSummary({
               thing in the column, and the title reads as a heading over it
               rather than competing with it (AD-371, "more minimal"). */}
           <h1 className="text-balance text-lg leading-snug font-semibold tracking-tight text-text sm:text-xl">
-            {name}
+            {/* The selected variant's own title (AD-390). */}
+            {selectedVariant?.title ?? name}
           </h1>
           {/* One merged meta row — rating, stock, model, SKU, brand — rather
               than a rating line followed by a second row of plain grey boxes.

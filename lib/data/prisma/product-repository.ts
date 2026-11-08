@@ -96,6 +96,18 @@ const CANDIDATE_SELECT = {
   builderStorageInterface: true,
 } satisfies Prisma.ProductSelect;
 
+/** Active variant whose title, option label or SKU contains `text`. */
+function variantTextMatch(text: string): Prisma.ProductVariantWhereInput {
+  return {
+    isActive: true,
+    OR: [
+      { title: { contains: text, mode: "insensitive" } },
+      { name: { contains: text, mode: "insensitive" } },
+      { sku: { contains: text, mode: "insensitive" } },
+    ],
+  };
+}
+
 const DETAIL_SELECT = {
   ...CANDIDATE_SELECT,
   overview: true,
@@ -152,6 +164,8 @@ const DETAIL_SELECT = {
       sku: true,
       optionValues: true,
       imageSrc: true,
+      imageSrcs: true,
+      title: true,
       priceAmount: true,
       compareAtAmount: true,
       isActive: true,
@@ -265,6 +279,8 @@ function composeWhere(
     { brand: { slug: { contains: text, mode: "insensitive" } } },
     { category: { name: { contains: text, mode: "insensitive" } } },
     { category: { slug: { contains: text, mode: "insensitive" } } },
+    // A variant's own title, option label or SKU finds its product (AD-390).
+    { variants: { some: variantTextMatch(text) } },
   ];
   // Word mode (compare picker): each word must match somewhere, in any order.
   const searchWords = query.qWords ? splitSearchWords(query.q) : [];
@@ -578,6 +594,7 @@ export const prismaProductRepository: ProductRepository = {
         { sku: { contains: needle, mode: "insensitive" } },
         { brand: { name: { contains: needle, mode: "insensitive" } } },
         { category: { name: { contains: needle, mode: "insensitive" } } },
+        { variants: { some: variantTextMatch(needle) } },
       ],
     };
     const [total, rows] = await Promise.all([

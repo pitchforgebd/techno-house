@@ -137,6 +137,8 @@ type EditorProduct = ProductDetail & {
     quantity: number;
     reserved?: number;
     imageSrc?: string | null;
+    imageSrcs?: string[];
+    title?: string | null;
   }>;
   variantOptionNames?: string[];
   barcode: string;
@@ -1501,6 +1503,7 @@ export function AdminProductForm({
             <AdminProductVariantsFields
               value={variantForm}
               onChange={setVariantForm}
+              productName={name}
               productSku={sku}
               defaultPrice={specialPriceInput}
               disabled={pending}

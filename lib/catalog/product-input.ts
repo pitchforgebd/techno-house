@@ -45,6 +45,7 @@ import type {
   SpecGroupInputFields,
 } from "@/lib/catalog/spec-group-input";
 import {
+  VARIANT_IMAGES_MAX,
   VARIANT_OPTION_MAX,
   VARIANT_OPTION_NAME_MAX,
   VARIANT_OPTION_VALUE_MAX,
@@ -165,8 +166,12 @@ export type ProductVariantInputFields = {
   compareAt: string;
   isActive: boolean;
   quantity: string;
-  /** Media-library path or http(s) URL; blank = no variant image. */
+  /** Legacy single image; used only when `imageSrcs` is not sent. */
   imageSrc?: string;
+  /** This variant's own gallery, in order (AD-390). */
+  imageSrcs?: string[];
+  /** Optional full title; blank = "<product> — <name>" (AD-390). */
+  title?: string;
 };
 
 export type ParsedProductVariant = {
@@ -178,7 +183,10 @@ export type ParsedProductVariant = {
   compareAtAmount: number | null;
   isActive: boolean;
   quantity: number;
+  /** First of `imageSrcs`, or null. */
   imageSrc: string | null;
+  imageSrcs: string[];
+  title: string | null;
 };
 
 export type ProductInputFields = {
@@ -479,12 +487,31 @@ export function parseVariants(
       return { ok: false, formError: quantity };
     }
 
-    const imageSrc = normalizeProductImageSrc(row.imageSrc ?? "");
-    if (imageSrc === undefined) {
+    const rawImages =
+      row.imageSrcs !== undefined ? row.imageSrcs : [row.imageSrc ?? ""];
+    if (rawImages.length > VARIANT_IMAGES_MAX) {
       return {
         ok: false,
-        formError: `Variant "${name}" image must be a local public path (e.g. /uploads/…) or an http(s) image URL.`,
+        formError: `Variant "${name}" can have at most ${VARIANT_IMAGES_MAX} images.`,
       };
+    }
+    const imageSrcs: string[] = [];
+    for (const raw of rawImages) {
+      const src = normalizeProductImageSrc(typeof raw === "string" ? raw : "");
+      if (src === undefined) {
+        return {
+          ok: false,
+          formError: `Variant "${name}" image must be a local public path (e.g. /uploads/…) or an http(s) image URL.`,
+        };
+      }
+      if (src && !imageSrcs.includes(src)) {
+        imageSrcs.push(src);
+      }
+    }
+
+    const title = collapseSpaces(typeof row.title === "string" ? row.title : "");
+    if (title.length > PRODUCT_NAME_MAX) {
+      return { ok: false, formError: `Variant "${name}" title is too long.` };
     }
 
     const id = typeof row.id === "string" ? row.id.trim() : "";
@@ -497,7 +524,9 @@ export function parseVariants(
       compareAtAmount,
       isActive: row.isActive,
       quantity,
-      imageSrc,
+      imageSrc: imageSrcs[0] ?? null,
+      imageSrcs,
+      title: title || null,
     });
   }
 

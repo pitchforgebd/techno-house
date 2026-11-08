@@ -7,6 +7,8 @@ export const MAX_LINE_QTY = 10;
 /** Display data for a line's chosen variant (AD-388). */
 export type CartLineVariant = {
   name: string;
+  /** What the line is sold as — shown instead of the product name. */
+  title: string;
   /** Effective unit price — the product's discount window applied. */
   priceAmount: number;
   compareAtAmount: number | null;
@@ -37,6 +39,13 @@ export function cartLineKey(
     parts.push(`v:${line.variantId}`);
   }
   return parts.join("::");
+}
+
+/** Product page link for a line — opens on the line's variant. */
+export function cartLineHref(line: Pick<CartLine, "slug" | "variantId">): string {
+  return line.variantId
+    ? `/product/${line.slug}?variant=${encodeURIComponent(line.variantId)}`
+    : `/product/${line.slug}`;
 }
 
 /** What one unit of a cart line costs: its variant's price, else the product's. */

@@ -91,6 +91,7 @@ export async function loadPurchaseTracking(
           product: {
             select: {
               sku: true,
+              name: true,
               brand: { select: { name: true } },
               category: { select: { slug: true } },
             },
@@ -127,7 +128,9 @@ export async function loadPurchaseTracking(
       coupon: order.couponCode,
       items: order.items.map((line) => ({
         id: line.product?.sku ?? line.sku,
-        name: line.productName,
+        // The parent name, matching ViewContent/AddToCart — the line's own
+        // snapshot is the variant title (AD-390); the variant goes below.
+        name: line.product?.name ?? line.productName,
         brand: line.product?.brand.name ?? null,
         categories: line.product
           ? categoryNameChain(line.product.category.slug, categories)

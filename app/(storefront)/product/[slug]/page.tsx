@@ -40,6 +40,10 @@ import { averageProductRating } from "@/lib/product/rating";
 import { getRefundPolicySettings } from "@/lib/refunds/settings";
 import { getEmiConfig } from "@/lib/payments/emi-config";
 import { isFeatureFlagEnabled } from "@/lib/admin/feature-flags-config";
+import {
+  findVariantByUrlKey,
+  VARIANT_URL_PARAM,
+} from "@/lib/catalog/variants";
 
 // See the matching comment in category/[slug]/page.tsx — same reasoning.
 // (This page also reads the customer session, which already opts individual
@@ -56,43 +60,61 @@ export async function generateStaticParams() {
   return result.items.map((product) => ({ slug: product.slug }));
 }
 
+type ProductSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+/** `?variant=` as a single string (the first, if repeated). */
+async function variantParam(searchParams: ProductSearchParams | undefined) {
+  const raw = (await searchParams)?.[VARIANT_URL_PARAM];
+  return Array.isArray(raw) ? raw[0] : raw;
+}
+
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: ProductSearchParams;
 }): Promise<Metadata> {
   const { slug } = await params;
   const product = await productRepository.getBySlug(slug);
   if (!product) {
     return { title: "Product — Techno House" };
   }
+  // A shared/ad link to one variant previews that variant's title and
+  // picture (AD-390); the canonical stays the one product page.
+  const variant = findVariantByUrlKey(
+    product.variantChoices,
+    await variantParam(searchParams),
+  );
+  const displayName = variant?.title ?? product.name;
+  const image = variant?.image ?? product.image;
   const description =
     product.overview[0]?.trim() ||
-    `${product.name} by ${product.brandName}. ${product.warrantyLabel}.`;
-  const title = `${product.name} — Techno House`;
+    `${displayName} by ${product.brandName}. ${product.warrantyLabel}.`;
+  const title = `${displayName} — Techno House`;
   return {
     title,
     description,
     alternates: { canonical: canonicalUrl(`/product/${product.slug}`) },
     openGraph: {
-      title: product.name,
+      title: displayName,
       description,
       // Next's typed OpenGraphType union has no "product" variant (only
       // website/article/book/profile/video/music) — "website" is the
       // accurate choice within what it actually supports. The Product
       // JSON-LD below is the real machine-readable signal for crawlers.
       type: "website",
-      images: product.image.src
-        ? [{ url: product.image.src, alt: product.image.alt }]
-        : undefined,
+      images: image.src ? [{ url: image.src, alt: image.alt }] : undefined,
     },
   };
 }
 
 export default async function ProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: ProductSearchParams;
 }) {
   const { slug } = await params;
   const product = await productRepository.getBySlug(slug);
@@ -100,6 +122,10 @@ export default async function ProductPage({
   if (!product) {
     notFound();
   }
+  const linkedVariant = findVariantByUrlKey(
+    product.variantChoices,
+    await variantParam(searchParams),
+  );
 
   const session = await getCustomerSession();
   const [
@@ -259,6 +285,7 @@ export default async function ProductPage({
         colors={product.colors}
         variantOptions={product.variantOptions}
         variantChoices={product.variantChoices}
+        initialVariantId={linkedVariant?.id ?? null}
         discountStartsAt={product.discountStartsAt}
         discountEndsAt={product.discountEndsAt}
         whatsappNumber={chatWidgetTag.whatsappNumber}

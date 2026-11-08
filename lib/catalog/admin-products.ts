@@ -63,6 +63,8 @@ export type AdminProductVariantView = {
   /** Units held by open orders — the form keeps stock at or above this. */
   reserved: number;
   imageSrc: string | null;
+  imageSrcs: string[];
+  title: string | null;
 };
 
 export type AdminProductListItem = ProductSummary & {
@@ -198,6 +200,8 @@ const DETAIL_SELECT = {
       sku: true,
       optionValues: true,
       imageSrc: true,
+      imageSrcs: true,
+      title: true,
       priceAmount: true,
       compareAtAmount: true,
       isActive: true,
@@ -367,6 +371,8 @@ function toEditor(
       quantity: variant.stock?.quantity ?? 0,
       reserved: variant.stock?.reserved ?? 0,
       imageSrc: variant.imageSrc,
+      imageSrcs: variant.imageSrcs ?? [],
+      title: variant.title ?? null,
     })),
     variantOptionNames: row.variantOptionNames,
     barcode: row.barcode ?? "",
@@ -550,6 +556,8 @@ async function syncVariants(
       name: variant.name,
       optionValues: variant.optionValues,
       imageSrc: variant.imageSrc,
+      imageSrcs: variant.imageSrcs,
+      title: variant.title,
       position,
       priceAmount: variant.priceAmount,
       compareAtAmount: variant.compareAtAmount,
@@ -1340,6 +1348,8 @@ const CLONE_SELECT = {
       sku: true,
       optionValues: true,
       imageSrc: true,
+      imageSrcs: true,
+      title: true,
       priceAmount: true,
       compareAtAmount: true,
       isActive: true,
@@ -1445,6 +1455,8 @@ export async function cloneAdminProduct(
       isActive: variant.isActive,
       quantity: variant.stock?.quantity ?? 0,
       imageSrc: variant.imageSrc,
+      imageSrcs: variant.imageSrcs,
+      title: variant.title,
     })),
     variantOptionNames: source.variantOptionNames,
     attributes: source.attributeValues.map((attributeValue) => ({

@@ -131,7 +131,12 @@ export type ProductColorOption = {
 /** One purchasable variant on the product page (AD-388). */
 export type ProductVariantChoice = {
   id: string;
+  /** Option label, "Black / 256GB". */
   name: string;
+  /** What it is sold as — heading, cart and order line (AD-390). */
+  title: string;
+  /** `?variant=` value that selects it ("black-256gb"). */
+  key: string;
   /** One value per `ProductDetail.variantOptions` group, same order. */
   values: string[];
   sku: string;
@@ -139,8 +144,10 @@ export type ProductVariantChoice = {
   price: Money;
   compareAtPrice: Money | null;
   stockStatus: StockStatus;
-  /** Shown first in the gallery while selected; `null` = product images. */
+  /** First of `images`; `null` = product images. */
   image: ProductImage | null;
+  /** This variant's own gallery; empty = the product gallery (AD-390). */
+  images: ProductImage[];
 };
 
 export type ProductDetail = ProductSummary & {

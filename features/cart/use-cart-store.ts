@@ -86,6 +86,10 @@ function normalizeLineVariant(raw: unknown): CartLineVariant | null {
   }
   return {
     name: value.name.slice(0, 200),
+    title:
+      typeof value.title === "string" && value.title.trim()
+        ? value.title.slice(0, 200)
+        : value.name.slice(0, 200),
     priceAmount: Math.max(0, Math.round(value.priceAmount)),
     compareAtAmount:
       typeof value.compareAtAmount === "number" &&
