@@ -56,8 +56,10 @@ order row with event_id = order number — COD at placement, online payment
 on gateway PAID; 4 nullable Order columns `fbp`/`fbc`/`clientIp`/
 `clientUserAgent` — needs `prisma migrate deploy`; catalog feeds now list
 every active product with `g:price` = regular and `g:sale_price` in the
-discount window; spec in `TECHNOHOUSE_TRACKING.md`) are also
-complete — full detail in `project-memory/TASKS.md`,
+discount window; spec in `TECHNOHOUSE_TRACKING.md`), and AD-390
+(variant title + per-variant gallery, `?variant=` links, order line snapshots
+the clicked variant's title/SKU/price/picture — needs `prisma migrate
+deploy`) are also complete — full detail in `project-memory/TASKS.md`,
 not narrated here.
 
 ## Status
