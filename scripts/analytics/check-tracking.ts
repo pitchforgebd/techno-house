@@ -267,7 +267,7 @@ async function main(): Promise<void> {
   };
   try {
     delete process.env.META_CAPI_ACCESS_TOKEN;
-    process.env.META_PIXEL_ID = "1450202573106646";
+    process.env.META_PIXEL_ID = "1674448247520461";
     check(
       "no token → not configured",
       (await meta.resolveMetaCapiConfig()) === null,
@@ -283,7 +283,7 @@ async function main(): Promise<void> {
     process.env.META_CAPI_ACCESS_TOKEN = "SECRET-TOKEN-xyz";
     process.env.META_TEST_EVENT_CODE = "TEST123";
     const config = await meta.resolveMetaCapiConfig();
-    check("env pixel id used", config?.pixelId === "1450202573106646");
+    check("env pixel id used", config?.pixelId === "1674448247520461");
 
     const sent = await meta.sendMetaEvent({
       eventName: "AddToCart",
@@ -306,7 +306,7 @@ async function main(): Promise<void> {
     check("send ok", sent.ok);
     check(
       "graph url",
-      call?.url === "https://graph.facebook.com/v21.0/1450202573106646/events",
+      call?.url === "https://graph.facebook.com/v21.0/1674448247520461/events",
     );
     check("token not in url", !call?.url.includes("SECRET"));
     check("token in body", call?.body.access_token === "SECRET-TOKEN-xyz");

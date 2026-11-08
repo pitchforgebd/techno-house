@@ -8834,3 +8834,10 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       DEPLOY: `npx prisma migrate deploy`; set META_CAPI_ACCESS_TOKEN (and
       optionally META_PIXEL_ID) in the server env, restart. GTM tags/variables
       are the operator's job.
+
+      PIXEL (2026-11-09): the Meta pixel is 1674448247520461 — GTM "Meta
+      Pixel - Base" switched to it (GTM Version 4, published by the operator).
+      1450202573106646 belonged to an old, wrong account and is retired; the
+      brief, .env.example and the test fixture were updated. A test CAPI event
+      to 1674448247520461 with the operator's token returned
+      events_received=1 (Test Events code in use).
