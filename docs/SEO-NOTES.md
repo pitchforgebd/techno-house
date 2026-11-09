@@ -152,6 +152,134 @@ See the commit `SEO phase 1: …` on branch `seo-fixes`.
   product/category/brand/blog URL has a lastmod; 4,767 URLs, all unique;
   balanced tags, valid dates, no unescaped `&`.
 
+### Phase 2 — Titles, descriptions, headings
+
+Branch `seo-phase-2` (from main after Phase 1 was merged and deployed).
+
+All templates live in one pure module, `lib/seo/page-meta.ts` (no DB), and
+`lib/seo/page-metadata.ts` turns them into Next `Metadata` (canonical, Open
+Graph/Twitter, default OG image) plus the two small DB reads they need.
+
+1. **Categories (B1, B9 + keyword map 3.2).** Title
+   `{Heading} Price in Bangladesh {YEAR} | Techno House` (year = Dhaka calendar
+   year, computed per request; falls back to "Price in BD" / no suffix when
+   over 60). H1 = `{Heading} Price in Bangladesh`, the product count moved out
+   of the `<h1>` into a `<p>` beside it (same line, same look).
+   `{Heading}` is the keyword-map heading for the 28 mapped categories (e.g.
+   networking → "Router & Networking", security → "CC Camera & Security",
+   software → "Windows 11 Pro & Software"), otherwise the category name. Two
+   pairs of categories share a name ("Intel PC" / "Ryzen PC" under both Gaming
+   PC and Star PC) — those get the parent in brackets so titles stay unique.
+   Descriptions: hand-written for the 28 mapped categories (primary keyword
+   first, secondary keywords worked in), a template for the rest; an
+   admin-written `Category.description` wins when set (none are set on dev).
+2. **Brands (B2 + keyword map 3.3).** Title
+   `{Brand} {main product type} Price in BD | Techno House` — the 12 mapped
+   brands use their keyword type ("ASUS Laptop Price in Bangladesh", "Gigabyte
+   Motherboard Price in BD", "Apple MacBook …"); every other brand's type is
+   its biggest real category (`brandTopCategories()`: one grouped query,
+   offer/umbrella categories skipped). Description lists the brand's real top
+   categories. H1: mapped brands get the keyword, others keep the brand name.
+3. **Products (B3, B4).** POS names are cleaned first (leading part code before
+   `#`/`,` removed, stray `#`, ®/™ and warranty blocks dropped, shouted English
+   words softened, brand added/normalised), then the model block + 1–2 short
+   spec blocks are kept to fit 60 characters with " Price in BD", adding
+   " | Techno House" only when it fits. Titles are made unique against the
+   same brand's other products (`productSiblingNames()`): the words only this
+   product has are added, then its part code. Description: name + "price in BD
+   is ৳X" (only when the page shows a price — hidden for Up Coming and for out
+   of stock unless Pre Order, the same rule as the product page; the price is
+   the same `product.price` the JSON-LD uses), warranty label, "genuine
+   {Brand}", "EMI available" only when the page's EMI teaser shows, delivery.
+   The visible H1 still shows the full product name (unchanged).
+4. **Static pages (B6).** 20 hand-written title/description pairs
+   (`STATIC_PAGE_META`) for about, contact, faq, support, warranty, shipping,
+   returns, terms, privacy, digital-commerce-guideline, brands, offers, deals,
+   flash-sale, pc-builder, blog, shop, complaint, product-request, track. A meta
+   title/description typed in Admin → Design Studio → Pages still wins (only
+   digital-commerce-guideline has one). The content pages are placeholders on
+   the live site ("Our story will appear here"), so their descriptions describe
+   what the page is for rather than promising details it does not have.
+5. **"Prices in ৳ are display-only"** and the other price disclaimers ("not a
+   charge", "demo prices … nothing is charged") removed from every category
+   description and category SEO paragraph in `lib/catalog/category-page-content.ts`.
+6. **Headings (B7, B8).** Cart drawer + mobile menu title (`Sheet`), the cart
+   drawer's empty-state title and the footer column titles are `<p>` now; the
+   marquee notice bar is `role="note"` and headings inside its admin-written
+   HTML render as `<div>` (`lib/content/demote-headings.ts`). The "under
+   development" text itself is **not** removed or changed. Same look: a
+   `.th-heading-like` class joins the global heading font rule and the
+   `.th-rich-text h2–h4` rules apply via `:where(.th-heading-hN)`.
+   Verified in headless Chrome against live: computed style identical for all
+   of them on /category/laptop, /product/…, /about; heading outline of
+   /category/laptop went from 33 to 23 entries (all chrome headings gone).
+7. **Default og:image (item 6).** No 1200×630 brand asset existed, so
+   `app/og/route.tsx` generates one with `next/og` (site name + the page's
+   heading). Text is looked up server-side from `type` + `slug` — never taken
+   from the query string — and unknown slugs 404. Used by category, brand and
+   static pages (`og:image` with width/height 1200×630, `twitter:card
+   summary_large_image`). Product pages keep the product photo.
+
+#### Phase 2 files
+
+| File | Change |
+|---|---|
+| `lib/seo/page-meta.ts` (new) | all title/description/H1 templates, keyword map tables, product-name cleanup |
+| `lib/seo/page-metadata.ts` (new) | `staticPageMetadata`, `socialMetadata`, `ogImagePath`, `brandTopCategories`, `productSiblingNames` |
+| `app/og/route.tsx` (new) | default 1200×630 OG image |
+| `app/(storefront)/product/[slug]/page.tsx` | product title/description templates |
+| `app/(storefront)/category/[slug]/page.tsx` | category title/description + OG |
+| `app/(storefront)/brand/[slug]/page.tsx` | brand title/description + OG |
+| `features/catalog/category-listing.tsx`, `category-listing-bar.tsx` | H1 text; count outside the H1 |
+| `features/catalog/brand-listing.tsx` | keyword H1 for mapped brands |
+| `features/content/storefront-content-page.tsx`, `lib/content/pages.ts` | content-page meta from `STATIC_PAGE_META`, admin override |
+| `app/(storefront)/{about,contact,faq,support,warranty,shipping,returns,terms,privacy,digital-commerce-guideline}/page.tsx` | new `storefrontContentMetadata(slug)` signature |
+| `app/(storefront)/{brands,offers,flash-sale,pc-builder,blog,complaint,product-request,track,shop,deals}/page.tsx` | `staticPageMetadata()` |
+| `lib/catalog/category-page-content.ts` | price disclaimers removed |
+| `lib/data/types/catalog.ts`, `lib/data/prisma/{category-repository,mappers}.ts` | optional `Category.description` exposed |
+| `components/ui/sheet.tsx`, `components/ui/empty-state.tsx`, `components/layout/header-cart.tsx`, `components/layout/site-footer.tsx` | `<h2>` → `<p>` |
+| `components/layout/marquee-notice-bar.tsx`, `lib/content/demote-headings.ts` (new) | `role="note"`, headings → styled `<div>` |
+| `app/globals.css` | `.th-heading-like`, `:where(.th-heading-hN)` |
+| `scripts/seo/check-page-meta.ts` (new) | `npm run test:seo-meta` — 383 checks |
+| `scripts/seo/audit-meta.ts` (new) | `npm run seo:audit-meta` — READ-ONLY audit over the real catalogue |
+| `scripts/seo/check-baseline.ts`, `package.json` | updated + new phase 2 guards |
+
+#### Phase 2 verification (2026-11-09)
+
+- `tsc --noEmit` clean; eslint 0 errors (3 pre-existing warnings in untouched
+  files); `next build` exit 0.
+- `test:seo` 69 ok, `test:seo-canonical` 34 ok, `test:seo-meta` 383 ok,
+  a11y baseline 10 ok.
+- `seo:audit-meta` on the dev DB (4,309 products, 345 categories, 94 brands):
+  0 titles over 60; descriptions: 3 under 140, 0 over 160; categories and
+  brands 0 duplicate titles; products: 40 groups / 91 products (2.1%) still
+  share a title — spot-checked, these are duplicate listings in the data
+  (same product with a "(N)"/"(S)"/"- M" location tag, "for EC4-CEET Project"
+  notes, code-prefix vs code-suffix twins) and dev-only Microsoft licence
+  records (none of those exist on the live site).
+- `next start`: Phase 1 still holds (fake product/category/brand 404, www
+  301, `?page=2` canonical, sitemap index); 60 random sitemap URLs 200 with a
+  title.
+
+#### Not changed (needs a decision)
+
+- Other visible "display-only" sentences outside category descriptions are
+  still on the live site: `/brands` ("Prices in ৳ are display-only"), `/shop`
+  intro, `/deals`, brand page fallback text ("Prices in ৳ are for display and
+  are not a charge"), home "About" block, product page
+  (`product-summary.tsx` — warranty line + "Branch stock checks are
+  display-only"), product service cards, cart drawer empty state ("Totals are
+  display-only"), add-to-cart toast ("nothing is charged").
+- Demo wording in the category buying-guide copy that is not about prices
+  ("in the demo catalog" in brand tables, "Specs are demo catalog data" on
+  /category/gaming, demo price-range rows on /category/wireless-charger and
+  /category/accessories) — Phase 5 replaces this copy.
+- Admin → Categories / Brands "Meta title / Meta description" fields are not
+  saved anywhere (the form shows a computed value; there is no column), so
+  they never reached the storefront — before or after this phase.
+- Pages 2+ of a listing share page 1's title (only the canonical differs).
+- The home page title/description come from Admin → SEO (unchanged).
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
@@ -167,7 +295,36 @@ See the commit `SEO phase 1: …` on branch `seo-fixes`.
 - **Phase 1 — Search Console:** submit `https://technohouse.com.bd/sitemap.xml`
   again (it is now an index); remove any `www` property's sitemap if one was
   submitted.
+- **Phase 2 — deploy:** no schema change, same command as Phase 1.
+- **Phase 2 — optional read-only check on the server** (prints duplicate
+  titles against the real catalogue, writes nothing to the DB):
+  `npm run seo:audit-meta` (add `-- --csv=~/seo-titles.csv` for every row).
+- **Phase 2 — content:** the about/contact/faq/warranty/shipping/returns/terms/
+  privacy pages are still placeholder text on the live site; their new
+  descriptions are only as good as the page behind them. Fill them in Admin →
+  Design Studio → Pages.
+- **Phase 2 — data:** duplicate product listings (same product entered twice
+  with a location tag or a project note) keep identical titles; merge or
+  deactivate them in Admin → Products (the audit lists them).
 
 ## 4. Keyword-map slugs not found
 
-(Filled in Phase 2.)
+Checked against the live sitemap (production DB) and the dev DB, 2026-11-09.
+
+| Keyword-map entry | Result |
+|---|---|
+| `ram (verify)` | **No `ram` category.** Live has `ram-desktop`, `ram-laptop`, `laptop-ram`, `server-ram`. The "ram price in bangladesh" keyword is used on `ram-desktop`. Nothing created. |
+| `/category/nvme-ssd` | Exists live; missing on the dev DB only (keyword copy still applies on live). |
+| `earphone/headphone (verify)` | Split: primary "earbuds" → `earbuds`, secondary "gaming headphone" → `headphone` (both exist). |
+| `keyboard/mouse (verify)` | Split: `keyboard` and `mouse` (both exist). |
+| `smart watch`, `monitor`, `processor`, `graphics card`, `motherboard`, `power supply`, `casing`, `cpu cooler`, `UPS` (verify) | All exist: `smart-watch`, `monitor`, `processor`, `graphics-card`, `motherboard`, `power-supply`, `casing`, `cpu-cooler`, `ups`. |
+| Brands (verify): hp, lenovo, dell, acer, msi, gigabyte, apple, amd, corsair, epson | All exist on live with exactly these slugs. |
+
+Keyword-map headings deliberately broader than the bare keyword (so the title
+matches what the page lists): networking "Router & Networking", security
+"CC Camera & Security", camera "DSLR & Camera", tv "TV & Smart TV", appliance
+"AC & Home Appliance", software "Windows 11 Pro & Software", gaming "Gaming
+Accessories", keyboard/mouse keep "Keyboard"/"Mouse" in the title with
+"gaming keyboard/mouse price in BD" in the description. "used vs new laptop
+bd" (laptop secondary) was not used — it is a comparison/informational query
+that fits a blog post (Phase 5) better than a category description.

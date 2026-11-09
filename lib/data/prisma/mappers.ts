@@ -148,6 +148,7 @@ export type CategoryRow = {
   name: string;
   filterKeys: string[];
   extraBrandSlugs: string[];
+  description?: string | null;
   parent: { slug: string } | null;
 };
 
@@ -158,6 +159,7 @@ export function toCategory(row: CategoryRow): Category {
     parentSlug: row.parent?.slug ?? null,
     filterKeys: row.filterKeys,
     extraBrandSlugs: row.extraBrandSlugs,
+    description: row.description ?? null,
   };
 }
 

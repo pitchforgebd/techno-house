@@ -14,12 +14,16 @@ export function CategoryListingBar({
 }) {
   return (
     <div className="mt-5 flex flex-col gap-3 border border-border bg-surface px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5 sm:py-4">
-      <h1 className="min-w-0 text-balance text-[1.05rem] font-semibold leading-snug tracking-tight text-text sm:text-lg">
-        {title}
-        <span className="ml-2 font-normal text-text-muted">
+      {/* The H1 is the category keyword only (SEO phase 2, B9); the product
+          count sits beside it in the same line, outside the heading. */}
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-[1.05rem] leading-snug sm:text-lg">
+        <h1 className="min-w-0 text-balance font-semibold tracking-tight text-text">
+          {title}
+        </h1>
+        <p className="th-heading-like font-normal text-text-muted">
           ({total} {total === 1 ? "Product" : "Products"} found)
-        </span>
-      </h1>
+        </p>
+      </div>
 
       <div className="flex shrink-0 items-center gap-3 border-t border-border pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5">
         <span className="whitespace-nowrap text-caption font-medium text-text-muted">

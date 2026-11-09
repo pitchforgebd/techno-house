@@ -5,7 +5,7 @@ import {
   type ContentPageSlug,
 } from "@/lib/content/pages";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
-import { canonicalUrl } from "@/lib/seo/canonical";
+import { staticPageMetadata } from "@/lib/seo/page-metadata";
 
 /** Real content when Admin -> Design Studio -> Pages has saved something; the original placeholder copy otherwise. */
 export async function StorefrontContentPage({
@@ -40,19 +40,23 @@ export async function StorefrontContentPage({
   );
 }
 
+/**
+ * Built-in title/description for each content page (SEO phase 2, B6 —
+ * `STATIC_PAGE_META`), self-canonical at `/{slug}`, with the default OG
+ * image. A meta title/description the admin actually typed in Admin →
+ * Design Studio → Pages wins over the built-in copy.
+ */
 export async function storefrontContentMetadata(
   slug: ContentPageSlug,
-  fallbackTitle: string,
 ): Promise<Metadata> {
   const page = await getStorefrontContentPage(slug);
-  // Every content page is served at `/{slug}` (app/(storefront)/{slug}).
-  const alternates = { canonical: canonicalUrl(`/${slug}`) };
-  if (!page) {
-    return { title: fallbackTitle, alternates };
-  }
-  return {
-    title: `${page.metaTitle} — Techno House`,
-    description: page.metaDescription || undefined,
-    alternates,
-  };
+  const custom = page?.customMetaTitle;
+  return staticPageMetadata(`/${slug}`, {
+    title: custom
+      ? /techno house/i.test(custom)
+        ? custom
+        : `${custom} | Techno House`
+      : null,
+    description: page?.customMetaDescription,
+  });
 }

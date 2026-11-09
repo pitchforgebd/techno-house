@@ -15,12 +15,11 @@ import {
   PRODUCT_REQUEST_DETAILS_MAX,
   PRODUCT_REQUEST_NAME_MAX,
 } from "@/lib/support/product-request";
-import { canonicalUrl } from "@/lib/seo/canonical";
+import { staticPageMetadata } from "@/lib/seo/page-metadata";
 
-export const metadata: Metadata = {
-  alternates: { canonical: canonicalUrl("/product-request") },
-  title: "Request a product — Techno House",
-};
+// Title/description from STATIC_PAGE_META (SEO phase 2, B6), self-canonical,
+// default OG image.
+export const metadata: Metadata = staticPageMetadata("/product-request");
 
 export default async function ProductRequestPage({
   searchParams,

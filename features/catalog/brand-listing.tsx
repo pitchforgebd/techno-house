@@ -13,6 +13,7 @@ import {
 import type { Brand } from "@/lib/data";
 import { brandRepository, productRepository } from "@/lib/data";
 import { breadcrumbListJsonLd } from "@/lib/seo/json-ld";
+import { brandMeta } from "@/lib/seo/page-meta";
 
 export async function BrandListing({
   brand,
@@ -52,8 +53,10 @@ export async function BrandListing({
     <div className="mx-auto max-w-[90rem] px-4 py-8">
       <JsonLd data={breadcrumbListJsonLd(breadcrumbItems)} />
       <Breadcrumbs items={breadcrumbItems} />
+      {/* Keyword-map brands get their primary keyword ("ASUS Laptop Price
+          in Bangladesh"); every other brand keeps its name. */}
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-        {brand.name}
+        {brandMeta(brand, []).h1}
       </h1>
       <p className="mt-2 text-body text-text-muted">
         {brand.description || (

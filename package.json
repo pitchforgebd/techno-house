@@ -95,6 +95,8 @@
     "test:seo": "tsx scripts/seo/check-baseline.ts",
     "seo:baseline": "tsx scripts/seo/check-baseline.ts",
     "test:seo-canonical": "tsx scripts/seo/check-canonical.ts",
+    "test:seo-meta": "tsx scripts/seo/check-page-meta.ts",
+    "seo:audit-meta": "tsx scripts/seo/audit-meta.ts",
     "test:regression": "tsx scripts/regression/run-baselines.ts",
     "regression": "tsx scripts/regression/run-baselines.ts",
     "test:env": "tsx scripts/deploy/check-env-example.ts",

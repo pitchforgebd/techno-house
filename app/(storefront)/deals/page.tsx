@@ -6,15 +6,17 @@ import { ProductCard } from "@/features/catalog/product-card";
 import { PRODUCT_CARD_GRID_CLASS } from "@/features/catalog/product-grid";
 import { productRepository } from "@/lib/data";
 import { listingCanonicalUrl } from "@/lib/seo/canonical";
+import { staticPageMetadata } from "@/lib/seo/page-metadata";
 
 export async function generateMetadata({
   searchParams,
 }: {
   searchParams: Promise<{ page?: string | string[] }>;
 }): Promise<Metadata> {
+  // Title/description from STATIC_PAGE_META (B6). ?page=N (N > 1) is its
+  // own canonical so later pages are indexable.
   return {
-    title: "Deals — Techno House",
-    // ?page=N (N > 1) is its own canonical so later pages are indexable.
+    ...staticPageMetadata("/deals"),
     alternates: {
       canonical: listingCanonicalUrl("/deals", await searchParams),
     },

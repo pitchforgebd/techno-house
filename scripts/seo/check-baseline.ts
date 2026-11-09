@@ -190,10 +190,24 @@ function main(): void {
     const source = readFileSync(join(root, file), "utf8");
     check(
       `${label} page sets a canonical (filter/sort/page-stable)`,
-      /alternates: \{\s*canonical:/.test(source) &&
+      /alternates: \{\s*canonical\b/.test(source) &&
         /(listingCanonicalUrl|canonicalUrl)\(/.test(source),
     );
   }
+
+  // staticPageMetadata() is the one place static pages get their canonical.
+  const pageMetadataSrc = readFileSync(
+    join(root, "lib/seo/page-metadata.ts"),
+    "utf8",
+  );
+  check(
+    "staticPageMetadata sets a self-canonical from the page path",
+    pageMetadataSrc.includes("const canonical = canonicalUrl(path);") &&
+      pageMetadataSrc.includes("alternates: { canonical }"),
+  );
+  const setsCanonical = (source: string) =>
+    /alternates: \{\s*canonical\b/.test(source) ||
+    source.includes("staticPageMetadata(");
 
   for (const page of [
     "about", "contact", "faq", "support", "warranty", "shipping", "returns",
@@ -212,7 +226,7 @@ function main(): void {
     readFileSync(
       join(root, "features/content/storefront-content-page.tsx"),
       "utf8",
-    ).includes("canonicalUrl(`/${slug}`)"),
+    ).includes("staticPageMetadata(`/${slug}`"),
   );
   for (const page of [
     "brands", "deals", "offers", "offers/[slug]", "flash-sale", "pc-builder",
@@ -222,11 +236,53 @@ function main(): void {
       join(root, `app/(storefront)/${page}/page.tsx`),
       "utf8",
     );
-    check(
-      `/${page} sets a self-canonical`,
-      /alternates: \{\s*canonical:/.test(source),
-    );
+    check(`/${page} sets a self-canonical`, setsCanonical(source));
   }
+
+  // SEO phase 2 guards.
+  check(
+    "category descriptions no longer claim prices are display-only",
+    !/display-only|not a charge|nothing is charged/i.test(
+      readFileSync(join(root, "lib/catalog/category-page-content.ts"), "utf8"),
+    ),
+  );
+  const listingBar = readFileSync(
+    join(root, "features/catalog/category-listing-bar.tsx"),
+    "utf8",
+  );
+  check(
+    "category H1 holds only the title — the product count is outside it",
+    /<h1[^>]*>\s*\{title\}\s*<\/h1>/.test(listingBar) &&
+      listingBar.includes("Products\"} found"),
+  );
+  check(
+    "cart drawer / mobile menu title is not a heading",
+    !readFileSync(join(root, "components/ui/sheet.tsx"), "utf8").includes(
+      "<h2",
+    ),
+  );
+  check(
+    "footer column titles are not headings",
+    !readFileSync(
+      join(root, "components/layout/site-footer.tsx"),
+      "utf8",
+    ).includes("<h2"),
+  );
+  const marquee = readFileSync(
+    join(root, "components/layout/marquee-notice-bar.tsx"),
+    "utf8",
+  );
+  check(
+    "marquee notice is a role=note and renders its headings as non-headings",
+    marquee.includes('role="note"') && marquee.includes("demoteHeadings("),
+  );
+  check(
+    "default OG image route exists and resolves text server-side only",
+    existsSync(join(root, "app/og/route.tsx")) &&
+      readFileSync(join(root, "app/og/route.tsx"), "utf8").includes(
+        "headingFor(",
+      ),
+  );
 
   check(
     "category + brand listings emit BreadcrumbList JSON-LD matching the visible trail",

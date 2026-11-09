@@ -2,16 +2,18 @@ import type { Metadata } from "next";
 import { ShopListing } from "@/features/catalog/shop-listing";
 import type { ListingSearchParams } from "@/lib/catalog/listing-params";
 import { listingCanonicalUrl } from "@/lib/seo/canonical";
+import { staticPageMetadata } from "@/lib/seo/page-metadata";
 
 export async function generateMetadata({
   searchParams,
 }: {
   searchParams: Promise<ListingSearchParams>;
 }): Promise<Metadata> {
+  // Title/description from STATIC_PAGE_META (B6). ?page=N gets its own
+  // canonical; filter/sort query strings are never indexed separately from
+  // this base listing.
   return {
-    title: "Shop — Techno House",
-    // ?page=N gets its own canonical; filter/sort query strings are never
-    // indexed separately from this base listing.
+    ...staticPageMetadata("/shop"),
     alternates: {
       canonical: listingCanonicalUrl("/shop", await searchParams),
     },

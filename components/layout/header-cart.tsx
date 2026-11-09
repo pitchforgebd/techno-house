@@ -102,6 +102,7 @@ export function HeaderCart() {
         <div id="header-cart" className="space-y-4">
           {state.lines.length === 0 ? (
             <EmptyState
+              titleAs="p"
               title="Your cart is empty"
               description="Items you add will appear here. Totals are display-only."
               action={

@@ -5,10 +5,7 @@ import {
 } from "@/features/content/storefront-content-page";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return storefrontContentMetadata(
-    "digital-commerce-guideline",
-    "ডিজিটাল কমার্স নির্দেশিকা ২০২১ — Techno House",
-  );
+  return storefrontContentMetadata("digital-commerce-guideline");
 }
 
 export default function DigitalCommerceGuidelinePage() {

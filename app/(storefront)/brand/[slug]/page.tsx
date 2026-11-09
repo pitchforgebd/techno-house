@@ -4,6 +4,12 @@ import { BrandListing } from "@/features/catalog/brand-listing";
 import type { ListingSearchParams } from "@/lib/catalog/listing-params";
 import { brandRepository } from "@/lib/data";
 import { listingCanonicalUrl } from "@/lib/seo/canonical";
+import { brandMeta } from "@/lib/seo/page-meta";
+import {
+  brandTopCategories,
+  ogImagePath,
+  socialMetadata,
+} from "@/lib/seo/page-metadata";
 
 // See the matching comment in category/[slug]/page.tsx — same reasoning.
 export const revalidate = 300;
@@ -26,15 +32,27 @@ export async function generateMetadata({
     // Real 404 status — see product/[slug]/page.tsx.
     notFound();
   }
+  // B2 + keyword map: "{Brand} {main product type} Price in BD | Techno
+  // House", the type taken from the brand's own categories. An
+  // admin-written brand description, when there is one, wins.
+  const meta = brandMeta(brand, await brandTopCategories(brand.slug));
+  const description = brand.description?.trim() || meta.description;
+  // ?page=N gets its own canonical; filter/sort combinations point at the
+  // clean brand URL.
+  const canonical = listingCanonicalUrl(
+    `/brand/${brand.slug}`,
+    await searchParams,
+  );
   return {
-    title: `${brand.name} — Techno House`,
-    description:
-      brand.description || `Browse ${brand.name} products at Techno House.`,
-    // ?page=N gets its own canonical; filter/sort combinations point at the
-    // clean brand URL.
-    alternates: {
-      canonical: listingCanonicalUrl(`/brand/${brand.slug}`, await searchParams),
-    },
+    title: { absolute: meta.title },
+    description,
+    alternates: { canonical },
+    ...socialMetadata({
+      title: meta.title,
+      description,
+      canonical,
+      image: { url: ogImagePath("brand", brand.slug), alt: meta.h1 },
+    }),
   };
 }
 

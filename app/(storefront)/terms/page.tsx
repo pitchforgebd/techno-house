@@ -5,7 +5,7 @@ import {
 } from "@/features/content/storefront-content-page";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return storefrontContentMetadata("terms", "Terms — Techno House");
+  return storefrontContentMetadata("terms");
 }
 
 export default function TermsPage() {

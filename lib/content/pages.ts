@@ -51,6 +51,9 @@ export type StorefrontContentPage = {
   body: string;
   metaTitle: string;
   metaDescription: string;
+  /** Meta title/description exactly as typed in admin (null = not set). */
+  customMetaTitle: string | null;
+  customMetaDescription: string | null;
 };
 
 export type ContentPageMutationResult =
@@ -138,6 +141,8 @@ export async function getStorefrontContentPage(
     body: row.body,
     metaTitle: row.metaTitle || row.title,
     metaDescription: row.metaDescription ?? "",
+    customMetaTitle: row.metaTitle?.trim() || null,
+    customMetaDescription: row.metaDescription?.trim() || null,
   };
 }
 
