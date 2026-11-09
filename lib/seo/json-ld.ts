@@ -73,28 +73,15 @@ export function brandingPhones(branding: StorefrontBranding): string[] {
 }
 
 /**
- * "Hours 9:00–22:00" (footer contact hours) → opening hours. Only a single
- * daily range is understood; anything else returns null and the field is
- * left out rather than guessed. The site states hours without naming days,
- * so the range applies to every day.
+ * The shop's location (85 Laboratory Road, New Elephant Road, Dhaka-1205),
+ * coordinates confirmed by the operator on 2026-11-09. The stored map link is
+ * a maps.app.goo.gl short link that carries no coordinates, so they live here.
  */
-export function parseDailyHours(
-  text: string,
-): { opens: string; closes: string } | null {
-  const match = text.match(/(\d{1,2})[:.](\d{2})\s*(?:–|—|-|to)\s*(\d{1,2})[:.](\d{2})/i);
-  if (!match) {
-    return null;
-  }
-  const [, oh, om, ch, cm] = match;
-  const pad = (value: string) => value.padStart(2, "0");
-  const opens = `${pad(oh!)}:${om}`;
-  const closes = `${pad(ch!)}:${cm}`;
-  const valid = (hhmm: string) => {
-    const [h, m] = hhmm.split(":").map(Number);
-    return h! >= 0 && h! <= 24 && m! >= 0 && m! < 60;
-  };
-  return valid(opens) && valid(closes) ? { opens, closes } : null;
-}
+export const STORE_GEO = {
+  "@type": "GeoCoordinates",
+  latitude: 23.739561,
+  longitude: 90.385072,
+} as const;
 
 /** Footer social links that are real external profiles (not "/contact"). */
 export function sameAsLinks(links: { href: string }[]): string[] {
@@ -155,15 +142,18 @@ export function organizationJsonLd(
 }
 
 /**
- * The physical shop (home and contact pages). Address, phone, hours and map
- * link are the same values the footer shows.
+ * The physical shop (home and contact pages). Address, phone and map link are
+ * the same values the footer shows; geo is the operator-confirmed location.
+ *
+ * No openingHours / openingHoursSpecification on purpose: the "9:00–22:00"
+ * on the site is customer SUPPORT hours, not confirmed shop opening hours.
+ * Add them only once the real shop hours (and days) are confirmed.
  */
 export function electronicsStoreJsonLd(
   branding: StorefrontBranding,
-  options: { contactHours: string; sameAs?: string[] },
+  options: { sameAs?: string[] } = {},
 ) {
   const phones = brandingPhones(branding);
-  const hours = parseDailyHours(options.contactHours);
   const logo = absoluteUrl(branding.logoSrc);
   const sameAs = options.sameAs ?? [];
   return {
@@ -177,23 +167,8 @@ export function electronicsStoreJsonLd(
     telephone: phones[0],
     email: branding.supportEmail || undefined,
     address: postalAddress(branding),
+    geo: STORE_GEO,
     hasMap: absoluteUrl(branding.googleMapsUrl),
-    openingHoursSpecification: hours
-      ? {
-          "@type": "OpeningHoursSpecification",
-          dayOfWeek: [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-            "Sunday",
-          ],
-          opens: hours.opens,
-          closes: hours.closes,
-        }
-      : undefined,
     priceRange: "৳৳",
     currenciesAccepted: "BDT",
     parentOrganization: { "@id": ORGANIZATION_ID() },

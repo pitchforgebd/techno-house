@@ -26,7 +26,7 @@ import type { ProductDetail, ProductVariantChoice } from "@/lib/data";
 import {
   absoluteUrl,
   bdPhoneE164,
-  parseDailyHours,
+  electronicsStoreJsonLd,
   productJsonLd,
   sameAsLinks,
 } from "@/lib/seo/json-ld";
@@ -45,6 +45,29 @@ function check(name: string, condition: unknown, detail = ""): void {
   }
 }
 
+/**
+ * ElectronicsStore: no opening hours (support hours ≠ shop hours, not
+ * confirmed yet) and a numeric geo inside Dhaka's lat/lng band.
+ */
+function checkStoreHoursAndGeo(where: string, block: Json): void {
+  check(
+    `${where}: no opening hours (shop hours not confirmed)`,
+    block.openingHoursSpecification === undefined && block.openingHours === undefined,
+  );
+  const geo = block.geo as Json | undefined;
+  check(`${where}: geo is GeoCoordinates`, geo?.["@type"] === "GeoCoordinates");
+  check(
+    `${where}: geo latitude numeric 23–24`,
+    typeof geo?.latitude === "number" && geo.latitude >= 23 && geo.latitude <= 24,
+    String(geo?.latitude),
+  );
+  check(
+    `${where}: geo longitude numeric 90–91`,
+    typeof geo?.longitude === "number" && geo.longitude >= 90 && geo.longitude <= 91,
+    String(geo?.longitude),
+  );
+}
+
 function arg(name: string): string | undefined {
   const hit = process.argv.find((value) => value.startsWith(`--${name}=`));
   return hit?.slice(name.length + 3);
@@ -60,8 +83,21 @@ function offline(): void {
   check("phone +880 form", bdPhoneE164("+880 1611 305338") === "+8801611305338");
   check("phone 880 form", bdPhoneE164("8801611305338") === "+8801611305338");
   check("phone garbage → null", bdPhoneE164("12345") === null);
-  check("hours 'Hours 9:00–22:00'", JSON.stringify(parseDailyHours("Hours 9:00–22:00")) === '{"opens":"09:00","closes":"22:00"}');
-  check("hours unparseable → null", parseDailyHours("Open daily") === null);
+  {
+    // The "9:00–22:00" on the site is SUPPORT hours, not shop hours — the
+    // store markup must not claim opening hours until they are confirmed.
+    const store = electronicsStoreJsonLd(
+      {
+        storeName: "Techno House", supportEmail: "", phone: "01611-305338", phoneHref: "", emailHref: "",
+        address: "85, Laboratory Road New Elephant Road Dhaka-1205", city: "Dhaka, Bangladesh",
+        googleMapsUrl: "https://maps.app.goo.gl/x", extraAddresses: [], extraPhones: [], extraEmails: [],
+        logoSrc: null, faviconSrc: null, logoHeightPx: 40,
+      },
+      {},
+    ) as Json;
+    checkStoreHoursAndGeo("builder ElectronicsStore", store);
+    check("builder ElectronicsStore: hasMap kept", store.hasMap === "https://maps.app.goo.gl/x");
+  }
   check(
     "sameAs keeps only https profiles",
     JSON.stringify(sameAsLinks([{ href: "/contact" }, { href: "https://youtube.com/@x" }, { href: "http://x.com" }])) ===
@@ -184,8 +220,7 @@ function validateBlock(page: string, block: Json, html: string): void {
       check(`${where}: address.streetAddress`, Boolean(address?.streetAddress));
       check(`${where}: address.addressCountry BD`, address?.addressCountry === "BD");
       check(`${where}: telephone +880`, /^\+880\d{10}$/.test(String(block.telephone)), String(block.telephone));
-      const hours = block.openingHoursSpecification as Json | undefined;
-      check(`${where}: opening hours HH:MM`, /^\d{2}:\d{2}$/.test(String(hours?.opens)) && /^\d{2}:\d{2}$/.test(String(hours?.closes)));
+      checkStoreHoursAndGeo(where, block);
       check(`${where}: priceRange`, Boolean(block.priceRange));
       if (block.image !== undefined) check(`${where}: image absolute`, isAbs(block.image));
       if (block.hasMap !== undefined) check(`${where}: hasMap absolute`, isAbs(block.hasMap));

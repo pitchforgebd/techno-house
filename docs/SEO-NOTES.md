@@ -314,24 +314,28 @@ Branch `seo-phase-3` (from main after Phase 2 was merged and deployed).
    links that are real https URLs (live: Facebook + YouTube; the `/contact`
    placeholders are skipped).
 3. **ElectronicsStore** on `/` and `/contact` (`StoreJsonLd`): same address,
-   phone, email, logo; `openingHoursSpecification` parsed from the footer's
-   contact hours ("Hours 9:00–22:00" → 09:00–22:00; the site names no days, so
-   every day — if the shop closes on a day, say so and it becomes a setting);
-   `hasMap` = the Google Maps link from Business Settings; `priceRange "৳৳"`,
-   `currenciesAccepted BDT`, `parentOrganization` → the Organization. No `geo`:
-   the stored map link is a maps.app.goo.gl short link without coordinates.
+   phone, email, logo; `geo` = GeoCoordinates 23.739561, 90.385072 (operator-
+   confirmed 2026-11-09; `STORE_GEO` in `lib/seo/json-ld.ts`, because the
+   stored map link is a maps.app.goo.gl short link with no coordinates);
+   `hasMap` = that Google Maps link from Business Settings; `priceRange "৳৳"`,
+   `currenciesAccepted BDT`, `parentOrganization` → the Organization.
+   **Opening hours intentionally omitted** (no `openingHours` /
+   `openingHoursSpecification`): the "9:00–22:00" on the site is customer
+   support hours, not confirmed shop opening hours. Add them once the real
+   shop hours and days are confirmed. The visible footer text is unchanged.
 4. **Category pages**: BreadcrumbList (unchanged) + `ItemList` of the products
    on the current page in display order (position continues across pages:
    page 2 starts at 21). No `FAQPage` — no category has an FAQ block yet
    (Phase 5).
 5. **WebSite** gains `publisher` → Organization. Brand pages and the blog
    Article markup are unchanged.
-6. **`npm run seo:check-schema`** (`scripts/seo/check-schema.ts`): 29 offline
+6. **`npm run seo:check-schema`** (`scripts/seo/check-schema.ts`): 32 offline
    builder checks, then a crawl of a running site (home, contact, about, shop,
    brands, 8 random categories, 3 brands, N random products, plus `--paths=`)
    that parses every JSON-LD block and checks the required fields per type,
    absolute URLs, `+880` phones, no rating/review anywhere, exactly one
-   Organization/WebSite per page, ElectronicsStore only on home/contact, and
+   Organization/WebSite per page, ElectronicsStore only on home/contact (with
+   NO opening hours, and a numeric geo: latitude 23–24, longitude 90–91), and
    that every Product offer's price literally appears on the page. Read-only.
 
 #### Phase 3 files
@@ -360,6 +364,11 @@ Branch `seo-phase-3` (from main after Phase 2 was merged and deployed).
 - Dev DB has no real product photos (every image row is the placeholder), so
   dev output has no `image`; production photos are `/uploads/…webp` and come
   out as absolute `https://technohouse.com.bd/uploads/…` (offline check).
+- Follow-up (same branch): opening hours removed, geo added. tsc + eslint
+  clean, `next build` exit 0, `test:seo` 76 ok, `test:seo-canonical` 34 ok,
+  `test:seo-meta` 383 ok, `seo:check-schema --offline` 32 ok,
+  `seo:check-schema` against `next start`: 60 pages, 226 blocks, **2,732
+  checks ok**; footer still shows "Hours 9:00–22:00".
 
 ## 3. Manual actions for the operator
 
@@ -391,8 +400,9 @@ Branch `seo-phase-3` (from main after Phase 2 was merged and deployed).
 - **Phase 3 — shipping/returns:** once `/shipping` and `/returns` state real
   delivery charges/times and a return window, `shippingDetails` and
   `hasMerchantReturnPolicy` can be added from them (ask for it).
-- **Phase 3 — opening days:** the site says "Hours 9:00–22:00" without days,
-  so the schema says every day. If the shop is closed on a day, tell me.
+- **Phase 3 — shop opening hours:** not in the schema yet. When the real shop
+  hours and days are confirmed (separate from the 9:00–22:00 support hours),
+  they can be added as `openingHoursSpecification`.
 - **Phase 2 — data:** duplicate product listings (same product entered twice
   with a location tag or a project note) keep identical titles; merge or
   deactivate them in Admin → Products (the audit lists them).

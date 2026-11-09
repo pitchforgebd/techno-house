@@ -321,6 +321,22 @@ function main(): void {
     "product page builds the offer from displayedOffer()",
     productPage.includes("offer: displayedOffer(product, linkedVariant"),
   );
+  // The site's "9:00–22:00" is support hours, not confirmed shop hours.
+  check(
+    "ElectronicsStore has no opening hours (shop hours not confirmed)",
+    !/openingHours|parseDailyHours/.test(jsonLdCode),
+  );
+  const geoBlock = jsonLdCode.match(
+    /STORE_GEO = \{[\s\S]*?latitude:\s*([\d.]+),[\s\S]*?longitude:\s*([\d.]+)/,
+  );
+  const lat = Number(geoBlock?.[1]);
+  const lng = Number(geoBlock?.[2]);
+  check(
+    "ElectronicsStore geo: GeoCoordinates, numeric, latitude 23–24, longitude 90–91",
+    jsonLdCode.includes('"GeoCoordinates"') &&
+      jsonLdCode.includes("geo: STORE_GEO") &&
+      lat >= 23 && lat <= 24 && lng >= 90 && lng <= 91,
+  );
   check(
     "ElectronicsStore on home and contact",
     readFileSync(join(root, "app/(storefront)/page.tsx"), "utf8").includes("<StoreJsonLd") &&

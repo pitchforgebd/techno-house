@@ -9019,8 +9019,9 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       (operator rule). shippingDetails / hasMerchantReturnPolicy SKIPPED —
       live /shipping and /returns are placeholders. Organization: +880
       ContactPoints, footer https socials as sameAs. ElectronicsStore on home
-      + contact (hours parsed from footer contactHours, every day — site names
-      no days; hasMap; no geo, short link). Category ItemList of the page's
+      + contact (NO opening hours — the site's 9:00–22:00 is support hours,
+      not confirmed shop hours; geo 23.739561/90.385072 operator-confirmed;
+      hasMap kept). Category ItemList of the page's
       products. `npm run seo:check-schema` (29 offline + crawl): 3,187 checks
       ok on next start. Phase 2 meta price now also from displayedOffer.
       No schema change: `git pull origin main && npm run build && pm2 restart techno-house`.

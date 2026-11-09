@@ -30,8 +30,9 @@ export async function SiteJsonLd() {
 
 /**
  * The physical shop as an ElectronicsStore (SEO phase 3, C6) — home and
- * contact pages only. Address, phone, opening hours and map link are the
- * values the footer already shows.
+ * contact pages only. Address, phone and map link are the values the footer
+ * already shows, plus the shop's coordinates. No opening hours — see
+ * `electronicsStoreJsonLd`.
  */
 export async function StoreJsonLd() {
   const [branding, footer] = await Promise.all([
@@ -39,12 +40,5 @@ export async function StoreJsonLd() {
     getFooterWidgetsConfig(),
   ]);
   const sameAs = footer.showSocial ? sameAsLinks(footer.socialLinks) : [];
-  return (
-    <JsonLd
-      data={electronicsStoreJsonLd(branding, {
-        contactHours: footer.contactHours,
-        sameAs,
-      })}
-    />
-  );
+  return <JsonLd data={electronicsStoreJsonLd(branding, { sameAs })} />;
 }
