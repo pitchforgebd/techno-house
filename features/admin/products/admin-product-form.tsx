@@ -120,6 +120,17 @@ import { cn } from "@/lib/cn";
 
 type FormMode = "create" | "edit";
 type BrandOption = { slug: string; name: string };
+
+// A–Z order for the category/brand pickers: case-insensitive, and
+// "PC 2" sorts before "PC 10".
+const nameCollator = new Intl.Collator("en", {
+  sensitivity: "base",
+  numeric: true,
+});
+function byName<T extends { name: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => nameCollator.compare(a.name, b.name));
+}
+
 type EditorProduct = ProductDetail & {
   isActive: boolean;
   position: number;
@@ -249,9 +260,14 @@ export function AdminProductForm({
   const [colorRows, setColorRows] = useState<ProductColorFormRow[]>(() =>
     colorRowsFromProduct(product?.colors),
   );
+  // Display order only; defaults above still use the stored order.
+  const sortedCategories = useMemo(() => byName(categories), [categories]);
+  const sortedBrands = useMemo(() => byName(brands), [brands]);
+  // Siblings come out A–Z because the walk follows the input order; each
+  // child still sits directly under its parent.
   const childCategories = useMemo(
-    () => categoryDescendantsWithDepth(categorySlug, categories),
-    [categories, categorySlug],
+    () => categoryDescendantsWithDepth(categorySlug, sortedCategories),
+    [sortedCategories, categorySlug],
   );
   // "Parent › Child" trail per category, shown beside each option and
   // searched along with its name, so typing a parent finds its children.
@@ -277,7 +293,7 @@ export function AdminProductForm({
   }, [categories]);
   const rootCategoryOptions = useMemo<SearchableOption[]>(
     () =>
-      rootCategories.map((category) => ({
+      byName(rootCategories).map((category) => ({
         value: category.slug,
         label: category.name,
       })),
@@ -295,12 +311,19 @@ export function AdminProductForm({
   );
   const allCategoryOptions = useMemo<SearchableOption[]>(
     () =>
-      categories.map((category) => ({
-        value: category.slug,
-        label: category.name,
-        hint: categoryTrail.get(category.slug) || undefined,
-      })),
-    [categories, categoryTrail],
+      sortedCategories
+        .map((category) => ({
+          value: category.slug,
+          label: category.name,
+          hint: categoryTrail.get(category.slug) || undefined,
+        }))
+        // Same-named categories (e.g. two "Intel PC") order by their trail.
+        .sort(
+          (a, b) =>
+            nameCollator.compare(a.label, b.label) ||
+            nameCollator.compare(a.hint ?? "", b.hint ?? ""),
+        ),
+    [sortedCategories, categoryTrail],
   );
   // Not stored yet (see the note under "Related categories"); kept in state
   // only so the searchable picker behaves like a real control.
@@ -820,7 +843,7 @@ export function AdminProductForm({
                   className={adminFormControlClass}
                 >
                   <option value="">Select brand</option>
-                  {brands.map((brand) => (
+                  {sortedBrands.map((brand) => (
                     <option key={brand.slug} value={brand.slug}>
                       {brand.name}
                     </option>

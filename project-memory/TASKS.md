@@ -8903,3 +8903,25 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       Run order-placing suites with `META_CAPI_ACCESS_TOKEN=` (empty).
 
       DEPLOY: `npx prisma migrate deploy` (additive + backfill).
+
+- [x] AD-391 A–Z order in the product form's category/brand pickers —
+      operator: "Select main category, Brand, Subcategory, Related categories
+      … letter wise sort hobe, A B C D … Z, ekhon to elo melo".
+
+      `features/admin/products/admin-product-form.tsx` only (display order;
+      no data or API change). `Intl.Collator("en", { sensitivity: "base",
+      numeric: true })` — case-insensitive, "PC 2" before "PC 10". Main
+      category and Brand: A–Z. Subcategory: still a tree (each child right
+      under its parent), siblings A–Z at every level. Related categories:
+      flat A–Z by name, same-named ones (two "Intel PC") ordered by their
+      "Parent › Child" trail. The new-product defaults (first stored root
+      category, first stored brand) are unchanged — only the list order is.
+
+      Verified: eslint clean, `tsc --noEmit` clean; ran the same sort over the
+      dev DB (read-only): roots Accessories … TV, Desktop's subtree AI PC,
+      All-in-One PC, Apple iMac … Gaming PC › Intel PC/Ryzen PC … Star PC,
+      brands Acer … ZKTeco. Not clicked through in the browser.
+
+      NOTE (prod screenshot, not changed): live has two "Desktop Offer"
+      categories under Desktop — a duplicate in the data, now shown side by
+      side; merge/delete one in admin Categories if it is unintended.

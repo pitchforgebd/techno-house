@@ -59,7 +59,8 @@ every active product with `g:price` = regular and `g:sale_price` in the
 discount window; spec in `TECHNOHOUSE_TRACKING.md`), and AD-390
 (variant title + per-variant gallery, `?variant=` links, order line snapshots
 the clicked variant's title/SKU/price/picture — needs `prisma migrate
-deploy`) are also complete — full detail in `project-memory/TASKS.md`,
+deploy`), and AD-391 (A–Z order in the product form's category/brand
+pickers) are also complete — full detail in `project-memory/TASKS.md`,
 not narrated here.
 
 ## Status
