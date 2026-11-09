@@ -21,6 +21,10 @@ import { categoryAncestors } from "@/lib/catalog/category-tree";
 import { categoryRepository, productRepository, reviewRepository } from "@/lib/data";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
 import { canonicalUrl } from "@/lib/seo/canonical";
+import {
+  displayedOffer,
+  isPublishablePrice,
+} from "@/lib/catalog/displayed-offer";
 import { productDescription, productTitle } from "@/lib/seo/page-meta";
 import { productSiblingNames } from "@/lib/seo/page-metadata";
 import { breadcrumbListJsonLd, productJsonLd } from "@/lib/seo/json-ld";
@@ -96,11 +100,11 @@ export async function generateMetadata({
   // shows and the JSON-LD carries, and is left out exactly when the page
   // hides it (Up Coming, or out of stock and not Pre Order); EMI only when
   // the page's EMI teaser would show.
-  const price = variant?.price ?? product.price;
-  const stockStatus = variant?.stockStatus ?? product.stockStatus;
-  const priceHidden =
-    product.isComingSoon ||
-    (stockStatus === "out_of_stock" && !product.isPreOrder);
+  // Same selection the buy box and the Product JSON-LD use (default =
+  // cheapest in-stock variant), so all three quote one price.
+  const shown = displayedOffer(product, variant ?? null);
+  const price = shown.price;
+  const priceHidden = shown.priceHidden || !isPublishablePrice(price);
   const [emiConfig, siblingNames] = await Promise.all([
     getEmiConfig(),
     productSiblingNames(product.brandSlug, product.slug),
@@ -278,12 +282,13 @@ export default async function ProductPage({
   return (
     <div className="mx-auto max-w-content px-4 py-8">
       <JsonLd data={breadcrumbListJsonLd(breadcrumbItems)} />
+      {/* Price/availability = exactly what the buy box shows (see
+          displayedOffer). No rating/review markup — SEO phase 3. */}
       <JsonLd
         data={productJsonLd({
           product,
+          offer: displayedOffer(product, linkedVariant ?? null),
           path: `/product/${product.slug}`,
-          reviewCount: reviews.length,
-          averageRating,
         })}
       />
       <div className="mb-4">
