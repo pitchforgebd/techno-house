@@ -6,12 +6,16 @@ export function EmptyState({
   description,
   action,
   className,
+  titleAs = "h2",
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
   className?: string;
+  /** "p" inside site chrome (cart drawer) so it is not a page heading. */
+  titleAs?: "h2" | "p";
 }) {
+  const Title = titleAs;
   return (
     <div
       role="status"
@@ -20,7 +24,12 @@ export function EmptyState({
         className,
       )}
     >
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      <Title
+        className={cn(
+          "text-lg font-semibold tracking-tight",
+          titleAs === "p" && "th-heading-like",
+        )}
+      >{title}</Title>
       {description ? (
         <p className="max-w-prose text-body text-text-muted">{description}</p>
       ) : null}

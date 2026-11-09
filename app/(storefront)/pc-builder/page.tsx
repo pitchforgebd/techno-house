@@ -2,14 +2,11 @@ import type { Metadata } from "next";
 import { PcBuilderShell } from "@/features/pc-builder/pc-builder-shell";
 import { PcBuilderUnavailable } from "@/features/pc-builder/pc-builder-unavailable";
 import { isPcBuilderEnabled } from "@/lib/pc-builder/settings";
-import { canonicalUrl } from "@/lib/seo/canonical";
+import { staticPageMetadata } from "@/lib/seo/page-metadata";
 
-export const metadata: Metadata = {
-  alternates: { canonical: canonicalUrl("/pc-builder") },
-  title: "PC Builder — Techno House",
-  description:
-    "Build a custom PC slot by slot with compatibility notes and a running total.",
-};
+// Title/description from STATIC_PAGE_META (SEO phase 2, B6), self-canonical,
+// default OG image.
+export const metadata: Metadata = staticPageMetadata("/pc-builder");
 
 export default async function PcBuilderPage() {
   const enabled = await isPcBuilderEnabled();

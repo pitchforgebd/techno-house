@@ -1,3 +1,5 @@
+import { demoteHeadings } from "@/lib/content/demote-headings";
+
 /**
  * Fixed-bottom scrolling notice bar (Design Studio -> Footer widgets ->
  * Marquee notice). Mounted once in the storefront layout, stacked above
@@ -14,6 +16,11 @@
  * `html` is pre-sanitized server-side (`lib/content/sanitize-html.ts`) and
  * safe to render as-is — it only ever allows formatting tags (bold, links),
  * same trust boundary as blog post bodies.
+ *
+ * SEO phase 2 (B7): the bar is a `role="note"` and any heading the operator
+ * typed into the notice (the live "under development" text is an <h3>) is
+ * rendered as a styled <div> — same look, but no longer a heading in every
+ * page's outline. The notice text itself is unchanged.
  */
 export function MarqueeNoticeBar({
   html,
@@ -24,13 +31,13 @@ export function MarqueeNoticeBar({
 }) {
   return (
     <div
-      role="status"
+      role="note"
       className="relative h-11 shrink-0 overflow-hidden border-t border-primary/25 bg-surface shadow-[0_-4px_12px_-6px_rgba(14,26,36,0.15)]"
     >
       <span
         className="th-marquee-track th-rich-text absolute inset-y-0 flex items-center whitespace-nowrap text-label font-medium text-text [&_p]:inline [&_p]:m-0"
         style={{ animationDuration: `${speedSeconds}s` }}
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: demoteHeadings(html) }}
       />
     </div>
   );

@@ -7,7 +7,7 @@ import { SupportRequestForm } from "@/features/support/support-request-form";
 import { getCustomerSession } from "@/lib/auth/customer-session";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return storefrontContentMetadata("support", "Support — Techno House");
+  return storefrontContentMetadata("support");
 }
 
 export default async function SupportPage({

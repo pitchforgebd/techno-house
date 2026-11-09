@@ -6,12 +6,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { OfferCountdown } from "@/features/marketing/offer-countdown";
 import { listPublicPromotions } from "@/lib/marketing/promotions";
 import type { PublicPromotion } from "@/lib/marketing/promotions";
-import { canonicalUrl } from "@/lib/seo/canonical";
+import { staticPageMetadata } from "@/lib/seo/page-metadata";
 
-export const metadata: Metadata = {
-  alternates: { canonical: canonicalUrl("/offers") },
-  title: "Offers — Techno House",
-};
+// Title/description from STATIC_PAGE_META (SEO phase 2, B6), self-canonical,
+// default OG image.
+export const metadata: Metadata = staticPageMetadata("/offers");
 
 /**
  * Once a campaign has products assigned, its own offer page is the

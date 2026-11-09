@@ -5,7 +5,7 @@ import {
 } from "@/features/content/storefront-content-page";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return storefrontContentMetadata("privacy", "Privacy — Techno House");
+  return storefrontContentMetadata("privacy");
 }
 
 export default function PrivacyPage() {

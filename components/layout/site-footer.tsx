@@ -39,12 +39,14 @@ const accentTextClass =
 function FooterHeading({ id, children }: { id?: string; children: string }) {
   return (
     <div className="mb-4">
-      <h2
+      {/* Not a heading: footer column titles sat in every page's outline
+          (SEO phase 2, B8). Same look; the nav keeps aria-labelledby. */}
+      <p
         id={id}
-        className="text-[0.72rem] font-bold tracking-[0.16em] text-footer-text uppercase"
+        className="th-heading-like text-[0.72rem] font-bold tracking-[0.16em] text-footer-text uppercase"
       >
         {children}
-      </h2>
+      </p>
       <span aria-hidden className="mt-2 block h-px w-9 bg-primary-soft/40" />
     </div>
   );

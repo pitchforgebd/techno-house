@@ -24,6 +24,7 @@ import {
   type Category,
 } from "@/lib/data";
 import { breadcrumbListJsonLd } from "@/lib/seo/json-ld";
+import { categoryMeta, categoryParentQualifier } from "@/lib/seo/page-meta";
 
 export async function CategoryListing({
   category,
@@ -88,8 +89,13 @@ export async function CategoryListing({
   }
   brandPills.sort((left, right) => left.name.localeCompare(right.name));
 
-  const headerTitle =
-    content.priceHeaderTitle ?? `${content.listingTitle} Price in Bangladesh`;
+  // "{Category} Price in Bangladesh" — the keyword-map heading where there is
+  // one (lib/seo/page-meta.ts), the same text the <title> starts with.
+  const headerTitle = categoryMeta(
+    category,
+    undefined,
+    categoryParentQualifier(category, allCategories),
+  ).h1;
 
   const breadcrumbItems = [
     { href: "/", label: "Home" },

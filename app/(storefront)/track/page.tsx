@@ -9,12 +9,11 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { resolvePublicTrackQuery } from "@/lib/orders/public-tracking";
 import { getRequestMeta } from "@/lib/auth/request-meta";
-import { canonicalUrl } from "@/lib/seo/canonical";
+import { staticPageMetadata } from "@/lib/seo/page-metadata";
 
-export const metadata: Metadata = {
-  alternates: { canonical: canonicalUrl("/track") },
-  title: "Order Tracking — Techno House",
-};
+// Title/description from STATIC_PAGE_META (SEO phase 2, B6), self-canonical,
+// default OG image.
+export const metadata: Metadata = staticPageMetadata("/track");
 
 type Props = {
   searchParams: Promise<{ q?: string; phone?: string; pin?: string }>;

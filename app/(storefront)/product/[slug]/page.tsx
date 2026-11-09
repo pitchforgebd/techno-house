@@ -21,6 +21,8 @@ import { categoryAncestors } from "@/lib/catalog/category-tree";
 import { categoryRepository, productRepository, reviewRepository } from "@/lib/data";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
 import { canonicalUrl } from "@/lib/seo/canonical";
+import { productDescription, productTitle } from "@/lib/seo/page-meta";
+import { productSiblingNames } from "@/lib/seo/page-metadata";
 import { breadcrumbListJsonLd, productJsonLd } from "@/lib/seo/json-ld";
 import { getStorefrontHomeBanners } from "@/lib/design/home-banners";
 import { getCustomerSession } from "@/lib/auth/customer-session";
@@ -90,16 +92,41 @@ export async function generateMetadata({
   );
   const displayName = variant?.title ?? product.name;
   const image = variant?.image ?? product.image;
-  const description =
-    product.overview[0]?.trim() ||
-    `${displayName} by ${product.brandName}. ${product.warrantyLabel}.`;
-  const title = `${displayName} — Techno House`;
+  // Templates B3/B4 (lib/seo/page-meta.ts). The price is the one the page
+  // shows and the JSON-LD carries, and is left out exactly when the page
+  // hides it (Up Coming, or out of stock and not Pre Order); EMI only when
+  // the page's EMI teaser would show.
+  const price = variant?.price ?? product.price;
+  const stockStatus = variant?.stockStatus ?? product.stockStatus;
+  const priceHidden =
+    product.isComingSoon ||
+    (stockStatus === "out_of_stock" && !product.isPreOrder);
+  const [emiConfig, siblingNames] = await Promise.all([
+    getEmiConfig(),
+    productSiblingNames(product.brandSlug, product.slug),
+  ]);
+  const emi =
+    !priceHidden &&
+    emiConfig.enabled &&
+    emiConfig.tenureMonths.length > 0 &&
+    price.amount >= emiConfig.minOrderAmount;
+  const title = productTitle(displayName, product.brandName, siblingNames);
+  const description = productDescription({
+    name: displayName,
+    brandName: product.brandName,
+    displayPrice: priceHidden ? null : price.amount,
+    isPreOrder: product.isPreOrder,
+    isComingSoon: product.isComingSoon,
+    warrantyLabel: product.warrantyLabel,
+    emi,
+    siblingNames,
+  });
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical: canonicalUrl(`/product/${product.slug}`) },
     openGraph: {
-      title: displayName,
+      title,
       description,
       // Next's typed OpenGraphType union has no "product" variant (only
       // website/article/book/profile/video/music) — "website" is the

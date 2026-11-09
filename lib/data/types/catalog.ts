@@ -43,6 +43,8 @@ export type Category = {
   /** Brand slugs to show for this category even without matching products
    * yet — see Category.extraBrandSlugs in the schema. */
   extraBrandSlugs: string[];
+  /** Admin-written plain-text summary (meta description when set). */
+  description?: string | null;
 };
 
 export type Brand = {

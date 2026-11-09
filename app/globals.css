@@ -147,7 +147,10 @@ h2,
 h3,
 h4,
 h5,
-h6 {
+h6,
+/* Same look on text that is deliberately NOT a heading (drawer titles,
+   footer column titles, headings inside the marquee notice — SEO phase 2). */
+.th-heading-like {
   font-family: var(--font-heading);
   /* Headings at default tracking read loose and generic at these weights. */
   letter-spacing: -0.015em;
@@ -774,21 +777,24 @@ h6 {
   margin-top: 0;
 }
 
-.th-rich-text h2 {
+.th-rich-text h2,
+.th-rich-text :where(.th-heading-h2) {
   font-size: 1.375rem;
   font-weight: 600;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
 }
 
-.th-rich-text h3 {
+.th-rich-text h3,
+.th-rich-text :where(.th-heading-h3) {
   font-size: 1.125rem;
   font-weight: 600;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
 }
 
-.th-rich-text h4 {
+.th-rich-text h4,
+.th-rich-text :where(.th-heading-h4) {
   font-size: 1rem;
   font-weight: 600;
   margin-top: 1rem;
@@ -807,6 +813,9 @@ h6 {
 .th-rich-text h2,
 .th-rich-text h3,
 .th-rich-text h4,
+.th-rich-text :where(.th-heading-h2),
+.th-rich-text :where(.th-heading-h3),
+.th-rich-text :where(.th-heading-h4),
 .th-rich-text ul,
 .th-rich-text ol,
 .th-rich-text blockquote {

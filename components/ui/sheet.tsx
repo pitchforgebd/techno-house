@@ -50,12 +50,15 @@ export function Sheet({
     >
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-muted/50 px-4 py-3">
-          <h2
+          {/* Not a heading: the cart drawer / mobile menu are rendered on
+              every page, and an h2 heading here sat in every page's outline (SEO
+              phase 2, B8). The dialog is still named via aria-labelledby. */}
+          <p
             id="th-sheet-title"
-            className="text-label font-semibold tracking-tight text-text"
+            className="th-heading-like text-label font-semibold tracking-tight text-text"
           >
             {title}
-          </h2>
+          </p>
           <Button
             variant="ghost"
             size="sm"

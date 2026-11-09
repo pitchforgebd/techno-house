@@ -8984,3 +8984,27 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `git pull origin main && npm run build && pm2 restart techno-house`;
       nginx blocks optional (app already redirects); resubmit sitemap in GSC.
       Phases 2–5 NOT started — need the operator's go-ahead.
+
+- [x] AD-394 SEO fix plan PHASE 2 (titles, descriptions, headings) on branch
+      `seo-phase-2` (not merged). Detail + before/after + files:
+      `docs/SEO-NOTES.md` "Phase 2". Templates in `lib/seo/page-meta.ts`
+      (pure; `npm run test:seo-meta`, 383 checks), Metadata builders in
+      `lib/seo/page-metadata.ts`, default OG image `app/og/route.tsx`
+      (next/og, text resolved server-side from type+slug, unknown → 404).
+      Category title "{Heading} Price in Bangladesh {YEAR} | Techno House",
+      H1 without the product count; brand "{Brand} {type} Price in BD";
+      product titles from cleaned POS names, unique per brand via sibling
+      names (memoised cleanup); price/EMI in descriptions only when the page
+      shows them; 20 static pages hand-written (admin Pages meta still wins);
+      category price disclaimers removed; Sheet/footer/cart-empty h2 → p and
+      marquee role=note with headings → div (notice text NOT removed) —
+      computed style identical vs live in headless Chrome. Keyword slug
+      `ram` does not exist (keyword on `ram-desktop`). Verified: tsc, eslint
+      0 errors, next build, test:seo 69, test:seo-canonical 34, a11y 10,
+      read-only `npm run seo:audit-meta` on dev (0 titles > 60; 91/4,309
+      products share a title = duplicate listings). Dev DB footerSettings
+      was toggled for the marquee check and restored byte-identical.
+      Not done (needs decision): other "display-only" texts outside
+      category copy (/brands, /shop, /deals, brand fallback, product page,
+      cart drawer, toast). No schema change:
+      `git pull origin main && npm run build && pm2 restart techno-house`.

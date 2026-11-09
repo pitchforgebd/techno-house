@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CategoryListing } from "@/features/catalog/category-listing";
-import { getCategoryPageContent } from "@/lib/catalog/category-page-content";
 import type { ListingSearchParams } from "@/lib/catalog/listing-params";
 import { categoryRepository } from "@/lib/data";
 import { listingCanonicalUrl } from "@/lib/seo/canonical";
+import { categoryMeta, categoryParentQualifier } from "@/lib/seo/page-meta";
+import { ogImagePath, socialMetadata } from "@/lib/seo/page-metadata";
 
 // `generateStaticParams` below still pre-renders every known category at
 // build time for a fast first hit; leaving `dynamicParams` at its default
@@ -31,19 +32,31 @@ export async function generateMetadata({
     // Real 404 status — see product/[slug]/page.tsx.
     notFound();
   }
-  const content = getCategoryPageContent(category.slug, category.name);
+  // B1 + keyword map (lib/seo/page-meta.ts). An admin-written category
+  // description (Admin → Categories), when there is one, wins.
+  const meta = categoryMeta(
+    category,
+    undefined,
+    categoryParentQualifier(category, await categoryRepository.list()),
+  );
+  const description = category.description?.trim() || meta.description;
+  // ?page=N (and nothing else) gets its own canonical so page 2+ products
+  // are discoverable; any filter/sort combination points at the clean URL
+  // and is never indexed as a separate page.
+  const canonical = listingCanonicalUrl(
+    `/category/${category.slug}`,
+    await searchParams,
+  );
   return {
-    title: `${content.listingTitle} — Techno House`,
-    description: content.description,
-    // ?page=N (and nothing else) gets its own canonical so page 2+ products
-    // are discoverable; any filter/sort combination points at the clean URL
-    // and is never indexed as a separate page.
-    alternates: {
-      canonical: listingCanonicalUrl(
-        `/category/${category.slug}`,
-        await searchParams,
-      ),
-    },
+    title: { absolute: meta.title },
+    description,
+    alternates: { canonical },
+    ...socialMetadata({
+      title: meta.title,
+      description,
+      canonical,
+      image: { url: ogImagePath("category", category.slug), alt: meta.h1 },
+    }),
   };
 }
 

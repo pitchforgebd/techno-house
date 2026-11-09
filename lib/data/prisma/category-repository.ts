@@ -7,6 +7,7 @@ const CATEGORY_SELECT = {
   name: true,
   filterKeys: true,
   extraBrandSlugs: true,
+  description: true,
   parent: { select: { slug: true } },
 } as const;
 
