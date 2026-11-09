@@ -3,8 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { brandRepository } from "@/lib/data";
+import { canonicalUrl } from "@/lib/seo/canonical";
 
 export const metadata: Metadata = {
+  alternates: { canonical: canonicalUrl("/brands") },
   title: "Brands — Techno House",
 };
 

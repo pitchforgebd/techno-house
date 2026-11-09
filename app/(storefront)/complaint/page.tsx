@@ -12,8 +12,10 @@ import {
   COMPLAINT_EMAIL_MAX,
   COMPLAINT_PHONE_MAX,
 } from "@/lib/support/create-complaint";
+import { canonicalUrl } from "@/lib/seo/canonical";
 
 export const metadata: Metadata = {
+  alternates: { canonical: canonicalUrl("/complaint") },
   title: "Complaint — Techno House",
 };
 

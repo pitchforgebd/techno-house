@@ -4,7 +4,7 @@ import { CategoryListing } from "@/features/catalog/category-listing";
 import { getCategoryPageContent } from "@/lib/catalog/category-page-content";
 import type { ListingSearchParams } from "@/lib/catalog/listing-params";
 import { categoryRepository } from "@/lib/data";
-import { canonicalUrl } from "@/lib/seo/canonical";
+import { listingCanonicalUrl } from "@/lib/seo/canonical";
 
 // `generateStaticParams` below still pre-renders every known category at
 // build time for a fast first hit; leaving `dynamicParams` at its default
@@ -20,21 +20,30 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<ListingSearchParams>;
 }): Promise<Metadata> {
   const { slug } = await params;
   const category = await categoryRepository.getBySlug(slug);
   if (!category) {
-    return { title: "Category — Techno House" };
+    // Real 404 status — see product/[slug]/page.tsx.
+    notFound();
   }
   const content = getCategoryPageContent(category.slug, category.name);
   return {
     title: `${content.listingTitle} — Techno House`,
     description: content.description,
-    // Always the clean URL — filter/sort/page query strings never get their
-    // own canonical, so they're never indexed as separate pages from this.
-    alternates: { canonical: canonicalUrl(`/category/${category.slug}`) },
+    // ?page=N (and nothing else) gets its own canonical so page 2+ products
+    // are discoverable; any filter/sort combination points at the clean URL
+    // and is never indexed as a separate page.
+    alternates: {
+      canonical: listingCanonicalUrl(
+        `/category/${category.slug}`,
+        await searchParams,
+      ),
+    },
   };
 }
 

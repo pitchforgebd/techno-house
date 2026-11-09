@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { BrandListing } from "@/features/catalog/brand-listing";
 import type { ListingSearchParams } from "@/lib/catalog/listing-params";
 import { brandRepository } from "@/lib/data";
-import { canonicalUrl } from "@/lib/seo/canonical";
+import { listingCanonicalUrl } from "@/lib/seo/canonical";
 
 // See the matching comment in category/[slug]/page.tsx — same reasoning.
 export const revalidate = 300;
@@ -15,19 +15,26 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<ListingSearchParams>;
 }): Promise<Metadata> {
   const { slug } = await params;
   const brand = await brandRepository.getBySlug(slug);
   if (!brand) {
-    return { title: "Brand — Techno House" };
+    // Real 404 status — see product/[slug]/page.tsx.
+    notFound();
   }
   return {
     title: `${brand.name} — Techno House`,
     description:
       brand.description || `Browse ${brand.name} products at Techno House.`,
-    alternates: { canonical: canonicalUrl(`/brand/${brand.slug}`) },
+    // ?page=N gets its own canonical; filter/sort combinations point at the
+    // clean brand URL.
+    alternates: {
+      canonical: listingCanonicalUrl(`/brand/${brand.slug}`, await searchParams),
+    },
   };
 }
 

@@ -15,8 +15,10 @@ import {
   PRODUCT_REQUEST_DETAILS_MAX,
   PRODUCT_REQUEST_NAME_MAX,
 } from "@/lib/support/product-request";
+import { canonicalUrl } from "@/lib/seo/canonical";
 
 export const metadata: Metadata = {
+  alternates: { canonical: canonicalUrl("/product-request") },
   title: "Request a product — Techno House",
 };
 

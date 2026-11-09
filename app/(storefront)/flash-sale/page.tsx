@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/ui/empty-state";
 import { listPublicFlashSales } from "@/lib/marketing/flash-sales";
+import { canonicalUrl } from "@/lib/seo/canonical";
 
 export const metadata: Metadata = {
+  alternates: { canonical: canonicalUrl("/flash-sale") },
   title: "Flash sale — Techno House",
 };
 

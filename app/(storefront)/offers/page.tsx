@@ -6,8 +6,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { OfferCountdown } from "@/features/marketing/offer-countdown";
 import { listPublicPromotions } from "@/lib/marketing/promotions";
 import type { PublicPromotion } from "@/lib/marketing/promotions";
+import { canonicalUrl } from "@/lib/seo/canonical";
 
 export const metadata: Metadata = {
+  alternates: { canonical: canonicalUrl("/offers") },
   title: "Offers — Techno House",
 };
 

@@ -94,6 +94,7 @@
     "a11y:baseline": "tsx scripts/a11y/check-baseline.ts",
     "test:seo": "tsx scripts/seo/check-baseline.ts",
     "seo:baseline": "tsx scripts/seo/check-baseline.ts",
+    "test:seo-canonical": "tsx scripts/seo/check-canonical.ts",
     "test:regression": "tsx scripts/regression/run-baselines.ts",
     "regression": "tsx scripts/regression/run-baselines.ts",
     "test:env": "tsx scripts/deploy/check-env-example.ts",

@@ -8960,3 +8960,27 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       a category and /about × Chrome / curl / facebookexternalhit UAs — 15/15
       exactly one tag, always before </head>. tsc + eslint clean. No schema
       change: `git pull && npm run build && pm2 restart techno-house`.
+
+- [x] AD-393 SEO fix plan — GROUND RULES + PHASE 1 only (indexing &
+      duplicates), on branch `seo-fixes` (not merged to main). Plan:
+      `docs/SEO-FIX-PLAN.md` section 6; notes/results: `docs/SEO-NOTES.md`.
+      1) www/http → https://technohouse.com.bd 301 in `middleware.ts`
+      (`lib/seo/canonical-host.ts`, matcher `has` host/x-forwarded-proto so
+      normal requests skip it; only APP_URL's own host / www. of it) + nginx
+      template and `deploy/nginx-seo.conf` for the live server. 2) Real 404s:
+      the root `app/loading.tsx` Suspense boundary flushed 200 before
+      notFound() ("200 + noindex" live, even for Googlebot) — moved to
+      `components/ui/route-loading-skeleton.tsx`, re-exported only by
+      shop/search/deals/flash-sale/(admin); product/category/brand/offer
+      generateMetadata also call notFound(). Trade-off: no instant skeleton on
+      client navigation to detail pages. 3) Self-canonicals on every
+      indexable static page. 4) `listingCanonicalUrl()` — `?page=N` alone →
+      self canonical, any filter/sort → clean (utm/fbclid ignored).
+      5) Sitemap index `/sitemap.xml` + sitemap-{pages,categories,brands,
+      products,blog}.xml route handlers (revalidate 3600, real updatedAt).
+      Verified on next build + next start: tsc/eslint clean, build exit 0,
+      test:seo 62, new test:seo-canonical 34, curl matrix in SEO-NOTES.md.
+      DEPLOY (after merge): no schema change —
+      `git pull origin main && npm run build && pm2 restart techno-house`;
+      nginx blocks optional (app already redirects); resubmit sitemap in GSC.
+      Phases 2–5 NOT started — need the operator's go-ahead.

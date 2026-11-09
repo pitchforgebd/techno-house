@@ -5,6 +5,7 @@ import {
   type ContentPageSlug,
 } from "@/lib/content/pages";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
+import { canonicalUrl } from "@/lib/seo/canonical";
 
 /** Real content when Admin -> Design Studio -> Pages has saved something; the original placeholder copy otherwise. */
 export async function StorefrontContentPage({
@@ -44,11 +45,14 @@ export async function storefrontContentMetadata(
   fallbackTitle: string,
 ): Promise<Metadata> {
   const page = await getStorefrontContentPage(slug);
+  // Every content page is served at `/{slug}` (app/(storefront)/{slug}).
+  const alternates = { canonical: canonicalUrl(`/${slug}`) };
   if (!page) {
-    return { title: fallbackTitle };
+    return { title: fallbackTitle, alternates };
   }
   return {
     title: `${page.metaTitle} — Techno House`,
     description: page.metaDescription || undefined,
+    alternates,
   };
 }
