@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld-script";
 import { ProductDetailSections } from "@/features/product/product-detail-sections";
@@ -21,6 +21,7 @@ import { categoryAncestors } from "@/lib/catalog/category-tree";
 import { categoryRepository, productRepository, reviewRepository } from "@/lib/data";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
 import { canonicalUrl } from "@/lib/seo/canonical";
+import { resolveSlugRedirect } from "@/lib/seo/slug-redirects";
 import {
   displayedOffer,
   isPublishablePrice,
@@ -74,6 +75,26 @@ async function variantParam(searchParams: ProductSearchParams | undefined) {
   return Array.isArray(raw) ? raw[0] : raw;
 }
 
+/**
+ * A slug that is not in the database: redirect permanently if it was renamed
+ * (lib/seo/slug-redirects.json, keeping a ?variant= link), otherwise 404.
+ * Called from generateMetadata too, which runs first for crawlers.
+ */
+async function redirectOrNotFound(
+  slug: string,
+  searchParams: ProductSearchParams | undefined,
+): Promise<never> {
+  const target = resolveSlugRedirect(slug);
+  if (target) {
+    const variant = await variantParam(searchParams);
+    const query = variant
+      ? `?${VARIANT_URL_PARAM}=${encodeURIComponent(variant)}`
+      : "";
+    permanentRedirect(`/product/${encodeURIComponent(target)}${query}`);
+  }
+  notFound();
+}
+
 export async function generateMetadata({
   params,
   searchParams,
@@ -86,7 +107,7 @@ export async function generateMetadata({
   if (!product) {
     // Real 404 status (not 200 + noindex). Metadata is resolved before the
     // first byte for crawlers that get blocking metadata (htmlLimitedBots).
-    notFound();
+    return redirectOrNotFound(slug, searchParams);
   }
   // A shared/ad link to one variant previews that variant's title and
   // picture (AD-390); the canonical stays the one product page.
@@ -153,7 +174,7 @@ export default async function ProductPage({
   const product = await productRepository.getBySlug(slug);
 
   if (!product) {
-    notFound();
+    return redirectOrNotFound(slug, searchParams);
   }
   const linkedVariant = findVariantByUrlKey(
     product.variantChoices,

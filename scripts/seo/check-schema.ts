@@ -275,8 +275,24 @@ function validateBlock(page: string, block: Json, html: string): void {
       check(`${where}: hasMerchantReturnPolicy absent (returns page is a placeholder)`, offer?.hasMerchantReturnPolicy === undefined);
       break;
     }
+    case "Article": {
+      check(`${where}: headline`, Boolean(block.headline));
+      check(`${where}: mainEntityOfPage absolute`, isAbs(block.mainEntityOfPage));
+      check(`${where}: author`, Boolean((block.author as Json | undefined)?.name));
+      for (const image of (block.image as string[] | undefined) ?? []) check(`${where}: image absolute`, isAbs(image), image);
+      break;
+    }
+    case "FAQPage": {
+      const items = (block.mainEntity as Json[] | undefined) ?? [];
+      check(`${where}: 3-5 questions`, items.length >= 3 && items.length <= 5, String(items.length));
+      for (const item of items) {
+        const answer = (item.acceptedAnswer as Json | undefined)?.text;
+        check(`${where}: question + answer`, item["@type"] === "Question" && Boolean(item.name) && Boolean(answer));
+        check(`${where}: no draft marker`, !String(item.name).includes("[VERIFY") && !String(answer).includes("[VERIFY") || process.env.CONTENT_PREVIEW === "1");
+      }
+      break;
+    }
     default:
-      // BlogPosting/Article etc. — parse + context + no ratings checked above.
       break;
   }
 }
@@ -290,11 +306,12 @@ async function crawl(base: string, productCount: number, dumpPath?: string): Pro
     [...(await fetchText(`/sitemap-${name}.xml`)).text.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname);
   const shuffle = <T,>(items: T[]) => items.map((item) => [Math.random(), item] as const).sort((a, b) => a[0] - b[0]).map(([, item]) => item);
 
-  const [categories, brands, products] = await Promise.all([locs("categories"), locs("brands"), locs("products")]);
+  const [categories, brands, products, blogPosts] = await Promise.all([locs("categories"), locs("brands"), locs("products"), locs("blog")]);
   const pages = [
     "/", "/contact", "/about", "/shop", "/brands",
     ...shuffle(categories).slice(0, 8),
     ...shuffle(brands).slice(0, 3),
+    ...blogPosts.slice(0, 5),
     ...shuffle(products).slice(0, productCount),
     ...(arg("paths")?.split(",").map((path) => path.trim()).filter(Boolean) ?? []),
   ];
@@ -327,6 +344,9 @@ async function crawl(base: string, productCount: number, dumpPath?: string): Pro
       const product = blocks.find((block) => block["@type"] === "Product");
       if (product?.offers) stats.productsWithOffer += 1;
       else stats.productsWithoutOffer += 1;
+    }
+    if (page.startsWith("/blog/")) {
+      check(`${page}: Article + BreadcrumbList`, count("Article") === 1 && count("BreadcrumbList") === 1, types.join(","));
     }
     if (page.startsWith("/category/")) {
       check(`${page}: BreadcrumbList`, count("BreadcrumbList") === 1, types.join(","));

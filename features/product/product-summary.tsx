@@ -586,8 +586,13 @@ export function ProductSummary({
               korbe" ask — one prominent place for it rather than a second
               standalone banner. */}
           <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-            <RatingStars rating={averageRating} reviewCount={reviewCount} />
-            <span className="h-4 w-px bg-border" aria-hidden />
+            {/* No stars until there is a real review to average. */}
+            {reviewCount > 0 ? (
+              <>
+                <RatingStars rating={averageRating} reviewCount={reviewCount} />
+                <span className="h-4 w-px bg-border" aria-hidden />
+              </>
+            ) : null}
             {/* Bigger (size="md") than a typical caption chip, on request —
                 these should catch the eye, not read as fine print. */}
             <Badge

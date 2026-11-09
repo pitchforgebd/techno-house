@@ -112,7 +112,8 @@ function main(): void {
     );
     check(
       `${file} generateMetadata calls notFound() for a missing record`,
-      metadataFn.includes("notFound()"),
+      metadataFn.includes("notFound()") ||
+        metadataFn.includes("redirectOrNotFound("),
     );
   }
 
@@ -380,6 +381,24 @@ function main(): void {
         join(root, "app/(storefront)/privacy/page.tsx"),
         "utf8",
       ).includes("StorefrontContentPage"),
+  );
+
+  // SEO phase 5.
+  const productSrc = readFileSync(join(root, "app/(storefront)/product/[slug]/page.tsx"), "utf8");
+  check(
+    "missing product slug: permanent redirect from the map, else 404",
+    productSrc.includes("resolveSlugRedirect(slug)") &&
+      productSrc.includes("permanentRedirect(") &&
+      productSrc.includes("notFound();"),
+  );
+  check(
+    "blog post emits Article + BreadcrumbList",
+    readFileSync(join(root, "app/(storefront)/blog/[slug]/page.tsx"), "utf8").includes("\"@type\": \"Article\"") &&
+      readFileSync(join(root, "app/(storefront)/blog/[slug]/page.tsx"), "utf8").includes("breadcrumbListJsonLd"),
+  );
+  check(
+    "draft category intros are never rendered in production",
+    readFileSync(join(root, "lib/content/category-intro.ts"), "utf8").includes("!intro.isDraft || process.env.CONTENT_PREVIEW"),
   );
 
   // SEO phase 4 — performance guards.

@@ -9046,3 +9046,15 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       6,209→1,423 KB full scroll. New deps: sharp 0.35.4 pinned, svgo 4.1.0
       (dev). Verified: tsc, eslint 0 errors, next build, test:seo 86,
       canonical 34, meta 383, schema 1,578, a11y 10. DEPLOY needs `npm ci`.
+
+- [x] AD-397 SEO fix plan PHASE 5 (content & data quality) on branch
+      `seo-phase-5` (not merged, not pushed). Detail: `docs/SEO-NOTES.md`
+      "Phase 5". `scripts/fix-catalog-text.mjs` (via tsx): dry run + CSVs in
+      docs/seo-reports/ (git-ignored); --apply --fix=names|alts|slugs
+      --confirm-db=<name> saves a JSON backup first, --restore undoes. NOT run
+      against production; apply/restore tested only on a throwaway DB copy.
+      Slug redirects from lib/seo/slug-redirects.json (ships {}), product page
+      only (permanentRedirect = 308). safeAlt + stars hidden at 0 reviews.
+      12 category intros + 5 blog drafts in content/: intros are HELD as drafts
+      (<!-- draft --> or [VERIFY] = not rendered). Blog: Article +
+      BreadcrumbList. No schema change, no npm ci.

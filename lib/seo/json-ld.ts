@@ -176,6 +176,19 @@ export function electronicsStoreJsonLd(
   };
 }
 
+/** From the same items the page shows (content/category-intros). */
+export function faqPageJsonLd(items: { question: string; answer: string }[]) {
+  return {
+    "@context": CONTEXT,
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+}
+
 export function websiteJsonLd(branding: StorefrontBranding) {
   return {
     "@context": CONTEXT,

@@ -4,7 +4,9 @@ import { JsonLd } from "@/components/seo/json-ld-script";
 import { CatalogListingBody } from "@/features/catalog/catalog-listing-body";
 import { CategoryBrandPills } from "@/features/catalog/category-brand-pills";
 import { CategoryListingBar } from "@/features/catalog/category-listing-bar";
+import { CategoryIntroBlock } from "@/features/catalog/category-intro-block";
 import { CategoryPageSeo } from "@/features/catalog/category-page-seo";
+import { getCategoryIntro } from "@/lib/content/category-intro";
 import { categoryAncestors } from "@/lib/catalog/category-tree";
 import { getCategoryPageContent } from "@/lib/catalog/category-page-content";
 import { getCategorySeoHtml } from "@/lib/catalog/category-seo-content";
@@ -39,7 +41,11 @@ export async function CategoryListing({
     category.filterKeys.length > 0 ? category.filterKeys : fallbackKeys;
   const parsed = parseListingQuery(searchParams, attributeKeys);
   const content = getCategoryPageContent(category.slug, category.name);
-  const seoHtml = await getCategorySeoHtml(category.slug);
+  const [seoHtml, intro] = await Promise.all([
+    getCategorySeoHtml(category.slug),
+    // First page only, so paginated URLs do not repeat the copy and FAQ.
+    parsed.page === 1 ? getCategoryIntro(category.slug) : Promise.resolve(null),
+  ]);
   const listFilters = toListQueryFilters(parsed, { showBrandFilter: true });
 
   const [allCategories, brands, result, brandScope] = await Promise.all([
@@ -178,7 +184,12 @@ export async function CategoryListing({
         }
       />
 
-      <CategoryPageSeo content={content} html={seoHtml} />
+      {/* A reviewed intro file replaces the built-in demo copy. Anything an
+          admin wrote for this category still shows. */}
+      {intro ? <CategoryIntroBlock title={headerTitle} intro={intro} /> : null}
+      {!intro || seoHtml ? (
+        <CategoryPageSeo content={content} html={seoHtml} />
+      ) : null}
     </div>
   );
 }
