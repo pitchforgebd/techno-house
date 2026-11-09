@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { StoreJsonLd } from "@/components/seo/site-json-ld";
 import { HomePage } from "@/features/home/home-page";
 import { canonicalUrl } from "@/lib/seo/canonical";
 import { getStorefrontSeoMetadata } from "@/lib/seo/config";
@@ -19,5 +20,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function Home() {
-  return <HomePage />;
+  return (
+    <>
+      {/* ElectronicsStore (SEO phase 3); Organization + WebSite come from
+          the storefront layout. */}
+      <StoreJsonLd />
+      <HomePage />
+    </>
+  );
 }

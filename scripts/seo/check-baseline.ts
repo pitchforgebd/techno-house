@@ -301,11 +301,50 @@ function main(): void {
     storefrontLayout.includes("<SiteJsonLd"),
   );
 
+  // SEO phase 3: no rating/review markup at all (the page shows stars even
+  // with 0 reviews), never price 0, offer = what the buy box displays.
+  const jsonLdSrc = readFileSync(join(root, "lib/seo/json-ld.ts"), "utf8");
+  const jsonLdCode = jsonLdSrc.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
   check(
-    "Product JSON-LD only emits aggregateRating from real review data",
-    readFileSync(join(root, "lib/seo/json-ld.ts"), "utf8").includes(
-      "reviewCount > 0 && averageRating != null",
-    ),
+    "JSON-LD builders emit no aggregateRating / review",
+    !/aggregateRating|"review"|\breview:/.test(jsonLdCode),
+  );
+  check(
+    "Product offers only for a publishable, visible price",
+    jsonLdCode.includes("!offer.priceHidden && isPublishablePrice(offer.price)"),
+  );
+  check(
+    "no shippingDetails / hasMerchantReturnPolicy while those pages are placeholders",
+    !/shippingDetails|hasMerchantReturnPolicy/.test(jsonLdCode),
+  );
+  check(
+    "product page builds the offer from displayedOffer()",
+    productPage.includes("offer: displayedOffer(product, linkedVariant"),
+  );
+  // The site's "9:00–22:00" is support hours, not confirmed shop hours.
+  check(
+    "ElectronicsStore has no opening hours (shop hours not confirmed)",
+    !/openingHours|parseDailyHours/.test(jsonLdCode),
+  );
+  const geoBlock = jsonLdCode.match(
+    /STORE_GEO = \{[\s\S]*?latitude:\s*([\d.]+),[\s\S]*?longitude:\s*([\d.]+)/,
+  );
+  const lat = Number(geoBlock?.[1]);
+  const lng = Number(geoBlock?.[2]);
+  check(
+    "ElectronicsStore geo: GeoCoordinates, numeric, latitude 23–24, longitude 90–91",
+    jsonLdCode.includes('"GeoCoordinates"') &&
+      jsonLdCode.includes("geo: STORE_GEO") &&
+      lat >= 23 && lat <= 24 && lng >= 90 && lng <= 91,
+  );
+  check(
+    "ElectronicsStore on home and contact",
+    readFileSync(join(root, "app/(storefront)/page.tsx"), "utf8").includes("<StoreJsonLd") &&
+      readFileSync(join(root, "app/(storefront)/contact/page.tsx"), "utf8").includes("<StoreJsonLd"),
+  );
+  check(
+    "category listing emits an ItemList of the products on the page",
+    readFileSync(join(root, "features/catalog/category-listing.tsx"), "utf8").includes("itemListJsonLd(result.items"),
   );
 
   const cartPage = readFileSync(

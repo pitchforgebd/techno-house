@@ -280,6 +280,96 @@ Graph/Twitter, default OG image) plus the two small DB reads they need.
 - Pages 2+ of a listing share page 1's title (only the canonical differs).
 - The home page title/description come from Admin → SEO (unchanged).
 
+### Phase 3 — Structured data
+
+Branch `seo-phase-3` (from main after Phase 2 was merged and deployed).
+
+1. **Product** (`lib/seo/json-ld.ts` `productJsonLd`). The offer is built
+   from `displayedOffer()` (`lib/catalog/displayed-offer.ts`) — the same
+   selection the buy box makes: the `?variant=` variant, else the cheapest
+   in-stock variant (`defaultVariant`), else the product. Its price/stock is
+   exactly what the page shows.
+   - `offers` only when the page shows a price AND it is a positive number:
+     never `price: 0`; no offers for Up Coming or for out of stock without Pre
+     Order (the page hides the price there). Pre Order → `PreOrder`, low stock
+     → `LimitedAvailability`.
+   - `itemCondition: NewCondition`, `seller` = the Organization (`@id` +
+     name), `priceValidUntil` only while a discount window is open, `url`,
+     `sku` (the shown variant's), `mpn` from the model number when set, brand.
+   - `image`: absolute URLs of the shown gallery; the "no photo" placeholder
+     is never published (the field is left out instead).
+   - `description`: plain text of the Quick overview.
+   - **No `aggregateRating` / `review` at all** (the page shows stars with 0
+     reviews; operator decision). The old conditional rating code was removed.
+   - **No `shippingDetails` / `hasMerchantReturnPolicy`**: live `/shipping`
+     and `/returns` are still placeholders ("… will appear here"), so there
+     are no stated terms to describe.
+   - The Phase 2 meta description now reads its price from the same
+     `displayedOffer()` (it previously ignored the default variant).
+2. **Organization** (sitewide, storefront layout): `@id`, logo (absolute),
+   email, address with the postcode read from the stored address, one
+   `ContactPoint` per phone number in `+880` form (branding phone + extra
+   phones, split on commas — the live value "01611-305338, 0 1410-305338"
+   becomes +8801611305338 and +8801410305338), `sameAs` = the footer's social
+   links that are real https URLs (live: Facebook + YouTube; the `/contact`
+   placeholders are skipped).
+3. **ElectronicsStore** on `/` and `/contact` (`StoreJsonLd`): same address,
+   phone, email, logo; `geo` = GeoCoordinates 23.739561, 90.385072 (operator-
+   confirmed 2026-11-09; `STORE_GEO` in `lib/seo/json-ld.ts`, because the
+   stored map link is a maps.app.goo.gl short link with no coordinates);
+   `hasMap` = that Google Maps link from Business Settings; `priceRange "৳৳"`,
+   `currenciesAccepted BDT`, `parentOrganization` → the Organization.
+   **Opening hours intentionally omitted** (no `openingHours` /
+   `openingHoursSpecification`): the "9:00–22:00" on the site is customer
+   support hours, not confirmed shop opening hours. Add them once the real
+   shop hours and days are confirmed. The visible footer text is unchanged.
+4. **Category pages**: BreadcrumbList (unchanged) + `ItemList` of the products
+   on the current page in display order (position continues across pages:
+   page 2 starts at 21). No `FAQPage` — no category has an FAQ block yet
+   (Phase 5).
+5. **WebSite** gains `publisher` → Organization. Brand pages and the blog
+   Article markup are unchanged.
+6. **`npm run seo:check-schema`** (`scripts/seo/check-schema.ts`): 32 offline
+   builder checks, then a crawl of a running site (home, contact, about, shop,
+   brands, 8 random categories, 3 brands, N random products, plus `--paths=`)
+   that parses every JSON-LD block and checks the required fields per type,
+   absolute URLs, `+880` phones, no rating/review anywhere, exactly one
+   Organization/WebSite per page, ElectronicsStore only on home/contact (with
+   NO opening hours, and a numeric geo: latitude 23–24, longitude 90–91), and
+   that every Product offer's price literally appears on the page. Read-only.
+
+#### Phase 3 files
+
+| File | Change |
+|---|---|
+| `lib/seo/json-ld.ts` | rewritten builders (Product, Organization, ElectronicsStore, ItemList, helpers) |
+| `lib/catalog/displayed-offer.ts` (new) | the buy box's selection/price/stock as one function |
+| `components/seo/site-json-ld.tsx` | Organization with footer `sameAs`; new `StoreJsonLd` |
+| `app/(storefront)/page.tsx`, `app/(storefront)/contact/page.tsx` | `<StoreJsonLd />` |
+| `app/(storefront)/product/[slug]/page.tsx` | Product JSON-LD from `displayedOffer`; meta price from the same |
+| `features/catalog/category-listing.tsx` | ItemList |
+| `scripts/seo/check-schema.ts` (new), `package.json` | `npm run seo:check-schema` |
+| `scripts/seo/check-baseline.ts` | phase 3 guards (no ratings, offer rule, store/ItemList present) |
+
+#### Phase 3 verification (2026-11-09)
+
+- `tsc --noEmit` clean; eslint clean on changed files; `next build` exit 0.
+- `test:seo` 74 ok, `test:seo-canonical` 34 ok, `test:seo-meta` 383 ok,
+  `seo:check-schema --offline` 29 ok.
+- `seo:check-schema` against `next start` (dev DB): 71 pages, 268 blocks,
+  **3,187 checks ok** — 13 products with an offer (price found on the page),
+  40 without (out of stock on dev → price hidden → no offer).
+- Phase 1/2 regressions: 404s, www 301, `?page=2` canonical, Phase 2 titles
+  unchanged.
+- Dev DB has no real product photos (every image row is the placeholder), so
+  dev output has no `image`; production photos are `/uploads/…webp` and come
+  out as absolute `https://technohouse.com.bd/uploads/…` (offline check).
+- Follow-up (same branch): opening hours removed, geo added. tsc + eslint
+  clean, `next build` exit 0, `test:seo` 76 ok, `test:seo-canonical` 34 ok,
+  `test:seo-meta` 383 ok, `seo:check-schema --offline` 32 ok,
+  `seo:check-schema` against `next start`: 60 pages, 226 blocks, **2,732
+  checks ok**; footer still shows "Hours 9:00–22:00".
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
@@ -303,6 +393,16 @@ Graph/Twitter, default OG image) plus the two small DB reads they need.
   privacy pages are still placeholder text on the live site; their new
   descriptions are only as good as the page behind them. Fill them in Admin →
   Design Studio → Pages.
+- **Phase 3 — deploy:** no schema change, same command as Phase 1. Then
+  validate the live site (read-only): `npm run seo:check-schema --
+  --base=https://technohouse.com.bd --products=40`, and test one product in
+  Google's Rich Results Test (https://search.google.com/test/rich-results).
+- **Phase 3 — shipping/returns:** once `/shipping` and `/returns` state real
+  delivery charges/times and a return window, `shippingDetails` and
+  `hasMerchantReturnPolicy` can be added from them (ask for it).
+- **Phase 3 — shop opening hours:** not in the schema yet. When the real shop
+  hours and days are confirmed (separate from the 9:00–22:00 support hours),
+  they can be added as `openingHoursSpecification`.
 - **Phase 2 — data:** duplicate product listings (same product entered twice
   with a location tag or a project note) keep identical titles; merge or
   deactivate them in Admin → Products (the audit lists them).

@@ -23,7 +23,7 @@ import {
   productRepository,
   type Category,
 } from "@/lib/data";
-import { breadcrumbListJsonLd } from "@/lib/seo/json-ld";
+import { breadcrumbListJsonLd, itemListJsonLd } from "@/lib/seo/json-ld";
 import { categoryMeta, categoryParentQualifier } from "@/lib/seo/page-meta";
 
 export async function CategoryListing({
@@ -110,6 +110,16 @@ export async function CategoryListing({
   return (
     <div className="mx-auto max-w-catalog px-4 py-7 md:px-6 md:py-9">
       <JsonLd data={breadcrumbListJsonLd(breadcrumbItems)} />
+      {/* The products on THIS page of the listing, in display order,
+          positions continuing across pages (SEO phase 3, C7). */}
+      {result.items.length > 0 ? (
+        <JsonLd
+          data={itemListJsonLd(result.items, {
+            name: headerTitle,
+            startPosition: (result.page - 1) * result.pageSize + 1,
+          })}
+        />
+      ) : null}
       <Breadcrumbs items={breadcrumbItems} />
 
       <CategoryBrandPills

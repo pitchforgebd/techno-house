@@ -9008,3 +9008,20 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       category copy (/brands, /shop, /deals, brand fallback, product page,
       cart drawer, toast). No schema change:
       `git pull origin main && npm run build && pm2 restart techno-house`.
+
+- [x] AD-395 SEO fix plan PHASE 3 (structured data) on branch `seo-phase-3`
+      (not merged). Detail: `docs/SEO-NOTES.md` "Phase 3". Product offer from
+      `displayedOffer()` (`lib/catalog/displayed-offer.ts` = buy-box
+      selection: ?variant, else cheapest in-stock variant): offers only for a
+      visible, positive price (never 0; none for Up Coming / out of stock
+      without Pre Order); NewCondition, seller, priceValidUntil in a discount
+      window, absolute images (placeholder dropped). NO aggregateRating/review
+      (operator rule). shippingDetails / hasMerchantReturnPolicy SKIPPED —
+      live /shipping and /returns are placeholders. Organization: +880
+      ContactPoints, footer https socials as sameAs. ElectronicsStore on home
+      + contact (NO opening hours — the site's 9:00–22:00 is support hours,
+      not confirmed shop hours; geo 23.739561/90.385072 operator-confirmed;
+      hasMap kept). Category ItemList of the page's
+      products. `npm run seo:check-schema` (29 offline + crawl): 3,187 checks
+      ok on next start. Phase 2 meta price now also from displayedOffer.
+      No schema change: `git pull origin main && npm run build && pm2 restart techno-house`.
