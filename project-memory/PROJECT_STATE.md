@@ -62,7 +62,7 @@ the clicked variant's title/SKU/price/picture — needs `prisma migrate
 deploy`), and AD-391 (A–Z order in the product form's category/brand
 pickers), and AD-393 (SEO plan phase 1, merged as PR #1 and live on
 2026-11-09: www/http 301, real 404s, self/pagination canonicals, sitemap index —
-see `docs/SEO-NOTES.md`), and AD-394 (SEO plan phase 2, merged as PR #2 and live: title/description templates, keyword-map H1s, default OG image, heading clean-up), and AD-395 (SEO plan phase 3 on branch `seo-phase-3`, not yet merged: Product/Organization/ElectronicsStore/ItemList JSON-LD, no ratings, `npm run seo:check-schema`; SEO phases 4–5 await approval) are also complete — full detail in `project-memory/TASKS.md`,
+see `docs/SEO-NOTES.md`), and AD-394 (SEO plan phase 2, merged as PR #2 and live: title/description templates, keyword-map H1s, default OG image, heading clean-up), and AD-395 (SEO plan phase 3, merged as PR #3 and live: Product/Organization/ElectronicsStore/ItemList JSON-LD, no ratings, `npm run seo:check-schema`), and AD-396 (SEO plan phase 4 on branch `seo-phase-4`, not merged/pushed: WebP copies served by nginx, transform-only marquee (CLS), lazy mega-menu data, image sizes; SEO phase 5 awaits approval) are also complete — full detail in `project-memory/TASKS.md`,
 not narrated here.
 
 ## Status

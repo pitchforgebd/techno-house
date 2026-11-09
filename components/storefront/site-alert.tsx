@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { ArrowRight, X } from "lucide-react";
 import {
   useCallback,
@@ -168,10 +170,11 @@ export function SiteAlert({ alert }: { alert: StorefrontAlert | null }) {
       >
         <div className="flex items-center gap-3">
           {alert.imagePath ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={alert.imagePath}
               alt=""
+              width={large ? 64 : 48}
+              height={large ? 64 : 48}
               className={`${large ? "size-16" : "size-12"} shrink-0 rounded-lg object-cover`}
             />
           ) : null}

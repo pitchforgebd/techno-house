@@ -9025,3 +9025,24 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       products. `npm run seo:check-schema` (29 offline + crawl): 3,187 checks
       ok on next start. Phase 2 meta price now also from displayedOffer.
       No schema change: `git pull origin main && npm run build && pm2 restart techno-house`.
+
+- [x] AD-396 SEO fix plan PHASE 4 (performance & images) on branch
+      `seo-phase-4` (not merged, not pushed). Detail + numbers:
+      `docs/SEO-NOTES.md` "Phase 4". Low-CPU approach: uploads keep bypassing
+      next/image; `scripts/optimize-uploads.mjs` (dry run default, --apply)
+      writes foo.webp / foo.min.webp NEXT TO originals (never modified) and
+      the media upload handler does the same for new uploads (removed on
+      delete) — shared rules in `lib/media/webp-variant.mjs`; nginx picks the
+      copy via Accept map + try_files (deploy/nginx-seo.conf phase 4 steps,
+      tested with local nginx 1.22). `scripts/optimize-svg.mjs` → .min.svg
+      (SVGO default preset BROKE the payment SVG; conservative config +
+      --embedded-webp: 314→166 KB). Marquee animated `left` = the only CLS
+      source; now transform-only → CLS 0.000 local on home/category/product.
+      Hero: first slide priority, other slides mounted on demand. Mega-menu +
+      mobile drawer: department triggers in HTML, panels/tree from
+      `/api/nav-menu` on first use (home HTML 703→521 KB, product 376→204 KB;
+      all 345 categories still in sitemap and linked from parents).
+      Live home images (substitution test): 3,463→944 KB at load,
+      6,209→1,423 KB full scroll. New deps: sharp 0.35.4 pinned, svgo 4.1.0
+      (dev). Verified: tsc, eslint 0 errors, next build, test:seo 86,
+      canonical 34, meta 383, schema 1,578, a11y 10. DEPLOY needs `npm ci`.

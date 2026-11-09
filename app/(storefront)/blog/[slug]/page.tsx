@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
+import { getImageSize } from "@/lib/media/image-size";
 import { notFound } from "next/navigation";
 import { getPublicPost } from "@/lib/content/blog";
 import { looksLikeHtml, sanitizeBlogBody } from "@/lib/content/sanitize-html";
@@ -53,6 +55,7 @@ export default async function BlogPostPage({ params }: Props) {
     notFound();
   }
 
+  const coverSize = await getImageSize(post.coverImagePath);
   const url = `${publicOrigin()}/blog/${post.slug}`;
   const imageUrl = post.coverImagePath ? `${publicOrigin()}${post.coverImagePath}` : undefined;
   const jsonLd = {
@@ -93,12 +96,26 @@ export default async function BlogPostPage({ params }: Props) {
         <p className="mt-2 text-caption text-text-muted">{post.publishedAt}</p>
       ) : null}
       {post.coverImagePath ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={post.coverImagePath}
-          alt={post.coverImageAlt || post.title}
-          className="mt-4 w-full rounded-lg object-cover"
-        />
+        coverSize ? (
+          // The post's LCP image: priority, and its real width/height keep
+          // the text below it from moving when it arrives.
+          <Image
+            src={post.coverImagePath}
+            alt={post.coverImageAlt || post.title}
+            width={coverSize.width}
+            height={coverSize.height}
+            priority
+            sizes="(min-width: 768px) 768px, 100vw"
+            className="mt-4 h-auto w-full rounded-lg object-cover"
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={post.coverImagePath}
+            alt={post.coverImageAlt || post.title}
+            className="mt-4 w-full rounded-lg object-cover"
+          />
+        )
       ) : null}
       {post.excerpt ? (
         <p className="mt-4 text-body text-text-muted">{post.excerpt}</p>

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StorefrontPopup } from "@/lib/marketing/popups";
@@ -167,10 +169,11 @@ export function DynamicPopup({ popup }: { popup: StorefrontPopup | null }) {
           <X className="size-4" aria-hidden />
         </button>
         {popup.imagePath ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={popup.imagePath}
             alt=""
+            width={512}
+            height={280}
             className="aspect-[512/280] w-full object-cover"
           />
         ) : null}

@@ -745,18 +745,24 @@ h6,
    together that works for any bar width and any notice length with no
    separate measurement needed. Falls under the global prefers-reduced-motion
    collapse like every other th- animation here. */
+/* Transform only (SEO phase 4): the old version animated `left`, a layout
+   property, so the bar's own movement counted as layout shift on every
+   page for as long as it ran (measured: the only CLS source on the live
+   home page). The bar spans the viewport, so 100vw ≈ "just past its right
+   edge"; translateX(-100%) is relative to the text itself, so the end is
+   "fully past the left edge" whatever its length — same path as before. */
 @keyframes th-marquee {
   from {
-    left: 100%;
-    transform: translateX(0);
+    transform: translateX(100vw);
   }
   to {
-    left: 0%;
     transform: translateX(-100%);
   }
 }
 
 .th-marquee-track {
+  left: 0;
+  will-change: transform;
   animation: th-marquee 14s linear infinite;
 }
 

@@ -3,6 +3,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { verifyFileSignature } from "@/lib/media/file-signature";
+import { processFile, removeVariantOf } from "@/lib/media/webp-variant.mjs";
 import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/auth/audit-log";
@@ -396,6 +397,26 @@ export async function getAdminMedia(
   return row ? toAdminAsset(row) : null;
 }
 
+/**
+ * Write the WebP variant of a just-uploaded image (png/jpeg → foo.webp, large
+ * webp → foo.min.webp; see lib/media/webp-variant.mjs). Never touches the
+ * original and never throws — a failure only means nginx keeps serving the
+ * original.
+ */
+async function writeWebpVariant(abs: string): Promise<void> {
+  try {
+    const { default: sharp } = await import("sharp");
+    // One upload at a time on a small server: keep sharp to one thread.
+    sharp.concurrency(1);
+    await processFile(sharp, abs, { apply: true });
+  } catch (error) {
+    console.warn(
+      "[media] WebP variant not written:",
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
+
 export async function uploadAdminMediaFiles(input: {
   files: File[];
   folder: MediaFolder;
@@ -447,6 +468,10 @@ export async function uploadAdminMediaFiles(input: {
     const publicPath = `/uploads/${folder}/${storedName}`;
     const abs = path.join(dir, storedName);
     await writeFile(abs, buffer);
+    // WebP copy next to the original (SEO phase 4) — nginx serves it in the
+    // original's place, so the stored path/URL stays the same. Best effort:
+    // the upload never fails because of it.
+    await writeWebpVariant(abs);
 
     const row = await getPrisma().mediaAsset.create({
       data: {
@@ -554,6 +579,8 @@ export async function deleteAdminMedia(input: {
         } catch {
           // File may already be missing on disk.
         }
+        // …and its generated WebP copy, if any.
+        await removeVariantOf(abs);
       }
     }
   }

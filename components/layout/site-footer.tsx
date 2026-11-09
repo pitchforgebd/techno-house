@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { FooterCtaButtons } from "@/components/layout/footer-cta-buttons";
 import { FooterNewsletterForm } from "@/components/layout/footer-newsletter-form";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/content/footer-settings";
 import { googleMapsEmbedSrc } from "@/lib/content/google-maps";
 import { logoStyle } from "@/lib/business/logo-size";
+import { getImageSize } from "@/lib/media/image-size";
 import { cn } from "@/lib/cn";
 
 /**
@@ -58,6 +60,10 @@ export async function SiteFooter() {
     getFooterWidgetsConfig(),
   ]);
   const logoSrc = resolveChromeLogo(branding);
+  const [logoSize, paymentSize] = await Promise.all([
+    getImageSize(logoSrc),
+    getImageSize(footer.paymentMethodsImageSrc),
+  ]);
   const mapEmbedSrc = googleMapsEmbedSrc(branding.googleMapsUrl);
   const year = new Date().getFullYear();
   const copyrightLines = formatFooterCopyright(footer.copyrightText, {
@@ -108,11 +114,23 @@ export async function SiteFooter() {
             href="/"
             className="inline-flex items-center text-2xl font-bold tracking-tight text-primary"
           >
-            {logoSrc ? (
+            {logoSrc && logoSize ? (
+              // Below the fold: lazy, and the intrinsic size reserves the box.
+              <Image
+                src={logoSrc}
+                alt={branding.storeName}
+                width={logoSize.width}
+                height={logoSize.height}
+                style={logoStyle(branding.logoHeightPx)}
+                className="object-contain"
+              />
+            ) : logoSrc ? (
               // eslint-disable-next-line @next/next/no-img-element -- storefront branding from SiteSettings / uploads
               <img
                 src={logoSrc}
                 alt={branding.storeName}
+                loading="lazy"
+                decoding="async"
                 style={logoStyle(branding.logoHeightPx)}
                 className="object-contain"
               />
@@ -379,12 +397,27 @@ export async function SiteFooter() {
               We accept
             </p>
             <div className="flex w-full min-w-0 max-w-4xl justify-center sm:w-auto sm:flex-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={footer.paymentMethodsImageSrc}
-                alt="Accepted payment methods"
-                className="h-auto max-h-28 w-full object-contain object-center sm:max-h-32 md:max-h-36"
-              />
+              {paymentSize ? (
+                // Lazy (bottom of every page); width/height give the box its
+                // aspect ratio before the file arrives.
+                <Image
+                  src={footer.paymentMethodsImageSrc}
+                  alt="Accepted payment methods"
+                  width={paymentSize.width}
+                  height={paymentSize.height}
+                  sizes="(min-width: 896px) 896px, 100vw"
+                  className="h-auto max-h-28 w-full object-contain object-center sm:max-h-32 md:max-h-36"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={footer.paymentMethodsImageSrc}
+                  alt="Accepted payment methods"
+                  loading="lazy"
+                  decoding="async"
+                  className="h-auto max-h-28 w-full object-contain object-center sm:max-h-32 md:max-h-36"
+                />
+              )}
             </div>
           </div>
         </div>

@@ -382,6 +382,69 @@ function main(): void {
       ).includes("StorefrontContentPage"),
   );
 
+  // SEO phase 4 — performance guards.
+  const read = (file: string) => readFileSync(join(root, file), "utf8");
+  check(
+    "mega-menu: the page renders department triggers only; panels load from /api/nav-menu",
+    read("components/layout/category-nav.tsx").includes("loadNavTriggers()") &&
+      !read("components/layout/category-nav.tsx").includes("buildMegaMenuPanels") &&
+      read("components/layout/category-mega-nav.tsx").includes("useNavMenu()") &&
+      existsSync(join(root, "app/api/nav-menu/route.ts")),
+  );
+  check(
+    "mobile drawer gets top-level categories only (children load on open)",
+    read("components/layout/site-header.tsx").includes("<MobileNav roots={roots} />") &&
+      !read("components/layout/site-header.tsx").includes("brandsByCategory={"),
+  );
+  check(
+    "subcategories stay linked from their parent category page",
+    read("features/catalog/category-listing.tsx").includes('aria-label="Subcategories"'),
+  );
+  const heroSlider = read("features/home/home-hero-slider.tsx");
+  check(
+    "hero: first slide priority, other slides' images only mounted when needed",
+    heroSlider.includes("priority={slideIndex === 0}") &&
+      heroSlider.includes("mounted.has(slideIndex)"),
+  );
+  const css = read("app/globals.css");
+  const marqueeKeyframes = css.slice(
+    css.indexOf("@keyframes th-marquee"),
+    css.indexOf("}", css.indexOf("to {", css.indexOf("@keyframes th-marquee")) + 1),
+  );
+  check(
+    "marquee animates transform only (animating `left` is layout shift)",
+    marqueeKeyframes.includes("transform") && !/\bleft\s*:/.test(marqueeKeyframes),
+  );
+  const nextConfigSrc = read("next.config.ts");
+  check(
+    "image optimizer kept cheap: WebP only, short size lists, long cache",
+    nextConfigSrc.includes('formats: ["image/webp"]') &&
+      nextConfigSrc.includes("minimumCacheTTL") &&
+      nextConfigSrc.includes("deviceSizes"),
+  );
+  check(
+    "uploads bypass the optimizer (served by nginx from disk)",
+    read("lib/image-loader.ts").includes('src.startsWith("/uploads/")'),
+  );
+  const optimizeUploads = read("scripts/optimize-uploads.mjs");
+  check(
+    "optimize-uploads is a dry run unless --apply, and never writes over an original",
+    optimizeUploads.includes('process.argv.includes("--apply")') &&
+      read("lib/media/webp-variant.mjs").includes("${base}.webp") &&
+      read("lib/media/webp-variant.mjs").includes("${base}.min.webp") &&
+      !/unlink\(filePath\)|writeFile\(filePath/.test(read("lib/media/webp-variant.mjs")),
+  );
+  check(
+    "optimize-svg writes .min.svg next to the original, dry run by default",
+    read("scripts/optimize-svg.mjs").includes('.replace(/\\.svg$/i, ".min.svg")') &&
+      read("scripts/optimize-svg.mjs").includes('process.argv.includes("--apply")'),
+  );
+  check(
+    "admin upload handler writes a WebP variant and removes it with the original",
+    read("lib/media/admin-media.ts").includes("await writeWebpVariant(abs)") &&
+      read("lib/media/admin-media.ts").includes("await removeVariantOf(abs)"),
+  );
+
   console.log(
     failures === 0
       ? `ok ${checks} seo checks`
