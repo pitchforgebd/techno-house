@@ -5,10 +5,21 @@ import { Pagination } from "@/components/ui/pagination";
 import { ProductCard } from "@/features/catalog/product-card";
 import { PRODUCT_CARD_GRID_CLASS } from "@/features/catalog/product-grid";
 import { productRepository } from "@/lib/data";
+import { listingCanonicalUrl } from "@/lib/seo/canonical";
 
-export const metadata: Metadata = {
-  title: "Deals — Techno House",
-};
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] }>;
+}): Promise<Metadata> {
+  return {
+    title: "Deals — Techno House",
+    // ?page=N (N > 1) is its own canonical so later pages are indexable.
+    alternates: {
+      canonical: listingCanonicalUrl("/deals", await searchParams),
+    },
+  };
+}
 
 /** Page size; the repository caps it at 48. */
 const DEALS_PAGE_SIZE = 40;

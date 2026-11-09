@@ -13,17 +13,28 @@ import {
 import { brandRepository, productRepository } from "@/lib/data";
 import { getPublicPromotionBySlug } from "@/lib/marketing/promotions";
 import { listPromotionProductIds } from "@/lib/marketing/promotion-products";
+import { listingCanonicalUrl } from "@/lib/seo/canonical";
 
 type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<ListingSearchParams>;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
   const { slug } = await params;
   const promotion = await getPublicPromotionBySlug(slug);
+  if (!promotion) {
+    // Real 404 status — see product/[slug]/page.tsx.
+    notFound();
+  }
   return {
-    title: promotion ? `${promotion.name} — Techno House` : "Offer not found",
+    title: `${promotion.name} — Techno House`,
+    alternates: {
+      canonical: listingCanonicalUrl(`/offers/${slug}`, await searchParams),
+    },
   };
 }
 

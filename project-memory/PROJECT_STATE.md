@@ -60,7 +60,9 @@ discount window; spec in `TECHNOHOUSE_TRACKING.md`), and AD-390
 (variant title + per-variant gallery, `?variant=` links, order line snapshots
 the clicked variant's title/SKU/price/picture — needs `prisma migrate
 deploy`), and AD-391 (A–Z order in the product form's category/brand
-pickers) are also complete — full detail in `project-memory/TASKS.md`,
+pickers), and AD-393 (SEO plan phase 1 on branch `seo-fixes`, not yet
+merged: www/http 301, real 404s, self/pagination canonicals, sitemap index —
+see `docs/SEO-NOTES.md`; SEO phases 2–5 await approval) are also complete — full detail in `project-memory/TASKS.md`,
 not narrated here.
 
 ## Status

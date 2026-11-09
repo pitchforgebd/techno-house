@@ -9,8 +9,10 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { resolvePublicTrackQuery } from "@/lib/orders/public-tracking";
 import { getRequestMeta } from "@/lib/auth/request-meta";
+import { canonicalUrl } from "@/lib/seo/canonical";
 
 export const metadata: Metadata = {
+  alternates: { canonical: canonicalUrl("/track") },
   title: "Order Tracking — Techno House",
 };
 

@@ -5,7 +5,7 @@
  *
  * Static guards against known regressions. Not a live crawl.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 let checks = 0;
@@ -65,12 +65,63 @@ function main(): void {
     robots.includes("sitemap:") && robots.includes("publicOrigin()"),
   );
 
-  const sitemapApp = readFileSync(join(root, "app/sitemap.ts"), "utf8");
   check(
-    "app/sitemap.ts builds absolute URLs with lastModified",
-    sitemapApp.includes("listSitemapEntries") &&
-      sitemapApp.includes("absoluteSitemapUrl") &&
-      sitemapApp.includes("lastModified"),
+    "/sitemap.xml is a sitemap index (route handler), not a single urlset",
+    !existsSync(join(root, "app/sitemap.ts")) &&
+      readFileSync(join(root, "app/sitemap.xml/route.ts"), "utf8").includes(
+        "renderSitemapIndex",
+      ),
+  );
+  for (const section of ["pages", "categories", "brands", "products", "blog"]) {
+    const file = join(root, `app/sitemap-${section}.xml/route.ts`);
+    check(
+      `child sitemap /sitemap-${section}.xml exists and renders its own section`,
+      existsSync(file) &&
+        readFileSync(file, "utf8").includes(`listSitemapSection("${section}")`),
+    );
+  }
+  check(
+    "robots.txt does not block /_next/ or /uploads/ (Google needs CSS/JS/images)",
+    !robots.includes('"/_next') && !robots.includes('"/uploads'),
+  );
+
+  // Real 404s (SEO phase 1). A loading.tsx at the app root (or anywhere above
+  // a detail page) is a Suspense boundary that flushes a 200 header before
+  // the page's notFound() runs → "200 + noindex" soft 404s.
+  check(
+    "no app/loading.tsx Suspense boundary above every route",
+    !existsSync(join(root, "app/loading.tsx")) &&
+      !existsSync(join(root, "app/(storefront)/loading.tsx")),
+  );
+  for (const dir of ["product", "category", "brand", "offers", "blog"]) {
+    check(
+      `no loading.tsx above /${dir} pages`,
+      !existsSync(join(root, `app/(storefront)/${dir}/loading.tsx`)) &&
+        !existsSync(join(root, `app/(storefront)/${dir}/[slug]/loading.tsx`)),
+    );
+  }
+  for (const file of [
+    "app/(storefront)/product/[slug]/page.tsx",
+    "app/(storefront)/category/[slug]/page.tsx",
+    "app/(storefront)/brand/[slug]/page.tsx",
+  ]) {
+    const source = readFileSync(join(root, file), "utf8");
+    const metadataFn = source.slice(
+      source.indexOf("export async function generateMetadata"),
+      source.indexOf("export default"),
+    );
+    check(
+      `${file} generateMetadata calls notFound() for a missing record`,
+      metadataFn.includes("notFound()"),
+    );
+  }
+
+  const middlewareSrc = readFileSync(join(root, "middleware.ts"), "utf8");
+  check(
+    "middleware 301s www / plain-http requests to the canonical origin",
+    middlewareSrc.includes("canonicalHostRedirect") &&
+      middlewareSrc.includes('type: "host"') &&
+      middlewareSrc.includes("x-forwarded-proto"),
   );
 
   const sitemapLib = readFileSync(join(root, "lib/seo/sitemap.ts"), "utf8");
@@ -139,8 +190,41 @@ function main(): void {
     const source = readFileSync(join(root, file), "utf8");
     check(
       `${label} page sets a canonical (filter/sort/page-stable)`,
-      source.includes("alternates: { canonical:") &&
-        source.includes("canonicalUrl("),
+      /alternates: \{\s*canonical:/.test(source) &&
+        /(listingCanonicalUrl|canonicalUrl)\(/.test(source),
+    );
+  }
+
+  for (const page of [
+    "about", "contact", "faq", "support", "warranty", "shipping", "returns",
+    "terms", "privacy", "digital-commerce-guideline",
+  ]) {
+    check(
+      `/${page} uses storefrontContentMetadata (which sets its self-canonical)`,
+      readFileSync(
+        join(root, `app/(storefront)/${page}/page.tsx`),
+        "utf8",
+      ).includes(`storefrontContentMetadata(`),
+    );
+  }
+  check(
+    "storefrontContentMetadata sets a self-canonical on every content page",
+    readFileSync(
+      join(root, "features/content/storefront-content-page.tsx"),
+      "utf8",
+    ).includes("canonicalUrl(`/${slug}`)"),
+  );
+  for (const page of [
+    "brands", "deals", "offers", "offers/[slug]", "flash-sale", "pc-builder",
+    "blog", "complaint", "product-request", "track",
+  ]) {
+    const source = readFileSync(
+      join(root, `app/(storefront)/${page}/page.tsx`),
+      "utf8",
+    );
+    check(
+      `/${page} sets a self-canonical`,
+      /alternates: \{\s*canonical:/.test(source),
     );
   }
 

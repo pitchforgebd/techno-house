@@ -11,6 +11,7 @@ import { verifySessionJwt } from "@/lib/auth/session-jwt";
 import { resolveStaffSessionByToken } from "@/lib/auth/staff-session-core";
 import { STAFF_SESSION_COOKIE } from "@/lib/auth/staff-session-constants";
 import { canonicalStorefrontPath } from "@/lib/design/storefront-link";
+import { canonicalHostRedirect } from "@/lib/seo/canonical-host";
 
 /**
  * Node.js runtime, not the Edge default — this is what actually closes the
@@ -38,6 +39,17 @@ export const config = {
     // Any other path containing a capital letter, so wrong-case storefront URLs
     // can be redirected without running this on every request (AD-369).
     "/((?=.*[A-Z]).*)",
+    // www host or plain-http request: 301 to the one canonical origin (SEO
+    // phase 1). The `has` conditions keep ordinary requests from running
+    // middleware at all; `/_next/` assets are left alone.
+    {
+      source: "/((?!_next/).*)",
+      has: [{ type: "host", value: "www\\..+" }],
+    },
+    {
+      source: "/((?!_next/).*)",
+      has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
+    },
   ],
   runtime: "nodejs",
 } as const;
@@ -64,6 +76,17 @@ const B2B_PUBLIC = new Set(["/b2b/login", "/b2b/register"]);
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // One canonical origin (no www, https). Path and query are kept.
+  const hostTarget = canonicalHostRedirect({
+    host: request.headers.get("host"),
+    forwardedProto: request.headers.get("x-forwarded-proto"),
+    pathAndQuery: `${pathname}${request.nextUrl.search}`,
+  });
+  if (hostTarget) {
+    const keepsMethod = request.method !== "GET" && request.method !== "HEAD";
+    return NextResponse.redirect(hostTarget, keepsMethod ? 308 : 301);
+  }
 
   // Wrong-case storefront URLs (AD-369). The router is case-sensitive, so
   // `/About` is a 404 while `/about` is the page; a link typed with the wrong

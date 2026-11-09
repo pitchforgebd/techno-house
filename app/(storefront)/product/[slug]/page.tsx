@@ -78,7 +78,9 @@ export async function generateMetadata({
   const { slug } = await params;
   const product = await productRepository.getBySlug(slug);
   if (!product) {
-    return { title: "Product — Techno House" };
+    // Real 404 status (not 200 + noindex). Metadata is resolved before the
+    // first byte for crawlers that get blocking metadata (htmlLimitedBots).
+    notFound();
   }
   // A shared/ad link to one variant previews that variant's title and
   // picture (AD-390); the canonical stays the one product page.
