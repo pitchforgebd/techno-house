@@ -8925,3 +8925,21 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       NOTE (prod screenshot, not changed): live has two "Desktop Offer"
       categories under Desktop — a duplicate in the data, now shown side by
       side; merge/delete one in admin Categories if it is unintended.
+
+      NON-PRODUCTION GUARD (2026-11-09): `resolveMetaCapiConfig()` — the one
+      choke point for every CAPI send (sendMetaEvent, server Purchase,
+      /api/tracking) — now returns null unless NODE_ENV === "production" or
+      META_CAPI_ALLOW_NON_PRODUCTION === "1" (exactly "1"); one
+      `[meta-capi] disabled …` log line per process. Reason: with a real
+      token in .env.local, test:inventory / test:variants / test:staleorders
+      (real COD orders) and `next dev` would have sent real events. The real
+      token was removed from the local .env.local (server .env only).
+      Verified: test:datalayer 108 checks (19 new: guard truth table; with a
+      token under NODE_ENV unset/development/test nothing reaches the mocked
+      Graph API, incl. a real fixture order's Purchase; flag=1 opts in; all
+      send checks now run as production WITHOUT the flag); mutation removing
+      the guard → 11 failures. `next build` + `next start` with a FAKE token:
+      relay reached Meta (rejected code 190, no event recorded) = production
+      still sends; `next dev` with the same fake token: "disabled", no request.
+      No server action needed beyond the normal deploy — NODE_ENV is
+      production under `next start`.

@@ -9,6 +9,9 @@
  *     database, never sent to the browser, never logged.
  *   - `META_TEST_EVENT_CODE` env adds `test_event_code` (Events Manager → Test).
  * No token or no pixel ID → nothing is sent and nothing errors.
+ * Outside production (NODE_ENV !== "production") nothing is sent either,
+ * unless `META_CAPI_ALLOW_NON_PRODUCTION=1` — see
+ * `metaCapiAllowedInThisEnvironment()`.
  *
  * Purchase is sent from the server, from the order row, with
  * `event_id = order number` — the same id the browser's Purchase pushes to
@@ -70,9 +73,38 @@ async function pixelIdFromDatabase(): Promise<string> {
   return value;
 }
 
+/** Opt-in for sending from a non-production process (a deliberate local test). */
+export const META_CAPI_NON_PRODUCTION_FLAG = "META_CAPI_ALLOW_NON_PRODUCTION";
+
+/**
+ * Real Meta events leave only a production process (`next start` / a
+ * production build sets NODE_ENV=production), so `next dev`, the tsx test
+ * suites that place real COD orders, and ad-hoc scripts can never reach the
+ * live pixel — even with a real token in `.env.local`. A deliberate local
+ * test must set `META_CAPI_ALLOW_NON_PRODUCTION=1` (exactly "1").
+ */
+export function metaCapiAllowedInThisEnvironment(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  return (
+    env.NODE_ENV === "production" || env[META_CAPI_NON_PRODUCTION_FLAG] === "1"
+  );
+}
+
+let nonProductionNoticeShown = false;
+
 export async function resolveMetaCapiConfig(): Promise<MetaCapiConfig | null> {
   const accessToken = process.env.META_CAPI_ACCESS_TOKEN?.trim();
   if (!accessToken) {
+    return null;
+  }
+  if (!metaCapiAllowedInThisEnvironment()) {
+    if (!nonProductionNoticeShown) {
+      nonProductionNoticeShown = true;
+      console.info(
+        `[meta-capi] disabled: NODE_ENV is not "production" (set ${META_CAPI_NON_PRODUCTION_FLAG}=1 to send from here on purpose)`,
+      );
+    }
     return null;
   }
   const fromEnv = normalizePixelId(process.env.META_PIXEL_ID ?? "");

@@ -260,12 +260,90 @@ async function main(): Promise<void> {
   );
 
   // --- CAPI configuration ----------------------------------------------------
+  // Next types NODE_ENV as read-only; tests flip it on purpose.
+  const env = process.env as Record<string, string | undefined>;
   const savedEnv = {
-    token: process.env.META_CAPI_ACCESS_TOKEN,
-    pixel: process.env.META_PIXEL_ID,
-    test: process.env.META_TEST_EVENT_CODE,
+    token: env.META_CAPI_ACCESS_TOKEN,
+    pixel: env.META_PIXEL_ID,
+    test: env.META_TEST_EVENT_CODE,
+    nodeEnv: env.NODE_ENV,
+    allow: env.META_CAPI_ALLOW_NON_PRODUCTION,
   };
   try {
+    // --- Non-production guard: tests/dev can never reach the live pixel ----
+    const allowed = meta.metaCapiAllowedInThisEnvironment;
+    check("guard: NODE_ENV unset → blocked", !allowed({}));
+    check(
+      "guard: development → blocked",
+      !allowed({ NODE_ENV: "development" }),
+    );
+    check("guard: test → blocked", !allowed({ NODE_ENV: "test" }));
+    check("guard: production → allowed", allowed({ NODE_ENV: "production" }));
+    check(
+      "guard: flag=1 → allowed outside production",
+      allowed({ NODE_ENV: "development", META_CAPI_ALLOW_NON_PRODUCTION: "1" }),
+    );
+    check(
+      "guard: flag=true is not the opt-in",
+      !allowed({
+        NODE_ENV: "development",
+        META_CAPI_ALLOW_NON_PRODUCTION: "true",
+      }),
+    );
+    check(
+      "guard: flag=0 → blocked",
+      !allowed({ META_CAPI_ALLOW_NON_PRODUCTION: "0" }),
+    );
+
+    // A real-looking token + pixel id, but a non-production process.
+    env.META_CAPI_ACCESS_TOKEN = "SECRET-TOKEN-xyz";
+    env.META_PIXEL_ID = "1674448247520461";
+    delete env.META_CAPI_ALLOW_NON_PRODUCTION;
+    for (const nodeEnv of [undefined, "development", "test"]) {
+      if (nodeEnv === undefined) {
+        delete env.NODE_ENV;
+      } else {
+        env.NODE_ENV = nodeEnv;
+      }
+      const label = nodeEnv ?? "unset";
+      const callsBefore = graphCalls.length;
+      check(
+        `NODE_ENV ${label} + token → not configured`,
+        (await meta.resolveMetaCapiConfig()) === null,
+      );
+      check(
+        `NODE_ENV ${label} + token → isMetaCapiConfigured false`,
+        (await meta.isMetaCapiConfigured()) === false,
+      );
+      const blocked = await meta.sendMetaEvent({
+        eventName: "AddToCart",
+        eventId: `evt-guard-${label}`,
+        userData: {},
+      });
+      const blockedPurchase =
+        await meta.sendMetaPurchaseForOrder("no-such-order");
+      check(
+        `NODE_ENV ${label} → no request to Meta`,
+        !blocked.ok && !blockedPurchase.ok && graphCalls.length === callsBefore,
+        `calls=${graphCalls.length - callsBefore}`,
+      );
+    }
+    check(
+      "guard notice logged once",
+      logs.filter((line) => line.includes("[meta-capi] disabled")).length === 1,
+    );
+    env.NODE_ENV = "development";
+    env.META_CAPI_ALLOW_NON_PRODUCTION = "1";
+    check(
+      "flag=1 in development → configured",
+      (await meta.resolveMetaCapiConfig())?.pixelId === "1674448247520461",
+    );
+    delete env.META_CAPI_ALLOW_NON_PRODUCTION;
+
+    // Everything below runs as production WITHOUT the flag — the exact
+    // conditions of `next start` on the server — so it also proves that
+    // production behaviour is unchanged.
+    env.NODE_ENV = "production";
     delete process.env.META_CAPI_ACCESS_TOKEN;
     process.env.META_PIXEL_ID = "1674448247520461";
     check(
@@ -436,6 +514,17 @@ async function main(): Promise<void> {
       select: { id: true },
     });
     try {
+      // The path the order-placing suites hit (COD Purchase for a real
+      // order row): silent outside production.
+      env.NODE_ENV = "development";
+      const devCalls = graphCalls.length;
+      const devPurchase = await meta.sendMetaPurchaseForOrder(order.id);
+      check(
+        "real order Purchase in development → nothing sent",
+        !devPurchase.ok && graphCalls.length === devCalls,
+      );
+      env.NODE_ENV = "production";
+
       const direct = await meta.sendMetaPurchaseForOrder(order.id);
       const purchase = firstEvent(graphCalls.at(-1));
       const custom = (purchase.custom_data ?? {}) as Record<string, unknown>;
@@ -530,11 +619,13 @@ async function main(): Promise<void> {
       ["META_CAPI_ACCESS_TOKEN", savedEnv.token],
       ["META_PIXEL_ID", savedEnv.pixel],
       ["META_TEST_EVENT_CODE", savedEnv.test],
+      ["NODE_ENV", savedEnv.nodeEnv],
+      ["META_CAPI_ALLOW_NON_PRODUCTION", savedEnv.allow],
     ] as const) {
       if (value === undefined) {
-        delete process.env[key];
+        delete env[key];
       } else {
-        process.env[key] = value;
+        env[key] = value;
       }
     }
   }
