@@ -8943,3 +8943,20 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       still sends; `next dev` with the same fake token: "disabled", no request.
       No server action needed beyond the normal deploy — NODE_ENV is
       production under `next start`.
+
+- [x] AD-392 Meta domain verification tag in the real <head> (operator
+      request; value `pcdiafrmqwfmg9rvylf7pakjntij0o` copied by the operator
+      from Meta Business Manager). The admin Custom Script header slot
+      renders into <body>, so Meta never saw it.
+      First tried `metadata.other` as asked: in a production build Meta's
+      crawler UA (facebookexternalhit) got it in <head>, but an ordinary
+      Chrome UA got it AFTER </head> on / and product pages — Next streams
+      metadata into <body> for non-"HTML-limited" user agents when a layout
+      has an async generateMetadata (the storefront layout does). The
+      existing google-site-verification tag has the same behaviour (left as
+      is — not part of this task). Operator chose a literal <head><meta/>
+      in `app/layout.tsx` instead (the `other` entry was removed so there is
+      one copy). Verified on `next build` + `next start`: /, /shop, a product,
+      a category and /about × Chrome / curl / facebookexternalhit UAs — 15/15
+      exactly one tag, always before </head>. tsc + eslint clean. No schema
+      change: `git pull && npm run build && pm2 restart techno-house`.

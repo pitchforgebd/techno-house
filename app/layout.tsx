@@ -56,6 +56,16 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Meta (Business Manager) domain verification for technohouse.com.bd.
+ * Rendered as a literal <head> child below rather than via `metadata`:
+ * Next streams metadata into <body> for ordinary browsers when a layout has
+ * an async generateMetadata (the storefront layout does), and the admin
+ * Custom Script header slot renders into <body> too. A static tag in the
+ * root layout's <head> is in the first HTML chunk for every user agent.
+ */
+const FACEBOOK_DOMAIN_VERIFICATION = "pcdiafrmqwfmg9rvylf7pakjntij0o";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -70,6 +80,12 @@ export default async function RootLayout({
       dir={defaultLanguage?.rtl ? "rtl" : "ltr"}
       className={`${plusJakarta.variable} ${ibmPlexMono.variable} ${inter.variable} ${notoSansBengali.variable}`}
     >
+      <head>
+        <meta
+          name="facebook-domain-verification"
+          content={FACEBOOK_DOMAIN_VERIFICATION}
+        />
+      </head>
       <body
         className="bg-background font-sans text-text antialiased"
         suppressHydrationWarning
