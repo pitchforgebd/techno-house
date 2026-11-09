@@ -1,27 +1,48 @@
+import Image from "next/image";
 import Link from "next/link";
 import { HeaderActions } from "@/components/layout/header-actions";
 import { HeaderBuilderLink } from "@/components/layout/header-builder-link";
 import { HeaderSearchForm } from "@/components/layout/header-search";
 import { MobileNav } from "@/components/layout/mobile-nav";
-import { loadNavCatalog } from "@/lib/catalog/nav-data";
+import { loadNavTriggers } from "@/lib/catalog/nav-menu";
 import {
   getStorefrontBranding,
   resolveChromeLogo,
 } from "@/lib/business/storefront-branding";
 import { logoStyle } from "@/lib/business/logo-size";
 import { cn } from "@/lib/cn";
+import { getImageSize, type ImageSize } from "@/lib/media/image-size";
 
 function BrandMark({
   name,
   logoSrc,
+  logoSize,
   heightPx,
   className,
 }: {
   name: string;
   logoSrc: string | null;
+  /** Intrinsic size: the width/height attributes reserve the logo's box at
+   * the configured height before the file arrives (no layout shift). */
+  logoSize: ImageSize | null;
   heightPx: number;
   className?: string;
 }) {
+  if (logoSrc && logoSize) {
+    return (
+      <Image
+        src={logoSrc}
+        alt={name}
+        width={logoSize.width}
+        height={logoSize.height}
+        // Above the fold on every page: load right away, but it is not the
+        // LCP element, so no preload/priority.
+        loading="eager"
+        style={logoStyle(heightPx)}
+        className={cn("object-contain", className)}
+      />
+    );
+  }
   if (logoSrc) {
     return (
       // Height comes from Design Studio -> Logo, so it is an inline style
@@ -40,19 +61,13 @@ function BrandMark({
 }
 
 export async function SiteHeader() {
-  const [{ tree, brandsByCategory }, branding] = await Promise.all([
-    loadNavCatalog(),
+  // Top-level departments only; the drawer loads the rest on first open.
+  const [roots, branding] = await Promise.all([
+    loadNavTriggers(),
     getStorefrontBranding(),
   ]);
-  const mobileTree = tree.map((node) => ({
-    slug: node.slug,
-    name: node.name,
-    children: node.children.map((child) => ({
-      slug: child.slug,
-      name: child.name,
-    })),
-  }));
   const logoSrc = resolveChromeLogo(branding);
+  const logoSize = await getImageSize(logoSrc);
 
   return (
     <header className="bg-header-background text-header-text shadow-md">
@@ -60,7 +75,7 @@ export async function SiteHeader() {
         {/* Mobile: brand row + full-width search */}
         <div className="flex flex-col gap-3 md:hidden">
           <div className="flex items-center gap-2">
-            <MobileNav tree={mobileTree} brandsByCategory={brandsByCategory} />
+            <MobileNav roots={roots} />
             <Link
               href="/"
               className="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-header-text"
@@ -68,6 +83,7 @@ export async function SiteHeader() {
               <BrandMark
                 name={branding.storeName}
                 logoSrc={logoSrc}
+                logoSize={logoSize}
                 heightPx={branding.logoHeightPx}
               />
             </Link>
@@ -85,6 +101,7 @@ export async function SiteHeader() {
             <BrandMark
               name={branding.storeName}
               logoSrc={logoSrc}
+              logoSize={logoSize}
               heightPx={branding.logoHeightPx}
             />
           </Link>

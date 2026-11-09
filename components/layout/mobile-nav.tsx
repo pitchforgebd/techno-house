@@ -26,14 +26,11 @@ import {
   UTILITY_BAR_CONTACT,
   UTILITY_BAR_LINKS,
 } from "@/lib/catalog/primary-nav";
-import type { MegaBrand } from "@/lib/catalog/mega-menu";
+import { useNavMenu } from "@/components/layout/use-nav-menu";
+import type { NavTrigger } from "@/lib/catalog/nav-menu";
 import { cn } from "@/lib/cn";
 
-export type MobileNavCategory = {
-  slug: string;
-  name: string;
-  children: { slug: string; name: string }[];
-};
+export type { MobileNavCategory } from "@/lib/catalog/nav-menu";
 
 const QUICK_LINKS = [
   { href: "/", label: "Home", icon: Home },
@@ -85,14 +82,21 @@ function NavRow({
 }
 
 export function MobileNav({
-  tree,
-  brandsByCategory,
+  roots,
 }: {
-  tree: MobileNavCategory[];
-  brandsByCategory: Record<string, MegaBrand[]>;
+  /** Top-level categories, rendered as links in the page itself. Their
+   * subcategories and brands load from /api/nav-menu when the drawer is
+   * first opened (SEO phase 4) instead of sitting in every page's DOM. */
+  roots: NavTrigger[];
 }) {
   const [open, setOpen] = useState(false);
   const session = useCustomerSession();
+  const { data, load } = useNavMenu();
+  const loadedTree = data?.mobile.tree;
+  const tree =
+    loadedTree ??
+    roots.map((root) => ({ slug: root.slug, name: root.name, children: [] }));
+  const brandsByCategory = data?.mobile.brandsByCategory ?? {};
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 768px)");
@@ -118,7 +122,11 @@ export function MobileNav({
         aria-haspopup="dialog"
         aria-controls="mobile-nav"
         aria-label="Open menu"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          load();
+          setOpen(true);
+        }}
+        onPointerEnter={load}
       >
         <Menu className="size-5" aria-hidden />
         <span className="sr-only">Menu</span>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { listPublicPosts } from "@/lib/content/blog";
@@ -32,12 +33,13 @@ export default async function BlogIndexPage() {
               className="overflow-hidden rounded-md border border-border bg-surface"
             >
               {post.coverImagePath ? (
-                <Link href={`/blog/${post.slug}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                <Link href={`/blog/${post.slug}`} className="relative block h-40">
+                  <Image
                     src={post.coverImagePath}
                     alt={post.coverImageAlt || post.title}
-                    className="h-40 w-full object-cover"
+                    fill
+                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                    className="object-cover"
                   />
                 </Link>
               ) : null}

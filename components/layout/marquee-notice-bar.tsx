@@ -7,11 +7,12 @@ import { demoteHeadings } from "@/lib/content/demote-headings";
  * overlap on mobile.
  *
  * A single copy of the text scrolls fully across and off-screen before the
- * next pass starts — no second copy visible at the same time. `left: 100%`
- * (relative to this `relative` container) places it just past the right
- * edge regardless of container width, and `translateX(-100%)` at the end
- * (relative to the span's own width) pushes it fully past the left edge
- * regardless of text length — see `.th-marquee-track` in globals.css.
+ * next pass starts — no second copy visible at the same time. It starts at
+ * `translateX(100vw)` (the bar spans the viewport, so just past its right
+ * edge) and ends at `translateX(-100%)` (relative to the span's own width,
+ * so fully past the left edge regardless of text length). Transform only —
+ * animating `left` counted as layout shift (CLS) on every page; see
+ * `.th-marquee-track` in globals.css.
  *
  * `html` is pre-sanitized server-side (`lib/content/sanitize-html.ts`) and
  * safe to render as-is — it only ever allows formatting tags (bold, links),

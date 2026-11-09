@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { StorefrontHomeBanner } from "@/lib/design/home-banners";
 import { cn } from "@/lib/cn";
 
 const AUTOPLAY_MS = 6000;
+/** When to start loading the next slide after one is shown. */
+const PRELOAD_NEXT_MS = 2500;
 
 /** Real, admin-managed (Design Studio → Banners & Sliders → Hero slider). */
 export function HomeHeroSlider({
@@ -18,23 +20,55 @@ export function HomeHeroSlider({
   const count = banners.length;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Which slides have their <Image> in the page (SEO phase 4). All slides are
+  // stacked in the same visible box, so `loading="lazy"` never held the
+  // hidden ones back — every banner (450–720 KB each on the live site) was
+  // downloaded at load. Now only the first is in the server HTML (and
+  // preloaded as the LCP image); the next one is added once the page has
+  // settled, and each later one just before it is shown.
+  const [mounted, setMounted] = useState<ReadonlySet<number>>(() => new Set([0]));
+
+  const mount = useCallback((slide: number) => {
+    setMounted((current) =>
+      current.has(slide) ? current : new Set([...current, slide]),
+    );
+  }, []);
+
+  // Preload the slide that comes next, a little after the current one is
+  // shown — well inside the autoplay interval, so it is ready in time.
+  useEffect(() => {
+    if (count <= 1) {
+      return;
+    }
+    const timer = window.setTimeout(
+      () => mount((index + 1) % count),
+      PRELOAD_NEXT_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [index, count, mount]);
 
   useEffect(() => {
     if (count <= 1 || paused) {
       return;
     }
     const timer = window.setInterval(() => {
-      setIndex((current) => (current + 1) % count);
+      setIndex((current) => {
+        const next = (current + 1) % count;
+        mount(next);
+        return next;
+      });
     }, AUTOPLAY_MS);
     return () => window.clearInterval(timer);
-  }, [count, paused]);
+  }, [count, paused, mount]);
 
   if (count === 0) {
     return null;
   }
 
   function go(next: number) {
-    setIndex((next + count) % count);
+    const target = (next + count) % count;
+    mount(target);
+    setIndex(target);
   }
 
   return (
@@ -73,14 +107,17 @@ export function HomeHeroSlider({
             tabIndex={slideIndex === index ? undefined : -1}
             className="block h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-bright"
           >
-            <Image
-              src={slide.image}
-              alt={slide.imageAlt}
-              fill
-              priority={slideIndex === 0}
-              sizes="(min-width: 1024px) 70vw, 100vw"
-              className="object-cover"
-            />
+            {mounted.has(slideIndex) ? (
+              <Image
+                src={slide.image}
+                alt={slide.imageAlt}
+                fill
+                // First slide = LCP: preloaded, fetchpriority high, eager.
+                priority={slideIndex === 0}
+                sizes="(min-width: 1024px) 70vw, 100vw"
+                className="object-cover"
+              />
+            ) : null}
           </Link>
         </div>
       ))}

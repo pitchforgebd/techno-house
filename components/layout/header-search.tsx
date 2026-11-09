@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -185,10 +186,12 @@ export function HeaderSearchForm({
                           : "hover:bg-surface-muted",
                       )}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element -- small dropdown thumbnail, no next/image overhead needed */}
-                      <img
+                      {/* Explicit 48×48 box (size-12): no shift while it loads. */}
+                      <Image
                         src={item.image.src}
                         alt=""
+                        width={48}
+                        height={48}
                         className="size-12 shrink-0 rounded-sm border border-border object-contain bg-white"
                       />
                       <span className="min-w-0 flex-1">

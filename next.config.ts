@@ -149,6 +149,18 @@ const nextConfig: NextConfig = {
   images: {
     loader: "custom",
     loaderFile: "./lib/image-loader.ts",
+    // SEO phase 4 — keep the image optimizer's CPU cost near zero on the small
+    // production server. Uploaded images (/uploads/*) and SVGs never reach it:
+    // the custom loader returns them as-is and nginx serves them from disk
+    // (pre-converted WebP siblings — see scripts/optimize-uploads.mjs and
+    // deploy/nginx-seo.conf). For the few images that do go through
+    // /_next/image (bundled demo/remote assets): WebP only (AVIF encoding is
+    // several times more CPU), a short list of widths so each source is
+    // encoded a handful of times at most, and results cached for 30 days.
+    formats: ["image/webp"],
+    deviceSizes: [640, 828, 1080, 1280, 1920],
+    imageSizes: [48, 96, 160, 256, 384],
+    minimumCacheTTL: 2_592_000,
     remotePatterns: [
       {
         protocol: "https",

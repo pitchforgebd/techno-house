@@ -79,6 +79,10 @@ export function AccountOrderDetailView({
                     <img
                       src={line.imageSrc}
                       alt=""
+                      width={48}
+                      height={48}
+                      loading="lazy"
+                      decoding="async"
                       className="size-12 shrink-0 rounded border border-border bg-surface-muted object-contain p-0.5"
                     />
                   ) : null}

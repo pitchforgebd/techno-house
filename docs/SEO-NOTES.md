@@ -370,6 +370,158 @@ Branch `seo-phase-3` (from main after Phase 2 was merged and deployed).
   `seo:check-schema` against `next start`: 60 pages, 226 blocks, **2,732
   checks ok**; footer still shows "Hours 9:00–22:00".
 
+### Phase 4 — Performance & images
+
+Branch `seo-phase-4` (from main after Phase 3 was merged and deployed).
+
+#### How images are served (checked before changing anything)
+
+- Uploads live in `public/uploads/{products,brands,home,general,categories}`
+  and are written at runtime by the admin media library
+  (`lib/media/admin-media.ts`).
+- The custom `next/image` loader (`lib/image-loader.ts`) already returns
+  `/uploads/*` and `*.svg` URLs unchanged, so they never touch Next's image
+  optimizer; nginx serves them straight from disk. The live home page makes
+  zero `/_next/image` requests — the optimizer costs no CPU today.
+- What was wrong on the live site (curl, 2026-11-09): `/uploads/*` responses
+  carry **no Cache-Control at all**; hero/promo banners are 450–720 KB JPEGs
+  shown ~380 px wide on phones; brand/product PNGs up to 330 KB; a 315 KB SVG
+  (payment strip, really 10 embedded bitmaps) sent uncompressed; HTTP/1.1;
+  nginx version in the Server header.
+
+#### Approach chosen (low runtime CPU)
+
+The production server is small (CPU near 47% during builds), so nothing
+here encodes images per request:
+
+1. **Pre-convert once, serve from disk.** `scripts/optimize-uploads.mjs`
+   writes a WebP copy next to each png/jpeg (`foo.png` → `foo.webp`) and a
+   smaller copy of oversized WebPs (`foo.min.webp`); banners max 1920 px /
+   target < 150 KB, product/brand/category images max 1000 px / < 80 KB.
+   Originals are never modified. New uploads get the same copy at upload
+   time (`writeWebpVariant` in the media library; the copy is removed with
+   the original).
+2. **nginx picks the copy** (`deploy/nginx-seo.conf`): a `map` on the
+   `Accept` header + `try_files` serves `foo.webp` for `foo.png` to browsers
+   that accept WebP (all current ones) and the original otherwise, with
+   `Vary: Accept`; `.min.webp` / `.min.svg` the same way. **Same URLs, no
+   database change, no Node involvement** — and with the nginx block removed
+   the copies are simply ignored (instant rollback).
+3. **Long caching**: `Cache-Control: public, max-age=2592000` (30 days) on
+   uploads (not `immutable`, since a URL's bytes change once when its copy
+   appears); `/_next/static` served from disk with 1 year immutable; gzip for
+   SVG/JS/CSS/JSON.
+4. **Next's optimizer capped** for the few images that still use it (bundled
+   demo/remote assets): `formats: ["image/webp"]` only (no AVIF — several
+   times the CPU), 5 device sizes + 5 image sizes, `minimumCacheTTL` 30 days.
+   Rejected: routing `/uploads` through `/_next/image` — it would encode
+   every image at every width on first request, on the app server.
+
+#### Changes
+
+- **Zero layout shift**: product/category cards and the gallery already sat
+  in aspect-ratio boxes. Added real intrinsic width/height (read once from the
+  file header with sharp and cached — `lib/media/image-size.ts`) to the
+  header and footer logos, the footer payment image and the blog cover, and
+  explicit sizes to search thumbnails, popup, alert and order-line images
+  (`next/image` where the source is always a site image; the order snapshot
+  and the product gallery/lightbox stay native `<img>` in fixed boxes — the
+  gallery for the reason in its own comment, the order line because a stored
+  snapshot URL may be external and would hit the optimizer).
+- **The real CLS source** was the marquee notice bar: it animated `left`
+  (a layout property), which counts as layout shift on every page for as long
+  as it runs. Now transform-only, same path (`app/globals.css`).
+- **Hero**: first banner `priority` (preload + fetchpriority high + eager);
+  the other slides' images are no longer all in the page at load — they were
+  stacked in the visible box, so `loading="lazy"` never held them back. The
+  next slide is added 2.5 s after one is shown (well before the 6 s autoplay)
+  and any slide right before it is shown. Footer logo and payment image are
+  lazy now (they were eager).
+- **Mega-menu / mobile drawer**: the page renders the 18 department links
+  only; panels and the drawer tree come from `/api/nav-menu` (static,
+  rebuilt every 5 min) on first hover/focus of the bar or first open of the
+  drawer. Checked: every one of the 345 active categories is in the sitemap,
+  all 18 top-level ones are linked in every page's HTML, and all 327
+  child links are on their parent category page ("Subcategories" row).
+  Hover → panel with links (1 fetch per page view); drawer open → 18
+  expandable groups.
+- **SVGO** (`scripts/optimize-svg.mjs`): writes `foo.min.svg` next to
+  `foo.svg`, dry run by default. SVGO's default preset **broke** the live
+  payment SVG (3 of 18 logos vanished — checked in Chrome), so it runs with a
+  conservative config; alone that saves only ~1–4% on this file, so the
+  `--embedded-webp` option re-encodes the embedded bitmaps as WebP:
+  314 KB → 166 KB (≈102 KB gzipped), rendering identical in Chrome.
+- New deps: `sharp` 0.35.4 pinned (was only an optional dep of Next; the
+  upload handler now relies on it), `svgo` 4.1.0 (dev, used only by the SVG
+  script).
+
+#### Phase 4 files
+
+| File | Change |
+|---|---|
+| `next.config.ts` | optimizer limits (webp only, sizes, 30-day TTL) |
+| `lib/media/webp-variant.mjs` + `.d.mts` (new) | shared WebP copy rules (script + upload handler) |
+| `lib/media/admin-media.ts` | WebP copy on upload, removed on delete |
+| `lib/media/image-size.ts` (new) | cached intrinsic size from the file header |
+| `scripts/optimize-uploads.mjs` (new) | dry-run-by-default WebP copy writer |
+| `scripts/optimize-svg.mjs` (new) | dry-run-by-default `.min.svg` writer |
+| `scripts/perf/measure-pages.mjs` (new) | CLS / HTML / image-bytes measurement in headless Chrome |
+| `features/home/home-hero-slider.tsx` | first slide priority, others mounted when needed |
+| `app/globals.css`, `components/layout/marquee-notice-bar.tsx` | transform-only marquee |
+| `lib/catalog/nav-menu.ts`, `app/api/nav-menu/route.ts`, `components/layout/use-nav-menu.ts` (new) | lazy menu data |
+| `components/layout/category-nav.tsx`, `category-mega-nav.tsx`, `mobile-nav.tsx`, `site-header.tsx` | triggers only in the HTML |
+| `components/layout/site-footer.tsx`, `site-header.tsx` | logo/payment images with intrinsic size, lazy below the fold |
+| `components/layout/header-search.tsx`, `components/storefront/{dynamic-popup,site-alert}.tsx`, `features/account/account-order-detail-view.tsx`, `app/(storefront)/blog/{page,[slug]/page}.tsx` | explicit image sizes |
+| `deploy/nginx-seo.conf` | phase 4 merge steps |
+| `scripts/seo/check-baseline.ts`, `package.json`, `package-lock.json` | guards; sharp + svgo |
+
+#### Phase 4 numbers (2026-11-09)
+
+Headless Chrome, `scripts/perf/measure-pages.mjs`, median of 3; mobile =
+412×823, 4× CPU; "throttled" = 150 ms RTT, 1.6 Mbps. Local = `next start`
+on the dev DB with the marquee turned on (as on live; dev row restored
+afterwards).
+
+| Page | CLS before (local) | CLS after (local) | Live today |
+|---|---|---|---|
+| Home, mobile | 0.027 (throttled 0.026) | **0.000** (throttled 0.000) | 0.001 (throttled 0.026) |
+| /category/laptop, mobile | 0.001 (throttled, with scroll 0.026) | **0.000** | 0.001 |
+| /product/msi-b650m-project-zero, mobile | 0.001 | **0.000** | 0.001 |
+| all three, desktop | 0.000 | 0.000 | 0.000 |
+
+Every recorded shift before was the marquee track.
+
+| HTML (decoded / over the wire) | Before | After |
+|---|---|---|
+| Home | 703 KB / 117 KB | **521 KB / 96 KB** |
+| /category/laptop | 559 KB / 84 KB | **386 KB / 64 KB** |
+| Product page | 376 KB / 59 KB | **204 KB / 39 KB** |
+
+Image weight, live home page (mobile), measured by loading the live page in
+Chrome and substituting the converted copies for each `/uploads` image the
+way nginx will (conservative — the old HTML still loads every hero slide):
+
+| | Before | After conversion + nginx |
+|---|---|---|
+| at load | 10 images / 3,463 KB | 10 images / **944 KB** (−73%) |
+| after scrolling the whole page | 41 images / 6,209 KB | 41 images / **1,423 KB** (−77%) |
+
+Conversion dry run on copies of those 41 images: 29 copies, 5,676 KB → 1,033
+KB; 12 skipped (already small WebP). `--apply` on the copies: 0 originals
+changed (sha256 before/after), second run writes nothing. nginx blocks:
+`nginx -t` ok and exercised locally (nginx 1.22): png → webp only with
+`Accept: image/webp`, original otherwise, `.min.webp`/`.min.svg` picked up,
+gzip on SVG, 404 for missing files. Upload hook (dev DB, test file removed):
+5.2 MB PNG → 110 KB 1920 px WebP next to it; delete removes both.
+
+#### Phase 4 verification
+
+- `tsc --noEmit` clean; eslint 0 errors (3 pre-existing warnings in
+  untouched lines); `next build` exit 0.
+- `test:seo` 86 ok (11 new phase-4 guards), `test:seo-canonical` 34 ok,
+  `test:seo-meta` 383 ok, `seo:check-schema` 1,578 ok (37 pages), a11y 10 ok.
+- Phase 1–3 still hold (404s, www 301, titles, JSON-LD).
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
@@ -403,6 +555,21 @@ Branch `seo-phase-3` (from main after Phase 2 was merged and deployed).
 - **Phase 3 — shop opening hours:** not in the schema yet. When the real shop
   hours and days are confirmed (separate from the 9:00–22:00 support hours),
   they can be added as `openingHoursSpecification`.
+- **Phase 4 — deploy:** `package-lock.json` changed (sharp pinned, svgo), so
+  `npm ci` is needed: `cd ~/techno-house && git pull origin main && npm ci &&
+  npm run build && pm2 restart techno-house`.
+- **Phase 4 — convert existing uploads** (run as the deploy user, never sudo,
+  so the copies keep the same owner): dry run first —
+  `node scripts/optimize-uploads.mjs --csv=$HOME/webp-dryrun.csv | tail -8`,
+  then one folder — `node scripts/optimize-uploads.mjs --dir=public/uploads/general --apply`,
+  then everything — `nice -n 19 node scripts/optimize-uploads.mjs --apply | tail -8`.
+  SVG: `node scripts/optimize-svg.mjs --dir=public/uploads/general --embedded-webp`
+  then the same with `--apply`, and open the `.min.svg` once in a browser.
+- **Phase 4 — nginx:** the steps in `deploy/nginx-seo.conf` (phase 4 part).
+  Until they are applied, the WebP copies exist but are not served.
+- **Phase 4 — re-measure after deploy**: `node scripts/perf/measure-pages.mjs
+  --base=https://technohouse.com.bd --throttle --profiles=mobile` (from a PC
+  with Chrome).
 - **Phase 2 — data:** duplicate product listings (same product entered twice
   with a location tag or a project note) keep identical titles; merge or
   deactivate them in Admin → Products (the audit lists them).

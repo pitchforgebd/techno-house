@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useNavMenu } from "@/components/layout/use-nav-menu";
 import {
   hasMegaMenu,
   type MegaMenuLink,
   type MegaMenuPanel,
 } from "@/lib/catalog/mega-menu";
+import type { NavTrigger } from "@/lib/catalog/nav-menu";
 import { cn } from "@/lib/cn";
 
 const CLOSE_DELAY_MS = 140;
@@ -57,15 +59,18 @@ const triggerOpenClassName =
   "bg-primary-foreground/10 text-primary-foreground";
 
 export function CategoryMegaNav({
-  panels,
+  triggers,
   startLinks,
   endLinks,
 }: {
-  panels: MegaMenuPanel[];
+  /** Department links only — the panels load on first hover/focus. */
+  triggers: NavTrigger[];
   startLinks: ReadonlyArray<{ href: string; label: string }>;
   endLinks: ReadonlyArray<{ href: string; label: string }>;
 }) {
   const [openSlug, setOpenSlug] = useState<string | null>(null);
+  const { data, load } = useNavMenu();
+  const panels = data?.panels ?? [];
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navId = useId();
 
@@ -124,7 +129,13 @@ export function CategoryMegaNav({
     <div
       className="relative"
       onMouseLeave={scheduleClose}
-      onMouseEnter={cancelClose}
+      onMouseEnter={() => {
+        cancelClose();
+        // Fetch the panels as soon as the pointer reaches the bar, so they
+        // are usually there by the time it settles on a department.
+        load();
+      }}
+      onFocus={load}
       onBlur={(event) => {
         if (
           event.relatedTarget instanceof Node &&
@@ -154,9 +165,9 @@ export function CategoryMegaNav({
           effect and the list scrolls exactly as before.
         */}
         <ul className="th-scroll-hide flex min-w-0 flex-1 flex-nowrap items-center justify-between overflow-x-auto">
-          {panels.map((panel) => {
-            const mega = hasMegaMenu(panel);
-            const isOpen = openSlug === panel.slug;
+          {triggers.map((panel) => {
+            const mega = panel.hasMenu;
+            const isOpen = openSlug === panel.slug && Boolean(data);
             const panelDomId = `${navId}-${panel.slug}`;
 
             if (!mega) {
