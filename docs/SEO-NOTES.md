@@ -522,6 +522,61 @@ gzip on SVG, 404 for missing files. Upload hook (dev DB, test file removed):
   `test:seo-meta` 383 ok, `seo:check-schema` 1,578 ok (37 pages), a11y 10 ok.
 - Phase 1–3 still hold (404s, www 301, titles, JSON-LD).
 
+### Phase 5 — Content & data quality
+
+Branch `seo-phase-5` (from main after Phase 4 was merged and deployed). No
+migration. Nothing in this phase wrote to the production database or /uploads.
+
+1. **`scripts/fix-catalog-text.mjs`** (run with tsx; `npm run
+   seo:fix-catalog-text`). Dry run by default: writes `product-names.csv`,
+   `image-alts.csv`, `slugs.csv`, `duplicates.csv`,
+   `slug-redirects.proposed.json` and `summary.md` to `docs/seo-reports/`
+   (git-ignored, so a run on the server can never block `git pull`).
+   `--apply --fix=names|alts|slugs --confirm-db=<name>` first saves a JSON
+   backup of every row, then changes everything in one transaction;
+   `--restore=<backup>` puts it back. `--fix=slugs` refuses unless every
+   change is already in `lib/seo/slug-redirects.json`. Duplicates are
+   report-only. Rules: `lib/catalog/text-fixes.ts`, `lib/content/alt-text.ts`.
+   - A leading POS part code ("3813C001AA # Canon …") moves to the end in
+     brackets instead of being deleted. Checked on dev: 0 titles over 60, same
+     duplicate count, no `#` left in a title.
+   - Slugs: only a `-copy` suffix or a cut in the middle of a word counts. The
+     importer cut all slugs at 80 characters, so `truncated_mid_word` is large
+     (928 on dev) for a small gain; `--slug-reason=copy` limits a run to the
+     `-copy` ones (2 on the live site).
+2. **Slug redirects without a migration**: `lib/seo/slug-redirects.json`
+   (ships empty) + `lib/seo/slug-redirects.ts`. The product page consults it
+   only when the slug is not in the database, then `permanentRedirect`s.
+   **Next's `permanentRedirect` answers 308, not 301**; search engines treat
+   them the same.
+3. **Runtime safety nets**: `safeAlt` falls back to the product/banner title
+   for empty or junk alts (`mappers.ts`, `home-banners.ts`); the product page's
+   star row is hidden at 0 reviews. No rating schema anywhere.
+4. **Category intros from files**: `content/category-intros/{slug}.md`,
+   `lib/content/category-intro.ts`, `features/catalog/category-intro-block.tsx`,
+   FAQPage JSON-LD from the same items, first page of the listing only. A file
+   replaces the built-in demo copy; admin-written HTML still shows.
+   **All 12 are held as drafts**: a file with `<!-- draft -->` or any `[VERIFY]`
+   is not rendered. To publish one: confirm the claims, remove that line and
+   every marker, deploy. `CONTENT_PREVIEW=1` shows drafts for local review.
+5. **Blog**: `BlogPosting` → `Article`, `BreadcrumbList` added; both validated
+   by `seo:check-schema`; posts are in `sitemap-blog.xml`. Five drafts in
+   `content/blog/*.md`, not imported anywhere.
+
+Not done, as instructed: "display-only" sentences and admin meta fields.
+
+#### Phase 5 verification (2026-11-10)
+
+`--apply`, `--restore`, the slug guard, the redirect, alt fallback and stars
+were exercised on a throwaway copy of the dev database (created from a
+template, dropped afterwards), so dev data was not touched: guards refused
+without `--confirm-db`; restore left names, slugs, alts and banners
+hash-identical; old slug → 308 to new (keeps `?variant=`), new slug 200,
+unknown slug 404; stars absent at 0 reviews, present with a published review.
+`tsc` clean, eslint 0 errors, `next build` ok, `test:seo` 89, canonical 34,
+meta 383, `test:seo-phase5` 193, `seo:check-schema` 1,744, a11y 10. All 38
+category links in the drafts exist on the live site.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { JsonLd } from "@/components/seo/json-ld-script";
 import { getImageSize } from "@/lib/media/image-size";
+import { breadcrumbListJsonLd } from "@/lib/seo/json-ld";
 import { notFound } from "next/navigation";
 import { getPublicPost } from "@/lib/content/blog";
 import { looksLikeHtml, sanitizeBlogBody } from "@/lib/content/sanitize-html";
@@ -60,7 +62,7 @@ export default async function BlogPostPage({ params }: Props) {
   const imageUrl = post.coverImagePath ? `${publicOrigin()}${post.coverImagePath}` : undefined;
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "BlogPosting",
+    "@type": "Article",
     headline: post.title,
     description: post.seoDescription || post.excerpt || undefined,
     image: imageUrl ? [imageUrl] : undefined,
@@ -77,6 +79,13 @@ export default async function BlogPostPage({ params }: Props) {
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
+      />
+      <JsonLd
+        data={breadcrumbListJsonLd([
+          { href: "/", label: "Home" },
+          { href: "/blog", label: "Blog" },
+          { label: post.title },
+        ])}
       />
       <p className="text-caption font-medium text-primary">
         <Link href="/blog" className="hover:underline">

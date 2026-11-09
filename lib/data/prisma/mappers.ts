@@ -24,6 +24,7 @@ import type {
   StockStatus,
 } from "@/lib/data/types/common";
 import { effectiveStorefrontPricing } from "@/lib/catalog/discount-pricing";
+import { safeAlt } from "@/lib/content/alt-text";
 import { deriveStockStatus } from "@/lib/catalog/inventory-input";
 import {
   resolveVariantOptionGroups,
@@ -392,7 +393,7 @@ export function toProductDetail(
       hex: color.hex,
       images: color.images.map((image) => ({
         src: image.src,
-        alt: image.alt || `${row.name} — ${color.name}`,
+        alt: safeAlt(image.alt, `${row.name} — ${color.name}`),
       })),
     })),
     builderSlot: row.builderSlot ? toBuilderSlot(row.builderSlot) : null,
@@ -413,7 +414,7 @@ function primaryImage(
   if (!first) {
     return { src: PLACEHOLDER_IMAGE_SRC, alt: productName };
   }
-  return { src: first.src, alt: first.alt };
+  return { src: first.src, alt: safeAlt(first.alt, productName) };
 }
 
 function toImages(
@@ -423,7 +424,10 @@ function toImages(
   if (images.length === 0) {
     return [{ src: PLACEHOLDER_IMAGE_SRC, alt: productName }];
   }
-  return images.map((image) => ({ src: image.src, alt: image.alt }));
+  return images.map((image) => ({
+    src: image.src,
+    alt: safeAlt(image.alt, productName),
+  }));
 }
 
 function toSpecChips(chips: { label: string; value: string }[]): SpecChip[] {

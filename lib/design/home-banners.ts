@@ -5,6 +5,7 @@
  * every other real image upload in this app uses.
  */
 import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/auth/audit-log";
+import { safeAlt } from "@/lib/content/alt-text";
 import { getPrisma } from "@/lib/db/prisma";
 import { checkStorefrontLink } from "@/lib/design/storefront-link";
 import { usesDatabase } from "@/lib/runtime/data-source";
@@ -122,7 +123,9 @@ export async function getStorefrontHomeBanners(
     cta: row.cta,
     href: row.href,
     image: row.imageSrc,
-    imageAlt: row.imageAlt,
+    // Junk stored alts (DGDH, “Flash deal”.) fall back to the banner's title.
+    imageAlt:
+      safeAlt(row.imageAlt, row.title, row.eyebrow) || "Techno House promotion",
   }));
 }
 
