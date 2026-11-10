@@ -314,10 +314,15 @@ function main(): void {
     "Product offers only for a publishable, visible price",
     jsonLdCode.includes("!offer.priceHidden && isPublishablePrice(offer.price)"),
   );
+  // SEO phase 6: return/delivery terms only once the pages stating them are live.
   check(
-    "no shippingDetails / hasMerchantReturnPolicy while those pages are placeholders",
-    !/shippingDetails|hasMerchantReturnPolicy/.test(jsonLdCode),
+    "shippingDetails / hasMerchantReturnPolicy only behind the published-page gate",
+    jsonLdCode.includes("policies?.returnsPage") &&
+      jsonLdCode.includes("policies?.shippingPage") &&
+      productPage.includes('isContentPagePublished("returns")') &&
+      productPage.includes('isContentPagePublished("shipping")'),
   );
+  check("no shippingRate (charges are zone/weight based)", !/shippingRate\s*:/.test(jsonLdCode));
   check(
     "product page builds the offer from displayedOffer()",
     productPage.includes("offer: displayedOffer(product, linkedVariant"),

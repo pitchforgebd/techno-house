@@ -4,6 +4,7 @@
  * at render time by the storefront, same as blog posts) — never trusted
  * as safe just because it came from the database.
  */
+import { cache } from "react";
 import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/auth/audit-log";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
 import { getPrisma } from "@/lib/db/prisma";
@@ -125,8 +126,13 @@ export async function getAdminContentPage(
   return row ? toAdmin(row) : emptyPage(slug);
 }
 
-/** Real content for the live storefront page — null when nothing has been saved yet. */
-export async function getStorefrontContentPage(
+/**
+ * Real content for the live storefront page — null when nothing has been
+ * saved yet (or the body is empty), so the page shows its placeholder.
+ * Cached per request: metadata, the page body and the product page's
+ * "are the returns/shipping pages live?" check share one query.
+ */
+export const getStorefrontContentPage = cache(async function getStorefrontContentPage(
   slug: ContentPageSlug,
 ): Promise<StorefrontContentPage | null> {
   if (!usesDatabase()) {
@@ -144,6 +150,11 @@ export async function getStorefrontContentPage(
     customMetaTitle: row.metaTitle?.trim() || null,
     customMetaDescription: row.metaDescription?.trim() || null,
   };
+});
+
+/** True once the page has a real (non-empty) body on the storefront. */
+export async function isContentPagePublished(slug: ContentPageSlug): Promise<boolean> {
+  return (await getStorefrontContentPage(slug)) !== null;
 }
 
 const TITLE_MAX = 150;

@@ -99,6 +99,7 @@
     "seo:audit-meta": "tsx scripts/seo/audit-meta.ts",
     "seo:check-schema": "tsx scripts/seo/check-schema.ts",
     "test:seo-phase5": "tsx scripts/seo/check-phase5.ts",
+    "test:seo-phase6": "tsx scripts/seo/check-phase6.ts",
     "seo:fix-catalog-text": "tsx scripts/fix-catalog-text.mjs",
     "test:regression": "tsx scripts/regression/run-baselines.ts",
     "regression": "tsx scripts/regression/run-baselines.ts",

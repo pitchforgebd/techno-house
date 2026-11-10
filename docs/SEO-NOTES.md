@@ -577,109 +577,181 @@ unknown slug 404; stars absent at 0 reviews, present with a published review.
 meta 383, `test:seo-phase5` 193, `seo:check-schema` 1,744, a11y 10. All 38
 category links in the drafts exist on the live site.
 
-### Phase 6 — Trust pages (STOPPED after step 1, awaiting owner decision)
+### Phase 6 — Trust pages
 
-Branch `seo-phase-6-pages` (from main at e022d95). Source text:
-`docs/SITE-PAGES-CONTENT.md` (untracked; not committed by this step).
+Branch `seo-phase-6-pages` (from main at e022d95), pushed, **not merged**.
+Source text: `docs/SITE-PAGES-CONTENT.md` (committed with this phase so the
+server seeds exactly the reviewed text).
 
-#### Finding (step 1)
+#### Approach
 
 The eight routes (/about, /contact, /faq, /warranty, /shipping, /returns,
-/terms, /privacy) are **DB-managed**, not static placeholders. Each
-`app/(storefront)/<slug>/page.tsx` renders `StorefrontContentPage`
-(`features/content/storefront-content-page.tsx`), which reads the
-`ContentPage` row for that slug (`lib/content/pages.ts`,
-`getStorefrontContentPage`) — the same rows staff edit in Admin → Design
-Studio → Pages (`/admin/design-studio/pages`). The body is sanitized HTML
-(`sanitizeBlogBody`, allowlist includes h2–h4, lists, links, tables; 20,000
-character limit) and is rendered inside `.th-rich-text`. Only when a row is
-missing or its body is empty does the page fall back to the hard-coded
-`ContentStub` ("Our story will appear here…") — that is what the live site
-shows today, so on production these rows are absent or empty. Meta title and
-meta description already come from the row's `metaTitle` / `metaDescription`
-when set (phase 2, `storefrontContentMetadata`), and the canonical is already
-self-referencing.
+/terms, /privacy) are **DB-managed**: each renders `StorefrontContentPage`,
+which reads the `ContentPage` row staff edit in Admin → Design Studio → Pages.
+On production those rows are absent or empty, so the live pages show the
+`ContentStub` placeholder. The owner approved (2026-11-10) putting the text into
+those rows with a seed script rather than moving the pages to files.
 
-Per the phase-6 rules, the content is therefore **not** duplicated into
-`content/pages/*.md`; the right path is to put it into those `ContentPage`
-rows with a seed script, so Admin → Pages stays the one place to edit it.
+- **Policy values** live in `lib/site/policies.ts` (section 0 of the content
+  file: addresses, phones, emails, support hours, 24 h / 3 days / 7 working
+  days / 1–3, 2–7, 1–2 working days). Stored bodies hold `{{tokens}}`
+  (`{{phoneRma}}`, `{{refundWorkingDays}} working days`, …) which
+  `StorefrontContentPage` fills at render time, **before** sanitizing, so a
+  value changed in policies.ts changes every page. Staff editing a page in
+  Admin will see the tokens; leave them as written.
+- **Seed** `scripts/seed-trust-pages.mjs` (tsx), same safety model as
+  `fix-catalog-text.mjs`:
+  - dry run by default: previews (`<slug>.html` with values filled,
+    `<slug>.stored.html` as stored) and `summary.md` in
+    `docs/seo-reports/trust-pages/` (git-ignored);
+  - `--apply --confirm-db=<DATABASE_URL db name>`: JSON backup of the rows
+    first (`…/trust-pages/backups/`, including "row did not exist"), then one
+    transaction writing `title`, `body`, `metaTitle`, `metaDescription`
+    (metaKeywords untouched);
+  - a page whose body is non-empty and different is **skipped** unless
+    `--overwrite` (an admin's own text is never replaced silently); an empty
+    body is filled without it; `--only=faq,terms`; `--restore=<backup>`
+    (deletes rows that did not exist before);
+  - refuses to write if any policy value is still spelled out in the content
+    file (content and policies.ts disagree), a token is unknown, the
+    sanitizer would drop any generated markup, or a field is over the admin
+    limits. Only the eight slugs are ever touched.
+- **Markdown → HTML** (`lib/site/trust-pages-markdown.ts`, shared by the seed
+  and the checker): `##` → page title (the single H1), `###` → h2; FAQ group
+  headings h2, each **question** h3 + answer p; tables, lists, bold, site
+  links; the "(Render each Q/A…)" instruction line skipped;
+  `[Open in Google Maps]` → the Business Settings map link (`{{googleMapsUrl}}`,
+  the same link as the ElectronicsStore `hasMap`; a Maps search for the
+  showroom address only if that setting is empty). "Last updated: 10 November
+  2026" is part of the stored /terms and /privacy text.
+- **Empty body → unchanged placeholder.** `getStorefrontContentPage` still
+  returns null for an empty body and the page renders the same `ContentStub`
+  as before; verified against the live site (same H1, text, title, no new
+  JSON-LD). Deploying this code before seeding changes nothing visible.
+- **JSON-LD** (`lib/seo/json-ld.ts`), on a published page: BreadcrumbList
+  Home > page (also shown as visible breadcrumbs), AboutPage on /about,
+  ContactPage on /contact, FAQPage on /faq built from the rendered h3/p (so it
+  always equals the visible text). Organization + ElectronicsStore
+  `contactPoint` from policies.ts: the three sales numbers as customer
+  service, the RMA number as technical support, support email, areaServed
+  BD, en + bn; geo and hasMap kept; still no openingHours.
+- **Product Offer** (only while /returns resp. /shipping are published —
+  checked per request, cached): `hasMerchantReturnPolicy` = BD,
+  MerchantReturnFiniteReturnWindow, `merchantReturnDays` 3
+  (reportDeadOnArrivalDays), ReturnByMail + ReturnInStore, link to /returns;
+  products under the `software` category → MerchantReturnNotPermitted (the
+  page excludes software/licences/codes). `shippingDetails` = destination BD,
+  handlingTime 1–2 days, transitTime 1–7 days (the two windows combined), not
+  for pre-order offers.
+  **Left out on purpose:** `returnFees` (who pays depends on whose error it
+  was — no clean schema value), `shippingRate` (zone + weight based, shown at
+  checkout), separate Dhaka / outside-Dhaka shipping regions (no clean region
+  code for "Dhaka city"), business-day calendars.
 
-#### Proposed seed script — `scripts/seed-trust-pages.mjs` (not written yet)
+Owner decisions applied (2026-11-10): /shipping "We send an SMS when your
+order is handed to the delivery team." → "You can follow your order on the
+tracking page at any time." (content file + seed; the order-confirmation SMS
+sentence stays). **Guest checkout: not possible** — `checkout-view.tsx` shows
+"Checkout requires a customer account" without a session and
+`placeCustomerOrder` (`lib/orders/create-order.ts`) refuses without one — so
+the FAQ "How do I place an order?" answer keeps the original sign-in wording.
+(The step-1 note that "the checkout page does not require a session" was
+wrong.)
 
-Same safety model as `scripts/fix-catalog-text.mjs`; run with tsx.
+#### Files
 
-    npx tsx scripts/seed-trust-pages.mjs                     # DRY RUN (default)
-    npx tsx scripts/seed-trust-pages.mjs --apply --confirm-db=<db name>
-    npx tsx scripts/seed-trust-pages.mjs --apply --only=faq,terms --confirm-db=<db name>
-    npx tsx scripts/seed-trust-pages.mjs --restore=<backup.json> --confirm-db=<db name>
+New: `lib/site/policies.ts`, `lib/site/trust-pages-markdown.ts`,
+`scripts/seed-trust-pages.mjs`, `scripts/seo/check-phase6.ts`
+(`npm run test:seo-phase6`), `docs/SITE-PAGES-CONTENT.md`.
+Changed: `features/content/storefront-content-page.tsx` (tokens, breadcrumbs,
+page JSON-LD, `data-page-content` wrapper, token fill in metadata),
+`lib/content/pages.ts` (`getStorefrontContentPage` cached per request,
+`isContentPagePublished`), `lib/seo/json-ld.ts`,
+`app/(storefront)/product/[slug]/page.tsx` (offer policies),
+`scripts/seo/check-schema.ts` + `check-baseline.ts` (the "no
+shippingDetails while placeholder" guards became "only behind the
+published-page gate"), `package.json` (script only — no dependency change).
 
-- **Input**: `docs/SITE-PAGES-CONTENT.md` (committed alongside the script, so
-  the server runs exactly the reviewed text). For each "# PAGE n" block it
-  reads Route, Meta title, Meta description and the body. Wording is never
-  altered; the script only converts Markdown to HTML.
-- **Mapping**: the page's `## …` heading → `ContentPage.title` (the page's
-  single H1); `### …` → `<h2>`; FAQ group headings → `<h2>` and each **bold
-  question** → `<h3>` with its answer as `<p>` (h1 > h2 > h3); tables → `<table>`
-  (allowed by the sanitizer); lists, bold and `[text](/path)` links as-is.
-  Instruction lines in the source such as "(Render each Q/A below…)" are
-  skipped. `[Open in Google Maps]` becomes a link to the business-settings
-  Google Maps URL (the same short link used as `hasMap` in the
-  ElectronicsStore JSON-LD).
-- **Policy values**: every value from section 0 that appears in the text is
-  stored as a token (e.g. `{{phoneRma}}`, `{{refundWorkingDays}}`), so
-  `lib/site/policies.ts` stays the single source. A small render-time step in
-  `StorefrontContentPage` replaces the tokens. The script refuses to run if a
-  value in the text does not match `policies.ts` exactly, or if a token would
-  be left unresolved. (Staff editing a page in Admin will see the tokens; that
-  is documented on the admin page.)
-- **Dry run**: prints, per page, whether the row exists, current vs new
-  title/meta/body length, and writes `docs/seo-reports/trust-pages/<slug>.html`
-  previews plus a summary — nothing is changed.
-- **--apply**: requires `--confirm-db=<the DATABASE_URL database name>`;
-  first writes a JSON backup of the eight rows exactly as they are (including
-  "row did not exist") to `docs/seo-reports/backups/trust-pages-<time>.json`,
-  then upserts `title`, `body`, `metaTitle`, `metaDescription` for those slugs
-  in one transaction. A row whose body is non-empty and differs from what the
-  script would write is skipped unless `--overwrite` is given (so an admin's
-  later edits are never replaced silently).
-- **--restore**: puts the backed-up values back (and deletes rows that did
-  not exist before), also behind `--confirm-db`.
-- Never touches any other table, `digital-commerce-guideline` or `support`.
+#### Results (2026-11-10)
 
-The code-only parts of phase 6 do not depend on this decision and can be built
-once it is approved: `lib/site/policies.ts`; the render-time token step;
-BreadcrumbList on all eight, AboutPage on /about, ContactPage on /contact,
-FAQPage on /faq (built from the stored Q/A HTML, so it always equals the page);
-"Last updated" on /terms and /privacy (it is part of the stored text);
-contactPoint from `policies.ts`; `hasMerchantReturnPolicy` and
-`shippingDetails` on the Product offer; `scripts/seo/check-phase6.ts`.
-The eight URLs are already in `sitemap-pages.xml` (phase 1); footer/header
-links will be checked during the build.
+- `tsc --noEmit` 0 errors; eslint clean on all changed files; `next build`
+  OK (Turbopack, build `fP28YpiJ_sdMKQfFQ0kVq`, built in a separate worktree
+  because a `next dev` was running in the main folder).
+- Offline: `test:seo-phase6` 54, `test:seo` 90, `seo:check-schema --offline`
+  44, `test:seo-phase5` 198, `test:seo-meta` 383 — all pass.
+- Live, against that build (`next start` on 127.0.0.1:3200, proven fresh: its
+  `/_next/static/<BUILD_ID>/_buildManifest.js` answered 200) pointed at a
+  throwaway copy of the dev DB, seeded with `--apply --overwrite`:
+  `test:seo-phase6 --base=… --mobile` **312/312**: 200, title + description =
+  content file and unique, one H1, h1 > h2 > h3, canonical, no noindex, all
+  JSON-LD parses, FAQPage = the file's 19 Q/As, 11 internal links all 200 (no
+  redirects: /track, /b2b/register, /product-request, /pc-builder, the 8
+  pages), phones/emails = policies.ts, no placeholder/under
+  development/lorem/TODO/{{token}} in the content, figures as required, all
+  eight in sitemap-pages.xml and linked from header/footer, 375px: no
+  horizontal scroll, tables fit. `seo:check-schema --products=25 --paths=<the
+  eight>`: 2,284 checks pass.
+- Seed exercised on the throwaway DB only: dry run, refusals (no / wrong
+  `--confirm-db`, unknown `--only`), create, skip-without-`--overwrite`,
+  overwrite, idempotent re-run ("nothing to change"), both `--restore`s
+  (back to the exact original state, including the deleted /privacy row),
+  empty body filled without `--overwrite`. Software product → NotPermitted,
+  /returns emptied → no return policy on offers, map link = hasMap.
+- **Not run on production or the dev DB** (`--apply` never used there).
 
-#### Needs owner decision (found so far)
+Incident during testing (fixed): removing the build worktree with
+`git worktree remove --force` followed its `node_modules` junction and deleted
+six packages in the main `node_modules` (@node-rs/argon2, @prisma/adapter-pg,
+@prisma/client, postcss, puppeteer, sharp). Restored with `npm install` from the
+unchanged lockfile; 0 packages missing, tsc 0 errors, argon2 / sharp /
+puppeteer / Prisma smoke-tested. Any `next dev`/`next start` that was running
+at 22:45 should be restarted. Next time: remove the junction first and check
+it is gone before removing a worktree.
 
-1. **Approach**: approve seeding the `ContentPage` rows (above), or say if you
-   would rather move these eight pages to files and drop them from Admin →
-   Pages.
-2. **Footer second number** shows "0 1410-305338" with a stray space. It comes
-   from Admin → Business Settings (`SiteSettings`, read by
-   `getStorefrontBranding`), not from code — correct it there. The phase-6 code
-   will read contact numbers for the schema from `policies.ts`, not from that
-   field.
-3. **"We send an SMS when your order is handed to the delivery team"**
-   (/shipping, /track text): the code sends an order-confirmation SMS
-   (`lib/orders/order-confirmation-sms.ts`); no dispatch/hand-over SMS was
-   found. Keep the sentence only if it is done manually or by the courier.
-4. **"Sign in or create an account"** (FAQ, "How do I place an order?"): the
-   checkout page itself does not require a session; confirm whether guest
-   checkout is allowed before publishing that answer.
-5. **shippingRate** will be omitted from `shippingDetails`: delivery cost is
-   computed from zone and weight (`lib/shipping/zone-rates.ts`,
-   `product-weights.ts`), as the /shipping text also says.
-6. **Policy numbers** (24 h, 3 days, 7 working days, 1–3 / 2–7 / 1–2 working
-   days) are marked in the source as "proposed defaults … the owner must
-   approve them before launch". They will be published exactly as written once
-   you confirm them.
+#### To publish (owner, when ready)
+
+On the server after merge + deploy (no schema change, no `npm ci`):
+
+    cd ~/techno-house
+    npx tsx scripts/seed-trust-pages.mjs                 # dry run: read summary + previews
+    npx tsx scripts/seed-trust-pages.mjs --apply --confirm-db=technohouse
+    # only if the dry run shows "SKIP: has its own body" and that text may go:
+    npx tsx scripts/seed-trust-pages.mjs --apply --overwrite --confirm-db=technohouse
+    # undo:
+    npx tsx scripts/seed-trust-pages.mjs --restore=docs/seo-reports/trust-pages/backups/<file>.json --confirm-db=technohouse
+
+No restart is needed (pages and product markup read the rows per request).
+Then: `npm run test:seo-phase6 -- --base=https://technohouse.com.bd` and the
+Rich Results Test on /faq and one product.
+
+#### Needs owner decision
+
+1. **Footer phone typo** "0 1410-305338": owner fixes it in Admin → Business
+   Settings (no code change). The schema already reads phones from
+   policies.ts.
+2. **Footer column has no /warranty link** on the live site (the header has
+   it, so the "header or footer" check passes). Footer columns are DB
+   settings (Admin → footer settings); add it there if wanted.
+3. **Return window in schema = 3 days.** Google reads
+   MerchantReturnFiniteReturnWindow + 3 days as "returns within 3 days";
+   the page accepts returns only for wrong/damaged (24 h) or dead-on-arrival
+   (3 days) items, not change of mind. This follows the phase-6 instruction
+   (merchantReturnDays = reportDeadOnArrivalDays); say if you would rather
+   omit the return policy markup.
+4. **Site-wide marquee** "The website is currently under development" is still
+   live (kept since phase 2 by instruction). The checker scans page content
+   only, so it passes, but visitors and crawlers still see it next to the new
+   policy pages.
+5. **Policy numbers** are the approved defaults; the content file still says
+   "Status: DRAFT … proposed defaults" in its header (not shown on any page).
+6. **Contact numbers in the schema** now come from policies.ts (4 numbers incl.
+   01410-881771 and the RMA line 01311-211433), not from Business Settings.
+   If a number changes, change it in `lib/site/policies.ts` (and the footer
+   setting).
+7. Pre-existing, not from this phase: `npm run test:security` fails 1/22
+   ("unreviewed dangerouslySetInnerHTML" in offers/[slug], the marquee bar and
+   category-intro-block, from phases 1/4/5) — those three need adding to the
+   security script's reviewed list after a look.
 
 ## 3. Manual actions for the operator
 
@@ -729,6 +801,12 @@ links will be checked during the build.
 - **Phase 4 — re-measure after deploy**: `node scripts/perf/measure-pages.mjs
   --base=https://technohouse.com.bd --throttle --profiles=mobile` (from a PC
   with Chrome).
+- **Phase 6 — deploy + seed:** no schema change, same deploy command as
+  Phase 1. Deploying alone changes nothing visible; publish the eight pages
+  with the seed (dry run first) — see "Phase 6 → To publish". Once /returns
+  and /shipping are seeded, product offers carry the return policy and
+  delivery times automatically (supersedes the Phase 3 shipping/returns note
+  and the Phase 2 "content" note).
 - **Phase 2 — data:** duplicate product listings (same product entered twice
   with a location tag or a project note) keep identical titles; merge or
   deactivate them in Admin → Products (the audit lists them).

@@ -9075,3 +9075,26 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       build identical): locally the mega panel never opens on hover in
       headless Chrome (state set, render never commits); live site opens
       fine, so click-close could not be exercised locally.
+
+- [x] AD-399 SEO fix plan PHASE 6 (trust pages) on branch
+      `seo-phase-6-pages` (pushed, NOT merged). Detail: `docs/SEO-NOTES.md`
+      "Phase 6". The eight pages are ContentPage rows (Admin → Design Studio →
+      Pages); `scripts/seed-trust-pages.mjs` (via tsx) writes them from
+      `docs/SITE-PAGES-CONTENT.md`: dry run by default (previews in
+      docs/seo-reports/trust-pages/), --apply --confirm-db=<name> (JSON backup
+      first, one transaction), --overwrite needed for a non-empty body,
+      --only, --restore. NOT run on production (owner decides when).
+      Policy values live in `lib/site/policies.ts`; bodies hold {{tokens}}
+      filled at render time (before sanitizing). Empty body → unchanged
+      placeholder, so deploying before seeding changes nothing visible.
+      JSON-LD: BreadcrumbList on published pages, AboutPage/ContactPage/
+      FAQPage (from the rendered Q/A), contactPoint from policies.ts; Offer
+      hasMerchantReturnPolicy + shippingDetails only while /returns and
+      /shipping are published (software → MerchantReturnNotPermitted, no
+      shippingRate, none for pre-orders). Owner decisions 2026-11-10: hand-over
+      SMS sentence replaced; guest checkout NOT possible (sign-in required), so
+      the FAQ order answer is unchanged. `npm run test:seo-phase6`
+      (--base=… --mobile for the live + 375px checks). No schema change.
+      Incident while testing: `git worktree remove --force` followed a
+      node_modules junction and deleted 6 main packages; restored via npm
+      install from the unchanged lockfile (see SEO-NOTES Phase 6).
