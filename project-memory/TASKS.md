@@ -9114,3 +9114,21 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       throwaway DB: stored terms HTML byte-identical to the rendered page;
       a script/onerror/javascript: value written straight to the DB is stripped.
       No promotion in the dev DB had a description (fixture used).
+
+- [x] AD-401 SEO phase 8 BUILD — product SEO generator v2, stored product meta,
+      admin wiring, apply script (branch `seo-phase-8-build`, pushed, NOT
+      merged). Detail + production runbook: `docs/SEO-NOTES.md` "Phase 8 build".
+      Migration `20261111120000_product_seo_meta` (nullable Product.metaTitle,
+      metaDescription, seoKeyword, seoSource CHECK 'generated'|'admin',
+      seoGeneratedAt) applied to the LOCAL dev DB only; production needs backup
+      then `prisma migrate deploy` BEFORE the new build serves traffic.
+      `lib/seo/product-seo.ts` (pure): title keeps model + type, per-family spec
+      slots, junk filter, collision disambiguation (unresolved = needs_review),
+      4 neutral closing variants by id hash; tests `npm run test:seo-product`
+      (369). Storefront uses stored meta verbatim, else the template (80/80
+      products without meta byte-identical to the previous build). Admin
+      Products "SEO meta tags" card saves with 60/155 counters, suggestion
+      placeholder, seoSource tracking (13/13 browser checks).
+      `scripts/seo/apply-product-seo.mjs`: dry run default, --apply
+      --confirm-db, JSON backup, --restore, admin text protected,
+      --select-batch, --apply-alts (off). NOT run on production.

@@ -1020,6 +1020,189 @@ It prints `database: technohouse — READ-ONLY …`, writes `docs/seo-reports/pr
 contains no secrets. It has no `--apply` flag, only SELECTs, and the Prisma client
 is wrapped so any write call throws.
 
+### Phase 8 build — generator v2, schema, admin wiring, apply script
+
+Branch `seo-phase-8-build` (from main after PR #8), pushed, **not merged**. Nothing was
+run against production; the migration was applied to the LOCAL dev DB only.
+
+#### What the production report found, and what fixed it
+
+| Report finding | Cause in v1 | v2 |
+|---|---|---|
+| "Netis N3 Price in Bangladesh" (no Router) | "type already in the name" was checked on the whole name, then the spec tail (with "Router") was cut | The type is added unless the head noun of any category in the chain is in the text that is **kept**: "Netis N3 AC1200 Router Price in Bangladesh" |
+| "Casio Portable THERMAL" (lost PTP-II) | Model detection needed a digit; PTP-II has none | Hyphenated letter codes count as model tokens; model + type are never cut: "Casio Portable THERMAL Printer PTP-II Price in Bangladesh" |
+| "ASUS VZ24EHF" (no Monitor) | same as Netis | "ASUS VZ24EHF Monitor Price in Bangladesh \| Techno House" |
+| 31 % of titles collide (Dell 3420-CORP 8GB vs 4GB) | no disambiguation | Colliding titles get the distinguishing spec (RAM, storage, capacity, size, CPU, colour / spec word from the name, part code); still colliding → `needs_review`, `title_collision`, shared `collision_group`, never written |
+| "Intel processor brand", "Default, WPS button", "Air Cooler type", "POS Printer item" | free-text label + value glued together | Specs come only from per-family **slots** (CPU, RAM, storage, display, socket, chipset …) that must read a valid value ("Core i7-1255U", "16GB RAM", "Air cooling"); brand / item / series / warranty labels are never read; Default / N/A / Yes / No / repeated words / "item" are dropped |
+| stock data not refreshed | v1 text said "order online" | No stock, price, warranty or "order online" anywhere; neutral closing only |
+| "Netis N3" alt without type | alt = title core without type when redundant | alt = brand + model + type, always (asserted) |
+| `modelNumber` on 6 products | — | Used only as an anchor when it is found inside the cleaned name; otherwise the model is derived from the name (first token with a digit, or a hyphenated code, plus following model tokens and suffixes such as Ti / XT) |
+
+**Generator rules** (`lib/seo/product-seo.ts`, pure, no DB):
+- **Title** ≤ 60: `{Brand} {product-line words} {Model} {Type} Price in Bangladesh`; too long →
+  `Price in BD` (full name) → product-line words trimmed (still `Price in Bangladesh`) →
+  trimmed + `Price in BD`; model and type are never cut. `| Techno House` only if it
+  still fits. If even brand + model + type exceed 60 the title is kept whole and the
+  row is flagged `title_over_60` + `needs_review` (never written).
+- **Description** 120–155: `{Name}: spec, spec, spec. {closing}` with 4 lead wordings and
+  4 closings picked by a hash of the product id. Closing 0 is the owner's sentence ("Check
+  price and availability at Techno House. Delivery in Dhaka and across Bangladesh."); the
+  other three are shorter ("… Delivery across Bangladesh.") so 3–4 specs still fit in 155.
+  Order of attempts: most specs first; "65 inch display" → "65 inch" compaction before
+  dropping a spec; a neutral "See full specifications on the product page." only for
+  products with ≤ 2 specs.
+- **Spec templates** per family (27, plus a generic fallback): laptop (CPU, RAM, storage, display), monitor (size,
+  resolution, refresh, panel), motherboard (socket, chipset, form factor, memory type), GPU
+  (chip, VRAM), processor (cores, threads, base / boost), RAM, SSD, HDD, PSU, case, cooler,
+  printer, large-format printer, IP camera, NVR, router, switch, cable (category, length,
+  shielding, fibre, connector), IP phone, flat panel, capture card, headphone, speaker,
+  keyboard, mouse, UPS, other. Family comes from the leaf category name first, then the chain.
+- **Keyword**: `{brand model} price in bangladesh`; secondary: `price in bd`, `specs`,
+  `review`, `{brand} {type} price in bangladesh` (CSV only).
+
+#### Schema (additive, nullable)
+
+`prisma/migrations/20261111120000_product_seo_meta/migration.sql`:
+`Product.metaTitle`, `metaDescription`, `seoKeyword` (TEXT), `seoSource` (TEXT, CHECK in
+`('generated','admin')` or NULL), `seoGeneratedAt` (TIMESTAMP). No backfill; every existing
+row stays NULL, so every page keeps today's output until a value is stored. Applied to
+`techno_house_dev` only.
+
+#### Storefront
+
+`generateMetadata` → `resolveProductMeta(stored, template)`: a non-empty stored title /
+description is used **verbatim** (also as og:title / og:description); an empty one falls
+back to the existing `productTitle` / `productDescription` template. A shared
+`?variant=` link keeps the variant's own title (AD-390). JSON-LD and everything else are
+untouched.
+
+#### Admin → Products → "SEO meta tags"
+
+Meta title / description now submit and save (they were never sent before). 60 / 155
+character counters (red over the limit; hard server caps 100 / 200), "Use suggestion"
+buttons, the generated text shown as the placeholder while empty ("Left empty, the page
+uses the standard title and description"). Source tracking (`planSeoMetaWrite`): hand-typed
+or edited text → `seoSource='admin'`; saving a form without touching generated text keeps
+`'generated'`; clearing both removes the stored text and the source. Bulk CSV import does
+not send the fields, so it never touches them. (The product-name field no longer overwrites
+the meta title as you type.)
+
+#### `scripts/seo/apply-product-seo.mjs` (via tsx)
+
+    npx tsx scripts/seo/apply-product-seo.mjs                          # DRY RUN: review CSV, changes nothing
+    npx tsx scripts/seo/apply-product-seo.mjs --select-batch=500       # picks batch 1 → batch-1.csv (read-only)
+    npx tsx scripts/seo/apply-product-seo.mjs --batch-file=<csv> [--limit=N]
+    npx tsx scripts/seo/apply-product-seo.mjs --batch-file=<csv> --apply --confirm-db=<db name>
+    npx tsx scripts/seo/apply-product-seo.mjs --restore=<backup.json> --confirm-db=<db name>
+
+Options: `--overwrite` (also replace hand-written text, or stored text with no source),
+`--apply-alts` (off by default; only alts equal to the raw product name, never needs_review
+rows), `--allow-few-specs`, `--force` (restore rows edited since), `--out`.
+- Titles are generated for **all** active products first, so collisions are found across the
+  whole catalogue, then filtered by the batch file.
+- `--apply` refuses without `--confirm-db` matching the DATABASE_URL database, and without
+  `--batch-file` or `--limit` (it never writes to every product by default).
+- A JSON backup of every row it will touch is written first (`…/backups/product-seo-<time>.json`),
+  then rows are written in transactions of 200. Slugs are never touched.
+- Skipped, with the reason in `apply-preview.csv`: `needs_review` (unresolved collision / over
+  60), description outside 120–155, fewer than 3 specs, text written by hand or with no source
+  (unless `--overwrite`), `unchanged`.
+- `--restore` puts the backed-up values back; a row edited after the apply is skipped unless
+  `--force` (and an alt edited by hand is left alone).
+- Review CSV columns: id, slug, name, category, action, current title (template), stored title /
+  source, new title (+ length, rule), new description (+ length), keyword, secondary keywords,
+  flags, collision group, new alt, alt action.
+- **Batch selection** (`--select-batch`): quality filter = price > 0, real image, real brand,
+  usable type, ≥ 3 usable specs, resolved unique title, valid lengths, no text stored yet
+  (**stock ignored**). Weighted round-robin over leaf categories: priority families (laptop,
+  motherboard, graphics card, monitor, processor, RAM, desktop, large-format printer, IP
+  camera / NVR, UTP / fibre cable, IP phone, interactive flat panel, capture card) weight 3,
+  others 1; inside a category more specs, then having a description. Prints the count per
+  family and per leaf category (`batch-1-summary.md`).
+
+#### Production runbook (NOT run — for the owner)
+
+Order matters: the new build selects the new columns, so **migrate before the new build
+serves traffic**; the old build keeps working on the migrated schema (additive), so
+rollback = restart the previous build (`docs/DEPLOYMENT.md`: no down-migrations).
+
+    cd ~/techno-house
+    # 1. backup (pg_dump custom format + uploads); adjust APP_DIR/BACKUP_DIR to the server layout
+    APP_DIR=$PWD BACKUP_DIR=$HOME/backups ./deploy/backup-db.sh
+    # 2. code
+    git fetch origin && git checkout seo-phase-8-build      # after merge: git pull origin main
+    # 3. schema (nothing else changes: package-lock is untouched, no npm ci needed)
+    npm run db:migrate:status          # expect exactly one pending: 20261111120000_product_seo_meta
+    npm run db:migrate:deploy
+    npx prisma generate
+    # 4. build and restart
+    npm run build && pm2 restart techno-house
+    # 5. dry run (read-only) and batch selection; review the CSVs, then decide
+    npx tsx scripts/seo/apply-product-seo.mjs --select-batch=500
+    npx tsx scripts/seo/apply-product-seo.mjs --batch-file=docs/seo-reports/product-seo/batch-1.csv
+    #    open docs/seo-reports/product-seo/apply-preview.csv + apply-summary.md
+
+Writing (only after the owner approves the preview; start small):
+
+    npx tsx scripts/seo/apply-product-seo.mjs --batch-file=docs/seo-reports/product-seo/batch-1.csv --limit=20 --apply --confirm-db=technohouse
+    # check 3-4 of those product pages (title / meta description in view-source), then the rest:
+    npx tsx scripts/seo/apply-product-seo.mjs --batch-file=docs/seo-reports/product-seo/batch-1.csv --apply --confirm-db=technohouse
+    # undo: npx tsx scripts/seo/apply-product-seo.mjs --restore=docs/seo-reports/product-seo/backups/<file>.json --confirm-db=technohouse
+
+No restart is needed after applying (pages read the columns per request). Image alts are a
+separate, later step (`--apply-alts`).
+
+#### Verification (2026-11-10/11, local)
+
+- `tsc` 0 errors; eslint clean; `next build` OK (build `XUA1K9hD7YFYdIlbvb9RZ`, in a separate
+  worktree because a `next dev` was running in the main folder).
+- Suites: `test:security` 27, `test:seo` 92, `seo:check-schema --offline` 49, `test:seo-meta` 383,
+  `test:seo-phase5` 198, `test:seo-phase6` 59, new `test:seo-product` **369**, new
+  `test:seo-product-meta` 11 offline — all pass.
+- Live, on a throwaway copy of the dev DB, new build vs the previous (pre-phase-8) build on the
+  same DB: `test:seo-product-meta --base --old` **298/298** — 80 of 80 sampled products without
+  stored meta have a byte-identical `<title>`, meta description, og:title and og:description;
+  25 products with stored meta render their text verbatim (title-only and description-only
+  products keep the template for the other half). Product JSON-LD identical apart from the origin.
+  `seo:check-schema --base --products=20`: 1,863 checks.
+- Admin card in headless Chrome (`scripts/seo/check-admin-product-meta.ts`, local demo staff on the
+  throwaway DB): **13/13** — placeholder = generated suggestion, counters, typed text saved with
+  source `admin` and shown again after reload and on the storefront, untouched save keeps
+  `generated`, edit flips to `admin`, clearing both falls back to the template title.
+- Apply script on the throwaway DB: refusals (no / wrong `--confirm-db`, no batch file, mixed
+  modes); apply of 120 rows (titles ≤ 60, descriptions 127–155, slugs untouched, one backup);
+  re-run = 120 `unchanged`; a hand-written row and a no-source row skipped, replaced only with
+  `--overwrite`; `--apply-alts` changed 118 alts and left a custom alt alone; `--restore` of the
+  overwrite, alt and original backups, skipping the rows edited since. Weighted round-robin
+  checked (Motherboard 61 : Headphone 20 for weights 3 : 1). The local catalogue is thin
+  (5 of 4,309 products pass the filter; 183 once the test copy's placeholder images were treated
+  as real), so batch-1 counts per category come from the production run.
+
+#### Needs owner decision (Phase 8 build)
+
+1. **Closing wording**: your sentence is closing 0; three shorter variants say "Delivery across
+   Bangladesh" (no "in Dhaka and") so 3–4 specs fit in 155 characters. Approve, or keep only
+   the long sentence and accept 2–3 specs.
+2. **Products with fewer than 3 usable specs are skipped** by default (a thin generated text is
+   worse than today's template with price + warranty). `--allow-few-specs` overrides; those
+   rows get a neutral "See full specifications on the product page." filler.
+3. **Today's descriptions quote the live price and warranty; the generated ones do not.** After an
+   apply, a product's meta no longer carries "price in BD is ৳…". That was the decision for
+   this phase (stale ERP data); say if you want the template kept for some families.
+4. **Review `apply-preview.csv` on production before the first write** — the unit fixtures are
+   reconstructed from the report's descriptions (the raw rows were not available). Look at
+   `flags`, `title_rule` (esp. "product-line words trimmed", "'Price in BD' fallback") and
+   `collision_group`.
+5. **Unresolved collisions** (identical names with identical SKU/part code) stay on the current
+   template; they appear in the CSV with `collision_group` for a data fix.
+6. Hand-typed text in Admin now wins over generated text and is protected from the apply script
+   (`--overwrite` to replace). Confirm that is the intended precedence.
+7. Image alts and slugs are not touched by default (`--apply-alts` is a separate step; slugs are
+   out of scope for this phase).
+8. `scripts/seo/product-seo-report.mjs` (plan phase) still embeds the v1 generator; the apply
+   script's dry run is now the source for generated output. The report remains valid for the
+   data profile and selection counts.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
