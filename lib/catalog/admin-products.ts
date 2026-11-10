@@ -31,6 +31,7 @@ import {
   type ProductDetailRow,
   type ProductSummaryRow,
 } from "@/lib/data/prisma/mappers";
+import { planSeoMetaWrite } from "@/lib/seo/product-seo";
 import type { ProductDetail, ProductSummary } from "@/lib/data/types/catalog";
 import type { StockStatus } from "@/lib/data/types/common";
 import type { ProductPresetLookup } from "@/lib/catalog/product-notes-labels";
@@ -147,6 +148,9 @@ const DETAIL_SELECT = {
   pdfSpecificationSrc: true,
   barcode: true,
   modelNumber: true,
+  metaTitle: true,
+  metaDescription: true,
+  seoSource: true,
   builderSlot: true,
   builderSocket: true,
   builderRamType: true,
@@ -867,7 +871,14 @@ async function persistParsed(
   if (currentId) {
     const existing = await prisma.product.findUnique({
       where: { id: currentId },
-      select: { id: true, slug: true, name: true, publishedAt: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        publishedAt: true,
+        metaTitle: true,
+        metaDescription: true,
+      },
     });
     if (!existing) {
       return { ok: false, formError: "That product no longer exists." };
@@ -890,7 +901,9 @@ async function persistParsed(
       await prisma.$transaction(async (tx) => {
         await tx.product.update({
           where: { id: existing.id },
-          data: { ...data, publishedAt },
+          // Unchanged SEO text keeps its source; changed text becomes
+          // 'admin'; both blank clears it (planSeoMetaWrite).
+          data: { ...data, publishedAt, ...planSeoMetaWrite(parsed, existing) },
         });
 
         if (parsed.thumbnailSrc !== undefined) {
@@ -1026,6 +1039,7 @@ async function persistParsed(
           overview: parsed.overview,
           overviewHtml: parsed.overviewHtml ?? null,
           detailsHtml: parsed.detailsHtml ?? null,
+          ...planSeoMetaWrite(parsed, { metaTitle: null, metaDescription: null }),
           priceAmount: parsed.priceAmount,
           compareAtAmount: parsed.compareAtAmount,
           variantOptionNames: parsed.variantOptionNames ?? [],

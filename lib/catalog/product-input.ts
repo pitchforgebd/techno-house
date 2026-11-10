@@ -212,6 +212,13 @@ export type ProductInputFields = {
    * separate from each other and from `specGroups`/`overview`. */
   overviewHtml?: string;
   detailsHtml?: string;
+  /**
+   * Stored SEO text (SEO phase 8). Omitted (not `""`) means "don't touch":
+   * the bulk CSV importer has no such columns. The single-product form always
+   * sends both; blank = "use the standard template".
+   */
+  metaTitle?: string;
+  metaDescription?: string;
   quantity: string;
   lowStockThreshold: string;
   isActive: boolean;
@@ -281,6 +288,9 @@ export type ParsedProductInput = {
   /** `null` = clear it. `undefined` = not submitted, leave untouched. */
   overviewHtml?: string | null;
   detailsHtml?: string | null;
+  /** `null` = blank. `undefined` = not submitted. See `planSeoMetaWrite`. */
+  metaTitle?: string | null;
+  metaDescription?: string | null;
   quantity: number;
   lowStockThreshold: number;
   stockStatus: StockStatus;

@@ -550,6 +550,19 @@ model Product {
   /// Admin → Labels presets attached to this product (mock catalogue ids for now).
   labelIds String[] @default([])
 
+  /// Stored SEO text for the product page (SEO phase 8). When non-empty it is
+  /// used verbatim as the <title> / meta description; empty = the built-in
+  /// template (lib/seo/page-meta.ts). NULL on every existing row.
+  metaTitle       String?
+  metaDescription String?
+  /// Primary keyword the generated text was written for (review / reporting only).
+  seoKeyword      String?
+  /// 'generated' (scripts/seo/apply-product-seo.mjs) or 'admin' (typed by
+  /// staff); NULL when no meta is stored. The apply script never overwrites
+  /// 'admin' rows without --overwrite. CHECK constraint in the migration.
+  seoSource       String?
+  seoGeneratedAt  DateTime?
+
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

@@ -262,6 +262,9 @@ export type ProductDetailRow = ProductCandidateRow & {
   pdfSpecificationSrc: string | null;
   noteIds?: string[];
   modelNumber: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  seoSource?: string | null;
   colors: {
     id: string;
     name: string;
@@ -376,6 +379,9 @@ export function toProductDetail(
     overview: row.overview,
     overviewHtml: row.overviewHtml,
     detailsHtml: row.detailsHtml,
+    metaTitle: row.metaTitle ?? null,
+    metaDescription: row.metaDescription ?? null,
+    seoSource: row.seoSource ?? null,
     specs: mergeSpecChipsWithAttributes(
       toSpecChips(row.specChips),
       row.attributeValues,

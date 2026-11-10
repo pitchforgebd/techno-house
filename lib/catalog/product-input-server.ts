@@ -17,6 +17,10 @@ import {
 } from "@/lib/catalog/inventory-input";
 import { normalizePdfSpecificationSrc } from "@/lib/product/pdf-specification";
 import { normalizeYoutubeUrl } from "@/lib/product/youtube";
+import {
+  META_DESCRIPTION_STORE_MAX,
+  META_TITLE_STORE_MAX,
+} from "@/lib/seo/product-seo";
 import { sanitizeRichBody } from "@/lib/content/sanitize-html";
 import { parseProductColors } from "@/lib/catalog/color-input";
 import { parseProductGalleryImages } from "@/lib/catalog/gallery-input";
@@ -211,6 +215,23 @@ export async function parseProductInput(
       return result;
     }
     detailsHtml = result.value;
+  }
+
+  // SEO text: trimmed, single-spaced, capped (the admin counters advise
+  // 60 / 155; the hard limit only stops pasted essays).
+  let metaTitle: string | null | undefined;
+  if (input.metaTitle !== undefined) {
+    metaTitle = input.metaTitle.replace(/\s+/g, " ").trim() || null;
+    if (metaTitle && metaTitle.length > META_TITLE_STORE_MAX) {
+      return { ok: false, formError: `Meta title is too long (max ${META_TITLE_STORE_MAX} characters).` };
+    }
+  }
+  let metaDescription: string | null | undefined;
+  if (input.metaDescription !== undefined) {
+    metaDescription = input.metaDescription.replace(/\s+/g, " ").trim() || null;
+    if (metaDescription && metaDescription.length > META_DESCRIPTION_STORE_MAX) {
+      return { ok: false, formError: `Meta description is too long (max ${META_DESCRIPTION_STORE_MAX} characters).` };
+    }
   }
 
   const quantity = parseStockInt(
@@ -420,6 +441,8 @@ export async function parseProductInput(
       overview,
       overviewHtml,
       detailsHtml,
+      metaTitle,
+      metaDescription,
       quantity,
       lowStockThreshold,
       stockStatus: deriveStockStatus(quantity, 0, lowStockThreshold),
