@@ -80,9 +80,18 @@ export function CategoryMegaNav({
         setOpenSlug(null);
       }
     }
+    // The bar lives in the shared layout and never remounts between pages,
+    // so browser back/forward must close it explicitly (link clicks are
+    // handled by onClick below). Not `usePathname()`: in this layout it
+    // makes the open-panel update suspend, and the panel never shows.
+    function onHistory() {
+      setOpenSlug(null);
+    }
     window.addEventListener("keydown", onKey);
+    window.addEventListener("popstate", onHistory);
     return () => {
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("popstate", onHistory);
       if (closeTimer.current) {
         clearTimeout(closeTimer.current);
       }
@@ -136,6 +145,18 @@ export function CategoryMegaNav({
         load();
       }}
       onFocus={load}
+      // Close the moment any menu link is clicked, not when the next page
+      // finishes loading — on a slow load the panel otherwise sits open
+      // over the old page and looks stuck.
+      onClick={(event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest("a[href]")
+        ) {
+          cancelClose();
+          setOpenSlug(null);
+        }
+      }}
       onBlur={(event) => {
         if (
           event.relatedTarget instanceof Node &&

@@ -314,7 +314,7 @@ export function ProductMediaBuy({
             </div>
           ) : null}
           {similar ? (
-            <div className="mt-6 min-w-0 lg:sticky lg:top-4 lg:col-span-4 lg:col-start-9 lg:mt-10 lg:self-start xl:col-span-3 xl:col-start-10">
+            <div className="mt-6 min-w-0 lg:sticky lg:top-16 lg:col-span-4 lg:col-start-9 lg:mt-10 lg:self-start xl:col-span-3 xl:col-start-10">
               {similar}
             </div>
           ) : null}

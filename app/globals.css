@@ -136,7 +136,12 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* `clip`, not `hidden`: `hidden` makes <body> a scroll container that
+     never actually scrolls, which silently disables every `position: sticky`
+     on the site (the category bar scrolled away). `hidden` stays as the
+     fallback for browsers without `clip`. */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Real per-storefront-page override target for Admin -> Design Studio ->

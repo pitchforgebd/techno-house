@@ -143,10 +143,14 @@ export default async function StorefrontLayout({
             Skip to content
           </a>
           <TopBar />
-          <div className="sticky top-0 z-40">
+          {/* Only the category bar sticks (Star Tech style): the logo/search
+              header scrolls away, the department menu stays pinned. The
+              header sits one layer above the bar so its own dropdowns
+              (search suggestions etc.) still overlap it. */}
+          <div className="relative z-45">
             <SiteHeader />
-            <CategoryNav />
           </div>
+          <CategoryNav />
           <main id="main-content" className="flex-1">
             {children}
           </main>

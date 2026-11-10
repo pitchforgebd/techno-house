@@ -9058,3 +9058,20 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       12 category intros + 5 blog drafts in content/: intros are HELD as drafts
       (<!-- draft --> or [VERIFY] = not rendered). Blog: Article +
       BreadcrumbList. No schema change, no npm ci.
+
+- [x] AD-398 Sticky category bar + mega-menu closes on navigation (branch
+      `seo-slug-copy-redirects`, not committed). (1) `position: sticky` never
+      worked site-wide: `body { overflow-x: hidden }` made <body> a scroll
+      container. Now `overflow-x: clip` (hidden kept as fallback). Only the
+      dark category bar sticks (Star Tech style); logo/search header scrolls
+      away (header wrapper `relative z-45` so its dropdowns overlap the bar).
+      Desktop only (bar is md+). Side effect: existing lg:sticky sidebars now
+      really stick; product buy box + PC builder sidebars moved top-4 →
+      top-16 to clear the 45px bar (cart/checkout top-24 already clear).
+      (2) Mega panel closes on any link click inside the bar (immediately,
+      not after the slow page load) and on browser back/forward (popstate).
+      `usePathname()` NOT used. Verified on next build/start: bar at top 0
+      after scrolling home + product. LOCAL QUIRK (pre-existing, baseline
+      build identical): locally the mega panel never opens on hover in
+      headless Chrome (state set, render never commits); live site opens
+      fine, so click-close could not be exercised locally.

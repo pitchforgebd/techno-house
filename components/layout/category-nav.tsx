@@ -9,7 +9,7 @@ export async function CategoryNav() {
   return (
     <nav
       aria-label="Product categories"
-      className="relative z-30 hidden border-t border-header-text/10 bg-header-background md:block"
+      className="sticky top-0 z-40 hidden border-t border-header-text/10 bg-header-background md:block"
     >
       <CategoryMegaNav
         triggers={triggers}
