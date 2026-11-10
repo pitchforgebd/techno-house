@@ -763,20 +763,20 @@ Rich Results Test on /faq and one product.
    01410-881771 and the RMA line 01311-211433), not from Business Settings.
    If a number changes, change it in `lib/site/policies.ts` (and the footer
    setting).
-7. **`npm run test:security` fails 1/22** ("no unreviewed
-   dangerouslySetInnerHTML in app sources"): three raw-HTML sinks are not on
-   the script's reviewed allowlist. Two predate the SEO work, one is Phase 5:
-   `components/layout/marquee-notice-bar.tsx` (AD-378, 2026-10-16; text is
-   sanitized on read by `sanitizeMarqueeHtml`, safe),
-   `features/catalog/category-intro-block.tsx` (Phase 5; HTML built from repo
-   files under `content/` through escape + `sanitizeBlogBody`, safe) and
-   `app/(storefront)/offers/[slug]/page.tsx` (2026-10-23; renders
-   `Promotion.descriptionHtml` raw: sanitized when saved by
-   `sanitizeRichBody`, but NOT again on read, unlike every other allowlisted
-   sink). Test left unchanged, owner decision pending: proposed fix is
-   `sanitizeBlogBody(promotion.descriptionHtml)` on the offers page (one line,
-   same pattern as the product page), then add the three files to the
-   allowlist with these reasons.
+7. **`npm run test:security` was 1/22 red — resolved (AD-400, separate
+   commit "security: sanitize promotion description on read; allowlist
+   reviewed raw-HTML sinks").** Three raw-HTML sinks were not on the
+   script's reviewed allowlist; two predate the SEO work (marquee bar
+   2026-10-16, offers page 2026-10-23) and one is Phase 5
+   (`category-intro-block.tsx`). Marquee and category intros were safe (sanitized
+   on read / built from repo files). The offers page rendered
+   `Promotion.descriptionHtml` raw (sanitized on save only); it now runs
+   `sanitizeBlogBody` on read. All three are on the allowlist with reasons,
+   with pin checks; `test:security` is 27/27. Verified on a production build
+   against a throwaway DB: the stored terms HTML is byte-identical to what
+   the page renders, and a script/onerror/javascript: value written straight to
+   the DB is stripped. No promotion in the dev DB had a description (fixture
+   used).
 
 ## 3. Manual actions for the operator
 
