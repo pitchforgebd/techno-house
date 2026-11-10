@@ -7,9 +7,15 @@
  *   - aggregateRating / review: the product page shows rating stars even with
  *     zero reviews; structured data must not repeat that (operator decision,
  *     SEO phase 3). Do not add them back without real, moderated reviews.
- *   - shippingDetails / hasMerchantReturnPolicy: the live /shipping and
- *     /returns pages are still placeholders, so there are no stated terms to
- *     describe. Add them only once those pages state real rates and rules.
+ *   - shippingRate: delivery is charged by zone and parcel weight at
+ *     checkout (lib/shipping/zone-rates.ts), so there is no single rate to
+ *     state. shippingDetails carries the destination and delivery times only.
+ *
+ * Offer `shippingDetails` (SEO phase 6) is built from lib/site/policies.ts, and
+ * only while the /shipping page that states those times is published (the
+ * caller checks). Offer `hasMerchantReturnPolicy` is OFF by default
+ * (`MERCHANT_RETURN_POLICY_MARKUP` in policies.ts): a finite window of N days
+ * reads as general returns, which the /returns page does not offer.
  */
 import type { BreadcrumbItem } from "@/components/ui/breadcrumbs";
 import type { StorefrontBranding } from "@/lib/business/storefront-branding";
@@ -20,6 +26,11 @@ import {
 import type { ProductDetail, StockStatus } from "@/lib/data";
 import { canonicalUrl } from "@/lib/seo/canonical";
 import { SITE_NAME } from "@/lib/seo/page-meta";
+import {
+  MERCHANT_RETURN_POLICY_MARKUP,
+  POLICIES,
+  policyPhoneE164,
+} from "@/lib/site/policies";
 
 const CONTEXT = "https://schema.org";
 const PLACEHOLDER_IMAGE = "/products/placeholder.svg";
@@ -111,11 +122,38 @@ function postalAddress(branding: StorefrontBranding) {
   };
 }
 
+/**
+ * Contact points from lib/site/policies.ts (SEO phase 6): the sales numbers
+ * as customer service, the RMA office number as technical support. Support
+ * hours are not given as hoursAvailable, for the same reason the store has
+ * no openingHours (see `electronicsStoreJsonLd`).
+ */
+export function policyContactPoints() {
+  const common = {
+    email: POLICIES.emailSupport,
+    areaServed: "BD",
+    availableLanguage: ["en", "bn"],
+  };
+  return [
+    ...POLICIES.phonesSales.map((phone) => ({
+      "@type": "ContactPoint",
+      telephone: policyPhoneE164(phone),
+      contactType: "customer service",
+      ...common,
+    })),
+    {
+      "@type": "ContactPoint",
+      telephone: policyPhoneE164(POLICIES.phoneRma),
+      contactType: "technical support",
+      ...common,
+    },
+  ];
+}
+
 export function organizationJsonLd(
   branding: StorefrontBranding,
   options: { sameAs?: string[] } = {},
 ) {
-  const phones = brandingPhones(branding);
   const sameAs = options.sameAs ?? [];
   return {
     "@context": CONTEXT,
@@ -124,19 +162,9 @@ export function organizationJsonLd(
     name: branding.storeName,
     url: canonicalUrl("/"),
     logo: absoluteUrl(branding.logoSrc),
-    email: branding.supportEmail || undefined,
+    email: POLICIES.emailSupport,
     address: postalAddress(branding),
-    contactPoint:
-      phones.length > 0
-        ? phones.map((telephone) => ({
-            "@type": "ContactPoint",
-            telephone,
-            contactType: "customer service",
-            areaServed: "BD",
-            availableLanguage: ["en", "bn"],
-            ...(branding.supportEmail ? { email: branding.supportEmail } : {}),
-          }))
-        : undefined,
+    contactPoint: policyContactPoints(),
     sameAs: sameAs.length > 0 ? sameAs : undefined,
   };
 }
@@ -153,7 +181,6 @@ export function electronicsStoreJsonLd(
   branding: StorefrontBranding,
   options: { sameAs?: string[] } = {},
 ) {
-  const phones = brandingPhones(branding);
   const logo = absoluteUrl(branding.logoSrc);
   const sameAs = options.sameAs ?? [];
   return {
@@ -164,9 +191,10 @@ export function electronicsStoreJsonLd(
     url: canonicalUrl("/"),
     image: logo,
     logo,
-    telephone: phones[0],
-    email: branding.supportEmail || undefined,
+    telephone: policyPhoneE164(POLICIES.phonePrimary),
+    email: POLICIES.emailSupport,
     address: postalAddress(branding),
+    contactPoint: policyContactPoints(),
     geo: STORE_GEO,
     hasMap: absoluteUrl(branding.googleMapsUrl),
     priceRange: "৳৳",
@@ -187,6 +215,53 @@ export function faqPageJsonLd(items: { question: string; answer: string }[]) {
       acceptedAnswer: { "@type": "Answer", text: item.answer },
     })),
   };
+}
+
+/**
+ * AboutPage (/about) or ContactPage (/contact) for a published trust page:
+ * the page itself, about the organization / the shop. Name and description
+ * are the page's own H1 and meta description.
+ */
+export function webPageJsonLd(
+  type: "AboutPage" | "ContactPage",
+  page: { path: string; name: string; description: string },
+) {
+  const url = canonicalUrl(page.path);
+  return {
+    "@context": CONTEXT,
+    "@type": type,
+    "@id": `${url}#webpage`,
+    url,
+    name: page.name,
+    description: page.description || undefined,
+    inLanguage: "en",
+    isPartOf: { "@type": "WebSite", url: canonicalUrl("/") },
+    about: { "@id": type === "ContactPage" ? STORE_ID() : ORGANIZATION_ID() },
+  };
+}
+
+const decodeEntities = (text: string) =>
+  text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&#x27;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+
+/**
+ * Question/answer pairs from rendered FAQ HTML: each `<h3>` question and the
+ * `<p>` right after it. Read from the same HTML the page shows, so the
+ * FAQPage markup can never drift from the visible text.
+ */
+export function faqItemsFromHtml(html: string): { question: string; answer: string }[] {
+  const text = (fragment: string) =>
+    decodeEntities(fragment.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]*>/g, ""))
+      .replace(/\s+/g, " ")
+      .trim();
+  return [...html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>\s*<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((match) => ({ question: text(match[1] ?? ""), answer: text(match[2] ?? "") }))
+    .filter((item) => item.question && item.answer);
 }
 
 export function websiteJsonLd(branding: StorefrontBranding) {
@@ -287,10 +362,93 @@ function futureDate(iso: string | null, now: Date): string | undefined {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * The /returns policy as schema (SEO phase 6). Returns are accepted for a
+ * wrong, damaged or dead-on-arrival item; the longest reporting window on the
+ * page (dead on arrival) is the return window. Products can be sent or
+ * brought to us. No returnFees: who pays return shipping depends on whose
+ * error it was, which has no clean schema value.
+ * Software, licences and digital codes cannot be returned (same page).
+ */
+export function merchantReturnPolicyJsonLd(options: { returnable: boolean }) {
+  const common = {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: "BD",
+    merchantReturnLink: canonicalUrl("/returns"),
+  };
+  if (!options.returnable) {
+    return {
+      ...common,
+      returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+    };
+  }
+  return {
+    ...common,
+    returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+    merchantReturnDays: POLICIES.reportDeadOnArrivalDays,
+    returnMethod: [
+      "https://schema.org/ReturnByMail",
+      "https://schema.org/ReturnInStore",
+    ],
+  };
+}
+
+/**
+ * The /shipping delivery times as schema (SEO phase 6): delivered within
+ * Bangladesh, dispatched 1-2 working days after confirmation, in transit
+ * 1-3 (Dhaka) to 2-7 (outside Dhaka) working days, one range covering both.
+ * No shippingRate (zone + weight based, shown at checkout).
+ */
+export function offerShippingDetailsJsonLd() {
+  const handling = POLICIES.dispatchAfterConfirmationWorkingDays;
+  const transitMin = Math.min(
+    POLICIES.dhakaDeliveryWorkingDays.min,
+    POLICIES.outsideDhakaDeliveryWorkingDays.min,
+  );
+  const transitMax = Math.max(
+    POLICIES.dhakaDeliveryWorkingDays.max,
+    POLICIES.outsideDhakaDeliveryWorkingDays.max,
+  );
+  return {
+    "@type": "OfferShippingDetails",
+    shippingDestination: { "@type": "DefinedRegion", addressCountry: "BD" },
+    deliveryTime: {
+      "@type": "ShippingDeliveryTime",
+      handlingTime: {
+        "@type": "QuantitativeValue",
+        minValue: handling.min,
+        maxValue: handling.max,
+        unitCode: "DAY",
+      },
+      transitTime: {
+        "@type": "QuantitativeValue",
+        minValue: transitMin,
+        maxValue: transitMax,
+        unitCode: "DAY",
+      },
+    },
+  };
+}
+
+export type OfferPolicies = {
+  /**
+   * /returns is published: add hasMerchantReturnPolicy, but only while
+   * `MERCHANT_RETURN_POLICY_MARKUP` is on.
+   */
+  returnsPage: boolean;
+  /** Overrides `MERCHANT_RETURN_POLICY_MARKUP` (tests only). */
+  returnPolicyMarkup?: boolean;
+  /** /shipping is published: add shippingDetails (not for pre-orders). */
+  shippingPage: boolean;
+  /** False for software / licences / digital codes. */
+  returnable: boolean;
+};
+
 export function productJsonLd({
   product,
   offer,
   path,
+  policies,
   now = new Date(),
 }: {
   product: Pick<
@@ -300,6 +458,8 @@ export function productJsonLd({
   /** What the page displays — `displayedOffer(product, linkedVariant)`. */
   offer: DisplayedOffer;
   path: string;
+  /** Omitted = no return/shipping markup (the pages are not published). */
+  policies?: OfferPolicies;
   now?: Date;
 }) {
   const url = canonicalUrl(path);
@@ -346,6 +506,17 @@ export function productJsonLd({
             "@id": ORGANIZATION_ID(),
             name: SITE_NAME,
           },
+          hasMerchantReturnPolicy:
+            policies?.returnsPage &&
+            (policies.returnPolicyMarkup ?? MERCHANT_RETURN_POLICY_MARKUP)
+              ? merchantReturnPolicyJsonLd({ returnable: policies.returnable })
+              : undefined,
+          // A pre-order ships when stock arrives (the product page says
+          // when), not on the usual delivery times.
+          shippingDetails:
+            policies?.shippingPage && !offer.isPreOrder
+              ? offerShippingDetailsJsonLd()
+              : undefined,
         }
       : undefined,
   };

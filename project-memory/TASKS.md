@@ -9075,3 +9075,42 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       build identical): locally the mega panel never opens on hover in
       headless Chrome (state set, render never commits); live site opens
       fine, so click-close could not be exercised locally.
+
+- [x] AD-399 SEO fix plan PHASE 6 (trust pages) on branch
+      `seo-phase-6-pages` (pushed, NOT merged). Detail: `docs/SEO-NOTES.md`
+      "Phase 6". The eight pages are ContentPage rows (Admin → Design Studio →
+      Pages); `scripts/seed-trust-pages.mjs` (via tsx) writes them from
+      `docs/SITE-PAGES-CONTENT.md`: dry run by default (previews in
+      docs/seo-reports/trust-pages/), --apply --confirm-db=<name> (JSON backup
+      first, one transaction), --overwrite needed for a non-empty body,
+      --only, --restore. NOT run on production (owner decides when).
+      Policy values live in `lib/site/policies.ts`; bodies hold {{tokens}}
+      filled at render time (before sanitizing). Empty body → unchanged
+      placeholder, so deploying before seeding changes nothing visible.
+      JSON-LD: BreadcrumbList on published pages, AboutPage/ContactPage/
+      FAQPage (from the rendered Q/A), contactPoint from policies.ts; Offer
+      shippingDetails only while /shipping is published (no shippingRate,
+      none for pre-orders). Offer hasMerchantReturnPolicy is built but OFF
+      (`MERCHANT_RETURN_POLICY_MARKUP = false` in policies.ts): a 3-day finite
+      window would read as general returns, /returns does not offer that.
+      Owner decisions 2026-11-10: hand-over
+      SMS sentence replaced; guest checkout NOT possible (sign-in required), so
+      the FAQ order answer is unchanged. `npm run test:seo-phase6`
+      (--base=… --mobile for the live + 375px checks). No schema change.
+      Incident while testing: `git worktree remove --force` followed the
+      worktree .next/node_modules links and emptied 6 main packages (twice); restored via npm
+      install from the unchanged lockfile (see SEO-NOTES Phase 6).
+
+- [x] AD-400 Security: promotion terms sanitized on read + reviewed raw-HTML
+      sink allowlist (branch `seo-phase-6-pages`, separate commit, NOT merged).
+      `/offers/[slug]` rendered `Promotion.descriptionHtml` raw (sanitized on
+      save only, unlike every other sink); it now runs `sanitizeBlogBody` on
+      read. `npm run test:security` was 1/22 red because three sinks were not
+      on the reviewed allowlist (marquee bar 2026-10-16, offers page
+      2026-10-23, category-intro-block Phase 5): all three added with reasons,
+      plus pin checks for the offers/marquee/category-intro sanitizing and a
+      fixture check (saved terms unchanged by a second sanitize; hostile
+      value neutralised). Now 27/27. Verified on a production build against a
+      throwaway DB: stored terms HTML byte-identical to the rendered page;
+      a script/onerror/javascript: value written straight to the DB is stripped.
+      No promotion in the dev DB had a description (fixture used).

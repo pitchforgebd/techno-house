@@ -30,6 +30,7 @@ import {
   productJsonLd,
   sameAsLinks,
 } from "@/lib/seo/json-ld";
+import { MERCHANT_RETURN_POLICY_MARKUP, POLICIES } from "@/lib/site/policies";
 
 type Json = Record<string, unknown>;
 
@@ -146,6 +147,41 @@ function offline(): void {
   check("out of stock + Pre Order → PreOrder offer", (build({ stockStatus: "out_of_stock", isPreOrder: true }).offers as Json)?.availability === "https://schema.org/PreOrder");
   check("low stock → LimitedAvailability", (build({ stockStatus: "low_stock" }).offers as Json)?.availability === "https://schema.org/LimitedAvailability");
   check("only placeholder image → no image field", build({ image: { src: "/products/placeholder.svg", alt: "" }, images: [] }).image === undefined);
+
+  // SEO phase 6: delivery times only once /shipping is published. The return
+  // policy is OFF by default (MERCHANT_RETURN_POLICY_MARKUP): a finite window
+  // would read as general returns, which /returns does not offer.
+  const withPolicies = (over: Partial<typeof base>, policies: { returnsPage: boolean; shippingPage: boolean; returnable: boolean; returnPolicyMarkup?: boolean }) =>
+    productJsonLd({ product, offer: displayedOffer({ ...base, ...over }), path: "/product/t", policies }).offers as Json;
+  {
+    check("no policies → no shippingDetails / hasMerchantReturnPolicy", offer?.shippingDetails === undefined && offer?.hasMerchantReturnPolicy === undefined);
+    const unpublished = withPolicies({}, { returnsPage: false, shippingPage: false, returnable: true });
+    check("pages unpublished → no shippingDetails / hasMerchantReturnPolicy", unpublished.shippingDetails === undefined && unpublished.hasMerchantReturnPolicy === undefined);
+    check("return policy markup flag is OFF by default", MERCHANT_RETURN_POLICY_MARKUP === false);
+    const live = withPolicies({}, { returnsPage: true, shippingPage: true, returnable: true });
+    check("flag off, /returns published → still no hasMerchantReturnPolicy", live.hasMerchantReturnPolicy === undefined);
+    check("flag off, software → still no hasMerchantReturnPolicy", withPolicies({}, { returnsPage: true, shippingPage: true, returnable: false }).hasMerchantReturnPolicy === undefined);
+    // The builder stays tested so the flag can be switched on later.
+    const flagged = withPolicies({}, { returnsPage: true, shippingPage: true, returnable: true, returnPolicyMarkup: true });
+    check("flag on + /returns unpublished → none", withPolicies({}, { returnsPage: false, shippingPage: true, returnable: true, returnPolicyMarkup: true }).hasMerchantReturnPolicy === undefined);
+    const policy = flagged.hasMerchantReturnPolicy as Json;
+    check("(flag on) return policy: BD, finite window", policy?.applicableCountry === "BD" && policy.returnPolicyCategory === "https://schema.org/MerchantReturnFiniteReturnWindow");
+    check("(flag on) return policy: merchantReturnDays = reportDeadOnArrivalDays", policy?.merchantReturnDays === POLICIES.reportDeadOnArrivalDays);
+    check("(flag on) return policy: by mail + in store", JSON.stringify(policy?.returnMethod) === JSON.stringify(["https://schema.org/ReturnByMail", "https://schema.org/ReturnInStore"]));
+    check("(flag on) return policy: no returnFees (conditional on whose error)", policy !== undefined && !("returnFees" in policy));
+    const shipping = live.shippingDetails as Json;
+    const time = shipping?.deliveryTime as Json | undefined;
+    const range = (value: unknown) => `${(value as Json)?.minValue}-${(value as Json)?.maxValue}`;
+    check("shipping: destination BD", ((shipping?.shippingDestination as Json)?.addressCountry) === "BD");
+    check("shipping: handling 1-2 days", range(time?.handlingTime) === `${POLICIES.dispatchAfterConfirmationWorkingDays.min}-${POLICIES.dispatchAfterConfirmationWorkingDays.max}`);
+    check("shipping: transit 1-7 days (both windows)", range(time?.transitTime) === "1-7");
+    check("shipping: no shippingRate (zone/weight based)", shipping !== undefined && !("shippingRate" in shipping));
+    const software = withPolicies({}, { returnsPage: true, shippingPage: true, returnable: false, returnPolicyMarkup: true }).hasMerchantReturnPolicy as Json;
+    check("(flag on) software → MerchantReturnNotPermitted", software?.returnPolicyCategory === "https://schema.org/MerchantReturnNotPermitted" && !("merchantReturnDays" in software));
+    const preOrder = withPolicies({ stockStatus: "out_of_stock", isPreOrder: true }, { returnsPage: true, shippingPage: true, returnable: true });
+    check("pre-order → no shippingDetails", preOrder.shippingDetails === undefined);
+    check("shippingDetails does not depend on the return flag", live.shippingDetails !== undefined);
+  }
   const future = new Date(Date.now() + 5 * 86400000).toISOString();
   const sale = build({ compareAtPrice: money(20000) }, { discountEndsAt: future }).offers as Json;
   check("discount window → priceValidUntil", sale?.priceValidUntil === future.slice(0, 10));
@@ -271,8 +307,22 @@ function validateBlock(page: string, block: Json, html: string): void {
         const shown = `৳ ${price.toLocaleString("en-US")}`;
         check(`${where}: schema price ${price} is shown on the page`, html.includes(shown) || html.includes(shown.replace(" ", "&nbsp;")) || html.includes(`৳ ${price.toLocaleString("en-US")}`));
       }
-      check(`${where}: shippingDetails absent (shipping page is a placeholder)`, offer?.shippingDetails === undefined);
-      check(`${where}: hasMerchantReturnPolicy absent (returns page is a placeholder)`, offer?.hasMerchantReturnPolicy === undefined);
+      // Return policy: off unless the flag is on. shippingDetails: only once
+      // /shipping is published (SEO phase 6).
+      const policy = offer?.hasMerchantReturnPolicy as Json | undefined;
+      check(`${where}: no hasMerchantReturnPolicy while the flag is off`, policy === undefined || MERCHANT_RETURN_POLICY_MARKUP);
+      if (policy) {
+        check(`${where}: return policy BD`, policy.applicableCountry === "BD");
+        check(`${where}: return policy category`, SCHEMA_URL.test(String(policy.returnPolicyCategory)));
+        if (policy.returnPolicyCategory === "https://schema.org/MerchantReturnFiniteReturnWindow") {
+          check(`${where}: merchantReturnDays`, policy.merchantReturnDays === POLICIES.reportDeadOnArrivalDays);
+        }
+      }
+      const shipping = offer?.shippingDetails as Json | undefined;
+      if (shipping) {
+        check(`${where}: shippingDetails BD`, (shipping.shippingDestination as Json | undefined)?.addressCountry === "BD");
+        check(`${where}: no shippingRate`, !("shippingRate" in shipping));
+      }
       break;
     }
     case "Article": {
@@ -284,7 +334,9 @@ function validateBlock(page: string, block: Json, html: string): void {
     }
     case "FAQPage": {
       const items = (block.mainEntity as Json[] | undefined) ?? [];
-      check(`${where}: 3-5 questions`, items.length >= 3 && items.length <= 5, String(items.length));
+      // Category/blog intros carry 3-5; the /faq page carries its full list.
+      if (page === "/faq") check(`${where}: has questions`, items.length > 0);
+      else check(`${where}: 3-5 questions`, items.length >= 3 && items.length <= 5, String(items.length));
       for (const item of items) {
         const answer = (item.acceptedAnswer as Json | undefined)?.text;
         check(`${where}: question + answer`, item["@type"] === "Question" && Boolean(item.name) && Boolean(answer));

@@ -11,6 +11,7 @@ import {
   type ListingSearchParams,
 } from "@/lib/catalog/listing-params";
 import { brandRepository, productRepository } from "@/lib/data";
+import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
 import { getPublicPromotionBySlug } from "@/lib/marketing/promotions";
 import { listPromotionProductIds } from "@/lib/marketing/promotion-products";
 import { listingCanonicalUrl } from "@/lib/seo/canonical";
@@ -72,6 +73,11 @@ export default async function OfferDetailPage({
 
   const resetHref = resetListingHref(pathname);
   const filteredEmpty = listingHasActiveFilters(parsed);
+  // Sanitized again on read, not trusted because it was clean on save: the
+  // column is also reachable by direct database edits and any future importer.
+  const termsHtml = promotion.descriptionHtml
+    ? sanitizeBlogBody(promotion.descriptionHtml)
+    : "";
 
   return (
     <div className="mx-auto max-w-catalog px-4 py-7 md:px-6 md:py-9">
@@ -120,7 +126,7 @@ export default async function OfferDetailPage({
         }
       />
 
-      {promotion.descriptionHtml ? (
+      {termsHtml ? (
         <section
           id="offer-terms"
           className="mt-10 scroll-mt-20 border-t border-border pt-8"
@@ -130,7 +136,7 @@ export default async function OfferDetailPage({
           </h2>
           <div
             className="th-rich-text mt-3 max-w-prose text-body text-text-muted"
-            dangerouslySetInnerHTML={{ __html: promotion.descriptionHtml }}
+            dangerouslySetInnerHTML={{ __html: termsHtml }}
           />
         </section>
       ) : null}

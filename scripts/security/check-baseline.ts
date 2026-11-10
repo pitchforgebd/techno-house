@@ -10,6 +10,10 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { originMatchesHost } from "../../lib/auth/same-origin";
 import { serializeJsonLd } from "../../lib/seo/serialize-json-ld";
+import {
+  sanitizeBlogBody,
+  sanitizeRichBody,
+} from "../../lib/content/sanitize-html";
 import { opaqueSessionCookieFlags } from "../../lib/auth/session-cookie";
 import {
   safeAdminReturnPath,
@@ -120,10 +124,16 @@ function main(): void {
       "JSON-LD via serializeJsonLd (escapes < so a value cannot close the script element), plus sanitizeBlogBody output (tag allowlist, no style/class/on*, http/https/mailto only)",
     "app/(storefront)/layout.tsx":
       "theme CSS built from hex-validated colours and a fixed font lookup map",
+    "app/(storefront)/offers/[slug]/page.tsx":
+      "Promotion.descriptionHtml (Terms & conditions): sanitizeRichBody on save, and sanitizeBlogBody again on read in this page before it reaches the raw-HTML div — asserted below",
+    "components/layout/marquee-notice-bar.tsx":
+      "marquee notice text: sanitizeMarqueeHtml (sanitizeRichBody, tag allowlist, 2000-char cap) inside parseFooterWidgetsConfig, which both saveFooterWidgetsConfig and getFooterWidgetsConfig run; the component only demotes headings in that already-sanitized HTML",
     "components/seo/json-ld-script.tsx":
       "JSON-LD via serializeJsonLd: JSON.stringify with < escaped as a unicode escape, so no value can close the script element — asserted below",
     "components/analytics/custom-script-slot.tsx":
       "intentional third-party script injection, gated on custom_scripts.manage and audit-logged (F-09, accepted risk)",
+    "features/catalog/category-intro-block.tsx":
+      "category intro and FAQ answers: built in lib/content/category-intro.ts from repo files under content/ (not user or database input) through HTML-escaping and sanitizeBlogBody",
     "features/catalog/category-page-seo.tsx":
       "sanitizeBlogBody output, sanitized on read as well as on write",
     "features/content/storefront-content-page.tsx": "sanitizeBlogBody output",
@@ -166,6 +176,55 @@ function main(): void {
     "the product page sanitises overviewHtml and detailsHtml before the raw-HTML panels receive them",
     productPage.includes("sanitizeBlogBody(product.overviewHtml)") &&
       productPage.includes("sanitizeBlogBody(product.detailsHtml)"),
+  );
+  // The offers page's terms are only safe because the page sanitises on read
+  // (the column is also reachable by direct database edits). If that call goes,
+  // the allowlist entry becomes a lie, so pin it.
+  const offersPage = readFileSync(
+    join(root, "app/(storefront)/offers/[slug]/page.tsx"),
+    "utf8",
+  );
+  check(
+    "the offers page sanitises promotion.descriptionHtml before the raw-HTML div receives it",
+    offersPage.includes("sanitizeBlogBody(promotion.descriptionHtml)") &&
+      !offersPage.includes("__html: promotion.descriptionHtml"),
+  );
+  // Sanitising on read must not change terms the admin editor saved normally
+  // (paragraphs, lists, links, bold, a table): same HTML out as in.
+  const savedTerms = sanitizeRichBody(
+    `<h3>Offer terms</h3><p>Free delivery over <strong>৳25,000</strong>. <em>Some items excluded.</em></p>` +
+      `<ul><li><p>Valid until 31 December 2026</p></li><li><p>One use per customer</p></li></ul>` +
+      `<ol><li>Add items to your cart</li><li>Pay at checkout</li></ol>` +
+      `<p>See our <a href="/shipping" target="_blank">delivery policy</a> or <a href="https://example.com/terms" target="_blank">partner terms</a>.</p>` +
+      `<table><thead><tr><th>Area</th><th>Charge</th></tr></thead><tbody><tr><td>Dhaka</td><td>Free</td></tr></tbody></table>` +
+      `<blockquote>Terms may change without notice.</blockquote>`,
+    { maxLength: 20000, tooLongError: "too long" },
+  );
+  const savedHtml = savedTerms.ok ? (savedTerms.value ?? "") : "";
+  check(
+    "sanitising saved promotion terms again on read changes nothing",
+    savedHtml.includes("<ul>") && sanitizeBlogBody(savedHtml) === savedHtml,
+  );
+  const hostileTerms = sanitizeBlogBody(
+    `<p>ok</p><script>alert(1)</script><img src=x onerror=alert(1)><a href="javascript:alert(1)">bad</a>`,
+  );
+  check(
+    "a hostile value written straight to the database is neutralised on read",
+    !/<script|onerror|javascript:|<img/i.test(hostileTerms) &&
+      hostileTerms.includes("<p>ok</p>"),
+  );
+  // The marquee and category-intro entries rest on their sanitising callers.
+  check(
+    "marquee text is sanitised in parseFooterWidgetsConfig (run on both save and read)",
+    readFileSync(join(root, "lib/content/footer-settings.ts"), "utf8").includes(
+      "marqueeText: sanitizeMarqueeHtml(",
+    ),
+  );
+  check(
+    "category intro HTML goes through sanitizeBlogBody",
+    readFileSync(join(root, "lib/content/category-intro.ts"), "utf8").includes(
+      "introHtml: sanitizeBlogBody(",
+    ),
   );
   // JSON-LD: JSON.stringify alone lets a value containing the closing script
   // tag break out of the <script> element. Both sinks must go through
