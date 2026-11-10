@@ -117,6 +117,8 @@ const DETAIL_SELECT = {
   pdfSpecificationSrc: true,
   noteIds: true,
   modelNumber: true,
+  metaTitle: true,
+  metaDescription: true,
   colors: {
     select: {
       id: true,

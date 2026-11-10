@@ -172,6 +172,15 @@ export type ProductDetail = ProductSummary & {
   notes: ProductNoteItem[];
   /** Manufacturer model number, shown in the product page's info chip row. */
   modelNumber: string | null;
+  /**
+   * Stored SEO text (SEO phase 8). Non-empty = used verbatim as the page
+   * <title> / meta description; empty or absent = the built-in template.
+   * Optional so mock catalogue rows need no change.
+   */
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  /** 'generated' | 'admin' | null — who wrote the stored text. */
+  seoSource?: string | null;
   /** Variant option groups ("Color": [Black, Blue]); empty = no variants. */
   variantOptions: { name: string; values: string[] }[];
   /** Active variants, in admin order. Non-empty means one must be chosen. */

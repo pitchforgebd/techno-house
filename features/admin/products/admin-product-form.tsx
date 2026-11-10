@@ -117,6 +117,12 @@ import type {
   ProductNoteOption,
 } from "@/lib/catalog/product-notes-labels";
 import { cn } from "@/lib/cn";
+import {
+  generateProductSeo,
+  SEO_DESC_MAX,
+  SEO_TITLE_MAX,
+  type SpecFact,
+} from "@/lib/seo/product-seo";
 
 type FormMode = "create" | "edit";
 type BrandOption = { slug: string; name: string };
@@ -368,9 +374,10 @@ export function AdminProductForm({
     product?.overviewHtml ?? "",
   );
   const [detailsHtml, setDetailsHtml] = useState(product?.detailsHtml ?? "");
-  const [seoTitle, setSeoTitle] = useState(product?.name ?? "");
-  const [seoDescription, setSeoDescription] = useState(
-    product?.overview.join(" ") ?? "",
+  // Stored SEO text (SEO phase 8). Empty = the page uses the standard template.
+  const [metaTitle, setMetaTitle] = useState(product?.metaTitle ?? "");
+  const [metaDescription, setMetaDescription] = useState(
+    product?.metaDescription ?? "",
   );
   const [tags, setTags] = useState(
     product?.specs
@@ -382,6 +389,43 @@ export function AdminProductForm({
   const [modelNumber, setModelNumber] = useState(
     product?.modelNumber ?? "",
   );
+  // The generated title / description for what is on the form right now (same
+  // generator the apply script uses). Shown as the placeholder and offered
+  // through "Use suggestion"; it is NOT saved unless the admin accepts it.
+  const seoSuggestion = useMemo(() => {
+    const chain: string[] = [];
+    for (
+      let cur = categories.find((c) => c.slug === (subcategorySlug || categorySlug));
+      cur && chain.length < 8;
+      cur = cur.parentSlug ? categories.find((c) => c.slug === cur?.parentSlug) : undefined
+    ) {
+      chain.push(cur.name);
+    }
+    const labelOf = new Map(attributes.map((a) => [a.key, a.name]));
+    const specs: SpecFact[] = [
+      ...attributeRows
+        .filter((row) => row.key.trim() && row.value.trim())
+        .map((row) => ({ key: row.key, label: labelOf.get(row.key) ?? row.key, value: row.value })),
+      ...specGroupSections.flatMap((group) =>
+        group.rows
+          .filter((row) => row.key.trim() && row.value.trim())
+          .map((row) => ({ label: row.key, value: row.value })),
+      ),
+    ];
+    if (!name.trim()) {
+      return null;
+    }
+    return generateProductSeo({
+      id: product?.id ?? "new",
+      name,
+      sku,
+      modelNumber: modelNumber || null,
+      brand: brands.find((b) => b.slug === brandSlug)?.name ?? "",
+      categoryChain: chain,
+      specs,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, sku, modelNumber, brandSlug, categorySlug, subcategorySlug, categories, brands, attributeRows, specGroupSections, attributes]);
   const [relatedProducts, setRelatedProducts] = useState<
     { id: string; slug: string; name: string }[]
   >(() => product?.relatedProducts ?? []);
@@ -578,6 +622,8 @@ export function AdminProductForm({
           overview: description,
           overviewHtml,
           detailsHtml,
+          metaTitle,
+          metaDescription,
           quantity: stockQty,
           lowStockThreshold: lowStockWarning ? lowStockQty : "0",
           isActive: publish,
@@ -770,9 +816,6 @@ export function AdminProductForm({
                   setName(next);
                   if (mode === "create") {
                     setSlug(slugify(next));
-                  }
-                  if (!seoTitle || seoTitle === name) {
-                    setSeoTitle(next);
                   }
                 }}
                 className={adminFormControlClass}
@@ -1134,11 +1177,34 @@ export function AdminProductForm({
               <AdminFormLabel htmlFor="seo-title">Meta title</AdminFormLabel>
               <Input
                 id="seo-title"
-                value={seoTitle}
-                onChange={(event) => setSeoTitle(event.target.value)}
-                placeholder="Meta title"
+                value={metaTitle}
+                onChange={(event) => setMetaTitle(event.target.value)}
+                placeholder={seoSuggestion?.title ?? "Meta title"}
+                maxLength={100}
                 className={adminFormControlClass}
               />
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    metaTitle.trim().length > SEO_TITLE_MAX
+                      ? "font-medium text-red-600"
+                      : "text-neutral-500",
+                  )}
+                >
+                  {metaTitle.trim().length} / {SEO_TITLE_MAX}
+                </span>
+                {seoSuggestion ? (
+                  <button
+                    type="button"
+                    className="text-blue-600 hover:underline disabled:opacity-50"
+                    disabled={pending}
+                    onClick={() => setMetaTitle(seoSuggestion.title)}
+                  >
+                    Use suggestion
+                  </button>
+                ) : null}
+              </div>
             </div>
             <div className="space-y-1.5">
               <AdminFormLabel htmlFor="seo-description">
@@ -1147,10 +1213,44 @@ export function AdminProductForm({
               <Textarea
                 id="seo-description"
                 rows={4}
-                value={seoDescription}
-                onChange={(event) => setSeoDescription(event.target.value)}
+                value={metaDescription}
+                onChange={(event) => setMetaDescription(event.target.value)}
+                placeholder={seoSuggestion?.metaDescription ?? "Meta description"}
+                maxLength={200}
                 className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
               />
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    metaDescription.trim().length > SEO_DESC_MAX
+                      ? "font-medium text-red-600"
+                      : "text-neutral-500",
+                  )}
+                >
+                  {metaDescription.trim().length} / {SEO_DESC_MAX}
+                </span>
+                {seoSuggestion ? (
+                  <button
+                    type="button"
+                    className="text-blue-600 hover:underline disabled:opacity-50"
+                    disabled={pending}
+                    onClick={() => setMetaDescription(seoSuggestion.metaDescription)}
+                  >
+                    Use suggestion
+                  </button>
+                ) : null}
+              </div>
+              <p className="text-xs text-neutral-500">
+                Left empty, the product page uses the standard title and
+                description. Text saved here is used exactly as typed
+                {product?.seoSource === "generated"
+                  ? " (currently generated by the SEO tool; editing it marks it as hand-written)"
+                  : product?.seoSource === "admin"
+                    ? " (hand-written)"
+                    : ""}
+                .
+              </p>
             </div>
             <div className="space-y-1.5">
               <AdminFormLabel>Meta image</AdminFormLabel>

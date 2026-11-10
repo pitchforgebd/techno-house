@@ -597,7 +597,6 @@ async function main() {
   const lenBuckets = [["40 or fewer", (n) => n <= 40], ["41–60", (n) => n > 40 && n <= 60], ["61–100", (n) => n > 60 && n <= 100], ["over 100", (n) => n > 100]];
   const slugBuckets = [["40 or fewer", (n) => n <= 40], ["41–60", (n) => n > 40 && n <= 60], ["61–79", (n) => n > 60 && n < 80], ["80 (the cap)", (n) => n >= 80]];
   const dist = (values, buckets) => buckets.map(([label, test]) => [label, values.filter(test).length, pct(values.filter(test).length, values.length)]);
-  const line = (label, n) => `| ${label} | ${n} | ${pct(n, total)} |`;
 
   const summary = [
     `# Product SEO report (phase 8, read-only)`,
