@@ -9100,3 +9100,17 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       Incident while testing: `git worktree remove --force` followed the
       worktree .next/node_modules links and emptied 6 main packages (twice); restored via npm
       install from the unchanged lockfile (see SEO-NOTES Phase 6).
+
+- [x] AD-400 Security: promotion terms sanitized on read + reviewed raw-HTML
+      sink allowlist (branch `seo-phase-6-pages`, separate commit, NOT merged).
+      `/offers/[slug]` rendered `Promotion.descriptionHtml` raw (sanitized on
+      save only, unlike every other sink); it now runs `sanitizeBlogBody` on
+      read. `npm run test:security` was 1/22 red because three sinks were not
+      on the reviewed allowlist (marquee bar 2026-10-16, offers page
+      2026-10-23, category-intro-block Phase 5): all three added with reasons,
+      plus pin checks for the offers/marquee/category-intro sanitizing and a
+      fixture check (saved terms unchanged by a second sanitize; hostile
+      value neutralised). Now 27/27. Verified on a production build against a
+      throwaway DB: stored terms HTML byte-identical to the rendered page;
+      a script/onerror/javascript: value written straight to the DB is stripped.
+      No promotion in the dev DB had a description (fixture used).
