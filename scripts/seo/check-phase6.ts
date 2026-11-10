@@ -24,8 +24,11 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { faqItemsFromHtml } from "@/lib/seo/json-ld";
+import { faqItemsFromHtml, merchantReturnPolicyJsonLd, offerShippingDetailsJsonLd, productJsonLd } from "@/lib/seo/json-ld";
+import { displayedOffer } from "@/lib/catalog/displayed-offer";
+import type { ProductDetail } from "@/lib/data";
 import {
+  MERCHANT_RETURN_POLICY_MARKUP,
   POLICIES,
   POLICY_TOKENS,
   fillPolicyTokens,
@@ -116,6 +119,26 @@ check(
   read("lib/orders/create-order.ts").includes("const session = await getCustomerSession();") &&
     read("features/checkout/checkout-view.tsx").includes("Checkout requires a customer account."),
 );
+
+// Offer markup (owner decision, 2026-11-10): no hasMerchantReturnPolicy while
+// /returns accepts only wrong/damaged/dead-on-arrival items; shippingDetails stays.
+equal("return policy markup flag is off by default", MERCHANT_RETURN_POLICY_MARKUP, false);
+{
+  const offer = displayedOffer({
+    name: "T", sku: "T-1", price: { amount: 1000, currency: "BDT" }, compareAtPrice: null,
+    stockStatus: "in_stock", isPreOrder: false, isComingSoon: false, variantChoices: [],
+    image: { src: "/uploads/products/a.webp", alt: "a" }, images: [],
+  });
+  const product = { brandName: "B", modelNumber: null, overview: ["x"], overviewHtml: null, discountEndsAt: null } as Pick<
+    ProductDetail, "brandName" | "modelNumber" | "overview" | "overviewHtml" | "discountEndsAt"
+  >;
+  const offers = productJsonLd({ product, offer, path: "/product/t", policies: { returnsPage: true, shippingPage: true, returnable: true } }).offers as Record<string, unknown>;
+  check("offer: no hasMerchantReturnPolicy even with /returns published", offers.hasMerchantReturnPolicy === undefined);
+  check("offer: shippingDetails kept", JSON.stringify(offers.shippingDetails) === JSON.stringify(offerShippingDetailsJsonLd()));
+  check("offer: no hasMerchantReturnPolicy without policies either", (productJsonLd({ product, offer, path: "/product/t" }).offers as Record<string, unknown>).hasMerchantReturnPolicy === undefined);
+  // Kept, tested, ready for the flag.
+  equal("return policy builder: finite window days", (merchantReturnPolicyJsonLd({ returnable: true }) as Record<string, unknown>).merchantReturnDays, POLICIES.reportDeadOnArrivalDays);
+}
 
 // Deploying the code before seeding changes nothing: empty body → placeholder.
 const pagesLib = read("lib/content/pages.ts");
@@ -348,6 +371,44 @@ async function live(base: string): Promise<void> {
     }
   }
   console.log(`internal links checked: ${linkCache.size}; redirects: ${redirects.length ? redirects.join("; ") : "none"}`);
+  await liveProducts(base);
+}
+
+/** Product pages: shippingDetails present on offers, hasMerchantReturnPolicy absent (flag off). */
+async function liveProducts(base: string): Promise<void> {
+  const index = await get(base, "/sitemap-products.xml");
+  const listed = [...index.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => new URL(match[1] ?? "").pathname);
+  check("sitemap-products.xml lists products", listed.length > 0);
+  // --products=slug,slug: products known to be priced and in stock; each must
+  // carry an offer. Offers need stock, so a random sample may find none.
+  const named = (arg("products")?.split(",").map((slug) => `/product/${slug.trim()}`).filter(Boolean)) ?? [];
+  let withOffer = 0;
+  let withShipping = 0;
+  // Evenly spread over the whole sitemap: many listings have a hidden price
+  // (no offer), so the first few products alone can all be offer-less.
+  const step = Math.max(1, Math.floor(listed.length / 120));
+  const sample = [...named, ...listed.filter((_, index) => index % step === 0).slice(0, 120)];
+  for (const path of sample) {
+    const page = await get(base, path);
+    if (page.status !== 200) continue;
+    for (const match of page.text.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+      const block = JSON.parse(match[1] ?? "{}") as { "@type"?: string; offers?: Record<string, unknown> };
+      if (block["@type"] !== "Product" || !block.offers) continue;
+      withOffer += 1;
+      check(`${path}: no hasMerchantReturnPolicy`, block.offers.hasMerchantReturnPolicy === undefined);
+      if (block.offers.shippingDetails) {
+        withShipping += 1;
+        equal(`${path}: shippingDetails = policies.ts`, JSON.stringify(block.offers.shippingDetails), JSON.stringify(offerShippingDetailsJsonLd()));
+      }
+      check(`${path}: no shippingRate`, !JSON.stringify(block.offers).includes("shippingRate"));
+    }
+  }
+  console.log(`product offers checked: ${withOffer} (with shippingDetails: ${withShipping})`);
+  if (named.length > 0) {
+    check("named products carry an offer with shippingDetails (needs /shipping published)", withShipping >= named.length, `${withShipping}/${named.length}`);
+  } else if (withOffer === 0) {
+    console.log("note: no sampled product has an offer (none in stock); pass --products=<in-stock slugs> to check them");
+  }
 }
 
 /** 375px wide: nothing in the page content sticks out past the viewport. */

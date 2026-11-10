@@ -635,14 +635,20 @@ those rows with a seed script rather than moving the pages to files.
   `contactPoint` from policies.ts: the three sales numbers as customer
   service, the RMA number as technical support, support email, areaServed
   BD, en + bn; geo and hasMap kept; still no openingHours.
-- **Product Offer** (only while /returns resp. /shipping are published —
-  checked per request, cached): `hasMerchantReturnPolicy` = BD,
-  MerchantReturnFiniteReturnWindow, `merchantReturnDays` 3
-  (reportDeadOnArrivalDays), ReturnByMail + ReturnInStore, link to /returns;
-  products under the `software` category → MerchantReturnNotPermitted (the
-  page excludes software/licences/codes). `shippingDetails` = destination BD,
-  handlingTime 1–2 days, transitTime 1–7 days (the two windows combined), not
-  for pre-order offers.
+- **Product Offer**: `shippingDetails` (only while /shipping is published —
+  checked per request, cached) = destination BD, handlingTime 1–2 days,
+  transitTime 1–7 days (the two windows combined), not for pre-order offers.
+  **`hasMerchantReturnPolicy` is OFF** (owner decision, 2026-11-10, before
+  merge): a finite return window of 3 days reads as general returns, but
+  /returns accepts only wrong, missing or damaged items (24 hours) and
+  dead-on-arrival items (3 days), not change of mind, so the schema would not
+  match the visible policy. The builder stays in `lib/seo/json-ld.ts`
+  (BD, finite window, `merchantReturnDays` 3, ReturnByMail + ReturnInStore,
+  link to /returns; software category → MerchantReturnNotPermitted) behind
+  `MERCHANT_RETURN_POLICY_MARKUP` in `lib/site/policies.ts` (default `false`,
+  also needs /returns published) and is unit-tested, so switching it on later
+  is a one-line change. While it is off the product page does not even query
+  /returns.
   **Left out on purpose:** `returnFees` (who pays depends on whose error it
   was — no clean schema value), `shippingRate` (zone + weight based, shown at
   checkout), separate Dhaka / outside-Dhaka shipping regions (no clean region
@@ -674,39 +680,49 @@ published-page gate"), `package.json` (script only — no dependency change).
 
 #### Results (2026-11-10)
 
-- `tsc --noEmit` 0 errors; eslint clean on all changed files; `next build`
-  OK (Turbopack, build `fP28YpiJ_sdMKQfFQ0kVq`, built in a separate worktree
+- Final run after the return-policy flag change (before merge): `tsc
+  --noEmit` 0 errors; eslint clean on all changed files; `next build` OK
+  (Turbopack, build `xW3x8eCV4Y9ZCUq-AN_Bq`, built in a separate worktree
   because a `next dev` was running in the main folder).
-- Offline: `test:seo-phase6` 54, `test:seo` 90, `seo:check-schema --offline`
-  44, `test:seo-phase5` 198, `test:seo-meta` 383 — all pass.
+- Offline: `test:seo-phase6` 59, `test:seo` 92, `seo:check-schema --offline`
+  49, `test:seo-phase5` 198, `test:seo-meta` 383 — all pass.
 - Live, against that build (`next start` on 127.0.0.1:3200, proven fresh: its
   `/_next/static/<BUILD_ID>/_buildManifest.js` answered 200) pointed at a
   throwaway copy of the dev DB, seeded with `--apply --overwrite`:
-  `test:seo-phase6 --base=… --mobile` **312/312**: 200, title + description =
+  `test:seo-phase6 --base=… --mobile --products=<5 in-stock slugs>`
+  **334/334**: 200, title + description =
   content file and unique, one H1, h1 > h2 > h3, canonical, no noindex, all
   JSON-LD parses, FAQPage = the file's 19 Q/As, 11 internal links all 200 (no
   redirects: /track, /b2b/register, /product-request, /pc-builder, the 8
   pages), phones/emails = policies.ts, no placeholder/under
   development/lorem/TODO/{{token}} in the content, figures as required, all
   eight in sitemap-pages.xml and linked from header/footer, 375px: no
-  horizontal scroll, tables fit. `seo:check-schema --products=25 --paths=<the
-  eight>`: 2,284 checks pass.
+  horizontal scroll, tables fit; the 5 named in-stock products (one software)
+  carry `shippingDetails` and no `hasMerchantReturnPolicy`.
+  `seo:check-schema --products=25 --paths=<the eight>`: 2,250 checks pass.
+  (Offers need stock; only 50 of ~4,300 dev-DB products have one, so the
+  checker takes `--products=<slugs>` for products that must carry an offer.)
 - Seed exercised on the throwaway DB only: dry run, refusals (no / wrong
   `--confirm-db`, unknown `--only`), create, skip-without-`--overwrite`,
   overwrite, idempotent re-run ("nothing to change"), both `--restore`s
   (back to the exact original state, including the deleted /privacy row),
-  empty body filled without `--overwrite`. Software product → NotPermitted,
-  /returns emptied → no return policy on offers, map link = hasMap.
+  empty body filled without `--overwrite`. With /about and /returns bodies
+  emptied the pages rendered the unchanged placeholder (same H1, text and
+  title as production, no new JSON-LD). The "/shipping unpublished → no
+  `shippingDetails`" gate is covered by the offline schema checks, not by a
+  live run; map link = hasMap.
 - **Not run on production or the dev DB** (`--apply` never used there).
 
-Incident during testing (fixed): removing the build worktree with
-`git worktree remove --force` followed its `node_modules` junction and deleted
-six packages in the main `node_modules` (@node-rs/argon2, @prisma/adapter-pg,
-@prisma/client, postcss, puppeteer, sharp). Restored with `npm install` from the
-unchanged lockfile; 0 packages missing, tsc 0 errors, argon2 / sharp /
-puppeteer / Prisma smoke-tested. Any `next dev`/`next start` that was running
-at 22:45 should be restarted. Next time: remove the junction first and check
-it is gone before removing a worktree.
+Incident during testing (fixed, happened twice): removing the build worktree
+with `git worktree remove --force` emptied six packages in the main
+`node_modules` (@node-rs/argon2, @prisma/adapter-pg, @prisma/client, postcss,
+puppeteer, sharp). Cause: the Turbopack build writes links in
+`<worktree>/.next/node_modules` that point at the real packages, and the
+removal followed them (deleting the `node_modules` junction first does not
+help). Restored each time with `npm install` from the unchanged lockfile; 0
+packages missing, tsc 0 errors, argon2 / sharp / puppeteer / Prisma
+smoke-tested. `package-lock.json` is identical to HEAD. Any `next dev` /
+`next start` that was running at 22:45 or 23:00 should be restarted.
 
 #### To publish (owner, when ready)
 
@@ -732,12 +748,11 @@ Rich Results Test on /faq and one product.
 2. **Footer column has no /warranty link** on the live site (the header has
    it, so the "header or footer" check passes). Footer columns are DB
    settings (Admin → footer settings); add it there if wanted.
-3. **Return window in schema = 3 days.** Google reads
-   MerchantReturnFiniteReturnWindow + 3 days as "returns within 3 days";
-   the page accepts returns only for wrong/damaged (24 h) or dead-on-arrival
-   (3 days) items, not change of mind. This follows the phase-6 instruction
-   (merchantReturnDays = reportDeadOnArrivalDays); say if you would rather
-   omit the return policy markup.
+3. **Offer return-policy markup is off** (see "Product Offer" above).
+   Switch it on with `MERCHANT_RETURN_POLICY_MARKUP = true` in
+   `lib/site/policies.ts` only if the owner decides the policy/wording should
+   change, or a schema value that matches "wrong/damaged/dead-on-arrival only"
+   is chosen.
 4. **Site-wide marquee** "The website is currently under development" is still
    live (kept since phase 2 by instruction). The checker scans page content
    only, so it passes, but visitors and crawlers still see it next to the new
@@ -748,10 +763,20 @@ Rich Results Test on /faq and one product.
    01410-881771 and the RMA line 01311-211433), not from Business Settings.
    If a number changes, change it in `lib/site/policies.ts` (and the footer
    setting).
-7. Pre-existing, not from this phase: `npm run test:security` fails 1/22
-   ("unreviewed dangerouslySetInnerHTML" in offers/[slug], the marquee bar and
-   category-intro-block, from phases 1/4/5) — those three need adding to the
-   security script's reviewed list after a look.
+7. **`npm run test:security` fails 1/22** ("no unreviewed
+   dangerouslySetInnerHTML in app sources"): three raw-HTML sinks are not on
+   the script's reviewed allowlist. Two predate the SEO work, one is Phase 5:
+   `components/layout/marquee-notice-bar.tsx` (AD-378, 2026-10-16; text is
+   sanitized on read by `sanitizeMarqueeHtml`, safe),
+   `features/catalog/category-intro-block.tsx` (Phase 5; HTML built from repo
+   files under `content/` through escape + `sanitizeBlogBody`, safe) and
+   `app/(storefront)/offers/[slug]/page.tsx` (2026-10-23; renders
+   `Promotion.descriptionHtml` raw: sanitized when saved by
+   `sanitizeRichBody`, but NOT again on read, unlike every other allowlisted
+   sink). Test left unchanged, owner decision pending: proposed fix is
+   `sanitizeBlogBody(promotion.descriptionHtml)` on the offers page (one line,
+   same pattern as the product page), then add the three files to the
+   allowlist with these reasons.
 
 ## 3. Manual actions for the operator
 
@@ -780,9 +805,9 @@ Rich Results Test on /faq and one product.
   validate the live site (read-only): `npm run seo:check-schema --
   --base=https://technohouse.com.bd --products=40`, and test one product in
   Google's Rich Results Test (https://search.google.com/test/rich-results).
-- **Phase 3 — shipping/returns:** once `/shipping` and `/returns` state real
-  delivery charges/times and a return window, `shippingDetails` and
-  `hasMerchantReturnPolicy` can be added from them (ask for it).
+- **Phase 3 — shipping/returns:** done in Phase 6 for `shippingDetails`
+  (delivery times). `hasMerchantReturnPolicy` is built but switched off
+  (`MERCHANT_RETURN_POLICY_MARKUP` in `lib/site/policies.ts`; see Phase 6).
 - **Phase 3 — shop opening hours:** not in the schema yet. When the real shop
   hours and days are confirmed (separate from the 9:00–22:00 support hours),
   they can be added as `openingHoursSpecification`.

@@ -21,6 +21,7 @@ import { categoryAncestors } from "@/lib/catalog/category-tree";
 import { categoryRepository, productRepository, reviewRepository } from "@/lib/data";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
 import { isContentPagePublished } from "@/lib/content/pages";
+import { MERCHANT_RETURN_POLICY_MARKUP } from "@/lib/site/policies";
 import { canonicalUrl } from "@/lib/seo/canonical";
 import { resolveSlugRedirect } from "@/lib/seo/slug-redirects";
 import {
@@ -288,11 +289,13 @@ export default async function ProductPage({
   const categoryAncestry = productCategory
     ? categoryAncestors(productCategory, allCategories)
     : [];
-  // Return/delivery terms go into the Offer markup only once the /returns
-  // and /shipping pages that state them are live (SEO phase 6). Software,
+  // Delivery times go into the Offer markup only once the /shipping page that
+  // states them is live (SEO phase 6). The return policy is off by default
+  // (MERCHANT_RETURN_POLICY_MARKUP): a finite return window would read as
+  // general returns, which /returns does not offer. When it is on, software,
   // licences and digital codes are not returnable (/returns).
   const [returnsPage, shippingPage] = await Promise.all([
-    isContentPagePublished("returns"),
+    MERCHANT_RETURN_POLICY_MARKUP ? isContentPagePublished("returns") : false,
     isContentPagePublished("shipping"),
   ]);
   const returnable = ![...categoryAncestry, productCategory].some(

@@ -11,9 +11,11 @@
  *     checkout (lib/shipping/zone-rates.ts), so there is no single rate to
  *     state. shippingDetails carries the destination and delivery times only.
  *
- * Offer `hasMerchantReturnPolicy` / `shippingDetails` (SEO phase 6) are built
- * from lib/site/policies.ts, and only while the /returns and /shipping pages
- * that state those terms are actually published (the caller checks).
+ * Offer `shippingDetails` (SEO phase 6) is built from lib/site/policies.ts, and
+ * only while the /shipping page that states those times is published (the
+ * caller checks). Offer `hasMerchantReturnPolicy` is OFF by default
+ * (`MERCHANT_RETURN_POLICY_MARKUP` in policies.ts): a finite window of N days
+ * reads as general returns, which the /returns page does not offer.
  */
 import type { BreadcrumbItem } from "@/components/ui/breadcrumbs";
 import type { StorefrontBranding } from "@/lib/business/storefront-branding";
@@ -24,7 +26,11 @@ import {
 import type { ProductDetail, StockStatus } from "@/lib/data";
 import { canonicalUrl } from "@/lib/seo/canonical";
 import { SITE_NAME } from "@/lib/seo/page-meta";
-import { POLICIES, policyPhoneE164 } from "@/lib/site/policies";
+import {
+  MERCHANT_RETURN_POLICY_MARKUP,
+  POLICIES,
+  policyPhoneE164,
+} from "@/lib/site/policies";
 
 const CONTEXT = "https://schema.org";
 const PLACEHOLDER_IMAGE = "/products/placeholder.svg";
@@ -425,8 +431,13 @@ export function offerShippingDetailsJsonLd() {
 }
 
 export type OfferPolicies = {
-  /** /returns is published: add hasMerchantReturnPolicy. */
+  /**
+   * /returns is published: add hasMerchantReturnPolicy, but only while
+   * `MERCHANT_RETURN_POLICY_MARKUP` is on.
+   */
   returnsPage: boolean;
+  /** Overrides `MERCHANT_RETURN_POLICY_MARKUP` (tests only). */
+  returnPolicyMarkup?: boolean;
   /** /shipping is published: add shippingDetails (not for pre-orders). */
   shippingPage: boolean;
   /** False for software / licences / digital codes. */
@@ -495,9 +506,11 @@ export function productJsonLd({
             "@id": ORGANIZATION_ID(),
             name: SITE_NAME,
           },
-          hasMerchantReturnPolicy: policies?.returnsPage
-            ? merchantReturnPolicyJsonLd({ returnable: policies.returnable })
-            : undefined,
+          hasMerchantReturnPolicy:
+            policies?.returnsPage &&
+            (policies.returnPolicyMarkup ?? MERCHANT_RETURN_POLICY_MARKUP)
+              ? merchantReturnPolicyJsonLd({ returnable: policies.returnable })
+              : undefined,
           // A pre-order ships when stock arrives (the product page says
           // when), not on the usual delivery times.
           shippingDetails:

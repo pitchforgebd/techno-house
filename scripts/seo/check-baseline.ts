@@ -314,13 +314,24 @@ function main(): void {
     "Product offers only for a publishable, visible price",
     jsonLdCode.includes("!offer.priceHidden && isPublishablePrice(offer.price)"),
   );
-  // SEO phase 6: return/delivery terms only once the pages stating them are live.
+  // SEO phase 6: delivery times only once /shipping is live; the return policy
+  // is behind MERCHANT_RETURN_POLICY_MARKUP (default false: /returns offers no
+  // general returns, so a finite return window would not match the page).
+  const policiesSrc = readFileSync(join(root, "lib/site/policies.ts"), "utf8");
   check(
-    "shippingDetails / hasMerchantReturnPolicy only behind the published-page gate",
-    jsonLdCode.includes("policies?.returnsPage") &&
-      jsonLdCode.includes("policies?.shippingPage") &&
-      productPage.includes('isContentPagePublished("returns")') &&
+    "shippingDetails only behind the published-page gate",
+    jsonLdCode.includes("policies?.shippingPage") &&
       productPage.includes('isContentPagePublished("shipping")'),
+  );
+  check(
+    "hasMerchantReturnPolicy only behind the flag AND the published-page gate",
+    jsonLdCode.includes("policies?.returnsPage") &&
+      jsonLdCode.includes("MERCHANT_RETURN_POLICY_MARKUP") &&
+      productPage.includes('MERCHANT_RETURN_POLICY_MARKUP ? isContentPagePublished("returns")'),
+  );
+  check(
+    "MERCHANT_RETURN_POLICY_MARKUP defaults to false",
+    /export const MERCHANT_RETURN_POLICY_MARKUP = false;/.test(policiesSrc),
   );
   check("no shippingRate (charges are zone/weight based)", !/shippingRate\s*:/.test(jsonLdCode));
   check(

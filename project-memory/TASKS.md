@@ -9089,12 +9089,14 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       placeholder, so deploying before seeding changes nothing visible.
       JSON-LD: BreadcrumbList on published pages, AboutPage/ContactPage/
       FAQPage (from the rendered Q/A), contactPoint from policies.ts; Offer
-      hasMerchantReturnPolicy + shippingDetails only while /returns and
-      /shipping are published (software → MerchantReturnNotPermitted, no
-      shippingRate, none for pre-orders). Owner decisions 2026-11-10: hand-over
+      shippingDetails only while /shipping is published (no shippingRate,
+      none for pre-orders). Offer hasMerchantReturnPolicy is built but OFF
+      (`MERCHANT_RETURN_POLICY_MARKUP = false` in policies.ts): a 3-day finite
+      window would read as general returns, /returns does not offer that.
+      Owner decisions 2026-11-10: hand-over
       SMS sentence replaced; guest checkout NOT possible (sign-in required), so
       the FAQ order answer is unchanged. `npm run test:seo-phase6`
       (--base=… --mobile for the live + 375px checks). No schema change.
-      Incident while testing: `git worktree remove --force` followed a
-      node_modules junction and deleted 6 main packages; restored via npm
+      Incident while testing: `git worktree remove --force` followed the
+      worktree .next/node_modules links and emptied 6 main packages (twice); restored via npm
       install from the unchanged lockfile (see SEO-NOTES Phase 6).

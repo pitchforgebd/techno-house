@@ -76,6 +76,17 @@ export const POLICIES = {
     "Techno House when the error is ours (wrong item, damaged in transit, dead on arrival); customer otherwise",
 } as const;
 
+/**
+ * Offer-level `hasMerchantReturnPolicy` markup (see `merchantReturnPolicyJsonLd`
+ * in lib/seo/json-ld.ts). OFF on purpose: schema.org can only say "finite
+ * return window, N days", which Google reads as general returns within N days.
+ * /returns accepts returns only for a wrong, missing or damaged item (24 hours)
+ * or a dead-on-arrival one (3 days), not change of mind, so the markup would
+ * not match the visible policy. Turn on only if the owner decides the
+ * wording/policy should change (or a schema value that fits is found).
+ */
+export const MERCHANT_RETURN_POLICY_MARKUP = false;
+
 /** "1–3" (en dash, as the pages print it). */
 export function workingDayRange(range: { min: number; max: number }): string {
   return `${range.min}–${range.max}`;
