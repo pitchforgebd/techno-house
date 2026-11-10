@@ -778,6 +778,248 @@ Rich Results Test on /faq and one product.
    the DB is stripped. No promotion in the dev DB had a description (fixture
    used).
 
+### Phase 8 plan — product-level SEO for ~500 products (investigation + proposal only)
+
+Branch `seo-phase-8-plan` (from main after Phase 6/PR #7). **Nothing in the site
+code, database, nginx or pm2 was changed.** The only new files are
+`scripts/seo/product-seo-report.mjs` (read-only) and this section. Everything
+below that needs production data is a number the owner gets by running the
+report on the server (command at the end). The local DB (`techno_house_dev`,
+4,309 "active" products, 0.6 % with a real image, 98.8 % out of stock) is dev
+data and only proves the script runs; none of its percentages describe the live
+catalogue.
+
+#### 1. Where each product's SEO text comes from today
+
+| Thing | Source (code) | Product fields used |
+|---|---|---|
+| `<title>` | `generateMetadata` in `app/(storefront)/product/[slug]/page.tsx` → `productTitle()` (`lib/seo/page-meta.ts`) | `name`, `brand.name`, names of same-brand siblings (to keep titles unique); variant title when `?variant=` |
+| meta description + OG description | same → `productDescription()` | name/brand, the displayed price, `isPreOrder`, `isComingSoon`, warranty label, EMI config |
+| H1 | `features/product/product-summary.tsx` | `name` (or the selected variant's title) — the raw POS name, not cleaned |
+| main image alt (gallery, OG image alt) | `ProductImage.alt`, passed straight to `<Image alt>` / `openGraph.images.alt` (`lib/data/prisma/product-repository.ts`) | `ProductImage.alt` (a product with no image gets `name`) |
+| JSON-LD Product description | `lib/seo/json-ld.ts` | `overviewHtml` (plain text) else `overview[]` |
+| URL | `Product.slug` | set once at creation / import |
+
+**Template when nothing is stored** (and there is never anything stored, see 2):
+`productTitle` = cleaned short name (`cleanProductName`: POS code, warranty
+blocks and comma spec tails dropped, SHOUTING softened, brand put first) +
+` Price in BD` + ` | Techno House` only if the result is ≤ 60 chars (about a quarter of the local titles); colour /
+part-code variants get extra distinguishing words or the part code.
+`productDescription` = `"{name} price in BD is ৳{price}."` (or "coming soon" /
+"price in BD and availability") + `"{N} year warranty, genuine {Brand}."` +
+`"EMI available."` + `"Delivery across Bangladesh."` + filler, fitted to
+150–160 chars. It states today's price and the warranty label.
+
+**Fields that exist for SEO text:** `Product` has **none**. There is no
+`metaTitle`, `metaDescription`, `metaKeywords`, `seoTitle`, `seoDescription` or
+alt column on `Product`. (They exist on `ContentPage` — `metaTitle`,
+`metaDescription`, `metaKeywords` — and `BlogPost` — `seoTitle`,
+`seoDescription`; `Category` / `Brand` have a `description` column only.)
+`ProductImage.alt` is the only product-level SEO text that is stored.
+
+#### 2. Why the admin meta fields are "not saved" — diagnosis
+
+Admin → Products → **SEO meta tags** card (`features/admin/products/admin-product-form.tsx`):
+`const [seoTitle, setSeoTitle] = useState(product?.name ?? "")` and
+`seoDescription` seeded from `product.overview.join(" ")`, rendered as
+"Meta title" / "Meta description" inputs (lines ~1131–1180). The save handler
+builds `fields: { name, slug, … overview, overviewHtml, … }` and **never includes
+`seoTitle` / `seoDescription`** (no occurrence in the action, in
+`lib/catalog/product-input.ts` or in `lib/catalog/admin-products.ts`), and the
+Prisma `Product` model has no column to put them in. So they are throw-away
+component state: whatever staff type is lost on save, and the box is
+pre-filled with the product name only as a cosmetic default. The same is true of
+the category and brand forms: their "Meta title" is never submitted, and
+"Meta description" is saved into the `description` column (Phase 2 found that
+neither reaches the page meta, which those pages build from templates). Even if a value were stored, `generateMetadata` has no code path that
+reads one: the title and description are always computed.
+
+**Fix (not done):** (a) add nullable `Product.metaTitle`, `metaDescription` (and
+optionally `metaKeywords String[]`, `focusKeyword`) — one additive migration;
+(b) add them to `ProductInput` / `saveAdminProduct` (+ length caps 60 / 160, the
+existing `ContentPage` caps 150 / 300 are too loose) and the product form
+(`fields`) so the card really saves, with a live character counter;
+(c) in `generateMetadata` and the OG tags use the stored value when it is
+non-empty and fall back to `productTitle` / `productDescription` when it is
+empty; (d) read them in the repository select (`lib/data/prisma/product-repository.ts`)
+and the bulk CSV import (new optional `meta_title`, `meta_description` columns).
+Until (a)–(c) ship, nothing typed in that card can reach Google.
+
+#### 3. Proposed deterministic generator (database fields only)
+
+Implemented in `scripts/seo/product-seo-report.mjs` so it can be reviewed on real
+output (`generated.csv` has it for every active product). It reuses the existing
+`cleanProductName` / `cutAtWord`; it states **no price, stock or warranty** and
+invents no spec.
+
+**seoTitle ≤ 60 — "{Brand} {Model} {Type} Price in Bangladesh":**
+1. base = first block of `cleanProductName` (brand first, POS code / warranty /
+   comma spec tail already gone); type = the leaf category name (singular,
+   "(Desktop)" qualifiers stripped, umbrella categories like "All Laptop",
+   "Offers" skipped, walking up to the parent).
+2. Type is added only if the name does not already say it (head noun of any
+   non-umbrella category in the chain appears in the name — "Desktop", "Charger").
+3. Whole base fits with `" Price in Bangladesh"` → use it.
+4. Else drop the spec tail: keep brand + everything up to and including the first
+   model token (first token with a digit after the brand).
+5. Still too long → `" Price in BD"`; still too long → drop the type; then cut at
+   a word boundary (flagged).
+6. `" | Techno House"` is appended only if the title is still ≤ 60.
+7. Uniqueness (to add in the apply step; see 5): titles that collide get the
+   existing `productLabel` sibling words / part code, or are left to review.
+
+**metaDescription 120–155:** `"{Brand Model Type}: {spec}, {spec}, {spec}. Price in BD at Techno House. Delivery in Dhaka and across Bangladesh."`
+- 3–4 specs from `ProductAttributeValue` in a per-family order (laptop/desktop:
+  processor, RAM, storage, graphics, display; monitor: size, panel; components:
+  socket, form factor, RAM type, capacity, wattage …), then spec chips; values
+  that repeat the name or each other ("512GB" / "512GB SSD") are skipped;
+  junk values are filtered (the `graphics` attribute holds "Headset" / "Keyboard"
+  on some products; booleans like Yes/No are dropped).
+- Delivery wording is the /shipping page's own ("Dhaka city" + courier "across
+  Bangladesh"); no delivery days (they differ by area), no price (stale-prone),
+  no warranty (varies by product and the label is free text), no stock.
+- Fillers ("Compare specs and order online.") only to reach 120. Products with
+  fewer than 3 specs get a shorter, still-truthful text and a flag
+  (`only N specs`) — they are the weakest candidates for selection.
+
+**Keywords (CSV only, not shown on the page):** primary
+`{brand model} price in bangladesh`; secondary `… price in bd`, `… specs`,
+`… review`, `{brand} {type} price in bangladesh` (matches keyword map §3.4;
+"review" is a search variant only — no review text or rating is ever claimed).
+
+**Image alt (main image only):** `{Brand} {Model} {Type}` ≤ 125 chars (same
+core as the title, no "Price"), skipped if it would still be junk
+(`isJunkAlt`). Today the alt is the raw name on essentially every product
+(local DB: 100 %), which is long and POS-ugly rather than empty.
+
+**Known limits shown by the local run (all fixable in the apply step):**
+(i) variants share generated titles — **33.7 % of local products collide** (513
+groups; e.g. two Canon ink colours, "Photo Cyan"/"Photo Magenta"), so the apply
+step must reuse `productLabel` disambiguation or skip the product; (ii) the
+existing name cleaner splits at "- " so "MT- M4715G" becomes "MT"; (iii) products
+filed in the wrong category (an ink cartridge under "Large Format Printer")
+get a wrong type word — a data fix, not a generator fix; (iv) `Product.name`
+from POS is the only model source: `Product.modelNumber` is filled on 0 % of
+the local products (the production report prints the real share).
+
+#### 4. Choosing ~500 — three methods (nothing selected yet)
+
+| | Method | Rule | Needs |
+|---|---|---|---|
+| A | Sales / demand | non-cancelled `OrderItem` lines by units, plus `ProductViewEvent` counts, top 500 | order + view history. Both tables exist; locally 4 orders / 31 views, so it only works if the live shop has enough history — the report prints the counts. |
+| B | Category priority + in stock + complete data | in stock/low stock, price > 0, real image, real brand, usable type, ≥ 3 specs; tier-1 families from the keyword map (laptop, desktop, monitor, CPU, GPU, SSD, RAM, motherboard, printer, networking, CC camera), round-robin across families by data completeness | catalogue data only |
+| C | Price tier | highest-priced in-stock products per family (≥ 15,000 BDT), assuming higher value = more search intent | catalogue data only |
+
+**Recommendation: B, with A as the tie-breaker inside each family.** Reasons:
+the generator's output is only trustworthy when specs exist, so B directly
+selects the products it can describe well and keeps the 500 spread over the
+categories the keyword map already targets (A concentrates on whatever sold
+most, and a young shop's sales history is thin and bestseller-skewed; C
+favours expensive items that few people search by model). Out-of-stock
+products are excluded because their price/offer is hidden and Google drops the
+result. The report's section c) gives the counts per method and per family on
+the real catalogue (and the round-robin spread of a 500 pick), so the owner can
+check that ~500 eligible products exist before approving B.
+
+#### 5. Storage and apply design
+
+**generateMetadata does not honour any stored product meta** (section 2), so the
+existing-fields route is not available. Minimal schema change (not run):
+
+    ALTER TABLE "Product"
+      ADD COLUMN "metaTitle" TEXT,
+      ADD COLUMN "metaDescription" TEXT,
+      ADD COLUMN "seoKeyword" TEXT,        -- primary keyword, for the CSV / admin
+      ADD COLUMN "seoGeneratedAt" TIMESTAMP(3),
+      ADD COLUMN "seoGeneratedHash" TEXT;  -- hash of the generated pair at write time
+
+One additive Prisma migration, all nullable, no backfill, rollback = drop the
+columns. `generateMetadata` (title, description, OG) uses `metaTitle` /
+`metaDescription` when non-empty, else the current templates, so un-selected
+products do not change. Image alt needs no column: `ProductImage.alt` exists.
+
+**Apply script** `scripts/seo/apply-product-seo.mjs` (later phase), same
+safety model as `seed-trust-pages.mjs` / `fix-catalog-text.mjs`:
+- dry run by default → writes `docs/seo-reports/product-seo/apply-preview.csv`
+  (id, slug, old → new title / description / alt, length, rule, flags) and
+  `summary.md`; changes nothing;
+- `--apply --confirm-db=<DATABASE_URL db name>`; saves a **JSON backup of every
+  row it will change** (`metaTitle`, `metaDescription`, `seoKeyword`, the main
+  image id + alt) to `docs/seo-reports/product-seo/backups/` first; one
+  transaction per batch of 200;
+- `--restore=<backup.json> --confirm-db=…` puts the old values back (NULL stays
+  NULL);
+- input is a reviewed CSV (`--ids=approved-500.csv`, the owner's selection), never
+  "all products"; `--only=<slug,slug>`;
+- an **admin edit is never overwritten**: a row is skipped when `metaTitle` /
+  `metaDescription` is non-empty and its hash no longer equals
+  `seoGeneratedHash` (i.e. a human changed it) unless `--overwrite`; a main
+  image alt that is already good (not junk, not equal to the raw name) is kept
+  unless `--overwrite-alts`;
+- refuses titles > 60, descriptions outside 120–155, duplicate titles inside the
+  approved set (after sibling disambiguation) and a `needs_review` flag;
+- CSV report of every skip with the reason.
+
+#### 6. Report only — suffix and slugs (no change made)
+
+**"Price in BD" vs "Price in Bangladesh".** The code produces `"… Price in BD"`
+on every product title (`lib/seo/page-meta.ts` `productTitle`; ~25–30 % also
+carry `| Techno House`) and `"price in BD"` in the description. Categories and
+brands use "Price in Bangladesh" (Phase 2). The keyword map's product pattern
+lists both `{model} price in bd` and `{model} price in bangladesh`. A blind
+swap adds 9 characters: on the local DB 1,273 of 4,309 titles would still fit
+in 60 chars, 3,036 would overflow and need shortening, and 670 of 1,087 that
+carry the brand suffix would lose it — every title changes. The proposed
+generator uses "Price in Bangladesh" on 3,952 of 4,309 (92 %) and falls back to
+"Price in BD" only when brand + model + type alone exceed 60 chars. Run the
+report on production for the real numbers (section "Title suffix report").
+
+**Slugs.** `slugifyProduct(name)` = lower-case, non-alphanumerics → `-`, cut at
+`PRODUCT_SLUG_MAX = 80` (`lib/catalog/product-input.ts`); bulk import uses the
+CSV `slug` column or the same function on the full POS name
+(`lib/catalog/bulk-csv.ts`). So long names give long slugs that embed spec
+strings and are cut mid-word. Local DB: 32 % at the 80-char cap, 83 % with 8+
+segments or an embedded spec (gb/tb/inch/w), median 69. Competitors use
+`/dell-latitude-3520-core-i5-laptop`. A short slug can be derived from the same
+brand + model + type core the title uses, but **changing slugs is out of scope
+for Phase 8 and needs an owner decision**: every changed slug needs a 308 in
+`lib/seo/slug-redirects.json` (mechanism and `fix-catalog-text.mjs --fix=slugs`
+already exist from Phase 5, which refuses to run unless the redirects are
+deployed), collisions need disambiguation (the Cyan/Magenta ink example above
+would produce the same short slug), and every redirect has to be maintained. Recommended order: ship title/description/alt for the 500 first,
+measure in Search Console, then decide slugs for the same 500 only.
+
+#### Needs owner decision
+
+1. **Approve the schema change** (nullable `Product.metaTitle`, `metaDescription`,
+   `seoKeyword`, hash/timestamp) and the admin fix so the existing "SEO meta tags"
+   card really saves. Without it nothing can be stored.
+2. **Selection method** — recommended B (category + stock + complete data, A as
+   tie-breaker); confirm after seeing the production counts.
+3. **"Price in Bangladesh" on product titles** (generator default, "Price in BD"
+   only as a length fallback) — or keep "Price in BD" everywhere.
+4. **Description wording**: no price, stock or warranty in the generated text
+   (today's template quotes the live price and warranty label). Approve, or say
+   which of them to keep (price goes stale; warranty label is free text).
+5. **Duplicates**: when two products generate the same title, disambiguate with
+   colour / part code (as the storefront does today) or leave them to the
+   current template.
+6. **Slugs**: leave as they are (recommended for now) or plan short slugs with
+   redirects for the selected 500 later.
+7. **Data fixes outside the generator**: wrong-category products, junk `graphics`
+   values, products with fewer than 3 specs (excluded from selection).
+
+#### Run the report on the server (read-only)
+
+    cd ~/techno-house && git pull origin seo-phase-8-plan   # or copy scripts/seo/product-seo-report.mjs
+    npx tsx scripts/seo/product-seo-report.mjs
+
+It prints `database: technohouse — READ-ONLY …`, writes `docs/seo-reports/product-seo/`
+(`summary.md`, `generated.csv`, `samples.csv`, `profile-*.csv`,
+`selection-counts.csv`; git-ignored) and exits. Paste `summary.md` back; it
+contains no secrets. It has no `--apply` flag, only SELECTs, and the Prisma client
+is wrapped so any write call throws.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
