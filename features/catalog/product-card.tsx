@@ -149,7 +149,15 @@ function cardImageLoadingProps(
     : { loading: "eager" };
 }
 
-/** Homepage, wishlist, and catalog grid card. */
+/**
+ * Homepage, wishlist, and catalog grid card.
+ *
+ * Every link to the product here (and in `CatalogProductCard` and the hover
+ * icons) is `prefetch={false}`: a listing shows ~20 cards, and the default
+ * viewport prefetch fired a route request per card (27 `_rsc` requests,
+ * 52 KB, on production's category page, starting 1.3 s in) that competes with
+ * the page's own scripts. The product page is requested on click instead.
+ */
 export function ProductCard({
   product,
   imageLoading,
@@ -170,7 +178,7 @@ export function ProductCard({
         below, was most of the dead air in the card.
       */}
       <div className="relative overflow-hidden border-b border-border/60 bg-surface">
-        <Link href={href} className="block">
+        <Link href={href} prefetch={false} className="block">
           <div className="relative aspect-[4/3]">
             <Image
               src={product.image.src}
@@ -232,7 +240,7 @@ export function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col px-3.5 pt-3 pb-3.5 sm:px-4 sm:pb-4">
-        <Link href={href}>
+        <Link href={href} prefetch={false}>
           {/*
             Two lines are reserved so prices line up across a grid row.
             `min-h` is expressed in `em` so it tracks the line height
@@ -298,6 +306,7 @@ export function ProductCard({
         <div className="mt-auto grid grid-cols-3 gap-1.5 pt-3">
           <Link
             href={href}
+            prefetch={false}
             className={buttonClassName({
               variant: "ink",
               size: "sm",
@@ -357,7 +366,7 @@ export function CatalogProductCard({
         real height off every row in the grid.
       */}
       <div className="relative overflow-hidden bg-surface-muted">
-        <Link href={href} className="block">
+        <Link href={href} prefetch={false} className="block">
           {/*
             `object-contain` was still leaving side gaps on any product photo
             that already has its own built-in whitespace margin (most of
@@ -432,7 +441,7 @@ export function CatalogProductCard({
           full-bleed to the card edges while everything else keeps its
           breathing room. */}
       <div className="flex flex-1 flex-col px-3 pt-2.5 pb-3">
-        <Link href={href}>
+        <Link href={href} prefetch={false}>
           <h3 className="line-clamp-2 min-h-9 text-label font-semibold tracking-tight text-text">
             {product.name}
           </h3>
