@@ -276,17 +276,21 @@ function previewRow({ product, result, decision, alt }, chain) {
     new_title: result.title, new_title_len: result.title.length, title_rule: result.titleRule,
     new_meta_description: result.metaDescription, new_meta_len: result.metaDescription.length,
     keyword: result.primaryKeyword, secondary_keywords: result.secondaryKeywords.join(" | "),
-    flags: result.flags.join("; "), model_tokens_lost: result.modelTokensLost.join(" "), collision_group: result.collisionGroup ?? "",
+    flags: result.flags.join("; "), model_tokens_lost: result.modelTokensLost.join(" "), bad_chars: result.badChars.join(" | "), zero_specs: result.zeroSpecs.join(" | "), collision_group: result.collisionGroup ?? "",
     new_alt: result.imageAlt, alt_action: alt ? `set (was "${alt.before}")` : "",
   };
 }
-const PREVIEW_HEADER = ["id", "slug", "name", "category", "action", "current_title", "stored_title", "stored_source", "new_title", "new_title_len", "title_rule", "new_meta_description", "new_meta_len", "keyword", "secondary_keywords", "flags", "model_tokens_lost", "collision_group", "new_alt", "alt_action"];
+const PREVIEW_HEADER = ["id", "slug", "name", "category", "action", "current_title", "stored_title", "stored_source", "new_title", "new_title_len", "title_rule", "new_meta_description", "new_meta_len", "keyword", "secondary_keywords", "flags", "model_tokens_lost", "bad_chars", "zero_specs", "collision_group", "new_alt", "alt_action"];
 
 async function writePreview(rows) {
   await mkdir(OUT, { recursive: true });
   await writeCsv("apply-preview.csv", PREVIEW_HEADER, rows.map((entry) => previewRow(entry, entry.chain)));
   const lost = rows.filter(({ result }) => result.flags.includes("model_token_lost"));
   const foreign = rows.filter(({ result }) => result.flags.includes("foreign_code"));
+  const badChars = rows.filter(({ result }) => result.flags.includes("bad_chars"));
+  const zeroSpec = rows.filter(({ result }) => result.flags.includes("spec_zero"));
+  const kinds = new Map();
+  for (const { result } of badChars) for (const kind of result.badChars) kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
   const noSuffix = rows.filter(({ result }) => result.flags.includes("title_without_price_suffix")).length;
   const lines = [
     `# Product SEO ${APPLY ? "APPLY" : "DRY RUN"}`, "",
@@ -297,6 +301,12 @@ async function writePreview(rows) {
     ...lost.slice(0, 25).map(({ product, result }) => `- ${product.slug}: lost ${result.modelTokensLost.join(", ")}`),
     ...(lost.length > 25 ? [`- … ${lost.length - 25} more (column model_tokens_lost in apply-preview.csv)`] : []), "",
     `foreign_code (a code in the title that is not in the raw name; never written): ${foreign.length}`,
+    `**bad_chars: ${badChars.length}** (a quote or bracket, a character outside the safe set, a double space or a hyphen at the edge of a word in the title, keyword or description; never written)${badChars.length ? ":" : ""}`,
+    ...(badChars.length ? [`- by kind: ${[...kinds.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => `${k} x${n}`).join(", ")}`] : []),
+    ...badChars.slice(0, 25).map(({ product, result }) => `- ${product.slug}: ${result.badChars.join("; ")}`),
+    ...(badChars.length > 25 ? [`- … ${badChars.length - 25} more (column bad_chars in apply-preview.csv)`] : []),
+    `**spec_zero: ${zeroSpec.length}** (a description spec value that is zero or empty, e.g. "0GB storage"; never written)${zeroSpec.length ? ":" : ""}`,
+    ...zeroSpec.slice(0, 25).map(({ product, result }) => `- ${product.slug}: ${result.zeroSpecs.join("; ")}`),
     `Titles with no "Price in …" suffix (model core + type only, nothing dropped from the core): ${noSuffix}`, "",
     `Alts to change (--apply-alts ${APPLY_ALTS ? "ON" : "off"}): ${rows.filter((r) => r.alt).length}`, "",
     "Review: apply-preview.csv (current vs new title, description, keyword, flags, collision group).",

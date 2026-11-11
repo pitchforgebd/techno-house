@@ -18,6 +18,8 @@
  *    they are flagged `needsReview` and must not be written.
  *  - Image alt "{Brand} {Model} {Type}" always includes the type.
  */
+import { extractNameSpecs, type NameSpecs } from "@/lib/catalog/spec-extract";
+import { applyCasing, casingOfToken, isShoutedWord, titleCaseShouted } from "@/lib/seo/casing";
 import { cutAtWord, softenShouting } from "@/lib/seo/page-meta";
 
 export const SEO_TITLE_MAX = 60;
@@ -65,6 +67,10 @@ export type SeoResult = {
   flags: string[];
   /** Model-looking tokens of the name's model core that are missing from the title (must be empty). */
   modelTokensLost: string[];
+  /** Characters / patterns in the title, keyword or description outside the safe set (must be empty). */
+  badChars: string[];
+  /** Spec values that are zero or empty in the description (must be empty). */
+  zeroSpecs: string[];
   /** Set when the title still collides with another product after disambiguation. */
   collisionGroup: string | null;
   /** True when the result must not be written without a human look. */
@@ -262,8 +268,9 @@ const SLOTS: Record<string, Slot> = {
   paper: { keys: [], label: /(paper size|max paper|media size|paper|media width|print width)$/i, read: (v) => { const m = v.match(/\b(A[0-5]|B[4-5])\b/i); if (m) return `${g(m, 1).toUpperCase()} paper`; const w = v.match(/(\d{2}(?:\.\d)?)\s?(?:inch|"|”)/i); return w ? `${trimNum(g(w, 1))}-inch width` : null; } },
   ups_cap: { keys: [], label: /^(capacity|va rating|power|output power|rating|power capacity)$/i, read: (v) => { const m = v.match(/(\d{3,5})\s?(VA|W)\b/i); return m ? `${g(m, 1)}${g(m, 2).toUpperCase()}` : null; } },
   driver: { keys: [], label: /^(driver size|driver|speaker size|driver unit)$/i, read: (v) => { const m = v.match(/(\d{2})\s?mm/i); return m ? `${g(m, 1)}mm drivers` : null; } },
-  audio_type: { keys: ["audioType"], label: /^(type|headphone type|form|wearing style)$/i, read: (v) => { const m = v.match(/(over-?ear|on-?ear|in-?ear|earbuds?|neckband)/i); return m ? squash(g(m, 1)).replace(/^./, (c) => c.toUpperCase()) : null; } },
-  mic: { keys: ["microphone"], label: /^(microphone|mic)$/i, allowBool: true, read: (v) => (/^(yes|built|with|supported|inline|detachable|boom)/i.test(v) ? "Built-in microphone" : null) },
+  audio_type: { keys: ["audioType"], label: /^(type|headphone type|form|wearing style)$/i, read: (v) => { const m = v.match(/(over-?ear|on-?ear|in-?ear|open-?ear|earbuds?|neckband)/i); return m ? squash(g(m, 1)).replace(/^./, (c) => c.toUpperCase()) : null; } },
+  mic: { keys: ["microphone"], label: /^(microphone|mic)$/i, allowBool: true, // "Built-in" only when the value says so; a bare yes / supported is just "Microphone".
+  read: (v) => (/built[- ]?in/i.test(v) ? "Built-in microphone" : /^(yes|true|with|supported|inline|detachable|boom|noise|mic)/i.test(v) ? "Microphone" : null) },
   touch: { keys: [], label: /^(touch points?|touch)$/i, read: (v) => { const m = v.match(/(\d{1,2})/); return m && Number(m[1]) >= 1 ? `${g(m, 1)}-point touch` : null; } },
   sip: { keys: [], label: /(sip|lines|accounts)/i, read: (v) => { const m = v.match(/(\d{1,2})/); return m && Number(m[1]) >= 1 ? `${g(m, 1)} SIP lines` : null; } },
   capture_res: { keys: [], label: /(max (?:input|resolution)|resolution|passthrough|capture)/i, read: (v) => { const m = v.match(/\b(8K|4K|2K|1440p|1080p)\s?(?:@|at)?\s?(\d{2,3})?\s?(?:fps|hz)?/i); return m ? `${g(m, 1).toUpperCase()}${g(m, 2) ? ` ${g(m, 2)}fps` : ""} capture` : null; } },
@@ -319,11 +326,17 @@ function validPhrase(phrase: string): boolean {
   return phrase.length > 1 && phrase.length <= 36 && !CLAIM_WORDS.test(phrase) && !hasRepeatedWord(phrase);
 }
 
+/** A zero quantity in a spec phrase ("0GB storage", "0 ports", "0Hz refresh rate"): never a real spec. */
+export function zeroQuantity(text: string): string | null {
+  const m = text.match(/(?:^|[^\d.])(0+(?:\.0+)?)\s?(?:gb|tb|mb|ghz|mhz|hz|w|v|mp|mm|cm|inch|mbps|gbps|ppm|dpi|va|ports?|cores?|threads?|sip lines|channels?|-channel|-inch|-point)\b/i);
+  return m ? (m[0] ?? "").trim() : null;
+}
+
 /** 3-4 real spec values (slot id + phrase) for the product's family. Never invents a value. */
 export function pickSpecs(facts: SpecFact[], family: FamilyId, brand: string, max = 4): SpecValue[] {
   const out: SpecValue[] = [];
   const add = (slot: string, phrase: string | null) => {
-    if (!phrase || !validPhrase(phrase)) return;
+    if (!phrase || !validPhrase(phrase) || zeroQuantity(phrase)) return;
     const key = phraseKey(phrase);
     const firstToken = key.split(" ")[0] ?? "";
     if (out.some(({ phrase: other }) => {
@@ -397,6 +410,8 @@ const NOT_MODEL = new Set(["wi-fi", "full-hd", "plug-in", "all-in-one", "dual-ba
 const CONNECTIVE = /^(?:with|for|w\/|including|featuring|supports?|compatible)$/i;
 const CPU_WORD = /^(?:core|ryzen|celeron|pentium|xeon|athlon|epyc|threadripper|snapdragon)$/i;
 const DASH_TOKEN = /^[-–—]+$/;
+/** Dell / channel SKU suffixes that are not part of the model name: 3420-CORP, 3450-BRAC-SUPP, MT-CORP-. */
+const CHANNEL_SUFFIX = /(?:-(?:CORP|BRAC|SUPP|BG|ASA))+-?$/i;
 const POS_HASH = /^([A-Za-z0-9][A-Za-z0-9./+-]{3,})\s*#\s*/;
 const POS_COMMA = /^([A-Z0-9][A-Z0-9./+-]{7,})\s*,\s*/;
 
@@ -515,6 +530,10 @@ export function analyseName(input: SeoProductInput, categoryHeads: string[] = []
     text
       // "IPC2314-WP:High quality", "Non-Inverter,SEA-118SS", "A | B", bullets: separators are boundaries
       .replace(/\s*[:|•·]\s*/g, ", ")
+      // 14" / 14'' is the inch unit (it ends the core like any unit); a stray quote or a bracket ends the core too
+      .replace(/(\d+(?:\.\d+)?)\s*(?:["”″]|'')/g, " $1inch ")
+      .replace(/["“”″]+/g, " ( ")
+      .replace(/[(\[]/g, " ( ")
       .replace(/,(?=\S)/g, ", ")
       .replace(/\s*#\s*/g, " ")
       .replace(/\(?\b(?:no|without)\s+warranty\b\)?/giu, " ")
@@ -555,7 +574,7 @@ export function analyseName(input: SeoProductInput, categoryHeads: string[] = []
       if (i >= minCore - 1) { end = i; break; }
       continue;
     }
-    if (tok.startsWith("(") && i >= minCore - 1) { end = i; break; }
+    if ((tok.startsWith("(") || tok === "(") && i >= minCore - 1) { end = i; break; }
     if (/^warranty/i.test(stripped) && i >= minCore - 1) { end = i; break; }
     if (i >= minCore - 1 && CONNECTIVE.test(stripped)) { end = i; break; }
     if (i >= minCore) {
@@ -605,7 +624,11 @@ export function analyseName(input: SeoProductInput, categoryHeads: string[] = []
     end = j;
   }
   // No lookbehind here: this module is bundled into the admin form and must parse on older Safari.
-  const trimTok = (t: string) => t.replace(/[,;]+$/, "").replace(/^[-–—]+/, "").replace(/[-–—]+$/, "");
+  const trimTok = (t: string) => {
+    const trimmed = t.replace(/[,;]+$/, "").replace(/^[-–—]+/, "").replace(/[-–—]+$/, "");
+    const stripped = trimmed.replace(CHANNEL_SUFFIX, "").replace(/[-–—]+$/, "");
+    return stripped || trimmed;
+  };
   const core = display.slice(0, end).map(trimTok).filter(Boolean);
   const coreRaw = raw.slice(0, end).map(trimTok).filter(Boolean);
   const all = display.map(trimTok).filter((t) => t && !DASH_TOKEN.test(t));
@@ -621,10 +644,27 @@ export function analyseName(input: SeoProductInput, categoryHeads: string[] = []
   while (first >= 0 && runEnd < core.length && isModelLooking(coreRaw[runEnd] ?? "")) runEnd += 1;
   const hasModel = first >= 0;
   const must = hasModel ? runEnd : core.length;
+  // The model run is the raw name's own spelling: the shouting list meant for generic words must not turn
+  // "B650-PLUS" into "B650-Plus".
+  if (hasModel) for (let i = first; i < runEnd; i += 1) core[i] = coreRaw[i] ?? core[i] ?? "";
+  // Case: the model run keeps the case the raw name gave it. Elsewhere the central map applies, and a shouted
+  // brand / line word BEFORE the first model code ("LATITUDE", "OPTIPLEX") becomes "Latitude" / "Optiplex".
+  let firstCode = -1;
+  for (let i = brandLen; i < core.length && firstCode < 0; i += 1) if (isStrongModel(coreRaw[i] ?? "")) firstCode = i;
+  for (let i = brandLen; i < core.length; i += 1) {
+    if (hasModel && i >= first && i < runEnd) continue;
+    const rawToken = stripEdge(coreRaw[i] ?? "");
+    let token = casingOfToken(core[i] ?? "");
+    if (token === core[i] && (firstCode < 0 || i < firstCode) && isShoutedWord(rawToken) && !LINE_WORDS.has(rawToken.toLowerCase())) {
+      token = titleCaseShouted(rawToken);
+    }
+    core[i] = token;
+  }
   const typeIdxs = findTypeIdxs(core, brandLen, categoryHeads, groups);
   let restType: string | null = null;
   const restIdx = [...findTypeIdxs(rest, 0, [])][0];
-  if (restIdx !== undefined) restType = tidyCase(rest[restIdx] ?? "");
+  // "(A3 Flatebed Scanner)," -> "Scanner": edge punctuation is never part of the type word.
+  if (restIdx !== undefined) restType = tidyCase(stripEdge(rest[restIdx] ?? ""));
   return { all, core, coreRaw, brandLen, must, typeIdxs, restType, hasModel, code };
 }
 
@@ -646,8 +686,73 @@ type Prep = {
   facts: SpecFact[];
 };
 
+const ZERO_VALUE = /^\s*0+(?:\.0+)?\s*(?:gb|tb|mb|ghz|mhz|hz)?\s*$/i;
+const AUDIO_FORM: [RegExp, string][] = [
+  [/over[- ]?ear|circumaural/i, "Over-ear"],
+  [/on[- ]?ear/i, "On-ear"],
+  [/open[- ]?ear/i, "Open-ear"],
+  [/in[- ]?ear|ear ?phones?|ear ?buds?|\bbuds\b|\btws\b/i, "In-ear"],
+  [/neckband/i, "Neckband"],
+];
+
+/**
+ * The spec facts the generator may use, after checking them against the raw name (v2.2):
+ *  - a zero / empty value is never a fact;
+ *  - laptops and desktops: RAM, storage and CPU are read from the NAME (decimal-safe, keyword-classified,
+ *    lib/catalog/spec-extract.ts) and replace the stored attribute, which the old import script got wrong
+ *    ("16.0GB" -> 0GB, storage = the RAM figure); a stored storage that just repeats the RAM figure is dropped;
+ *  - headsets / headphones: a form factor, microphone or any other claim comes from the name or from a stored
+ *    spec row, never from an attribute that the import script only GUESSED (every "headset" got Over-ear and
+ *    Microphone=Yes there).
+ */
+export function reconcileFacts(input: SeoProductInput, familyId: FamilyId): SpecFact[] {
+  let facts = input.specs.filter((f) => squash(f.value) !== "" && !ZERO_VALUE.test(f.value));
+  const slotMatch = (slotId: string, f: SpecFact) => {
+    const slot = SLOTS[slotId];
+    return Boolean(slot) && (Boolean(f.key && slot?.keys.includes(f.key)) || Boolean(slot?.label.test(normLabel(f.label))));
+  };
+  if (familyId === "laptop" || familyId === "desktop") {
+    const n: NameSpecs = extractNameSpecs(input.name);
+    const ramFigure = (n.ram ?? facts.find((f) => slotMatch("ram", f))?.value ?? "").replace(/\s/g, "").toLowerCase();
+    facts = facts.filter((f) => {
+      if (n.ram && slotMatch("ram", f)) return false;
+      if (n.cpu && slotMatch("cpu", f)) return false;
+      if (slotMatch("storage", f)) {
+        if (n.storage || n.storageAmbiguous) return false;
+        // storage = the RAM figure is the old extractor's mistake
+        if (ramFigure && f.value.replace(/\s/g, "").toLowerCase() === ramFigure) return false;
+      }
+      return true;
+    });
+    if (n.ram) facts.push({ key: "ram", label: "RAM", value: n.ram });
+    if (n.storage) facts.push({ key: "storage", label: "Storage", value: `${n.storage.size}${n.storage.kind ? ` ${n.storage.kind}` : ""}` });
+    if (n.cpu) facts.push({ key: "processor", label: "Processor", value: n.cpu });
+  }
+  if (familyId === "headphone") {
+    const nameForm = AUDIO_FORM.find(([re]) => re.test(input.name))?.[1] ?? null;
+    const nameMic = /\bmic(?:rophone)?\b/i.test(input.name);
+    const nameBuiltIn = /built[- ]?in\s+mic/i.test(input.name);
+    facts = facts.filter((f) => {
+      if (slotMatch("audio_type", f)) {
+        if (nameForm) return false; // the name is the authority; its own form is added below
+        // An attribute saying Over-ear without the name saying so is the import script's default guess.
+        return !(f.key && /over[- ]?ear/i.test(f.value));
+      }
+      if (slotMatch("mic", f)) {
+        const explicit = !/^(yes|true|y|supported)$/i.test(squash(f.value));
+        return nameMic || !f.key || explicit; // a bare Yes on an attribute is the import script's "headset => mic" guess
+      }
+      return true;
+    });
+    if (nameForm) facts.push({ label: "Type", value: nameForm });
+    if (nameMic && !facts.some((f) => slotMatch("mic", f))) facts.push({ label: "Microphone", value: nameBuiltIn ? "Built-in microphone" : "Yes" });
+  }
+  return facts;
+}
+
 function prepare(input: SeoProductInput): Prep {
   const family = familyOf(input.categoryChain);
+  const facts = reconcileFacts(input, family.id);
   const typeList = typeCandidates(input.categoryChain);
   const heads = typeList.map((t) => t.split(" ").pop() ?? "");
   const groups = typeList.map(typeGroupOf).filter((g): g is string => g !== null);
@@ -663,7 +768,7 @@ function prepare(input: SeoProductInput): Prep {
     const agrees = restGroup !== null && typeList.some((t) => typeGroupOf(t) === restGroup);
     type = name.restType && agrees ? name.restType : typeList[0] ?? name.restType ?? "";
   }
-  return { input, family, name, typeList, type, typeInCore, specs: pickSpecs(input.specs, family.id, input.brand, 4), facts: input.specs };
+  return { input, family, name, typeList, type, typeInCore, specs: pickSpecs(facts, family.id, input.brand, 4), facts };
 }
 
 const SUFFIX_PB = " Price in Bangladesh";
@@ -786,10 +891,12 @@ function composeBody(family: FamilyId, type: string, specs: SpecValue[], style: 
     }
     case "headphone": {
       const adjectives = [lc(take("connectivity")), lc(take("audio_type"))].filter(Boolean);
-      const hasMic = Boolean(take("mic"));
+      const micPhrase = take("mic");
+      const hasMic = Boolean(micPhrase);
+      const builtIn = micPhrase === "Built-in microphone";
       if (adjectives.length === 0 && !hasMic) return null;
-      if (bare) return out(adjectives.join(", "), [...(hasMic ? ["built-in mic"] : []), ...tail()]);
-      const mic = hasMic ? (short ? " with built-in mic" : " with built-in microphone") : "";
+      if (bare) return out(adjectives.join(", "), [...(hasMic ? [builtIn ? "built-in mic" : "microphone"] : []), ...tail()]);
+      const mic = hasMic ? ` with ${builtIn ? "built-in " : ""}${short ? "mic" : "microphone"}` : "";
       return out(`${adjectives.join(" ")} ${noun}`.trim() + mic, tail());
     }
     case "keyboard": {
@@ -874,7 +981,8 @@ function composeDescription(id: string, family: FamilyId, type: string, cores: s
             { body: slice.map((s) => s.phrase.replace(COMPACT, "")).join(", "), leads: LEADS_LIST },
           ]
         : [{ body: "", leads: LEADS_PLAIN }];
-    for (const { body, leads } of bodies) {
+    for (const { body: rawBody, leads } of bodies) {
+      const body = applyCasing(rawBody);
       for (const core of cores) {
         for (let a = 0; a < leads.length; a += 1) {
           for (let b = 0; b < CLOSINGS.length; b += 1) {
@@ -899,6 +1007,44 @@ function composeDescription(id: string, family: FamilyId, type: string, cores: s
   if (pick.text.length < SEO_DESC_MIN) flags.push("desc_under_120");
   if (pick.used < 3) flags.push("few_specs");
   return { text: pick.text, used: pick.used, flags };
+}
+
+/**
+ * Anything in a title, keyword or description outside a conservative safe set: a quote or ANY bracket, a
+ * character outside letters / digits / space and . , : ; & + / % ' | - (and our own " – " lead), a double space, or a token that starts
+ * or ends with a hyphen. Returns what was found (empty = clean).
+ */
+export function findBadChars(text: string): string[] {
+  const issues: string[] = [];
+  const seen = new Set<string>();
+  for (const ch of text) {
+    // The en dash is the one non-ASCII character the generator itself writes (the " – " lead variant).
+    if (/[A-Za-z0-9 .,:;&+/%'|–-]/.test(ch) || seen.has(ch)) continue;
+    seen.add(ch);
+    issues.push(/["“”″]/.test(ch) ? `quote ${ch}` : /[()[\]{}]/.test(ch) ? `bracket ${ch}` : `character ${JSON.stringify(ch)}`);
+  }
+  if (/\s{2,}/.test(text) || text !== text.trim()) issues.push("double or edge space");
+  for (const token of text.split(/\s+/)) {
+    const t = token.replace(/[.,:;]+$/, "");
+    if (t.length > 0 && (t.startsWith("-") || t.endsWith("-"))) {
+      issues.push(`hyphen at the edge of "${t}"`);
+      break;
+    }
+  }
+  return issues;
+}
+
+/** Zero or empty spec values in a description's spec phrases or text ("0GB storage", "undefined"). */
+export function findZeroSpecs(text: string, phrases: string[]): string[] {
+  const found = new Set<string>();
+  for (const phrase of phrases) {
+    if (!squash(phrase) || /\b(?:undefined|null|nan)\b/i.test(phrase)) found.add(phrase || "(empty)");
+    const zero = zeroQuantity(phrase);
+    if (zero) found.add(zero);
+  }
+  const zero = zeroQuantity(text);
+  if (zero) found.add(zero);
+  return [...found];
 }
 
 /** Model-looking tokens of the core that the title does not contain (must be none). */
@@ -938,6 +1084,11 @@ function render(prep: Prep, extras: Extra[]): SeoResult {
   const foreign = foreignCodes(prep, title.title, extras);
   if (foreign.length > 0) flags.push("foreign_code");
   const keywordCore = title.core.toLowerCase();
+  const usedSpecs = prep.specs.slice(0, description.used).map((spec) => spec.phrase);
+  const badChars = [...new Set([...findBadChars(title.title), ...findBadChars(`${keywordCore} price in bangladesh`), ...findBadChars(description.text)])];
+  if (badChars.length > 0) flags.push("bad_chars");
+  const zeroSpecs = findZeroSpecs(description.text, usedSpecs);
+  if (zeroSpecs.length > 0) flags.push("spec_zero");
   const typeLower = nounOf(prep.type);
   const secondary = [
     `${keywordCore} price in bd`,
@@ -958,12 +1109,14 @@ function render(prep: Prep, extras: Extra[]): SeoResult {
     family: family.id,
     familyWeight: family.weight,
     type: prep.type,
-    specsUsed: prep.specs.slice(0, description.used).map((s) => s.phrase),
+    specsUsed: usedSpecs,
     specsAvailable: prep.specs.length,
     flags,
     modelTokensLost: lost,
+    badChars,
+    zeroSpecs,
     collisionGroup: null,
-    needsReview: flags.includes("title_over_60") || lost.length > 0 || foreign.length > 0,
+    needsReview: flags.includes("title_over_60") || lost.length > 0 || foreign.length > 0 || badChars.length > 0 || zeroSpecs.length > 0,
   };
 }
 
@@ -979,6 +1132,9 @@ export function generateProductSeo(input: SeoProductInput): SeoResult {
 const SPEC_NAME_TOKEN = /^(?:\d+(?:\.\d+)?(?:gb|tb|mb|mhz|ghz|w|va|mah|inch|"|mm|mp|ft|m)|ddr[2-5])$/i;
 
 type Distinguisher = { kind: string; text: string };
+
+/** A raw-name token used as a collision extra: brackets / quotes removed, "14inch" -> "14 inch", canonical case. */
+const cleanExtra = (token: string) => applyCasing(token.replace(/[()[\],"“”]/g, "").replace(/^(\d+(?:\.\d+)?)inch$/i, "$1 inch"));
 
 /**
  * What tells this product apart from the rest of its colliding group: a spec
@@ -1003,7 +1159,8 @@ function distinguishers(prep: Prep, group: Prep[], titleTokens: Set<string>): Di
   const ram = phrase("ram");
   if (ram) out.push({ kind: "ram", text: ram });
   const storage = phrase("storage");
-  if (storage) out.push({ kind: "storage", text: storage });
+  // "512GB storage" reads badly inside a title: the size (and SSD / HDD when stated) is the differentiator.
+  if (storage) out.push({ kind: "storage", text: storage.replace(/ storage$/, "") });
   const capacity = phrase("storage_cap") || phrase("ram_capacity");
   if (capacity) out.push({ kind: "capacity", text: capacity });
   const size = phrase("display_size") || phrase("fan_size");
@@ -1018,7 +1175,7 @@ function distinguishers(prep: Prep, group: Prep[], titleTokens: Set<string>): Di
     if (!(SPEC_NAME_TOKEN.test(key) || COLOURS.has(key))) continue;
     if (titleTokens.has(normTok(token))) continue;
     if (others.every((set) => set.has(token.toLowerCase()))) continue;
-    out.push({ kind: COLOURS.has(key) ? "colour" : "name", text: token.replace(/[(),]/g, "") });
+    out.push({ kind: COLOURS.has(key) ? "colour" : "name", text: cleanExtra(token) });
   }
   const code = (prep.name.code ?? "").toUpperCase();
   if (code && !titleTokens.has(normTok(code))) out.push({ kind: "code", text: code });
@@ -1055,7 +1212,7 @@ export function generateProductSeoSet(inputs: SeoProductInput[]): SeoResult[] {
         group.forEach((prep, i) => {
           const value = values[i] ?? "";
           const have = extrasOf(prep).map((e) => e.text).join(" ").toLowerCase();
-          if (value && !have.includes(value.toLowerCase())) extras.set(prep, [...extrasOf(prep), { kind, text: value }]);
+          if (value && !have.includes(value.toLowerCase())) extras.set(prep, [...extrasOf(prep), { kind, text: applyCasing(value) }]);
         });
         break;
       }

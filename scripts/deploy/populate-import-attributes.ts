@@ -32,38 +32,17 @@ import { config as loadEnvFiles } from "dotenv";
 loadEnvFiles({ path: [".env.local", ".env"], quiet: true });
 
 import { getPrisma } from "../../lib/db/prisma";
+import { extractRamFromName, extractStorageSizeFromName } from "../../lib/catalog/spec-extract";
 
 type Extractor = { key: string; extract: (name: string) => string | null };
 
-function windowContains(name: string, afterIndex: number, span: number, re: RegExp): boolean {
-  return re.test(name.slice(Math.max(0, afterIndex - span), afterIndex + span));
-}
-
-const RAM_KEYWORD =
-  /DDR-?\d|LPDDR-?\d|SODIMM|Unified Memory|on-?board|Soldered|\bRAM\b|\bRam\b|\bMemory\b/i;
-
-function extractRam(name: string): string | null {
-  for (const m of name.matchAll(/(\d{1,3})\s*GB/gi)) {
-    const after = m.index! + m[0].length;
-    if (windowContains(name, after, 30, RAM_KEYWORD)) {
-      return `${m[1]}GB`;
-    }
-  }
-  // Corporate-SKU convention with no "RAM"/"DDR" word at all:
-  // "...-8GB, 1x8GB-512GB SSD-..." — the first GB figure is the RAM size.
-  const m = name.match(/(\d{1,3})GB,\s*\d+\s*[xX]\s*\d+GB-/);
-  return m ? `${m[1]}GB` : null;
-}
-
-function extractStorage(name: string): string | null {
-  for (const m of name.matchAll(/(\d{1,4})\s*(GB|TB)/gi)) {
-    const after = m.index! + m[0].length;
-    if (windowContains(name, after, 20, /SSD|NVMe|HDD|eMMC|Storage/i)) {
-      return `${m[1]}${m[2]!.toUpperCase()}`;
-    }
-  }
-  return null;
-}
+// RAM and storage come from the shared, tested parser (lib/catalog/spec-extract.ts). The two extractors that
+// used to live here read "16.0GB" as "0GB" (`\d{1,3}GB` matched the digits after the decimal point), and took the
+// first GB figure NEAR "SSD" for storage, which for "8GB, 1x8GB-512GB SSD" is the RAM figure. Sizes are now read
+// as whole decimals and classified by the nearest keyword (DDR / RAM / MHz vs SSD / NVMe / HDD); anything unclear
+// returns null ("no confident match") instead of a guess.
+const extractRam = extractRamFromName;
+const extractStorage = extractStorageSizeFromName;
 
 function extractProcessor(name: string): string | null {
   let m = name.match(/\bM(\d)[a-zA-Z]*\s+chip\b/i);

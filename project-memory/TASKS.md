@@ -9147,3 +9147,19 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `lib/seo/product-seo-apply.ts` (skip, counted + listed in the dry-run
       summary). Tests `npm run test:seo-product` 928 (was 369). Code only: no
       schema change, no migration. NOT run on production.
+
+- [x] AD-403 SEO phase 8 FIX v2.2 — generator hygiene (branch
+      `seo-phase-8-fix-2`, pushed, NOT merged). Detail: `docs/SEO-NOTES.md`
+      "Phase 8 v2.2". Production dry-run (387 products): brackets/quotes and
+      part numbers in titles, "0GB storage", unsupported over-ear / mic
+      claims, lower-case standards. Causes fixed: core ends before ( [ " and
+      `14"`, channel suffixes stripped, shouted line words Title Case, model run
+      keeps raw spelling; `lib/catalog/spec-extract.ts` (decimal-safe, keyword
+      classified RAM vs storage) shared with `populate-import-attributes.ts`
+      (the origin of 0GB / storage=RAM / guessed Over-ear + Microphone=Yes);
+      generator reads RAM/storage/CPU from the raw name; claims only from the
+      name or stored spec rows; `lib/seo/casing.ts`; gates `bad_chars` and
+      `spec_zero` (skip, counted + listed). Local sweep (4,309): brackets
+      154->0, zero 1->0, over-ear w/o source 78->0, lower-case 6->0; no defect
+      among rows that would be written. `test:seo-product` 1,292. Code only;
+      wrong attribute rows already stored are NOT repaired (owner decision).
