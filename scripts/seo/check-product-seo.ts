@@ -25,7 +25,9 @@ import {
   generateProductSeoSet,
   hashId,
   isJunkValue,
+  dropTitleRepeats,
   pickSpecPhrases,
+  pickSpecs,
   planSeoMetaWrite,
   resolveProductMeta,
   type SeoProductInput,
@@ -191,7 +193,9 @@ check("phrases never repeat a word", pickSpecPhrases([{ label: "RAM", value: "16
   const sparse = family.filter((f) => generateProductSeo(f).specsUsed.length < 3);
   // Only fixtures with fewer than 3 facts in the first place may end up under 3.
   // A long model core leaves little room in 155 characters; those keep 2 specs (flagged few_specs) instead of a cut model name.
-  check("fixtures with 3+ real facts reach 3+ specs unless the model core is long", sparse.every((f) => picked(f).length < 3 || generateProductSeo(f).titleCore.length >= 38), sparse.map((f) => `${f.name} [${generateProductSeo(f).specsUsed.length}/${picked(f).length}]`).join(" | "));
+  // v2.3: a spec the title already says ("Cat6 UTP 2m" in the title) is not repeated in the description, so it no longer counts here.
+  const newInTitle = (f: Fx) => dropTitleRepeats(pickSpecs(f.specs, generateProductSeo(f).family, f.brand), generateProductSeo(f).titleCore).length;
+  check("fixtures with 3+ real facts reach 3+ specs unless the model core is long or the title already says them", sparse.every((f) => newInTitle(f) < 3 || generateProductSeo(f).titleCore.length >= 38), sparse.map((f) => `${f.name} [${generateProductSeo(f).specsUsed.length}/${picked(f).length}/${newInTitle(f)}]`).join(" | "));
   const gpuTitle = generateProductSeo(family[3]!).title;
   check("model suffix kept: RTX 4060 Ti", /RTX 4060 Ti/.test(gpuTitle), gpuTitle);
   check("'28-Port' is a spec, not a model code", generateProductSeo(family[10]!).title.startsWith("Cisco SG350-28 Switch"), generateProductSeo(family[10]!).title);
@@ -518,7 +522,11 @@ check("the real-name fixtures are unique in the set", new Set(realSet.map((r) =>
 // A stored form factor or mic IS used when the raw name says it, or when a stored spec ROW (not the guessed attribute) does.
 {
   const hp = (name: string, specs: SpecFact[]) => generateProductSeo({ id: "h1", name, brand: "Acme", categoryChain: ["Headphone", "Accessories"], specs });
-  check("name says over-ear -> over-ear is stated", /over-ear/.test(hp("Acme Z100 Over-Ear Wired Headphone", [{ label: "Type", value: "Over-ear", key: "audioType" }, { label: "Connectivity", value: "Wired", key: "connectivity" }]).metaDescription));
+  {
+    // v2.3: the name's "Over-Ear" is in the title, so the description does not say it a second time.
+    const r = hp("Acme Z100 Over-Ear Wired Headphone", [{ label: "Type", value: "Over-ear", key: "audioType" }, { label: "Connectivity", value: "Wired", key: "connectivity" }]);
+    check("name says over-ear -> over-ear is stated once (title), not repeated in the description", /over-ear/i.test(r.title) && !/over-ear/i.test(r.metaDescription.replace(r.titleCore, "")), `${r.title} | ${r.metaDescription}`);
+  }
   check("a stored spec ROW (no attribute key) saying over-ear is trusted", /over-ear/.test(hp("Acme Z100 Headphone", [{ label: "Type", value: "Over-ear" }, { label: "Connectivity", value: "Wired", key: "connectivity" }]).metaDescription));
   check("an in-ear name overrides a stored over-ear attribute", !/over-ear/.test(hp("Acme Z100 In-Ear Earphones", [{ label: "Type", value: "Over-ear", key: "audioType" }, { label: "Connectivity", value: "Wired", key: "connectivity" }]).metaDescription));
   check("the name says Mic -> 'with microphone' (not 'built-in')", /with microphone|with mic\./.test(hp("Acme Z100 Headset with Noise-Cancelling Mic", [{ label: "Connectivity", value: "USB", key: "connectivity" }]).metaDescription) && !/built-in/.test(hp("Acme Z100 Headset with Noise-Cancelling Mic", [{ label: "Connectivity", value: "USB", key: "connectivity" }]).metaDescription));
@@ -600,6 +608,135 @@ check("the real-name fixtures are unique in the set", new Set(realSet.map((r) =>
   check("decideApply: bad_chars -> skip, even with --overwrite", decideApply(bad, stored).action === "skip: bad_chars" && decideApply(bad, { metaTitle: "x", metaDescription: "y", seoSource: "admin" }, { overwrite: true }).write === false);
   check("decideApply: spec_zero -> skip", decideApply(zero, stored).action === "skip: spec_zero" && decideApply(zero, stored).write === false);
   check("decideApply: a clean real row is written", decideApply(ok, stored, { allowFewSpecs: true }).write === true, decideApply(ok, stored, { allowFewSpecs: true }).action);
+}
+
+// --- v2.3: the spec part of a description does not repeat the title ------------------------------------
+
+{
+  // Titles carry collision extras (CPU, size, storage, capacity); the description used to say them again.
+  let k = 0;
+  const mk = (name: string, brand: string, chain: string[], specs: [string, string, string?][]): SeoProductInput => {
+    k += 1;
+    return { id: `p${k}`, name, brand, categoryChain: chain, sku: `PSKU-${k}`, modelNumber: null, specs: specs.map(([label, value, key]) => ({ label, value, key })) };
+  };
+  const count = (text: string, re: RegExp) => (text.match(re) ?? []).length;
+  /** No spec phrase of the description is only words the title already says (the rule itself, checked on the output). */
+  const repeatsTitle = (r: SeoResult) => r.specsUsed.filter((phrase) => dropTitleRepeats([{ slot: "x", phrase }], r.titleCore).length === 0);
+
+  // 1) Toshiba P300: 1TB / 2TB / 4TB collide, so "2TB" goes into the title; the stored specs said it twice more.
+  const toshibaSpecs: [string, string, string?][] = [["Capacity", "{cap}", "capacity"], ["Capacity", "{cap2}"], ["Interface", "6.0 Gbit/s"]];
+  const toshiba = (name: string, cap: string, cap2: string) => mk(name, "Toshiba", ["Hard Disk Drive", "Component"], toshibaSpecs.map(([l, v, key]) => [l, v.replace("{cap}", cap).replace("{cap2}", cap2), key] as [string, string, string?]));
+  const tosh = generateProductSeoSet([
+    toshiba('Toshiba PC Hard Drive P300 1TB - 7200 RPM, SATA 6 Gb/s, 64 MB Cache, 3.5" - HDWD110UZSVA', "1TB", "1 TB"),
+    toshiba('Toshiba PC Hard Drive P300 2TB - (2 Years) 7200 RPM, SATA 6 Gb/s, 256 MB Cache, 3.5" - HDWD320UZSVA', "2TB", "2 TB"),
+    toshiba('Toshiba PC Hard Drive P300 4TB - (2 Years) 5400 RPM, SATA 6 Gb/s, 128 MB Cache, 3.5" - HDWD240UZSVA', "4TB", "4 TB"),
+  ]);
+  const t2 = tosh[1]!;
+  check("Toshiba: the capacity is the title's differentiator", /P300 2TB/.test(t2.title), t2.title);
+  check("Toshiba: 2TB is said once in the description, not three times", count(t2.metaDescription, /2\s?TB/gi) === 1, t2.metaDescription);
+  check("Toshiba: no '2 TB capacity' leftover and the interface is kept", !/2 TB capacity/.test(t2.metaDescription) && /6\.0 Gbit\/s interface/.test(t2.metaDescription), t2.metaDescription);
+  check("Toshiba: one clean statement after the core", /P300 2TB(?::| –) 6\.0 Gbit\/s interface\. /.test(t2.metaDescription), t2.metaDescription);
+  check("a single spec never gets the plural 'Key specs of' lead", tosh.every((r) => !/^Key specs of/.test(r.metaDescription)), tosh.map((r) => r.metaDescription).join(" / "));
+  check("Toshiba: no spec phrase repeats the title (all three)", tosh.every((r) => repeatsTitle(r).length === 0), tosh.map((r) => r.specsUsed.join("|")).join(" / "));
+  check("Toshiba: the three titles stay distinct", new Set(tosh.map((r) => r.title)).size === 3, tosh.map((r) => r.title).join(" / "));
+
+  // 2) Lenovo ThinkPad E14 G7: two CPUs collide, the CPU goes into the title and used to be repeated: "Core Ultra 5 225H: Core Ultra 5 225H".
+  const e14 = (code: string, cpu: string, ghz: string) => mk(`Lenovo ThinkPad E14 G7 (${code}) Intel ${cpu} ${ghz}, 16.0GB DDR5 5600 RAM, 1x512GB SSD M.2 2242 PCIe Gen4 TLC Opal,14" WUXGA Non-Touch, Free DOS`, "Lenovo", ["All Laptop", "Laptop"], [["Processor", "Core Ultra 5", "processor"], ["RAM", "0GB", "ram"], ["Storage", "512GB", "storage"]]);
+  const ultra = generateProductSeoSet([e14("21SXS0HA00", "Core Ultra 5 225H", "1.7 Up to 4.80GHz"), e14("21SXS0HB00", "Core Ultra 7 255H", "2.0 Up to 5.10GHz")]);
+  const u5 = ultra[0]!;
+  const u7 = ultra[1]!;
+  check("E14: the CPU is in the title", /Core Ultra 5 225H/.test(u5.title) && /Core Ultra 7 255H/.test(u7.title), `${u5.title} / ${u7.title}`);
+  check("E14: 'Core Ultra 5 225H' once in the description, not 'X: X'", count(u5.metaDescription, /Core Ultra 5 225H/g) === 1 && count(u7.metaDescription, /Core Ultra 7 255H/g) === 1, `${u5.metaDescription} / ${u7.metaDescription}`);
+  check("E14: the other specs are still there", /16GB RAM/.test(u5.metaDescription) && /512GB SSD/.test(u5.metaDescription), u5.metaDescription);
+  check("E14: no spec phrase repeats the title", repeatsTitle(u5).length === 0 && repeatsTitle(u7).length === 0);
+
+  // 3) Smart Flairedge: storage, size and CPU are all title extras; the description repeated every one of them.
+  const flair = (code: string, size: string, cpu: string, storage: string, display: string) =>
+    mk(`SMART Flairedge Laptop (${code}-${size}”-Grey), Intel® Core™ ${cpu} (Max Turbo Frequency 4.6 GHz, Total Cores 10, Total Threads 12, 12 MB Intel® Smart Cache), 8GB DDR4 3200 MHz, ${storage}`, "Smart PC", ["All Laptop", "Laptop"], [["Processor", "Core i5", "processor"], ["RAM", "8GB", "ram"], ["Storage", storage, "storage"], ["Display", display, "size"]]);
+  const flairSet = generateProductSeoSet([
+    flair("i5G13", "15.6", "i5-1335U", "512GB", "15.6 inch"),
+    flair("i5G13", "16", "i5-1335U", "512GB", "16 inch"),
+    flair("i5G13", "15.6", "i5-1335U", "256GB", "15.6 inch"),
+    flair("i5G12", "15.6", "i5-1235U", "512GB", "15.6 inch"),
+  ]);
+  const f0 = flairSet[0]!;
+  equal("Flairedge: the title is storage, size, CPU", f0.title, "Smart Flairedge Laptop 512GB 15.6 inch Core i5-1335U");
+  check("Flairedge: each title extra appears once in the description", count(f0.metaDescription, /i5-1335U/g) === 1 && count(f0.metaDescription, /512GB/g) === 1 && count(f0.metaDescription, /15\.6/g) === 1, f0.metaDescription);
+  check("Flairedge: only what the title lacks is added (the RAM)", /(?::| –) 8GB RAM\./.test(f0.metaDescription) && f0.specsUsed.join() === "8GB RAM", f0.metaDescription);
+  check("Flairedge: the specs the title does not say are kept (16 inch variant keeps the CPU)", /Core i5-1335U/.test(flairSet[1]!.metaDescription) && count(flairSet[1]!.metaDescription, /16 inch/g) === 1, flairSet[1]!.metaDescription);
+  check("Flairedge: no spec phrase repeats the title; descriptions stay in 120-155", flairSet.every((r) => repeatsTitle(r).length === 0 && r.metaDescription.length >= 120 && r.metaDescription.length <= 155), flairSet.map((r) => `${r.metaDescription.length}`).join());
+  check("Flairedge: the titles are still unique", new Set(flairSet.map((r) => r.title)).size === 4, flairSet.map((r) => r.title).join(" / "));
+  check("Flairedge: specsAvailable still counts every usable spec (the title must not make a product 'thin' for selection)", f0.specsAvailable >= 3, `${f0.specsAvailable}`);
+
+  // The rule itself.
+  const sv = (slot: string, phrase: string) => ({ slot, phrase });
+  const phrases = (list: { phrase: string }[]) => list.map((x) => x.phrase).join(" | ");
+  equal("repeat: 'Core Ultra 5 225' in the title is dropped", phrases(dropTitleRepeats([sv("cpu", "Core Ultra 5 225"), sv("ram", "16GB RAM")], "Acme X1 Core Ultra 5 225 Laptop")), "16GB RAM");
+  equal("repeat: '2 TB capacity' is '2TB'", phrases(dropTitleRepeats([sv("storage_cap", "2TB"), sv("fill", "2 TB capacity"), sv("fill", "6.0 Gbit/s interface")], "Toshiba P300 2TB Hard Drive")), "6.0 Gbit/s interface");
+  equal("repeat: '8GB RAM' is dropped when the title says 8GB RAM", phrases(dropTitleRepeats([sv("ram", "8GB RAM")], "Dell Latitude 3420 8GB RAM Laptop")), "");
+  equal("repeat: '8GB RAM' stays when the title only says 512GB", phrases(dropTitleRepeats([sv("ram", "8GB RAM")], "Dell Latitude 3420 512GB Laptop")), "8GB RAM");
+  equal("repeat: '8GB RAM' is not hidden by a different 8GB (title says 8GB SSD? it says 8gb only)", phrases(dropTitleRepeats([sv("ram", "8GB RAM")], "Acme Phone 8GB SSD")), "8GB RAM");
+  equal("repeat: '8GB RAM' is dropped when the title carries a bare 8GB", phrases(dropTitleRepeats([sv("ram", "8GB RAM")], "HP ProBook 460 G11 Laptop Core Ultra 5 125H 8GB")), "");
+  equal("repeat: '8GB RAM' stays next to a storage word in the title", phrases(dropTitleRepeats([sv("ram", "8GB RAM")], "Acme Laptop 8GB SSD")), "8GB RAM");
+  equal("repeat: 'AM4 socket' under a title that says AM4", phrases(dropTitleRepeats([sv("socket", "AM4 socket"), sv("form_factor", "ATX form factor")], "Gigabyte AMD AM4 Motherboard")), "ATX form factor");
+  equal("repeat: 'DDR5 memory' under a title that says DDR5", phrases(dropTitleRepeats([sv("mem_type", "DDR5 memory")], "Gigabyte B650 EAGLE AX DDR5 Motherboard")), "");
+  equal("repeat: '512GB storage' is dropped when the title has 512GB", phrases(dropTitleRepeats([sv("storage", "512GB storage")], "Smart Laptop 512GB")), "");
+  equal("repeat: '512GB SSD' keeps what is new: SSD storage", phrases(dropTitleRepeats([sv("storage", "512GB SSD")], "Smart Laptop 512GB")), "SSD storage");
+  equal("repeat: '1TB NVMe SSD' keeps what is new", phrases(dropTitleRepeats([sv("storage", "1TB NVMe SSD")], "Acme Laptop 1TB")), "NVMe SSD storage");
+  equal("repeat: '512GB SSD' with 'SSD' also in the title is dropped", phrases(dropTitleRepeats([sv("storage", "512GB SSD")], "Smart Laptop 512GB SSD")), "");
+  equal("repeat: '15.6 inch display' is '15.6 inch'", phrases(dropTitleRepeats([sv("display_size", "15.6 inch display")], "Smart Laptop 15.6 inch")), "");
+  equal("repeat: 'Core i5' is NOT the title's 'Core i5-1235U' (different word)", phrases(dropTitleRepeats([sv("cpu", "Core i5")], "Smart Laptop Core i5-1235U")), "Core i5");
+  equal("repeat: unrelated specs are untouched", phrases(dropTitleRepeats([sv("ram", "16GB RAM"), sv("storage", "1TB SSD")], "Acme Pro 14 Laptop")), "16GB RAM | 1TB SSD");
+  equal("repeat: order is kept", phrases(dropTitleRepeats([sv("a", "1TB SSD"), sv("b", "Wi-Fi 6"), sv("c", "16GB RAM")], "Acme Laptop")), "1TB SSD | Wi-Fi 6 | 16GB RAM");
+  equal("pickSpecs: '2TB' and '2 TB capacity' are one spec", pickSpecPhrases([{ label: "Capacity", value: "2TB", key: "capacity" }, { label: "Capacity", value: "2 TB" }, { label: "Interface", value: "6.0 Gbit/s" }], "hdd", "Toshiba").join(" | "), "2TB | 6.0 Gbit/s interface");
+  equal("pickSpecs: '15.6 inch' spacing does not hide a real second spec", pickSpecPhrases([{ label: "Display", value: "15.6 inch", key: "size" }, { label: "RAM", value: "8GB", key: "ram" }], "laptop", "Acme").join(" | "), "8GB RAM | 15.6 inch display");
+}
+
+// --- v2.3: a description with few specs states only what the name / the specs contain ----------------------
+
+{
+  const CLAIMS = ["wireless", "bluetooth", "wired", "over-ear", "in-ear", "on-ear", "earbuds", "built-in", "noise", "cancel", "waterproof", "rgb", "ssd", "hdd", "nvme", "ddr4", "ddr5", "4k", "mechanical", "portable", "gaming", "stereo", "dual-band", "poe"];
+  const flat = (text: string) => text.toLowerCase().replace(/(\d)\.0+(?=[a-z])/g, "$1").replace(/(\d)\s+(tb|gb|mb|mhz|ghz|hz|inch)\b/g, "$1$2");
+  /** Claim words and number-bearing words of a description that neither the raw name, nor a stored spec, nor the title contains. */
+  const unsupported = (r: SeoResult, input: SeoProductInput) => {
+    const source = flat(`${input.name} ${input.brand} ${input.categoryChain.join(" ")} ${input.specs.map((x) => `${x.label} ${x.value}`).join(" ")} ${r.title}`);
+    const body = flat(r.metaDescription);
+    const claims = CLAIMS.filter((word) => body.includes(word) && !source.includes(word));
+    const numbers = (body.match(/[a-z]*\d[a-z0-9./+-]*/g) ?? []).filter((token) => token.length >= 2 && !source.includes(token.replace(/[.,]+$/, "")));
+    return [...claims, ...numbers];
+  };
+  let j = 0;
+  const thin = (name: string, brand: string, chain: string[], specs: [string, string, string?][]): [SeoProductInput, string] => {
+    j += 1;
+    return [{ id: `thin${j}`, name, brand, categoryChain: chain, sku: `TH${j}`, modelNumber: null, specs: specs.map(([label, value, key]) => ({ label, value, key })) }, name];
+  };
+  const cases: [SeoProductInput, string][] = [
+    thin("Logitech G102 Gaming Mouse", "Logitech", ["Mouse"], []),
+    thin("Edifier Comfo Q OWS Headphone Back", "Edifier", ["Headphone"], []),
+    thin("Logitech G435 Bluetooth Headset", "Logitech", ["Headphone"], []),
+    thin("Hikvision DS-K1201AEF Biometric fingerprint and EM card reader", "Hikvision", ["Access Control"], []),
+    thin("Netis N3 AC1200 Wireless Dual Band Gigabit Router", "Netis", ["Router"], [["Speed", "1200Mbps"]]),
+    thin("ASUS VZ24EHF 23.8 Inch FHD IPS 100Hz Eye Care Gaming Monitor", "ASUS", ["Monitor"], [["Display Size", "23.8 inch", "size"], ["Refresh Rate", "100Hz"]]),
+    thin("Corsair K70 Mechanical Keyboard", "Corsair", ["Keyboard"], [["Connectivity", "Wired", "connectivity"]]),
+    thin("Seagate Barracuda 2TB Hard Drive", "Seagate", ["Hard Disk Drive"], [["Capacity", "2TB", "capacity"]]),
+    thin("Dell OptiPlex 3000 MT Brand PC", "Dell", ["Brand PC", "Desktop"], [["RAM", "8GB", "ram"]]),
+    thin("Lenovo V15 G5 IRL Core i5-13420H 16.0GB DDR5, 512GB SSD 15.6 FHD Laptop", "Lenovo", ["Laptop"], []),
+    thin("Samsung 980 NVMe SSD 1TB", "Samsung", ["SSD"], [["Interface", "NVMe"]]),
+    thin("TP-Link Archer AX55 Wi-Fi 6 Router", "TP-Link", ["Router"], []),
+  ];
+  const results = cases.map(([input]) => generateProductSeo(input));
+  results.forEach((r, i) => {
+    const input = cases[i]![0];
+    check(`few specs (${r.specsAvailable}): '${input.name.slice(0, 40)}' states only what the name / specs say`, unsupported(r, input).length === 0, `${r.metaDescription}\n  unsupported: ${unsupported(r, input).join(", ")}`);
+    check(`few specs: '${input.name.slice(0, 40)}' stays 120-155 and clean`, r.metaDescription.length >= 120 && r.metaDescription.length <= 155 && r.badChars.length === 0 && r.zeroSpecs.length === 0, `${r.metaDescription.length}: ${r.metaDescription}`);
+  });
+  // (the V15 case is there for "16.0GB": its three specs all come from the NAME, which is exactly what must be stated)
+  check("few specs: the cases really have fewer than 3 (V15 excepted)", results.every((r, i) => r.specsAvailable < 3 || cases[i]![1].includes("V15")), results.map((r) => r.specsAvailable).join());
+  check("zero specs: the description is the title core plus the neutral pointer and closing, nothing else", (() => {
+    const r = results[0]!;
+    return r.specsUsed.length === 0 && /^Logitech G102 Gaming Mouse\. See full specifications on the product page\. (?:Check price|Price) and availability at Techno House\. Delivery/.test(r.metaDescription);
+  })(), results[0]!.metaDescription);
+  check("the claim checker itself catches an invented claim", unsupported({ ...results[0]!, metaDescription: "Logitech G102 Gaming Mouse: wireless, 16000 DPI. Price and availability at Techno House." }, cases[0]![0]).join() === "wireless,16000");
 }
 
 // --- stored meta helpers -------------------------------------------------------

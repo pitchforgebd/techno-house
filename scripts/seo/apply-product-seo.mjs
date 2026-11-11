@@ -7,7 +7,13 @@
  *       every active product, writes a review CSV, changes NOTHING.
  *   npx tsx scripts/seo/apply-product-seo.mjs --select-batch[=500]
  *       Picks the batch (quality filter + weighted round-robin over leaf
- *       categories) and writes docs/seo-reports/product-seo/batch-1.csv. Read-only.
+ *       categories) and writes docs/seo-reports/product-seo/batch-<N>.csv with the
+ *       next free number (an existing batch file is never overwritten). Read-only.
+ *   npx tsx scripts/seo/apply-product-seo.mjs --explain-filter [--select-batch]
+ *       Read-only funnel report for the products WITHOUT stored text: how many fail
+ *       each criterion on its own, a waterfall in the order the filter applies them,
+ *       the "fewer than 3 specs" bucket by family, what a lower minimum would let
+ *       through, 10 example names per bucket. Writes filter-funnel.md and prints its top.
  *   npx tsx scripts/seo/apply-product-seo.mjs --batch-file=batch-1.csv --apply --confirm-db=<database name>
  *       Writes metaTitle / metaDescription / seoKeyword (seoSource 'generated').
  *       Saves a JSON backup of every row it will touch FIRST, then writes in
@@ -18,16 +24,21 @@
  *
  * Options:
  *   --batch-file=<csv>   only the products listed (column `id` or `slug`)
- *   --limit=<n>          at most n products (after the batch filter)
+ *   --limit=<n>          at most n products (after the batch filter); `--limit n` works too.
+ *                        A missing or non-numeric value aborts. The summary says "limited to N of M".
  *   --overwrite          also replace stored text that was written by hand
  *                        (seoSource 'admin') or by someone else (stored text with
  *                        no source); without it those rows are skipped
- *   --allow-few-specs    also write products with fewer than 3 usable specs
- *                        (skipped by default: a thin description is worse than
- *                        the current template)
+ *   --allow-few-specs    no minimum number of specs (= --min-specs=0): a product whose
+ *                        description can only state its title + type is still written.
+ *                        Applies to --select-batch, --explain-filter, the dry run and --apply.
+ *   --min-specs=<0-4>    the minimum instead (default 3; wins over --allow-few-specs).
+ *                        Every mode prints which minimum it used. A description with few specs
+ *                        states only what the raw name / stored specs contain.
  *   --apply-alts         ALSO set the main image alt, but only where the current
  *                        alt equals the raw product name (default off)
  *   --out=<dir>          report / backup folder (default docs/seo-reports/product-seo)
+ *   --out=<file>.csv     with --select-batch: the batch file to write (never overwritten)
  *
  * Titles are generated for ALL active products first (so collisions are found
  * across the whole catalogue), then filtered. A row is never written when its
@@ -36,43 +47,41 @@
  * Without --apply (and in --select-batch mode) the Prisma client is wrapped so
  * any write call throws. Run with tsx.
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { config as loadEnvFiles } from "dotenv";
 import { getPrisma } from "@/lib/db/prisma";
+import { ArgError, describeMinSpecs, limitNote, nextBatchNumber, parseApplyArgs } from "@/lib/seo/apply-cli";
 import { productTitle } from "@/lib/seo/page-meta";
 import { countActions, decideApply } from "@/lib/seo/product-seo-apply";
-import {
-  SEO_DESC_MAX,
-  SEO_DESC_MIN,
-  SEO_TITLE_MAX,
-  generateProductSeoSet,
-} from "@/lib/seo/product-seo";
+import { biggestBlocker, buildFunnel, isSelectable, renderFunnelMarkdown, topLines } from "@/lib/seo/product-seo-batch";
+import { generateProductSeoSet } from "@/lib/seo/product-seo";
 
 loadEnvFiles({ path: [".env.local", ".env"], quiet: true });
 
-const arg = (name) =>
-  process.argv.find((value) => value === `--${name}` || value.startsWith(`--${name}=`))?.split("=").slice(1).join("=");
-const flag = (name) => process.argv.includes(`--${name}`);
-const APPLY = flag("apply");
-const OVERWRITE = flag("overwrite");
-const APPLY_ALTS = flag("apply-alts");
-const FORCE = flag("force");
-const ALLOW_FEW_SPECS = flag("allow-few-specs");
-const RESTORE = arg("restore");
-const CONFIRM_DB = arg("confirm-db");
-const BATCH_FILE = arg("batch-file");
-const LIMIT = arg("limit") ? Number(arg("limit")) : null;
-const SELECT = process.argv.some((v) => v === "--select-batch" || v.startsWith("--select-batch="));
-const SELECT_COUNT = Number(arg("select-batch") || 500);
-const OUT = path.resolve(arg("out") ?? "docs/seo-reports/product-seo");
+// Every option is checked up front: a missing / non-numeric value, an unknown or repeated option and
+// impossible combinations abort here, before the database is opened (lib/seo/apply-cli.ts, unit-tested).
+let ARGS;
+try {
+  ARGS = parseApplyArgs(process.argv.slice(2));
+} catch (error) {
+  console.error(`apply-product-seo: ${error instanceof ArgError ? error.message : error}`);
+  process.exit(1);
+}
+const { apply: APPLY, overwrite: OVERWRITE, applyAlts: APPLY_ALTS, force: FORCE } = ARGS;
+const RESTORE = ARGS.restore ?? undefined;
+const CONFIRM_DB = ARGS.confirmDb ?? undefined;
+const BATCH_FILE = ARGS.batchFile ?? undefined;
+const LIMIT = ARGS.limit;
+const SELECT = ARGS.select;
+const SELECT_COUNT = ARGS.selectCount;
+const EXPLAIN = ARGS.explainFilter;
+const MIN_SPECS = ARGS.minSpecs;
+const OUT_FILE = ARGS.outFile ? path.resolve(ARGS.outFile) : null;
+const OUT = OUT_FILE ? path.dirname(OUT_FILE) : path.resolve(ARGS.outDir ?? "docs/seo-reports/product-seo");
 const BATCH_SIZE = 200;
 const PLACEHOLDER_IMAGE = "/products/placeholder.svg";
-const GENERIC_BRAND = /^(?:no ?brand|unbranded|other|others|generic|unknown|n\/a)$/i;
-
-if (LIMIT !== null && (!Number.isInteger(LIMIT) || LIMIT < 1)) throw new Error("--limit must be a positive integer.");
-if (!Number.isInteger(SELECT_COUNT) || SELECT_COUNT < 1) throw new Error("--select-batch must be a positive integer.");
-if ([APPLY, Boolean(RESTORE), SELECT].filter(Boolean).length > 1) throw new Error("Use only one of --apply, --restore, --select-batch.");
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -118,9 +127,10 @@ const csvCell = (value) => {
   const text = String(value ?? "");
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
-async function writeCsv(file, header, rows) {
+/** `exclusive`: fail (EEXIST) instead of replacing an existing file. */
+async function writeCsv(file, header, rows, { exclusive = false } = {}) {
   const lines = [header.join(","), ...rows.map((row) => header.map((key) => csvCell(row[key])).join(","))];
-  await writeFile(path.join(OUT, file), `﻿${lines.join("\r\n")}\r\n`, "utf8");
+  await writeFile(path.resolve(OUT, file), `\ufeff${lines.join("\r\n")}\r\n`, { encoding: "utf8", flag: exclusive ? "wx" : "w" });
 }
 /** Minimal CSV reader (quotes, commas, CRLF) for the batch file. */
 function parseCsv(text) {
@@ -228,7 +238,7 @@ async function generateAll(prisma) {
 
 /** What would happen to this product, and why (lib/seo/product-seo-apply.ts, unit-tested). */
 function decide({ product, result }) {
-  return decideApply(result, product, { overwrite: OVERWRITE, allowFewSpecs: ALLOW_FEW_SPECS });
+  return decideApply(result, product, { overwrite: OVERWRITE, minSpecs: MIN_SPECS });
 }
 
 function altChange({ product, result }) {
@@ -259,8 +269,13 @@ async function plan(prisma) {
       [...filter.slugs].filter((slug) => !all.some(({ product }) => product.slug === slug)).length;
     if (missing > 0) console.log(`note: ${missing} id/slug in the batch file are not active products and are ignored`);
   }
+  const beforeLimit = chosen.length;
   if (LIMIT) chosen = chosen.slice(0, LIMIT);
-  return { all, rows: chosen.map((entry) => ({ ...entry, decision: decide(entry), alt: altChange(entry) })) };
+  return {
+    all,
+    limit: LIMIT ? { kept: chosen.length, of: beforeLimit } : null,
+    rows: chosen.map((entry) => ({ ...entry, decision: decide(entry), alt: altChange(entry) })),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +297,7 @@ function previewRow({ product, result, decision, alt }, chain) {
 }
 const PREVIEW_HEADER = ["id", "slug", "name", "category", "action", "current_title", "stored_title", "stored_source", "new_title", "new_title_len", "title_rule", "new_meta_description", "new_meta_len", "keyword", "secondary_keywords", "flags", "model_tokens_lost", "bad_chars", "zero_specs", "collision_group", "new_alt", "alt_action"];
 
-async function writePreview(rows) {
+async function writePreview(rows, limit) {
   await mkdir(OUT, { recursive: true });
   await writeCsv("apply-preview.csv", PREVIEW_HEADER, rows.map((entry) => previewRow(entry, entry.chain)));
   const lost = rows.filter(({ result }) => result.flags.includes("model_token_lost"));
@@ -294,7 +309,9 @@ async function writePreview(rows) {
   const noSuffix = rows.filter(({ result }) => result.flags.includes("title_without_price_suffix")).length;
   const lines = [
     `# Product SEO ${APPLY ? "APPLY" : "DRY RUN"}`, "",
-    `Database: ${databaseName()} · ${new Date().toISOString()} · ${rows.length} product(s)${BATCH_FILE ? ` from ${BATCH_FILE}` : ""}${LIMIT ? ` (limit ${LIMIT})` : ""}`, "",
+    `Database: ${databaseName()} · ${new Date().toISOString()} · ${rows.length} product(s)${BATCH_FILE ? ` from ${BATCH_FILE}` : ""}`,
+    ...(limit ? [`--limit ${LIMIT}: ${limitNote(limit.kept, limit.of)}`] : []),
+    describeMinSpecs(ARGS), "",
     "| action | products |", "|---|---|",
     ...countActions(rows.map((r) => r.decision)).map(([action, n]) => `| ${action} | ${n} |`), "",
     `**model_token_lost: ${lost.length}** (never written; model token missing from the title)${lost.length ? ":" : ""}`,
@@ -402,16 +419,54 @@ async function restore(prisma) {
   console.log(`restored ${todo.length} row(s) from ${RESTORE}${skipped.length ? `; skipped ${skipped.length}: ${skipped.slice(0, 10).join(", ")}${skipped.length > 10 ? " …" : ""}` : ""}`);
 }
 
+/** What lib/seo/product-seo-batch.ts needs to know about one product (the filter and the funnel share it). */
+const candidateOf = ({ product, result }) => ({
+  name: product.name,
+  priceAmount: product.priceAmount,
+  isComingSoon: product.isComingSoon,
+  hasRealImage: hasRealImage(product),
+  brand: squash(product.brand?.name),
+  hasStoredText: Boolean(squash(product.metaTitle) || squash(product.metaDescription)),
+  storedSource: product.seoSource ?? null,
+  result,
+});
+
+/** --explain-filter: write filter-funnel.md and print the top of it. */
+async function writeFunnel(funnel) {
+  await mkdir(OUT, { recursive: true });
+  const md = renderFunnelMarkdown(funnel, {
+    database: databaseName(),
+    at: new Date().toISOString(),
+    minSpecsNote: describeMinSpecs(ARGS).replace(/^minimum specs per description: /, ""),
+  });
+  const file = path.join(OUT, "filter-funnel.md");
+  await writeFile(file, md);
+  console.log(topLines(md, 50));
+  console.log(`\n... full report (examples per bucket): ${file}`);
+}
+
+/** The batch CSV (and its summary) to write: --out=<file>.csv or the next free batch-<N>.csv. Never an existing file. */
+async function claimBatchFiles() {
+  await mkdir(OUT, { recursive: true });
+  const summaryOf = (csv) => `${csv.replace(/\.csv$/i, "")}-summary.md`;
+  if (OUT_FILE) {
+    for (const file of [OUT_FILE, summaryOf(OUT_FILE)]) {
+      if (existsSync(file)) throw new Error(`${file} already exists and is not overwritten. Remove it or choose another --out=<file>.csv.`);
+    }
+    return { csv: OUT_FILE, summary: summaryOf(OUT_FILE) };
+  }
+  const n = nextBatchNumber(await readdir(OUT));
+  return { csv: path.join(OUT, `batch-${n}.csv`), summary: path.join(OUT, `batch-${n}-summary.md`) };
+}
+
 /** Quality filter + weighted round-robin over leaf categories. Read-only. */
 async function selectBatch(prisma) {
   const all = await generateAll(prisma);
-  const eligible = all.filter(({ product, result }) =>
-    product.priceAmount > 0 && hasRealImage(product) && !product.isComingSoon &&
-    squash(product.brand?.name) && !GENERIC_BRAND.test(squash(product.brand?.name)) &&
-    Boolean(result.type) && result.specsAvailable >= 3 && !result.needsReview &&
-    !squash(product.metaTitle) && !squash(product.metaDescription) &&
-    result.title.length <= SEO_TITLE_MAX && result.metaDescription.length >= SEO_DESC_MIN && result.metaDescription.length <= SEO_DESC_MAX,
-  );
+  const candidates = all.map(candidateOf);
+  const funnel = buildFunnel(candidates, MIN_SPECS);
+  if (EXPLAIN) await writeFunnel(funnel);
+  if (!SELECT) return;
+  const eligible = all.filter((_, i) => isSelectable(candidates[i], MIN_SPECS));
   const leaves = new Map();
   for (const entry of eligible) {
     const leaf = entry.chain[0] ?? "(none)";
@@ -435,47 +490,51 @@ async function selectBatch(prisma) {
       }
     }
   }
-  await mkdir(OUT, { recursive: true });
+  const files = await claimBatchFiles();
   const rows = picked.map(({ product, result, chain }) => ({
     id: product.id, slug: product.slug, name: product.name, leaf_category: chain[0] ?? "", family: result.family,
     weight: result.familyWeight, specs_available: result.specsAvailable, has_description: hasDescription(product),
     new_title: result.title, new_meta_description: result.metaDescription, keyword: result.primaryKeyword,
   }));
-  await writeCsv("batch-1.csv", ["id", "slug", "name", "leaf_category", "family", "weight", "specs_available", "has_description", "new_title", "new_meta_description", "keyword"], rows);
+  await writeCsv(files.csv, ["id", "slug", "name", "leaf_category", "family", "weight", "specs_available", "has_description", "new_title", "new_meta_description", "keyword"], rows, { exclusive: true });
   const perCategory = new Map();
   const perFamily = new Map();
   for (const row of rows) {
     perCategory.set(row.leaf_category, (perCategory.get(row.leaf_category) ?? 0) + 1);
     perFamily.set(row.family, (perFamily.get(row.family) ?? 0) + 1);
   }
+  const blocker = biggestBlocker(funnel);
   const lines = [
     `# Batch selection`, "",
     `Database: ${databaseName()} · ${new Date().toISOString()}`,
-    `Active products ${all.length}; pass the quality filter ${eligible.length} (price > 0, real image, real brand, usable type, >= 3 specs, resolved unique title, valid lengths, no stored text; stock ignored).`,
-    `Selected ${rows.length} of the ${SELECT_COUNT} requested across ${perCategory.size} leaf categories (${leaves.size} had eligible products).`, "",
+    describeMinSpecs(ARGS),
+    `Active products ${all.length}; ${funnel.withStoredText} already have stored text (never selected); of the other ${funnel.total}, ${eligible.length} pass the quality filter (price > 0, real image, real brand, usable type, >= ${MIN_SPECS} spec${MIN_SPECS === 1 ? "" : "s"}, resolved unique title, no gate flag, valid lengths; stock ignored).`,
+    `Selected ${rows.length} of the ${SELECT_COUNT} requested across ${perCategory.size} leaf categories (${leaves.size} had eligible products).`,
+    ...(rows.length < SELECT_COUNT && blocker
+      ? [`Fewer than requested: the biggest blocker is "${blocker.label}" (${blocker.removed} of ${funnel.total} removed there). Run with --explain-filter for the whole funnel.`]
+      : []),
+    "",
     "| family | picked |", "|---|---|",
     ...[...perFamily.entries()].sort((a, b) => b[1] - a[1]).map(([name, n]) => `| ${name} | ${n} |`), "",
     "| leaf category | weight | eligible | picked |", "|---|---|---|---|",
     ...[...perCategory.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, n]) => `| ${name} | ${leaves.get(name)?.weight ?? 1} | ${eligible.filter((e) => (e.chain[0] ?? "(none)") === name).length} | ${n} |`), "",
-    `File: ${path.join(OUT, "batch-1.csv")}`,
+    `File: ${files.csv}`,
   ];
-  await writeFile(path.join(OUT, "batch-1-summary.md"), `${lines.join("\n")}\n`);
+  await writeFile(files.summary, `${lines.join("\n")}\n`, { flag: "wx" });
   console.log(lines.join("\n"));
+  console.log(`\nwrote ${files.csv}`);
 }
 
 async function main() {
   const live = getPrisma();
   const writing = APPLY || Boolean(RESTORE);
   const prisma = writing ? live : readOnly(live);
-  const mode = RESTORE ? "RESTORE" : APPLY ? "APPLY" : SELECT ? "SELECT BATCH (read-only)" : "DRY RUN (nothing is changed)";
+  const mode = RESTORE ? "RESTORE" : APPLY ? "APPLY" : SELECT ? "SELECT BATCH (read-only)" : EXPLAIN ? "EXPLAIN FILTER (read-only)" : "DRY RUN (nothing is changed)";
   console.log(`database: ${databaseName()} — ${mode}`);
   if (RESTORE) return restore(prisma);
-  if (SELECT) return selectBatch(prisma);
-  if (APPLY && !BATCH_FILE && !LIMIT && !arg("only")) {
-    throw new Error("--apply needs --batch-file=<csv> (the reviewed selection) or --limit=<n>; it never writes to every product by default.");
-  }
-  const { rows } = await plan(prisma);
-  await writePreview(rows);
+  if (SELECT || EXPLAIN) return selectBatch(prisma);
+  const { rows, limit } = await plan(prisma);
+  await writePreview(rows, limit);
   if (APPLY) await applyRows(prisma, rows);
 }
 

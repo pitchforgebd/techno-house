@@ -1404,6 +1404,132 @@ phrase for an explicit stored mic spec.
 4. **The populate script changed** (RAM / storage extraction only, for future runs): `storage` is now the keyword-matched
    figure (it used to be the first figure near "SSD"), and two unclear storage figures return nothing.
 
+### Phase 8 v2.3 — batch tooling, filter funnel, description polish
+
+Branch `seo-phase-8-fix-3` (from main after PR #11, which has v2.2). Code only: no schema change, nothing run on
+production. The local database was read, never written (the script's Prisma client throws on any write call outside
+`--apply` / `--restore`).
+
+#### Why `--select-batch` selected 0 of the remaining ~1,904
+
+1. **Certain, fixed: the selection ignored `--allow-few-specs`.** The filter had `specsAvailable >= 3` written into it; the
+   flag was only read later by the apply decision. It now takes its minimum from the same option parsing as every other
+   mode (`--allow-few-specs` = 0, `--min-specs=N` = N, default 3) and prints which one it used.
+2. **Unknown without a measurement: which other criterion blocks them.** That is what `--explain-filter` answers. Run it
+   on the server before deciding anything: on the local database the biggest blocker is not the specs (see below).
+
+#### `--explain-filter` (read-only; alone, or together with `--select-batch`)
+
+For the active products WITHOUT stored text it writes `docs/seo-reports/product-seo/filter-funnel.md` and prints its top:
+
+- the population (active, with stored text split by source, without = the funnel);
+- **a waterfall**: for each criterion in the order the filter applies it — price > 0, real image, not coming soon, real
+  brand, usable type, at least N specs, resolved unique title, the gates `model_token_lost` / `foreign_code` /
+  `bad_chars` / `spec_zero`, valid lengths — how many fail it on their own (rows overlap), how many it removes first
+  (rows add up) and how many are left; then the biggest blocker;
+- **what a lower minimum would let through** (3 / 2 / 1 / 0);
+- **the "fewer than 3 specs" bucket by family** (with 0 / 1 / 2 specs, and how many would pass everything else at a
+  minimum of 2 and of 0);
+- **10 example names per bucket** (the bucket = the first criterion a product fails; spread over the list, not the first ten).
+
+The selection and the funnel call ONE function (`failedCriteria`, `lib/seo/product-seo-batch.ts`), so they cannot
+disagree; a test compares it with the old inline filter on 576 combinations. When a selection is short, its summary names
+the biggest blocker.
+
+How it looks on the local database (4,309 active products, none with stored text; the production numbers will differ):
+
+| # | criterion | fails on its own | removed here | left |
+|---|---|---|---|---|
+| 0 | start | | | 4309 |
+| 1 | price > 0 | 1352 | 1352 | 2957 |
+| 2 | real image (not the placeholder) | 4284 | 2932 | 25 |
+| 3-5 | not coming soon / real brand / usable type | 0 / 0 / 45 | 0 | 25 |
+| 6 | at least 3 specs | 4032 | 20 | 5 |
+| 7-12 | unique title / four gates / lengths | 460 / 0 / 0 / 208 / 0 / 242 | 0 | 5 |
+| | **pass every criterion** | | | **5** |
+
+Minimum 3 / 2 / 1 / 0 specs would pass 5 / 18 / 23 / 25. Locally the placeholder image is what removes most
+products; on production it may be that, the price, or something else. **I did not change any criterion** (see the owner
+decisions).
+
+#### `--select-batch`, `--min-specs`, `--limit`, batch files
+
+- `--select-batch[=N]` honours `--allow-few-specs` and `--min-specs=0..4` (explicit minimum wins over the flag) and
+  prints "minimum specs per description: 3 (default)" / "0 (--allow-few-specs) - title + type only is enough" /
+  "2 (--min-specs=2)". `--apply` and the dry run use the same minimum (`decideApply` takes it; its default-case message is unchanged).
+- **A description with few specs states only what the name or the stored specs contain**: with 0 specs it is the title core,
+  the neutral pointer sentence and the neutral closing; no spec is ever invented. A test runs 12 products with 0-2 specs through a claim checker
+  (no claim word and no number that the name, specs or title do not contain), and the local sweep below runs it on all 4,309.
+- **`--limit`** works as `--limit 20` and `--limit=20`, with `--apply` and the dry run, and the summary prints
+  `--limit 20: limited to 20 of 4309`. Before, `--limit 20` (space) was read as "no limit", silently. All options now go
+  through `lib/seo/apply-cli.ts`: a missing or non-numeric value, `0`, a negative or decimal number, an unknown option
+  (`--limt=20`), a repeated option, a stray word or an impossible combination (`--explain-filter` with `--apply`) abort
+  with a message **before the database is opened** (tested in the parser and by spawning the script).
+- The old `--apply` guard had `&& !arg("only")`: `--only` did nothing else, so `--apply --only=x` skipped the
+  "needs a batch file or limit" check. Removed; the guard is in the parser.
+- **Batch files are never overwritten**: `--select-batch` writes `batch-<N>.csv` (+ `batch-<N>-summary.md`) with the next
+  number above any existing `batch-*` file, or the file named by `--out=<file>.csv`; an existing file is refused, the
+  write itself is exclusive (`wx`), and the path is printed ("wrote ..."). `--out=<dir>` keeps its old meaning.
+
+#### Description polish (separate commit)
+
+The spec part of a description no longer repeats what the title already says. The title takes collision extras (CPU, size,
+storage, capacity); the description used to say them again.
+
+| Product | Before (v2.2) | After (v2.3) |
+|---|---|---|
+| Toshiba P300 2TB (1 / 2 / 4TB set) | `Toshiba PC Hard Drive P300 2TB: 2TB, 2 TB capacity, 6.0 Gbit/s interface.` | `Toshiba PC Hard Drive P300 2TB: 6.0 Gbit/s interface.` |
+| ThinkPad E14 G7 Core Ultra 5 225H | `… Core Ultra 5 225H Laptop – Core Ultra 5 225H, 16GB RAM.` | `… Core Ultra 5 225H Laptop – 16GB RAM, 512GB SSD.` |
+| Smart Flairedge (title `Smart Flairedge Laptop 512GB 15.6 inch Core i5-1335U`) | `…: Core i5-1335U, 8GB RAM.` | `…: 8GB RAM.` |
+
+Rule (`dropTitleRepeats`): a spec phrase whose words — leaving out the measuring nouns ("capacity", "storage", "display",
+"memory", "socket"...), and "RAM" unless the title also names a storage kind — are all in the title core is dropped.
+`2 TB` and `2TB` are one quantity. "512GB SSD" with only "512GB" in the title keeps what is new: "SSD storage". Titles,
+keywords and `specsAvailable` (the selection's spec count) are unchanged, so no product enters or leaves a batch because of this.
+The "Key specs of …:" lead is used only with two or more specs. The audio form factor is now taken only from the name's own
+words (`Earbuds` stays "earbuds", no longer "in-ear"; "TWS" and "earphones" claim nothing).
+
+Sweep over the 4,309 local products (read-only; v2.2 from main against v2.3 on the same inputs):
+
+| Metric (rows) | v2.2 | v2.3 |
+|---|---|---|
+| description says a quantity / code twice | 251 | **4** (junk raw names that repeat themselves: a licence string, a Zebra name pasted twice) |
+| "X: X" (the core repeated in the spec part) | 217 | 2 (same junk) |
+| title / keyword differs from v2.2 | – | **0 / 0** |
+| description differs from v2.2 | – | 354 |
+| description length outside 120-155 | 83 | 83 (unchanged: gated by "valid lengths") |
+| `specsAvailable` < 3 (what the selection counts) | 4032 | 4032 |
+| `few_specs` flag (the description states < 3 specs) | 4043 | 4131 |
+| claim or number not in the name / specs / title | 36 | **4** (all derivations, below) |
+| selection, minimum 3 / 2 / 1 / 0 | 5 / 18 / 23 / 25 | 5 / 18 / 23 / 25 |
+
+The 4 left are deterministic derivations of v2 / v2.2, not inventions: "NVMe" shown as "NVMe SSD", `2x 16GB` shown as
+32GB (two rows), a PSU certification "Bronze" shown as "80 Plus Bronze".
+
+#### Verification (2026-11-11, local)
+
+`tsc` 0 errors; eslint clean; `next build` OK (build `J6KeXOTW3ZsFe47U7aiKZ`, separate worktree); `test:seo-product` **1,356** + **157** checks
+(`check-product-seo.ts` was 1,292; the new `check-product-seo-batch.ts` is run by the same npm script); `test:seo-product-meta`
+11, `test:seo` 92, `test:seo-meta` 383, `test:seo-phase5` 198, `test:seo-phase6` 59, `test:security` 27,
+`seo:check-schema --offline` 49. Every v2.2 check passes; two expectations were adjusted on purpose (a title that
+already says "Cat6 UTP 2m" / "Over-Ear" no longer has those specs repeated in the description).
+
+#### Needs owner decision (Phase 8 v2.3)
+
+1. **Run `--explain-filter` on the server first.** If the biggest blocker there is the real-image or price criterion, the
+   question is whether those should gate a batch at all: the SEO text does not depend on either. They were put there to pick a
+   well-formed first batch to review. Relaxing them is a one-line change per criterion; I did not make it.
+2. **The 419 already generated rows keep the old text** (the selection never offers products with stored text). Re-applying
+   the new wording means a batch file of their slugs: `decideApply` updates `seoSource = generated` rows without
+   `--overwrite`, and still never touches hand-written ones.
+3. **`--apply --limit=N` applies to the first N products by id with no quality filter** (only `--batch-file` is
+   filtered; this is how v2 was built). Use a selected batch file; run the dry run with the same `--limit` first.
+4. **Thin descriptions** (fewer than 2 specs) are the title core + "See full specifications on the product page." + the
+   neutral closing. That pointer sentence is the v2 wording; say if you prefer to drop it (the description then needs 120+
+   characters from the core, which short titles do not reach).
+5. **Product names that repeat themselves** (a licence string, a Zebra name pasted twice) still produce a repeated core;
+   that is the raw name's own text. 179 licence-style names are already skipped by `bad_chars`.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
