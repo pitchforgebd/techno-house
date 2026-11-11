@@ -1203,6 +1203,121 @@ separate, later step (`--apply-alts`).
    script's dry run is now the source for generated output. The report remains valid for the
    data profile and selection counts.
 
+### Phase 8 fix — generator v2.1 (model identity)
+
+Branch `seo-phase-8-fix` (from main after PR #9). Triggered by the production dry-run of
+413 products. Code only: no schema change, no site-code behaviour change (the product page
+and admin card are untouched; the admin suggestion placeholder uses the same generator).
+Nothing was run on production.
+
+#### The five production samples, before → after
+
+(Sample 4's raw name was not in the report; it is reconstructed from the old keyword and title,
+and the old generator reproduces your reported output on all five.)
+
+| # | Before | After (v2.1) |
+|---|---|---|
+| 1 | `GIGABYTE AMD X870M Motherboard Price in Bangladesh` (lost "A ELITE WF7") | `GIGABYTE AMD X870M A ELITE WF7 Motherboard Price in BD` |
+| 2 | `GIGABYTE AMD B550M GIG-B550M-5 Motherboard Price in BD` (real model "H ARGB" dropped, SKU code added) | `GIGABYTE AMD B550M H ARGB Motherboard Price in Bangladesh` |
+| 3 | `Corsair HS50 Blue Headphone Price in Bangladesh` | `Corsair HS50 PRO STEREO Gaming Headset Price in Bangladesh` |
+| 4 | title `GIGABYTE B760M DS3H DDR4 Motherboard Price in Bangladesh`, keyword `gigabyte intel chipset b760m ds3h ddr4 price in bangladesh` (different cores) | title `GIGABYTE Intel Chipset B760M DS3H DDR4 Motherboard`, keyword `gigabyte intel chipset b760m ds3h ddr4 motherboard price in bangladesh` (same core) |
+| 5 | `Corsair HS50 Blue Headphone with Over-ear, Wired, Built-in microphone.` | `Corsair HS50 PRO STEREO Gaming Headset – wired over-ear headset with built-in mic. Price and availability at Techno House. Delivery across Bangladesh.` |
+
+Sample 1's description now reads `…WF7 Motherboard: AM5 socket, X870 chipset, Micro-ATX, DDR5.` Sample 4 has no
+"Price in …" suffix because brand + model core + type is 50 characters and neither suffix fits
+without dropping a core token (rule 1: "then the core alone").
+
+#### Rules implemented (`lib/seo/product-seo.ts`)
+
+1. **Model core** = the brand plus everything in the raw name before the first spec boundary:
+   a comma, a spaced dash, "(", `with / for / including`, `Socket`, a number with a unit (also glued,
+   `128MB+128MB`, `1200Mbps`), a resolution, `4K`, an ordinal ("11th Gen"), `USB / HDMI / PCIe …`, a CPU word
+   (`Core / Ryzen / …`, `Intel`/`AMD` before one) once a model code has been seen, and `DDR4` / `Wi-Fi` unless
+   they close the model name ("B760M DS3H DDR4,", "B650M-A WIFI II,"). Glued separators (`:` `|` `•` and a comma
+   with no space) are boundaries too. The core is never cut.
+2. **Model run** = the first model code (digits, or a hyphenated code such as `PTP-II`) plus the codes / line
+   words right after it (`A ELITE WF7`, `H ARGB`, `PRO STEREO Gaming`, `X LIGHTSPEED`), and everything before it back
+   to the brand. Capital words later in descriptive text ("…fingerprint and EM card reader") are not model.
+3. **Shortening** (title ≤ 60), from the END of the name, never the run: `Price in Bangladesh` → (drop droppable
+   words) → `Price in BD` → model core + type alone (no suffix). Droppable = after a high-entropy code
+   (`DS-K1T320EFWX-B`, `G502`, `AC1200`: letters + digits) the descriptive tail ("Value Series Face Access
+   Terminal"); after a low-entropy model (`212`, `14`) only colours / "Dual Band" with nothing identity-bearing
+   after them, so "Hyper 212 **Black Edition** CPU Cooler" keeps its words. A title that cannot fit is
+   **refused** (`title_over_60`, `needs_review`), never cut.
+4. **No foreign codes.** SKU / barcode / `modelNumber` are never used (they were the source of `GIG-B550M-5`); the
+   only code a collision may add is the POS code that led the raw name, plus colour / spec / `DDR4` words from the
+   name and RAM / storage / CPU attributes. A code-like token in a title that is not in the raw name sets
+   `foreign_code` (skip).
+5. **Type word**: the raw name's own word (`Headset`, `Router`, `Cord`, `Printer`) when it agrees with the
+   category's group (Headset ~ Headphone, Cord ~ Cable); otherwise the category type. A name word that disagrees
+   ("…ULTRA Series **Processor** # Z890 UD" on a motherboard) is a modifier and ignored.
+6. **Keyword = title core** (`brand + model core + type`) `+ " price in bangladesh"`; secondary keywords
+   (`price in bd`, `specs`, `review`) and the image alt use the same core.
+7. **Descriptions**: per-family natural phrases: `wired over-ear headset with built-in mic`, `27 inch 3840x2160 IPS
+   monitor, 60Hz`, `inkjet, 44-inch width, 2400x1200dpi`, `2MP bullet IP camera, 2.8mm lens, 30m IR`; list families
+   stay lists (`Core i7-1255U, 16GB RAM, 512GB SSD, 15.6 inch display`). The old `"… with <adjective list>"` lead is
+   gone ("with" only appears before "built-in mic[rophone]"). When room is short a compact wording is tried before a
+   spec is dropped (drop the repeated noun, "Micro-ATX form factor" → "Micro-ATX", "built-in microphone" → "mic").
+8. **Safety gate** (`lib/seo/product-seo-apply.ts`, unit-tested): a model-looking token of the model run missing from
+   the title sets `model_token_lost` → action `skip: model_token_lost`, never written (also beats `--overwrite` and
+   `unchanged`). The dry-run summary prints the count and lists the products; `apply-preview.csv` has a
+   `model_tokens_lost` column.
+
+**One deliberate narrowing of the gate you described.** You asked that "every model-looking token of the core
+(a digit, an uppercase code, or a line word)" be in the title. Taken literally over the whole core, descriptive
+tails that contain digits or capitals ("Capacity-Max.1000", "…and EM card reader") would be gated as "lost" although
+dropping them is correct, and those products would be skipped. The gate therefore checks every model-looking token of the
+**model run and everything before it** (exactly what the title may never drop). Tail tokens outside the run are
+descriptive and may be dropped. If you prefer the literal reading, it is a one-line change in `lostModelTokens`
+(`i < name.must` → `i < name.core.length`) at the cost of more skips.
+
+#### Verification (2026-11-11)
+
+- `tsc` 0 errors; eslint clean; `next build` OK (build `rrq_2dT3s1rheMp8VzvOf`, separate worktree).
+- `test:seo-product` **928** checks (was 369): 41 model fixtures: the production samples plus laptops, monitors,
+  routers, NVR, printers, coolers, four headsets, mouse, UPS, SSD, GPU, cameras, access control, 7 B650 boards from
+  GIGABYTE / ASUS / MSI with different model lines, and shapes found in the catalogue: `:High quality…`, `,SEA-118SS`,
+  `128MB+128MB`, `(PRO3300SFCU)`, partial brand "Smart PC", `POWER SUPPLY`, a junk licence name). Per fixture: no
+  model token lost, no foreign code, the type word, keyword = title core, no ungrammatical "with …", ≤ 60 / 120–155,
+  neutral wording; set-wide uniqueness; determinism and input-order independence; the gate and apply decisions.
+- Other suites unchanged and passing: `test:security` 27, `test:seo` 92, `seo:check-schema --offline` 49,
+  `test:seo-meta` 383, `test:seo-phase5` 198, `test:seo-phase6` 59, `test:seo-product-meta` 11.
+- Live on a throwaway DB copy: `test:seo-product-meta --base --old` 258/258 (60 of 60 sampled products without
+  stored meta byte-identical to the previous build; 25 with stored meta render it verbatim); admin card 13/13 in
+  headless Chrome (the generator is bundled into the form); apply flow select → apply (30) → rerun `unchanged` →
+  restore → writable again.
+- Sweep of all 4,309 local products (dry run, read-only; local data, not production): `model_token_lost` 0,
+  `foreign_code` 0, no "Headphone" for a Headset, keyword ≠ title core 0, no ungrammatical "with …". 207 would be written
+  (needs ≥ 3 specs), 3,444 skipped for < 3 specs, 658 `needs_review` (404 title collisions that cannot be split, and 275
+  titles that cannot fit in 60, half of those licence / part-number junk names).
+
+#### Needs owner decision (Phase 8 fix)
+
+1. **Titles without "Price in …"**: when brand + model core + type fit in 60 but no suffix does, the title is the core
+   alone (rule 1). Locally 382 of 4,309 (8.9 %); the production dry-run summary prints the real count
+   ("Titles with no 'Price in …' suffix"). Alternative: allow dropping pure vendor-noise words in the core
+   ("Intel Chipset", "AMD") for those, or accept a title of up to ~70 characters.
+2. **Titles that cannot fit** are refused (`title_over_60`, never written). Locally 275, about half (139) are
+   `HO/…_…` licence strings and part-number descriptions that need a human name anyway. Say if titles up to ~70
+   characters are acceptable for the rest.
+3. **Low-entropy models keep their tail words** ("Hyper 212 Black Edition", "Air 540 Arctic White High Airflow …"): they
+   are never cut, so some long names are refused rather than shortened. Safe, but more review rows.
+4. **The literal gate reading** (see above): current = model run, literal = whole core.
+5. Descriptions repeat the type noun when the title already ends with it ("…Headset – wired over-ear headset …");
+   dropped automatically only when the room is needed. Say if you would rather always drop it.
+
+#### Re-run the dry-run on the server (read-only; no migration, no build needed)
+
+    cd ~/techno-house
+    git fetch origin && git checkout seo-phase-8-fix        # after merge: git pull origin main
+    npx tsx scripts/seo/apply-product-seo.mjs                           # DRY RUN: nothing is changed
+    npx tsx scripts/seo/apply-product-seo.mjs --select-batch=500        # batch 1 (read-only)
+    # read docs/seo-reports/product-seo/apply-summary.md  (model_token_lost, foreign_code, no-suffix counts)
+    # and apply-preview.csv (columns flags, model_tokens_lost, title_rule)
+
+A build + `pm2 restart techno-house` is only needed to ship the admin form's suggestion placeholder; the storefront
+and the apply script do not need it.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)

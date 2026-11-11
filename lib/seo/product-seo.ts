@@ -18,7 +18,7 @@
  *    they are flagged `needsReview` and must not be written.
  *  - Image alt "{Brand} {Model} {Type}" always includes the type.
  */
-import { cleanProductName, cutAtWord } from "@/lib/seo/page-meta";
+import { cutAtWord, softenShouting } from "@/lib/seo/page-meta";
 
 export const SEO_TITLE_MAX = 60;
 export const SEO_DESC_MIN = 120;
@@ -46,6 +46,8 @@ export type SeoProductInput = {
 export type SeoResult = {
   id: string;
   title: string;
+  /** Title without the "Price in …" / brand suffix: brand + model core + type. The keyword and alt use it. */
+  titleCore: string;
   /** How the title was built (for the review CSV). */
   titleRule: string;
   metaDescription: string;
@@ -59,8 +61,10 @@ export type SeoResult = {
   specsUsed: string[];
   /** Spec phrases the data supports (up to 4), whether or not they all fit in 155 chars. */
   specsAvailable: number;
-  /** e.g. few_specs, no_model_token, title_over_60, title_collision. */
+  /** e.g. few_specs, no_model_token, title_over_60, title_collision, model_token_lost, foreign_code. */
   flags: string[];
+  /** Model-looking tokens of the name's model core that are missing from the title (must be empty). */
+  modelTokensLost: string[];
   /** Set when the title still collides with another product after disambiguation. */
   collisionGroup: string | null;
   /** True when the result must not be written without a human look. */
@@ -279,7 +283,7 @@ const SLOTS: Record<string, Slot> = {
 const TEMPLATES: Record<FamilyId, string[]> = {
   laptop: ["cpu", "ram", "storage", "display_size", "gpu_chip", "resolution", "refresh"],
   desktop: ["cpu", "ram", "storage", "gpu_chip", "display_size"],
-  monitor: ["display_size", "resolution", "refresh", "panel", "connectivity"],
+  monitor: ["display_size", "resolution", "panel", "refresh", "connectivity"],
   motherboard: ["socket", "mb_chipset", "form_factor", "mem_type", "mem_speed"],
   gpu: ["gpu_chip", "vram", "connectivity", "drive_if", "tdp"],
   processor: ["cores", "threads", "base_clock", "boost_clock", "socket"],
@@ -291,18 +295,18 @@ const TEMPLATES: Record<FamilyId, string[]> = {
   cooler: ["cooler_type", "fan_size", "tdp", "socket"],
   "large-format-printer": ["print_tech", "paper", "print_res", "connectivity"],
   printer: ["print_tech", "print_speed", "print_res", "paper", "connectivity"],
-  camera: ["cam_res", "lens", "ir", "cam_type", "poe"],
+  camera: ["cam_res", "cam_type", "lens", "ir", "poe"],
   nvr: ["channels", "cam_res", "bays", "poe"],
   router: ["wifi_std", "net_speed", "net_ports", "connectivity"],
   switch: ["net_ports", "net_speed", "poe", "connectivity"],
-  cable: ["cable_cat", "cable_len", "cable_shield", "fiber", "cable_conn"],
+  cable: ["cable_len", "cable_cat", "cable_shield", "fiber", "cable_conn"],
   "ip-phone": ["sip", "display_size", "poe", "connectivity"],
   "flat-panel": ["display_size", "resolution", "touch", "connectivity"],
   "capture-card": ["capture_res", "capture_if", "connectivity"],
-  headphone: ["audio_type", "driver", "connectivity", "mic"],
+  headphone: ["connectivity", "audio_type", "mic", "driver"],
   speaker: ["speaker_power", "speaker_ch", "connectivity"],
-  keyboard: ["kb_switch", "connectivity"],
-  mouse: ["mouse_dpi", "connectivity"],
+  keyboard: ["connectivity", "kb_switch"],
+  mouse: ["connectivity", "mouse_dpi"],
   ups: ["ups_cap", "connectivity"],
   other: ["display_size", "connectivity", "net_speed", "wattage", "storage_cap"],
 };
@@ -315,18 +319,18 @@ function validPhrase(phrase: string): boolean {
   return phrase.length > 1 && phrase.length <= 36 && !CLAIM_WORDS.test(phrase) && !hasRepeatedWord(phrase);
 }
 
-/** 3-4 real spec phrases for the product's family. Never invents a value. */
-export function pickSpecPhrases(facts: SpecFact[], family: FamilyId, brand: string, max = 4): string[] {
-  const out: string[] = [];
-  const add = (phrase: string | null) => {
+/** 3-4 real spec values (slot id + phrase) for the product's family. Never invents a value. */
+export function pickSpecs(facts: SpecFact[], family: FamilyId, brand: string, max = 4): SpecValue[] {
+  const out: SpecValue[] = [];
+  const add = (slot: string, phrase: string | null) => {
     if (!phrase || !validPhrase(phrase)) return;
     const key = phraseKey(phrase);
     const firstToken = key.split(" ")[0] ?? "";
-    if (out.some((other) => {
+    if (out.some(({ phrase: other }) => {
       const o = phraseKey(other);
       return o.includes(key) || key.includes(o) || (/\d/.test(firstToken) && o.split(" ")[0] === firstToken);
     })) return;
-    out.push(phrase);
+    out.push({ slot, phrase });
   };
   const usable = facts.filter((fact) => squash(fact.value) !== "");
   const ctx: Ctx = { brand };
@@ -345,7 +349,7 @@ export function pickSpecPhrases(facts: SpecFact[], family: FamilyId, brand: stri
       if (!bool && hasRepeatedWord(value)) continue;
       const phrase = slot.read(value, ctx);
       if (phrase) {
-        add(phrase);
+        add(slotId, phrase);
         break;
       }
     }
@@ -359,145 +363,482 @@ export function pickSpecPhrases(facts: SpecFact[], family: FamilyId, brand: stri
       if (BLOCKED_LABEL.test(label) || isJunkValue(value, brand)) continue;
       if (!/^(interface|connectivity|resolution|capacity|speed|ports?|power|memory|storage|size|output|input)$/.test(label)) continue;
       if (!/^\d/.test(value) || value.length > 18 || !/[a-z]/i.test(value)) continue;
-      add(`${value} ${label}`);
+      add("fill", `${value} ${label}`);
     }
   }
   return out.slice(0, max);
 }
 
-// ---------------------------------------------------------------------------
-// Name -> core (brand + product line + model code), never cut
-// ---------------------------------------------------------------------------
-
-const UNIT_WORD = /^(?:gb|tb|mb|ghz|mhz|hz|w|v|mm|cm|m|mp|ft|kg|g|mah|ah|va|inch|inches|in|pcs|pack|core|cores|port|ports|ch|gen|th|k|"|”)$/i;
-const SPEC_TOKEN = /^\d+(?:\.\d+)?-?(?:gb|tb|mb|ghz|mhz|hz|w|v|mm|cm|m|mp|ft|kg|g|mah|ah|va|inch|in|pcs|pack|core|cores|port|ports|ch|k|"|”|th)$/i;
-const NOT_MODEL = new Set(["wi-fi", "full-hd", "plug-in", "all-in-one", "dual-band", "tri-band", "low-profile", "heavy-duty", "e-paper", "usb-c", "type-c", "non-stop", "built-in"]);
-
-function isModelToken(token: string, next: string | undefined, index: number): boolean {
-  const t = token.replace(/^[(\[]+|[)\],.;:]+$/g, "");
-  if (!t || NOT_MODEL.has(t.toLowerCase())) return false;
-  if (/^\d+(?:\.\d+)?$/.test(t)) {
-    if (next && UNIT_WORD.test(next.replace(/[^A-Za-z"”]/g, ""))) return false;
-    return t.length >= 3 || index === 1;
-  }
-  if (/\d/.test(t) && /[A-Za-z]/.test(t)) return !SPEC_TOKEN.test(t);
-  // PTP-II, DS-K1: letters on both sides of a hyphen with an uppercase letter.
-  return /^[A-Za-z]{1,6}-[A-Za-z0-9]+$/.test(t) && /[A-Z]/.test(t);
+/** The phrases only (for tests and reports). */
+export function pickSpecPhrases(facts: SpecFact[], family: FamilyId, brand: string, max = 4): string[] {
+  return pickSpecs(facts, family, brand, max).map((s) => s.phrase);
 }
 
-/** Words that complete a model code when they directly follow it ("4060 Ti", "7800 XT"). */
-const MODEL_SUFFIX = /^(?:Ti|Super|XT|XTX|GRE|X3D|Pro|Max|Ultra|Plus|Lite|SE|Mini|OC|Gen)$/;
+// ---------------------------------------------------------------------------
+// Name -> model core: the brand plus everything in the raw name before the
+// first spec boundary. Never cut; only generic words after the last model
+// token may be dropped (from the end) to make a title fit.
+// ---------------------------------------------------------------------------
 
-type Parts = { brand: string[]; line: string[]; model: string[]; rest: string[]; hasModel: boolean; code: string | null };
+const GENERIC_BRAND = /^(?:no ?brand|unbranded|other|others|generic|unknown|n\/a)$/i;
 
-function splitName(input: SeoProductInput): Parts {
+/** Words that are part of a model identity ("A ELITE WF7", "H ARGB", "HS50 PRO STEREO"). */
+const LINE_WORDS = new Set(
+  "pro elite argb max plus gaming aorus nitro stereo ultra mini lite se xt xtx ti super tuf rog strix prime wifi wi-fi ax eagle vision master xtreme windforce oc premium deluxe carbon surround edge extreme mark".split(" "),
+);
+
+/** digit + unit: 8GB, 27inch, 165Hz, 650W, 2MP (a spec, never a model code). */
+const SPEC_TOKEN = /^\d+(?:\.\d+)?-?(?:gb|tb|mb|ghz|mhz|hz|w|v|mm|cm|m|mp|ft|kg|g|mah|ah|va|inch|in|pcs|pack|core|cores|port|ports|ch|k|"|”|″|th|rpm|ppm|dpi|fps)$/i;
+/** Starts with number + unit: 128MB+128MB, 1200Mbps, 27inch. */
+const UNIT_START = /^\d+(?:\.\d+)?\s?(?:gb|tb|mb|ghz|mhz|hz|w|v|mm|cm|mp|ft|kg|mah|va|inch|"|”|″|rpm|ppm|dpi|fps|mbps|gbps|ch)(?![a-z])/i;
+const NUMBER = /^\d+(?:\.\d+)?$/;
+const UNIT_WORDS_AFTER = new Set("gb tb mb inch inches in hz mhz ghz w mp mm cm x core cores ch port ports pcs pack th".split(" "));
+const NOT_MODEL = new Set(["wi-fi", "full-hd", "plug-in", "all-in-one", "dual-band", "tri-band", "low-profile", "heavy-duty", "e-paper", "usb-c", "type-c", "non-stop", "built-in"]);
+const CONNECTIVE = /^(?:with|for|w\/|including|featuring|supports?|compatible)$/i;
+const CPU_WORD = /^(?:core|ryzen|celeron|pentium|xeon|athlon|epyc|threadripper|snapdragon)$/i;
+const DASH_TOKEN = /^[-–—]+$/;
+const POS_HASH = /^([A-Za-z0-9][A-Za-z0-9./+-]{3,})\s*#\s*/;
+const POS_COMMA = /^([A-Z0-9][A-Z0-9./+-]{7,})\s*,\s*/;
+
+/** Product-type nouns: word -> group. A word in the raw name beats the category's type. */
+const TYPE_WORDS: Record<string, string> = {
+  headset: "audio", headsets: "audio", headphone: "audio", headphones: "audio", earphone: "audio", earphones: "audio", earbuds: "audio", earbud: "audio",
+  router: "network", switch: "network", modem: "network", repeater: "network", extender: "network",
+  monitor: "monitor", laptop: "computer", notebook: "computer", desktop: "computer", pc: "computer",
+  printer: "print", scanner: "print", photocopier: "print", copier: "print", plotter: "print", toner: "consumable", cartridge: "consumable",
+  motherboard: "board", cooler: "cooler", camera: "camera", webcam: "camera", nvr: "camera", dvr: "camera", xvr: "camera",
+  keyboard: "input", mouse: "input", ups: "power", charger: "power", psu: "power", adapter: "power", inverter: "power",
+  ssd: "storage", hdd: "storage", pendrive: "storage", ram: "memory", memory: "memory", speaker: "sound", soundbar: "sound", microphone: "sound",
+  cable: "cable", cord: "cable", gpu: "gpu", processor: "cpu", casing: "case", case: "case", cabinet: "case",
+  phone: "mobile", smartphone: "mobile", tablet: "mobile", smartwatch: "watch", watch: "watch", projector: "projector", tv: "tv", television: "tv",
+};
+const TYPE_PHRASES: [string, string][] = [
+  ["graphics card", "gpu"], ["power supply", "power"], ["access point", "network"], ["mouse pad", "input"],
+  ["hard disk", "storage"], ["flash drive", "storage"], ["power bank", "power"], ["smart watch", "watch"], ["memory card", "storage"],
+];
+
+export type NameInfo = {
+  /** All tokens (POS code removed, brand normalised), display casing. */
+  all: string[];
+  /** Model core, brand first. */
+  core: string[];
+  coreRaw: string[];
+  brandLen: number;
+  /** core[0..must) is always kept: the brand, everything up to the model code, and the model run after it. */
+  must: number;
+  /** Indexes in core of product-type words (kept). */
+  typeIdxs: Set<number>;
+  /** First product-type word after the spec boundary, if any. */
+  restType: string | null;
+  hasModel: boolean;
+  /** POS part code that led the raw name (it IS in the raw name). */
+  code: string | null;
+};
+
+const stripEdge = (token: string) => token.replace(/^[(\[]+|[)\],.;:]+$/g, "");
+const normTok = (token: string) => token.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** A model CODE: contains a digit (and is not a unit like 8GB) or is a hyphenated code (PTP-II, DS-K1). */
+function isStrongModel(raw: string): boolean {
+  const t = stripEdge(raw).replace(/\+$/, "");
+  if (!t) return false;
+  if (/\d/.test(t)) return !UNIT_START.test(t) && !SPEC_TOKEN.test(t);
+  return /^[A-Za-z]{1,6}-[A-Za-z0-9]+$/.test(t) && /[A-Z]/.test(t) && !NOT_MODEL.has(t.toLowerCase());
+}
+
+/** A model LINE WORD: ARGB, ELITE, A, H, II, PRO, GAMING ... (all caps, or one of the known line words). */
+function isModelWord(raw: string): boolean {
+  const t = stripEdge(raw).replace(/\+$/, "");
+  return Boolean(t) && (LINE_WORDS.has(t.toLowerCase()) || /^[A-Z][A-Z0-9-]*$/.test(t));
+}
+
+const isModelLooking = (raw: string) => isStrongModel(raw) || isModelWord(raw);
+
+function typeGroupOf(text: string): string | null {
+  const lower = text.toLowerCase();
+  for (const [phrase, group] of TYPE_PHRASES) if (lower.includes(phrase)) return group;
+  const words = lower.split(/[^a-z]+/).filter(Boolean);
+  for (let i = words.length - 1; i >= 0; i -= 1) {
+    const group = TYPE_WORDS[words[i] ?? ""];
+    if (group) return group;
+  }
+  return null;
+}
+
+/** Indexes of product-type words in `tokens` (two-word phrases cover both tokens). */
+function findTypeIdxs(tokens: string[], from: number, categoryHeads: string[], groups: string[] = []): Set<number> {
+  const out = new Set<number>();
+  // A word like "Processor" in a motherboard's name ("... ULTRA Series Processor # Z890 UD") is a modifier, not the
+  // product type: the name's own word counts only when it agrees with the category (Headset ~ Headphone).
+  const agrees = (group: string | undefined) => Boolean(group) && (groups.length === 0 || groups.includes(group as string));
+  for (let i = from; i < tokens.length; i += 1) {
+    const w = normTok(tokens[i] ?? "");
+    const next = normTok(tokens[i + 1] ?? "");
+    const phrase = TYPE_PHRASES.find(([text]) => text === `${w} ${next}`.trim() && next);
+    if (phrase) {
+      if (agrees(phrase[1])) {
+        out.add(i);
+        out.add(i + 1);
+      }
+      continue;
+    }
+    if (agrees(TYPE_WORDS[w]) || categoryHeads.some((head) => head && w === normTok(head).replace(/s$/, "")) || categoryHeads.some((head) => head && w === normTok(head))) out.add(i);
+  }
+  return out;
+}
+
+const tidyCase = (word: string) => (/^[A-Z0-9]{2,}$/.test(word) ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+
+const ACRONYMS = new Set("ups ssd hdd nvr dvr xvr pc tv ram gpu psu cpu led lcd usb hdmi ip cc nas".split(" "));
+const TYPE_PHRASE_WORDS = new Set(TYPE_PHRASES.flatMap(([phrase]) => phrase.split(" ")));
+/** "SUPPLY" -> "Supply" (product-type words only; the shared shouting list is left alone so today's titles do not change). */
+function softenType(token: string): string {
+  const w = stripEdge(token);
+  const lower = w.toLowerCase();
+  if (!/^[A-Z]{3,}$/.test(w) || ACRONYMS.has(lower)) return token;
+  return TYPE_WORDS[lower] || TYPE_PHRASE_WORDS.has(lower) ? token.replace(w, w.charAt(0) + w.slice(1).toLowerCase()) : token;
+}
+
+export function analyseName(input: SeoProductInput, categoryHeads: string[] = [], groups: string[] = []): NameInfo {
   const brand = squash(input.brand);
-  const cleaned = cleanProductName(input.name, /^(?:no ?brand|unbranded|other|others|generic|unknown|n\/a)$/i.test(brand) ? "" : brand);
-  const tokens = squash(cleaned.clean || input.name).split(" ").filter(Boolean);
-  const brandTokens = brand && tokens[0]?.toLowerCase() === brand.split(" ")[0]?.toLowerCase() ? brand.split(" ").length : 0;
-  const norm = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const wanted = norm(input.modelNumber ?? "");
-  let modelStart = -1;
-  if (wanted.length >= 3) {
-    modelStart = tokens.findIndex((token, i) => i >= brandTokens && norm(token).includes(wanted));
+  const realBrand = brand && !GENERIC_BRAND.test(brand) ? brand : "";
+  let text = squash(input.name.replace(/[®™©]/gu, " "));
+  let code: string | null = null;
+  const hash = text.match(POS_HASH);
+  const comma = text.match(POS_COMMA);
+  const lead = hash ?? (comma && /\d/.test(comma[1] ?? "") ? comma : null);
+  if (lead) {
+    code = lead[1] ?? null;
+    text = text.slice(lead[0].length);
   }
-  if (modelStart < 0) {
-    modelStart = tokens.findIndex((token, i) => i >= Math.max(1, brandTokens) && isModelToken(token, tokens[i + 1], i));
+  text = squash(
+    text
+      // "IPC2314-WP:High quality", "Non-Inverter,SEA-118SS", "A | B", bullets: separators are boundaries
+      .replace(/\s*[:|•·]\s*/g, ", ")
+      .replace(/,(?=\S)/g, ", ")
+      .replace(/\s*#\s*/g, " ")
+      .replace(/\(?\b(?:no|without)\s+warranty\b\)?/giu, " ")
+      .replace(/\b\d+\s*(?:years?|yrs?|months?)\s+(?:official\s+|replacement\s+)?warranty\b/giu, " "),
+  );
+  const rawAll = text.split(" ").filter(Boolean);
+
+  // Brand: use the store's own casing; add it only when the name never says it.
+  const brandTokens = realBrand ? realBrand.split(" ") : [];
+  let brandLen = 0;
+  let raw = rawAll;
+  if (brandTokens.length > 0) {
+    const leads = brandTokens.every((b, i) => normTok(rawAll[i] ?? "") === normTok(b));
+    const anywhere = new RegExp(`(?:^|\\s)${escapeRe(realBrand)}(?:\\s|$)`, "i").test(text);
+    const startsWithFirstWord = brandTokens.length > 1 && normTok(rawAll[0] ?? "") === normTok(brandTokens[0] ?? "");
+    if (leads) {
+      brandLen = brandTokens.length;
+      raw = [...brandTokens, ...rawAll.slice(brandTokens.length)];
+    } else if (startsWithFirstWord) {
+      brandLen = 1;
+      raw = [brandTokens[0] ?? "", ...rawAll.slice(1)];
+    } else if (!anywhere) {
+      brandLen = brandTokens.length;
+      raw = [...brandTokens, ...rawAll];
+    }
   }
-  const hasModel = modelStart >= 0;
-  if (!hasModel) {
-    const cut = Math.min(tokens.length, Math.max(brandTokens, 1) + 3);
-    return { brand: tokens.slice(0, brandTokens), line: tokens.slice(brandTokens, cut), model: [], rest: tokens.slice(cut), hasModel, code: cleaned.code };
+  const display = raw.map((token, i) => (i < brandLen ? token : softenType(softenShouting(token))));
+
+  const minCore = Math.max(brandLen, 1) + 1; // a soft boundary needs brand + one more token
+  const isTypeAt = (i: number) => Boolean(TYPE_WORDS[normTok(display[i] ?? "")]);
+  let modelSeen = false;
+  let end = raw.length;
+  for (let i = brandLen; i < raw.length; i += 1) {
+    const tok = raw[i] ?? "";
+    const stripped = tok.replace(/[,;]+$/, "");
+    const next = raw[i + 1];
+    if (DASH_TOKEN.test(tok)) {
+      if (i >= minCore - 1) { end = i; break; }
+      continue;
+    }
+    if (tok.startsWith("(") && i >= minCore - 1) { end = i; break; }
+    if (/^warranty/i.test(stripped) && i >= minCore - 1) { end = i; break; }
+    if (i >= minCore - 1 && CONNECTIVE.test(stripped)) { end = i; break; }
+    if (i >= minCore) {
+      const t = stripped;
+      const lower = t.toLowerCase();
+      let boundary = /^socket$/i.test(t);
+      if (!boundary) {
+        const unitish = UNIT_START.test(t) || SPEC_TOKEN.test(t) || /^[248]k$/i.test(t) || /^\d{3,4}x\d{3,4}$/i.test(t) || /^\d+(?:st|nd|rd|th)$/i.test(t);
+        // The NEXT token must itself be the unit word ("27 inch", "16 GB", "4 x DDR5"); "5 7600X" is not "5 x".
+        const numberThenUnit = NUMBER.test(t) && UNIT_WORDS_AFTER.has((next ?? "").toLowerCase().replace(/[,;.]+$/, ""));
+        boundary = unitish || numberThenUnit;
+      }
+      if (!boundary && modelSeen) {
+        if (/^(?:usb|hdmi|bluetooth|thunderbolt|nvme|sata|pcie|dimm|so-?dimm)$/i.test(t)) boundary = true;
+        else if (/^(?:intel|amd)$/i.test(t) && (CPU_WORD.test(next ?? "") || /^i[3579]/i.test(next ?? ""))) boundary = true;
+        else if (CPU_WORD.test(t)) boundary = true;
+        else if (/^(?:g|lp)?ddr\d?$/i.test(lower) || /^wi-?fi$/i.test(lower)) {
+          // "B760M DS3H DDR4," / "B650 AORUS ELITE AX WIFI," are part of the model name; "DDR5 DIMM" / "Wi-Fi 6" start the specs.
+          let closes = false;
+          for (let j = i; j < raw.length && j - i <= 3; j += 1) {
+            const here = raw[j] ?? "";
+            const after = raw[j + 1];
+            if (/[,;]$/.test(here) || after === undefined || DASH_TOKEN.test(after) || after.startsWith("(") || isTypeAt(j + 1) || TYPE_WORDS[normTok(after)] !== undefined) { closes = true; break; }
+            // "WIFI II", "AX V2": a short all-caps token continues the model name; "Wi-Fi 6", "DDR5 DIMM" do not.
+            if (!/^(?:[A-Z]{1,3}|V\d)[,;]?$/.test(after) || /^(?:RAM|GB|TB)$/.test(after)) break;
+          }
+          boundary = !closes;
+        }
+      }
+      if (boundary) { end = i; break; }
+    }
+    if (isStrongModel(tok)) modelSeen = true;
+    if (/[,;]$/.test(tok)) { end = i + 1; break; }
   }
-  let modelEnd = modelStart + 1;
-  while (modelEnd < tokens.length && isModelToken(tokens[modelEnd] ?? "", tokens[modelEnd + 1], modelEnd)) modelEnd += 1;
-  while (modelEnd < tokens.length && MODEL_SUFFIX.test(tokens[modelEnd] ?? "") && modelEnd > modelStart) modelEnd += 1;
-  return {
-    brand: tokens.slice(0, brandTokens),
-    line: tokens.slice(brandTokens, modelStart),
-    model: tokens.slice(modelStart, modelEnd),
-    rest: tokens.slice(modelEnd),
-    hasModel,
-    code: cleaned.code,
-  };
+  // "Non-Inverter, SEA-118SS": when the text before the first comma has no real model code but the very next
+  // token is one, that code is the model and stays in the core.
+  if (
+    end < raw.length &&
+    end > brandLen &&
+    /[,;]$/.test(raw[end - 1] ?? "") &&
+    !(raw[end] ?? "").startsWith("(") &&
+    !raw.slice(brandLen, end).some(isHighEntropyCode) &&
+    isHighEntropyCode(raw[end] ?? "")
+  ) {
+    let j = end + 1;
+    while (j < raw.length && !/[,;]$/.test(raw[j - 1] ?? "") && isModelLooking(raw[j] ?? "")) j += 1;
+    end = j;
+  }
+  // No lookbehind here: this module is bundled into the admin form and must parse on older Safari.
+  const trimTok = (t: string) => t.replace(/[,;]+$/, "").replace(/^[-–—]+/, "").replace(/[-–—]+$/, "");
+  const core = display.slice(0, end).map(trimTok).filter(Boolean);
+  const coreRaw = raw.slice(0, end).map(trimTok).filter(Boolean);
+  const all = display.map(trimTok).filter((t) => t && !DASH_TOKEN.test(t));
+  const rest = display.slice(end).map(trimTok).filter((t) => t && !DASH_TOKEN.test(t));
+
+  // The model run starts at the first model CODE (else the first line word) and continues through the
+  // codes / line words right after it ("X870M A ELITE WF7", "HS50 PRO STEREO"). Everything before it (back to
+  // the brand) is kept too; capital words later in descriptive text ("... fingerprint and EM card") are not model.
+  let first = -1;
+  for (let i = brandLen; i < core.length && first < 0; i += 1) if (isStrongModel(coreRaw[i] ?? "")) first = i;
+  for (let i = brandLen; i < core.length && first < 0; i += 1) if (isModelWord(coreRaw[i] ?? "")) first = i;
+  let runEnd = first >= 0 ? first + 1 : 0;
+  while (first >= 0 && runEnd < core.length && isModelLooking(coreRaw[runEnd] ?? "")) runEnd += 1;
+  const hasModel = first >= 0;
+  const must = hasModel ? runEnd : core.length;
+  const typeIdxs = findTypeIdxs(core, brandLen, categoryHeads, groups);
+  let restType: string | null = null;
+  const restIdx = [...findTypeIdxs(rest, 0, [])][0];
+  if (restIdx !== undefined) restType = tidyCase(rest[restIdx] ?? "");
+  return { all, core, coreRaw, brandLen, must, typeIdxs, restType, hasModel, code };
 }
 
 // ---------------------------------------------------------------------------
 // Title / description / alt composition
 // ---------------------------------------------------------------------------
 
+export type Extra = { kind: string; text: string };
+
 type Prep = {
   input: SeoProductInput;
   family: Family;
-  parts: Parts;
+  name: NameInfo;
   typeList: string[];
-  specs: string[];
+  /** Resolved product-type word and whether the model core already contains it. */
+  type: string;
+  typeInCore: boolean;
+  specs: SpecValue[];
   facts: SpecFact[];
 };
 
 function prepare(input: SeoProductInput): Prep {
   const family = familyOf(input.categoryChain);
-  return {
-    input,
-    family,
-    parts: splitName(input),
-    typeList: typeCandidates(input.categoryChain),
-    specs: pickSpecPhrases(input.specs, family.id, input.brand, 4),
-    facts: input.specs,
-  };
+  const typeList = typeCandidates(input.categoryChain);
+  const heads = typeList.map((t) => t.split(" ").pop() ?? "");
+  const groups = typeList.map(typeGroupOf).filter((g): g is string => g !== null);
+  const name = analyseName(input, heads, groups);
+  const typeInCore = name.typeIdxs.size > 0;
+  let type = "";
+  if (typeInCore) {
+    type = name.core[Math.max(...name.typeIdxs)] ?? "";
+  } else {
+    // The raw name's own word wins when it agrees with the category ("Headset" for a Headphone category);
+    // otherwise the category's type.
+    const restGroup = name.restType ? typeGroupOf(name.restType) : null;
+    const agrees = restGroup !== null && typeList.some((t) => typeGroupOf(t) === restGroup);
+    type = name.restType && agrees ? name.restType : typeList[0] ?? name.restType ?? "";
+  }
+  return { input, family, name, typeList, type, typeInCore, specs: pickSpecs(input.specs, family.id, input.brand, 4), facts: input.specs };
 }
 
-function includesWord(tokens: string[], phrase: string): boolean {
-  const head = phrase.split(" ").pop() ?? "";
-  return new RegExp(`\\b${escapeRe(head)}s?\\b`, "i").test(tokens.join(" "));
+const SUFFIX_PB = " Price in Bangladesh";
+const SUFFIX_BD = " Price in BD";
+
+const COLOURS = new Set("black white silver blue red grey gray gold green pink purple orange yellow brown cyan magenta beige navy rose graphite titanium midnight starlight".split(" "));
+/** Words that say nothing about WHICH product it is. Anything else after the model run might be identity ("Black Edition", "Wireless"). */
+const GENERIC_WORDS = new Set("dual band gigabit digital high quality performance original new".split(" "));
+const isGenericToken = (token: string) => {
+  const t = token.toLowerCase().replace(/[^a-z/]/g, "");
+  return Boolean(t) && (GENERIC_WORDS.has(t) || COLOURS.has(t) || (t.includes("/") && t.split("/").every((part) => COLOURS.has(part))));
+};
+
+/** A code with real entropy: letters AND digits, 3+ chars (DS-K1T320EFWX-B, G502, AC1200, X870M; not "212" or "14"). */
+function isHighEntropyCode(raw: string): boolean {
+  const t = stripEdge(raw).replace(/\+$/, "");
+  return t.length >= 3 && /[A-Za-z]/.test(t) && /\d/.test(t) && !UNIT_START.test(t) && !SPEC_TOKEN.test(t);
 }
 
-/** Core text (before "Price in …"): brand + kept line words + model + extra + type. */
-function coreText(prep: Prep, lineKeep: number, extra: string): { text: string; type: string } {
-  const { parts, typeList } = prep;
-  const line = lineKeep >= parts.line.length ? parts.line : lineKeep <= 0 ? [] : parts.line.slice(-lineKeep);
-  const body = [...parts.brand, ...line, ...parts.model, ...(extra ? [extra] : [])];
-  // The product already says what it is when the head noun of ANY category in
-  // its chain is in the kept text ("Desktop" for a "Star PC" leaf).
-  const named = typeList.some((candidate) => includesWord(body, candidate));
-  const type = named ? "" : typeList[0] ?? "";
-  return { text: squash([...body, type].join(" ")), type };
-}
-
-function composeTitle(prep: Prep, extra: string): { title: string; core: string; rule: string; flags: string[] } {
-  const lines = prep.parts.line.length;
-  const flags: string[] = [];
-  const tries: { suffix: string; keep: number; label: string }[] = [
-    { suffix: " Price in Bangladesh", keep: lines, label: "full name" },
-    { suffix: " Price in BD", keep: lines, label: "'Price in BD' fallback" },
-  ];
-  if (lines > 0) {
-    for (let keep = lines - 1; keep >= 0; keep -= 1) {
-      tries.push({ suffix: " Price in Bangladesh", keep, label: `product-line words trimmed to ${keep}` });
+/**
+ * Droppable runs (dropped from the END, one whole run at a time, only when the title does not fit).
+ *  - After a high-entropy model code the code itself identifies the product, so descriptive tail words
+ *    ("Value Series Face Access Terminal", "Wireless Dual Band Gigabit") are droppable.
+ *  - After a low-entropy model ("Hyper 212") the next words may be identity ("Black Edition"), so only
+ *    known-generic words (colours, "Dual Band") are droppable, and only when nothing identity-bearing
+ *    follows them ("Gaming Headset Blue": yes; "Black Edition CPU Cooler": no).
+ * The type word is never in a run. The model run and everything before it are never dropped.
+ */
+function droppableRuns(name: NameInfo): [number, number][] {
+  const floor = Math.max(name.must, name.brandLen);
+  const descriptiveTail = name.core.slice(name.brandLen, name.must).some((_, i) => isHighEntropyCode(name.coreRaw[name.brandLen + i] ?? ""));
+  const droppable = new Array<boolean>(name.core.length).fill(false);
+  let tailClosed = true;
+  for (let i = name.core.length - 1; i >= floor; i -= 1) {
+    if (name.typeIdxs.has(i)) continue; // the type word stays, and does not end the closed tail
+    if (descriptiveTail || (isGenericToken(name.core[i] ?? "") && tailClosed)) droppable[i] = true;
+    else tailClosed = false;
+  }
+  const runs: [number, number][] = [];
+  let start = -1;
+  for (let i = floor; i <= name.core.length; i += 1) {
+    const here = i < name.core.length && droppable[i] === true;
+    if (here && start < 0) start = i;
+    if (!here && start >= 0) {
+      runs.push([start, i]);
+      start = -1;
     }
-    for (let keep = lines - 1; keep >= 0; keep -= 1) {
-      tries.push({ suffix: " Price in BD", keep, label: `'Price in BD', line words trimmed to ${keep}` });
+  }
+  return runs;
+}
+
+function coreWith(prep: Prep, keepRuns: number, extras: Extra[]): { tokens: string[]; text: string } {
+  const { name } = prep;
+  // Everything stays except the generic runs being dropped (from the end): a token is never removed by default.
+  const dropped = droppableRuns(name).slice(keepRuns);
+  const kept = name.core.filter((_, i) => !dropped.some(([a, b]) => i >= a && i < b));
+  const extra = extras.map((e) => e.text);
+  const tokens = prep.typeInCore ? [...kept, ...extra] : [...kept, ...extra, prep.type].filter(Boolean);
+  return { tokens, text: squash(tokens.join(" ")) };
+}
+
+function composeTitle(prep: Prep, extras: Extra[]): { title: string; core: string; rule: string; flags: string[] } {
+  const runs = droppableRuns(prep.name).length;
+  const tries: { suffix: string; keep: number; label: string }[] = [];
+  for (const [suffix, label] of [[SUFFIX_PB, "Price in Bangladesh"], [SUFFIX_BD, "'Price in BD' fallback"]] as const) {
+    for (let keep = runs; keep >= 0; keep -= 1) {
+      tries.push({ suffix, keep, label: keep === runs ? `${label}, full model core` : `${label}, generic words after the model dropped (${runs - keep} run${runs - keep === 1 ? "" : "s"})` });
     }
   }
   for (const attempt of tries) {
-    const { text } = coreText(prep, attempt.keep, extra);
+    const { text } = coreWith(prep, attempt.keep, extras);
     if ((text + attempt.suffix).length <= SEO_TITLE_MAX) {
       const branded = `${text}${attempt.suffix} | ${SITE}`;
       const withBrand = branded.length <= SEO_TITLE_MAX;
-      return { title: withBrand ? branded : text + attempt.suffix, core: text, rule: `${attempt.label}${withBrand ? " + brand suffix" : ""}`, flags };
+      return { title: withBrand ? branded : text + attempt.suffix, core: text, rule: `${attempt.label}${withBrand ? " + brand suffix" : ""}`, flags: [] };
     }
   }
-  // Model + type alone are already too long: keep them, drop the suffix.
-  const { text } = coreText(prep, 0, extra);
-  flags.push("title_over_60");
-  return { title: `${text} Price in BD`, core: text, rule: "model + type kept, over 60", flags };
+  // Model core + type fit, but not with any "Price in …": core alone, nothing dropped from it.
+  const minimal = coreWith(prep, 0, extras).text;
+  if (minimal.length <= SEO_TITLE_MAX) {
+    return { title: minimal, core: minimal, rule: "model core + type only (no room for 'Price in …')", flags: ["title_without_price_suffix"] };
+  }
+  return { title: `${minimal}${SUFFIX_BD}`, core: minimal, rule: "model core kept whole, over 60", flags: ["title_over_60"] };
 }
 
-const LEADS = [
-  (core: string, specs: string) => `${core}: ${specs}.`,
-  (core: string, specs: string) => `${core} with ${specs}.`,
-  (core: string, specs: string) => `${core} – ${specs}.`,
-  (core: string, specs: string) => `Key specs of ${core}: ${specs}.`,
+type SpecValue = { slot: string; phrase: string };
+
+const lc = (s: string) => (/^[A-Z][a-z]+(?:-[a-z]+)*$/.test(s) ? s.toLowerCase() : s);
+/** "Large Format Printer" -> "large format printer"; acronyms (IP, NVR, CC) stay upper-case. */
+const nounOf = (type: string) => type.split(" ").map((w) => (/^[A-Z0-9]{2,}$/.test(w) ? w : w.toLowerCase())).join(" ");
+
+/**
+ * Natural wording for the description: a noun phrase the adjectives modify
+ * ("wired over-ear headset with built-in microphone", "27 inch 1920x1080 IPS
+ * monitor, 200Hz"). Returns null when the family reads best as a plain list
+ * ("Core i7-1255U, 16GB RAM, 512GB SSD, 15.6 inch display").
+ */
+function composeBody(family: FamilyId, type: string, specs: SpecValue[], style: "noun" | "short" | "bare" = "noun"): string | null {
+  const by = new Map(specs.map((s) => [s.slot, s.phrase]));
+  const used = new Set<string>();
+  const take = (slot: string, strip?: RegExp) => {
+    const phrase = by.get(slot);
+    if (!phrase) return "";
+    used.add(slot);
+    return strip ? phrase.replace(strip, "") : phrase;
+  };
+  const tail = () => specs.filter((s) => !used.has(s.slot)).map((s) => s.phrase);
+  const noun = nounOf(type);
+  const short = style === "short";
+  const bare = style === "bare";
+  const out = (head: string, more: string[]) => [head, ...more].filter(Boolean).join(", ");
+  // "wired over-ear headset" (noun) or, when the title core already says it and room is short, "wired, over-ear".
+  const phrase = (atoms: string[]) => (bare ? atoms.join(", ") : `${atoms.join(" ")} ${noun}`.trim());
+  if (!noun) return null;
+  switch (family) {
+    case "monitor": {
+      const head = [take("display_size", / display$/), take("resolution", / resolution$/), take("panel", / panel$/)].filter(Boolean);
+      if (head.length === 0) return null;
+      return out(phrase(head), [take("refresh", / refresh rate$/), ...tail()]);
+    }
+    case "headphone": {
+      const adjectives = [lc(take("connectivity")), lc(take("audio_type"))].filter(Boolean);
+      const hasMic = Boolean(take("mic"));
+      if (adjectives.length === 0 && !hasMic) return null;
+      if (bare) return out(adjectives.join(", "), [...(hasMic ? ["built-in mic"] : []), ...tail()]);
+      const mic = hasMic ? (short ? " with built-in mic" : " with built-in microphone") : "";
+      return out(`${adjectives.join(" ")} ${noun}`.trim() + mic, tail());
+    }
+    case "keyboard": {
+      const adjectives = [lc(take("connectivity")), lc(take("kb_switch", / keys$/))].filter(Boolean);
+      return adjectives.length ? out(phrase(adjectives), tail()) : null;
+    }
+    case "mouse": {
+      const conn = lc(take("connectivity"));
+      return conn ? out(phrase([conn]), tail()) : null;
+    }
+    case "printer":
+    case "large-format-printer": {
+      const tech = lc(take("print_tech", / printing$/));
+      return tech ? out(phrase([tech]), tail()) : null;
+    }
+    case "camera": {
+      const head = [take("cam_res"), lc(take("cam_type", / camera$/))].filter(Boolean);
+      return head.length ? out(phrase(head), tail()) : null;
+    }
+    case "nvr": {
+      const channels = take("channels");
+      return channels ? out(phrase([channels]), tail()) : null;
+    }
+    case "router": {
+      const standard = take("wifi_std");
+      return standard ? out(phrase([standard]), tail()) : null;
+    }
+    case "cable": {
+      const parts = [take("cable_len", / length$/), take("cable_cat"), take("cable_shield")].filter((p) => p && !noun.toLowerCase().includes(p.toLowerCase()));
+      return parts.length ? out(phrase(parts), tail()) : null;
+    }
+    case "cooler": {
+      const kind = lc(take("cooler_type", / cooling$/));
+      return kind ? out(phrase([kind]), tail()) : null;
+    }
+    default:
+      return null;
+  }
+}
+
+/** Trailing words the units / names already imply ("65 inch display", "Micro-ATX form factor", "DDR5 memory"). */
+const COMPACT = / (?:display|resolution|refresh rate|form factor|memory)$/;
+const LEADS_PLAIN = [
+  (core: string, body: string) => `${core}: ${body}.`,
+  (core: string, body: string) => `${core} – ${body}.`,
+];
+const LEADS_LIST = [
+  ...LEADS_PLAIN,
+  (core: string, body: string) => `Key specs of ${core}: ${body}.`,
 ];
 /** Neutral, no stock / price / warranty claim. [0] is the owner's wording; the others are shorter so 3-4 specs still fit in 155. */
 const CLOSINGS = [
@@ -507,27 +848,40 @@ const CLOSINGS = [
   "Price and availability at Techno House. Delivery across Bangladesh.",
 ];
 
-function composeDescription(id: string, cores: string[], specs: string[]): { text: string; used: number; flags: string[] } {
+function composeDescription(id: string, family: FamilyId, type: string, cores: string[], specs: SpecValue[]): { text: string; used: number; flags: string[] } {
   const h = hashId(id);
-  const lead0 = h % LEADS.length;
-  const close0 = Math.floor(h / LEADS.length) % CLOSINGS.length;
+  const close0 = Math.floor(h / 7) % CLOSINGS.length;
   const maxN = Math.min(4, specs.length);
-  const candidates: { text: string; used: number }[] = [];
-  // Most specs first; within that, rotate the wording from the hashed variant.
-  // "65 inch display" -> "65 inch" when the units already say it: tried before dropping a spec.
-  const compact = specs.map((spec) => spec.replace(/ (?:display|resolution|refresh rate)$/, ""));
   // Last resort when a product has too few specs to reach 120 characters: a
   // neutral pointer, never a claim.
   const FILLER = "See full specifications on the product page.";
+  const candidates: { text: string; used: number }[] = [];
   for (let n = maxN; n >= 0; n -= 1) {
-    for (const list of [specs, compact]) {
+    const slice = specs.slice(0, n);
+    const composed = n > 0 ? composeBody(family, type, slice) : null;
+    const composedShort = n > 0 ? composeBody(family, type, slice, "short") : null;
+    const composedBare = n > 0 ? composeBody(family, type, slice, "bare") : null;
+    const bodies = composed
+      ? [
+          { body: composed, leads: LEADS_PLAIN },
+          ...(composedShort && composedShort !== composed ? [{ body: composedShort, leads: LEADS_PLAIN }] : []),
+          ...(composedBare ? [{ body: composedBare, leads: LEADS_PLAIN }] : []),
+        ]
+      : n > 0
+        ? [
+            { body: slice.map((s) => s.phrase).join(", "), leads: LEADS_LIST },
+            // "65 inch display" -> "65 inch" when the units already say it: tried before dropping a spec.
+            { body: slice.map((s) => s.phrase.replace(COMPACT, "")).join(", "), leads: LEADS_LIST },
+          ]
+        : [{ body: "", leads: LEADS_PLAIN }];
+    for (const { body, leads } of bodies) {
       for (const core of cores) {
-        for (let a = 0; a < LEADS.length; a += 1) {
+        for (let a = 0; a < leads.length; a += 1) {
           for (let b = 0; b < CLOSINGS.length; b += 1) {
-            const lead = LEADS[(lead0 + a) % LEADS.length];
+            const lead = leads[(h + a) % leads.length];
             const close = CLOSINGS[(close0 + b) % CLOSINGS.length];
             if (!lead || !close) continue;
-            const head = n > 0 ? lead(core, list.slice(0, n).join(", ")) : `${core}.`;
+            const head = body ? lead(core, body) : `${core}.`;
             candidates.push({ text: `${head} ${close}`, used: n });
             if (n <= 2) candidates.push({ text: `${head} ${FILLER} ${close}`, used: n });
           }
@@ -547,57 +901,92 @@ function composeDescription(id: string, cores: string[], specs: string[]): { tex
   return { text: pick.text, used: pick.used, flags };
 }
 
-function render(prep: Prep, extra: string): SeoResult {
-  const { input, family, parts } = prep;
-  const title = composeTitle(prep, extra);
-  const shortCore = coreText(prep, 0, extra).text;
-  const description = composeDescription(input.id, shortCore !== title.core ? [title.core, shortCore] : [title.core], prep.specs);
+/** Model-looking tokens of the core that the title does not contain (must be none). */
+function lostModelTokens(prep: Prep, title: string): string[] {
+  const inTitle = new Set(title.split(/\s+/).map(normTok));
+  const { name } = prep;
+  const lost: string[] = [];
+  for (let i = name.brandLen; i < name.must; i += 1) {
+    if (!isModelLooking(name.coreRaw[i] ?? "")) continue;
+    const norm = normTok(name.core[i] ?? "");
+    if (norm && !inTitle.has(norm)) lost.push(name.core[i] ?? "");
+  }
+  return lost;
+}
+
+/** Code-like tokens in the title (letters + digits, 4+ chars) that are not in the raw name and were not added as a spec. */
+function foreignCodes(prep: Prep, title: string, extras: Extra[]): string[] {
+  const rawNorm = new Set([...prep.name.all.map(normTok), normTok(prep.name.code ?? "")]);
+  for (const token of squash(prep.input.brand).split(" ")) rawNorm.add(normTok(token));
+  const specExtra = new Set(extras.filter((e) => e.kind !== "code" && e.kind !== "name" && e.kind !== "colour").flatMap((e) => e.text.split(/\s+/).map(normTok)));
+  return title
+    .replace(/ \| Techno House$/, "")
+    .split(/\s+/)
+    .filter((t) => t.length >= 4 && /[A-Za-z]/.test(t) && /\d/.test(t) && !SPEC_TOKEN.test(t))
+    .filter((t) => !rawNorm.has(normTok(t)) && !specExtra.has(normTok(t)));
+}
+
+function render(prep: Prep, extras: Extra[]): SeoResult {
+  const { input, family, name } = prep;
+  const title = composeTitle(prep, extras);
+  const shortCore = coreWith(prep, 0, extras).text;
+  const description = composeDescription(input.id, family.id, prep.type, shortCore !== title.core ? [title.core, shortCore] : [title.core], prep.specs);
   const flags = [...title.flags, ...description.flags];
-  if (!parts.hasModel) flags.push("no_model_token");
-  const type = coreText(prep, parts.line.length, extra).type || prep.typeList[0] || "";
-  const keywordBase = squash([...parts.brand, ...parts.line, ...parts.model].join(" ")).toLowerCase();
-  const primary = `${parts.hasModel ? keywordBase : title.core.toLowerCase()} price in bangladesh`;
+  if (!name.hasModel) flags.push("no_model_token");
+  const lost = lostModelTokens(prep, title.title);
+  if (lost.length > 0) flags.push("model_token_lost");
+  const foreign = foreignCodes(prep, title.title, extras);
+  if (foreign.length > 0) flags.push("foreign_code");
+  const keywordCore = title.core.toLowerCase();
+  const typeLower = nounOf(prep.type);
   const secondary = [
-    `${keywordBase} price in bd`,
-    `${keywordBase} specs`,
-    `${keywordBase} review`,
-    prep.typeList[0] ? `${squash(input.brand)} ${prep.typeList[0]} price in bangladesh`.toLowerCase() : "",
+    `${keywordCore} price in bd`,
+    `${keywordCore} specs`,
+    `${keywordCore} review`,
+    typeLower ? `${squash(input.brand)} ${typeLower} price in bangladesh`.toLowerCase() : "",
   ].filter(Boolean);
   const alt = title.core.length <= SEO_ALT_MAX ? title.core : cutAtWord(title.core, SEO_ALT_MAX);
   return {
     id: input.id,
     title: title.title,
+    titleCore: title.core,
     titleRule: title.rule,
     metaDescription: description.text,
-    primaryKeyword: primary,
+    primaryKeyword: `${keywordCore} price in bangladesh`,
     secondaryKeywords: secondary,
     imageAlt: alt,
     family: family.id,
     familyWeight: family.weight,
-    type,
-    specsUsed: prep.specs.slice(0, description.used),
+    type: prep.type,
+    specsUsed: prep.specs.slice(0, description.used).map((s) => s.phrase),
     specsAvailable: prep.specs.length,
     flags,
+    modelTokensLost: lost,
     collisionGroup: null,
-    needsReview: flags.includes("title_over_60"),
+    needsReview: flags.includes("title_over_60") || lost.length > 0 || foreign.length > 0,
   };
 }
 
 /** One product on its own (no collision handling). Used by the admin form's suggestion. */
 export function generateProductSeo(input: SeoProductInput): SeoResult {
-  return render(prepare(input), "");
+  return render(prepare(input), []);
 }
 
 // ---------------------------------------------------------------------------
 // A whole set: disambiguate colliding titles
 // ---------------------------------------------------------------------------
 
-const COLOURS = new Set("black white silver blue red grey gray gold green pink purple orange yellow brown cyan magenta beige navy rose graphite titanium midnight starlight".split(" "));
-const SPEC_NAME_TOKEN = /^\d+(?:\.\d+)?(?:gb|tb|mb|mhz|ghz|w|va|mah|inch|"|mm|mp|ft|m)$/i;
+const SPEC_NAME_TOKEN = /^(?:\d+(?:\.\d+)?(?:gb|tb|mb|mhz|ghz|w|va|mah|inch|"|mm|mp|ft|m)|ddr[2-5])$/i;
 
 type Distinguisher = { kind: string; text: string };
 
-function distinguishers(prep: Prep, group: Prep[]): Distinguisher[] {
+/**
+ * What tells this product apart from the rest of its colliding group: a spec
+ * from its attributes (RAM, storage, capacity, size, CPU), a colour / spec word
+ * from its own raw name, or the POS part code that led the raw name. NEVER a
+ * SKU, barcode or model-number field: a code is used only if it is in the raw name.
+ */
+function distinguishers(prep: Prep, group: Prep[], titleTokens: Set<string>): Distinguisher[] {
   const out: Distinguisher[] = [];
   const phrase = (slotId: string) => {
     const slot = SLOTS[slotId];
@@ -621,17 +1010,18 @@ function distinguishers(prep: Prep, group: Prep[]): Distinguisher[] {
   if (size) out.push({ kind: "size", text: size.replace(/ (display)$/, "") });
   const cpu = phrase("cpu");
   if (cpu) out.push({ kind: "cpu", text: cpu });
-  // Spec-like / colour words from the name that not every group member has.
-  const mine = prep.parts.rest;
-  const others = group.filter((p) => p !== prep).map((p) => new Set(p.parts.rest.map((t) => t.toLowerCase())));
-  for (const token of mine) {
+  // Spec-like / colour words from the whole raw name that the title does not
+  // already carry and that not every member of the group has.
+  const others = group.filter((p) => p !== prep).map((p) => new Set(p.name.all.map((t) => t.toLowerCase())));
+  for (const token of prep.name.all) {
     const key = token.toLowerCase().replace(/[^a-z0-9."]/g, "");
     if (!(SPEC_NAME_TOKEN.test(key) || COLOURS.has(key))) continue;
+    if (titleTokens.has(normTok(token))) continue;
     if (others.every((set) => set.has(token.toLowerCase()))) continue;
     out.push({ kind: COLOURS.has(key) ? "colour" : "name", text: token.replace(/[(),]/g, "") });
   }
-  const code = (prep.parts.code ?? prep.input.sku ?? "").toUpperCase();
-  if (code) out.push({ kind: "code", text: code });
+  const code = (prep.name.code ?? "").toUpperCase();
+  if (code && !titleTokens.has(normTok(code))) out.push({ kind: "code", text: code });
   return out;
 }
 
@@ -642,8 +1032,9 @@ function distinguishers(prep: Prep, group: Prep[]): Distinguisher[] {
  */
 export function generateProductSeoSet(inputs: SeoProductInput[]): SeoResult[] {
   const preps = inputs.map(prepare);
-  const extras = new Map<Prep, string[]>();
-  const titleOf = (prep: Prep) => render(prep, (extras.get(prep) ?? []).join(" ")).title.toLowerCase();
+  const extras = new Map<Prep, Extra[]>();
+  const extrasOf = (prep: Prep) => extras.get(prep) ?? [];
+  const titleOf = (prep: Prep) => render(prep, extrasOf(prep)).title.toLowerCase();
   const groupsOf = (list: Prep[]): Prep[][] => {
     const byTitle = new Map<string, Prep[]>();
     for (const prep of list) byTitle.set(titleOf(prep), [...(byTitle.get(titleOf(prep)) ?? []), prep]);
@@ -653,7 +1044,9 @@ export function generateProductSeoSet(inputs: SeoProductInput[]): SeoResult[] {
   for (let round = 0; round < 3 && pending.length > 0; round += 1) {
     const next: Prep[] = [];
     for (const group of pending) {
-      const options = new Map(group.map((prep) => [prep, distinguishers(prep, group)] as const));
+      const options = new Map(
+        group.map((prep) => [prep, distinguishers(prep, group, new Set(render(prep, extrasOf(prep)).title.split(/\s+/).map(normTok)))] as const),
+      );
       const kinds = ["ram", "storage", "capacity", "size", "cpu", "colour", "name", "code"];
       for (const kind of kinds) {
         const values = group.map((prep) => options.get(prep)?.find((d) => d.kind === kind)?.text ?? "");
@@ -661,8 +1054,8 @@ export function generateProductSeoSet(inputs: SeoProductInput[]): SeoResult[] {
         if (distinct.size <= 1) continue;
         group.forEach((prep, i) => {
           const value = values[i] ?? "";
-          const have = (extras.get(prep) ?? []).join(" ").toLowerCase();
-          if (value && !have.includes(value.toLowerCase())) extras.set(prep, [...(extras.get(prep) ?? []), value]);
+          const have = extrasOf(prep).map((e) => e.text).join(" ").toLowerCase();
+          if (value && !have.includes(value.toLowerCase())) extras.set(prep, [...extrasOf(prep), { kind, text: value }]);
         });
         break;
       }
@@ -670,7 +1063,7 @@ export function generateProductSeoSet(inputs: SeoProductInput[]): SeoResult[] {
     }
     pending = groupsOf(next);
   }
-  const results = preps.map((prep) => render(prep, (extras.get(prep) ?? []).join(" ")));
+  const results = preps.map((prep) => render(prep, extrasOf(prep)));
   const stillColliding = new Map<string, number[]>();
   results.forEach((result, i) => stillColliding.set(result.title.toLowerCase(), [...(stillColliding.get(result.title.toLowerCase()) ?? []), i]));
   for (const [title, indexes] of stillColliding) {
