@@ -129,6 +129,7 @@ export function CatalogListingBody({
                   products={result.items}
                   density="comfortable"
                   card="detailed"
+                  eagerFirstRow
                 />
               </TrackedProductList>
             ) : (
@@ -136,6 +137,7 @@ export function CatalogListingBody({
                 products={result.items}
                 density="comfortable"
                 card="detailed"
+                eagerFirstRow
               />
             )}
             {/* The page-size control stays visible even when everything fits on

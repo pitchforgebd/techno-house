@@ -130,8 +130,33 @@ function CornerFlag({
   );
 }
 
+/**
+ * How a card's photo is fetched. Omitted = the Next.js default (lazy). A
+ * listing's first row passes `eager` (not lazy) or `high` (not lazy, and
+ * fetched ahead of the other images); see `ProductGrid`.
+ */
+export type CardImageLoading = "eager" | "high";
+
+/** `<Image>` props for a card photo; nothing at all for the lazy default. */
+function cardImageLoadingProps(
+  imageLoading: CardImageLoading | undefined,
+): { loading: "eager"; fetchPriority?: "high" } | Record<string, never> {
+  if (!imageLoading) {
+    return {};
+  }
+  return imageLoading === "high"
+    ? { loading: "eager", fetchPriority: "high" }
+    : { loading: "eager" };
+}
+
 /** Homepage, wishlist, and catalog grid card. */
-export function ProductCard({ product }: { product: ProductSummary }) {
+export function ProductCard({
+  product,
+  imageLoading,
+}: {
+  product: ProductSummary;
+  imageLoading?: CardImageLoading;
+}) {
   const off = discountPercent(product);
   const saved = savingsAmount(product);
   const href = `/product/${product.slug}`;
@@ -152,6 +177,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
               alt={product.image.alt}
               fill
               sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+              {...cardImageLoadingProps(imageLoading)}
               className="object-contain p-2.5 transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.06] sm:p-3"
             />
           </div>
@@ -299,7 +325,13 @@ export function ProductCard({ product }: { product: ProductSummary }) {
 }
 
 /** Category / shop listing card (demo IA — not a visual clone). */
-export function CatalogProductCard({ product }: { product: ProductSummary }) {
+export function CatalogProductCard({
+  product,
+  imageLoading,
+}: {
+  product: ProductSummary;
+  imageLoading?: CardImageLoading;
+}) {
   // Always 4 when the product has that many — the comparison this card
   // exists for needs a consistent amount of information per product, not
   // whatever happened to be entered first.
@@ -342,6 +374,7 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
               alt={product.image.alt}
               fill
               sizes="(min-width: 1280px) 20vw, (min-width: 768px) 33vw, 50vw"
+              {...cardImageLoadingProps(imageLoading)}
               className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.06]"
             />
           </div>
