@@ -18,8 +18,9 @@ import { readFileSync } from "node:fs";
 import { formFactorOf, formFactorsIn } from "@/lib/catalog/form-factor";
 import { extractGpuChipFromName, extractGpuMemoryFromName } from "@/lib/catalog/gpu-extract";
 import { extractNameSpecs, plainNumber } from "@/lib/catalog/spec-extract";
-import { PLAIN_WORDS, applyCasing, softenPlainWords, standardType } from "@/lib/seo/casing";
-import { claimEvidence, findBadSpecPhrases, unsupportedClaims } from "@/lib/seo/claims";
+import { PLAIN_WORDS, applyCasing, pcCaseWord, softenPlainWords } from "@/lib/seo/casing";
+import { extractDriveCapacityFromName, extractDriveFromName, extractRamFromModuleName, hasComboWord } from "@/lib/catalog/identity-extract";
+import { claimEvidence, claimSources, dropMirroredRows, findBadSpecPhrases, unsupportedClaims } from "@/lib/seo/claims";
 import { countActions, decideApply, isStaleGenerated, rowsToWrite } from "@/lib/seo/product-seo-apply";
 import {
   findBadChars,
@@ -30,6 +31,7 @@ import {
   isJunkValue,
   dropTitleRepeats,
   findFormFactorConflicts,
+  isPcCase,
   pickSpecPhrases,
   pickSpecs,
   planSeoMetaWrite,
@@ -644,9 +646,10 @@ check("the real-name fixtures are unique in the set", new Set(realSet.map((r) =>
   const t2 = tosh[1]!;
   check("Toshiba: the capacity is the title's differentiator", /P300 2TB/.test(t2.title), t2.title);
   check("Toshiba: 2TB is said once in the description, not three times", count(t2.metaDescription, /2\s?TB/gi) === 1, t2.metaDescription);
-  check("Toshiba: no '2 TB capacity' leftover and the interface is kept", !/2 TB capacity/.test(t2.metaDescription) && /6\.0 Gbit\/s interface/.test(t2.metaDescription), t2.metaDescription);
-  check("Toshiba: one clean statement after the core", /P300 2TB(?::| –) 6\.0 Gbit\/s interface\. /.test(t2.metaDescription), t2.metaDescription);
-  check("a single spec never gets the plural 'Key specs of' lead", tosh.every((r) => !/^Key specs of/.test(r.metaDescription)), tosh.map((r) => r.metaDescription).join(" / "));
+  // v2.5: the name's own RPM / interface / 3.5-inch fill the description (before, only the stored "6.0 Gbit/s interface" row was left)
+  check("Toshiba: no '2 TB capacity' leftover; the drive facts the name states are kept", !/2 TB capacity/.test(t2.metaDescription) && /7200RPM, SATA, 3\.5-inch/.test(t2.metaDescription), t2.metaDescription);
+  check("Toshiba: one clean statement after the core (the capacity once)", /P300 2TB(?::| –) 7200RPM, SATA, 3\.5-inch\. /.test(t2.metaDescription) && (t2.metaDescription.match(/2\s?TB/g) ?? []).length === 1, t2.metaDescription);
+  check("a single spec never gets the plural 'Key specs of' lead (with 3 specs it may)", tosh.every((r) => !/^Key specs of/.test(r.metaDescription) || r.specsUsed.length >= 2), tosh.map((r) => r.metaDescription).join(" / "));
   check("Toshiba: no spec phrase repeats the title (all three)", tosh.every((r) => repeatsTitle(r).length === 0), tosh.map((r) => r.specsUsed.join("|")).join(" / "));
   check("Toshiba: the three titles stay distinct", new Set(tosh.map((r) => r.title)).size === 3, tosh.map((r) => r.title).join(" / "));
 
@@ -1022,10 +1025,12 @@ check("the real-name fixtures are unique in the set", new Set(realSet.map((r) =>
     ["Gaming", "Gaming"], ["black", "black"],
   ];
   for (const [input, expected] of unit) equal(`softenPlainWords("${input}")`, softenPlainWords(input), expected);
-  equal("standard type: CASING", standardType("CASING"), "Case");
-  equal("standard type: Casing", standardType("Casing"), "Case");
-  equal("standard type: Case", standardType("Case"), "Case");
-  equal("standard type: Keyboard is untouched", standardType("Keyboard"), "Keyboard");
+  // v2.5: for a PC case the type word is "Casing" (v2.4 had it the other way round)
+  equal("PC case type word: Case -> Casing", pcCaseWord("Case"), "Casing");
+  equal("PC case type word: CASE -> Casing", pcCaseWord("CASE"), "Casing");
+  equal("PC case type word: Casing stays", pcCaseWord("Casing"), "Casing");
+  equal("PC case type word: Keyboard is untouched", pcCaseWord("Keyboard"), "Keyboard");
+  equal("PC case type word: Cases (a plural) is untouched", pcCaseWord("Cases"), "Cases");
 
   let k = 0;
   const mk = (name: string, brand: string, chain: string[]): SeoProductInput => {
@@ -1036,14 +1041,14 @@ check("the real-name fixtures are unique in the set", new Set(realSet.map((r) =>
   const MB = ["Motherboard", "Component"];
   const fx2: [string, SeoProductInput, string[], string[]][] = [
     // [label, input, must be in the title, must NOT be in the title or description]
-    ["Xtreme M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS", mk("XTREME M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS WITH 3 ARGB FAN WITHOUT PSU", "Xtreme", CASE), ["Xtreme M95B Mini Tower M-ATX Black Case Tempered Glass"], ["MINI TOWER", "BLACK", "TEMPERED", "CASE "]],
-    ["Xtreme C31B M-ATX BLACK CASE", mk("XTREME C31B M-ATX BLACK CASE TEMPERED GLASS WITH 3 RGB FAN WITHOUT PSU", "Xtreme", CASE), ["Xtreme C31B M-ATX Black Case Tempered Glass"], ["BLACK", "TEMPERED"]],
-    ["Delux J601 MICRO ATX COMPUTER CASE", mk("DELUX J601 MICRO ATX COMPUTER CASE WITH 200W REAL POWER SUPPLY, 2Y WARRANTY FOR PSU", "Delux", CASE), ["Delux J601 Micro ATX Computer Case"], ["MICRO", "COMPUTER"]],
+    ["Xtreme M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS", mk("XTREME M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS WITH 3 ARGB FAN WITHOUT PSU", "Xtreme", CASE), ["Xtreme M95B Mini Tower M-ATX Black Casing Tempered Glass"], ["MINI TOWER", "BLACK", "TEMPERED", "CASE "]],
+    ["Xtreme C31B M-ATX BLACK CASE", mk("XTREME C31B M-ATX BLACK CASE TEMPERED GLASS WITH 3 RGB FAN WITHOUT PSU", "Xtreme", CASE), ["Xtreme C31B M-ATX Black Casing Tempered Glass"], ["BLACK", "TEMPERED"]],
+    ["Delux J601 MICRO ATX COMPUTER CASE", mk("DELUX J601 MICRO ATX COMPUTER CASE WITH 200W REAL POWER SUPPLY, 2Y WARRANTY FOR PSU", "Delux", CASE), ["Delux J601 Micro ATX Computer Casing"], ["MICRO", "COMPUTER"]],
     ["MSI B760M GAMING PLUS WIFI 6E M-ATX", mk("MSI B760M GAMING PLUS WIFI 6E M-ATX", "MSI", MB), ["MSI B760M Gaming Plus"], ["GAMING"]],
     ["MSI MAG B860M MORTAR ... MOTHERBOARD", mk("MSI MAG B860M MORTAR WIFI LGA 1851 M-ATX MOTHERBOARD", "MSI", MB), ["MSI MAG B860M MORTAR", "Motherboard"], ["MOTHERBOARD"]],
     ["GIGABYTE B650 AORUS ELITE AX ICE WIFI6E ATX MOTHERBOARD DDR5", mk("GIGABYTE B650 AORUS ELITE AX ICE WIFI6E ATX MOTHERBOARD DDR5", "Gigabyte", MB), ["B650 AORUS ELITE AX ICE WIFI6E ATX Motherboard DDR5"], ["MOTHERBOARD"]],
     ["Redragon K552 KUMARA MECHANICAL GAMING KEYBOARD BLACK RGB", mk("REDRAGON K552 KUMARA MECHANICAL GAMING KEYBOARD BLACK RGB", "Redragon", ["Keyboard", "Accessories"]), ["K552 KUMARA Mechanical Gaming Keyboard Black RGB"], ["MECHANICAL", "KEYBOARD", "BLACK"]],
-    ["a hyphenated word: MID-TOWER", mk("ACME X100 MID-TOWER ATX GAMING CASE", "Acme", CASE), ["Acme X100 Mid-Tower ATX Gaming Case"], ["MID-TOWER", "GAMING"]],
+    ["a hyphenated word: MID-TOWER", mk("ACME X100 MID-TOWER ATX GAMING CASE", "Acme", CASE), ["Acme X100 Mid-Tower ATX Gaming Casing"], ["MID-TOWER", "GAMING"]],
     ["ASUS TUF GAMING B650-PLUS (a model code with a word inside it is kept)", mk("ASUS TUF GAMING B650-PLUS WIFI DDR5 ATX MOTHERBOARD", "ASUS", MB), ["TUF Gaming B650-PLUS"], ["MOTHERBOARD"]],
   ];
   const results = fx2.map(([, input]) => generateProductSeo(input));
@@ -1056,9 +1061,9 @@ check("the real-name fixtures are unique in the set", new Set(realSet.map((r) =>
   });
   // The type word is the standard one.
   const onlyCasing = generateProductSeo(mk("XTREME C77 CASING TEMPERED GLASS BLACK", "Xtreme", CASE));
-  check("a name whose only type word is CASING: the type is Case", onlyCasing.type === "Case" && /\bCase\b/.test(onlyCasing.title) && !/casing/i.test(onlyCasing.title), `${onlyCasing.type} | ${onlyCasing.title}`);
+  check("a name whose type word is CASING keeps it, normal case: the type is Casing", onlyCasing.type === "Casing" && /\bCasing\b/.test(onlyCasing.title) && !/\bcase\b/i.test(onlyCasing.title), `${onlyCasing.type} | ${onlyCasing.title}`);
   const categoryCasing = generateProductSeo(mk("Xtreme C41 Tempered Glass Black", "Xtreme", CASE));
-  check("a category called Casing and no type word in the name: the type is Case", categoryCasing.type === "Case" && /Black Case Price/.test(categoryCasing.title) && !/casing/i.test(categoryCasing.title), `${categoryCasing.type} | ${categoryCasing.title}`);
+  check("a category called Casing and no type word in the name: the type is Casing", categoryCasing.type === "Casing" && /Black Casing Price/.test(categoryCasing.title), `${categoryCasing.type} | ${categoryCasing.title}`);
   const both = generateProductSeo(mk("CORSAIR CASING Crystal Series 280X RGB Tempered Glass Micro ATX White Case # CC-9011137-WW", "Corsair", CASE));
   check("a name with Casing AND Case keeps both words (Casing is part of the line, Case is the type)", /Corsair Casing Crystal Series 280X RGB Case/.test(both.title), both.title);
   // No plain English word stays shouted anywhere in the output of the fixtures of this file.
@@ -1072,6 +1077,155 @@ check("the real-name fixtures are unique in the set", new Set(realSet.map((r) =>
       .flatMap((token) => token.split("-"))
       .filter((word) => /^[A-Z]{2,}$/.test(word) && PLAIN_WORDS.has(word.toLowerCase()));
   check("no dictionary word is left shouted in any title or description of the fixtures", every.every((r) => shouted(r).length === 0), every.filter((r) => shouted(r).length > 0).map((r) => `${r.title} [${shouted(r).join()}]`).join(" | "));
+}
+
+// --- v2.5: "Casing", identity that survives shortening, and the microphone audit --------------------------------------
+
+{
+  let k = 0;
+  const mk = (name: string, brand: string, chain: string[], specs: SpecFact[] = []): SeoProductInput => {
+    k += 1;
+    return { id: `v25-${k}`, name, brand, categoryChain: chain, sku: `V25-${k}`, modelNumber: null, specs };
+  };
+  const attr = (key: string, label: string, value: string): SpecFact => ({ key, label, value });
+  const row = (label: string, value: string): SpecFact => ({ label, value });
+  const CASE = ["Casing", "Component"];
+  const HDD = ["Hard Disk Drive", "Component"];
+  const SSD = ["SSD", "Component"];
+  const RAM = ["RAM (Desktop)", "Component"];
+  const HP = ["Headphone", "Accessories"];
+  const keywordOk = (r: SeoResult) => r.primaryKeyword === `${r.titleCore.toLowerCase()} price in bangladesh`;
+  const all: SeoResult[] = [];
+  const gen = (input: SeoProductInput) => {
+    const r = generateProductSeo(input);
+    all.push(r);
+    return r;
+  };
+
+  // 1) PC cases are "Casing".
+  const cases: [string, SeoProductInput, string][] = [
+    ["DeepCool CK560 WH E-ATX Mid-Tower Gaming Casing", mk("DeepCool CK560 WH E-ATX Mid-Tower Gaming Casing", "DeepCool", CASE), "DeepCool CK560 WH E-ATX Mid-Tower Gaming Casing"],
+    ["Corsair 2800X RS-R ARGB White Micro-ATX PC Case", mk("Corsair 2800X RS-R ARGB White Micro-ATX PC Case, CC-9011348-WW", "Corsair", CASE, [attr("formFactor", "Form Factor", "Micro-ATX")]), "Corsair 2800X RS-R ARGB Casing"],
+    ["Delux DW301 ATX Thermal Casing", mk("Delux DW301 ATX Thermal Casing with PSU, 1Y Warranty for PSU", "Delux", CASE, [attr("formFactor", "Form Factor", "ATX")]), "Delux DW301 ATX Thermal Casing"],
+    ["Xtreme Xjogos XJ07 ATX Casing", mk("XJOGOS XJ07 ATX Thermal Gaming Casing,1RGB FAN, Without PSU No Warranty", "Xtreme", CASE, [attr("formFactor", "Form Factor", "ATX")]), "Xtreme Xjogos XJ07 ATX Casing"],
+  ];
+  for (const [label, input, titleStart] of cases) {
+    const r = gen(input);
+    check(`${label}: the title says Casing`, r.title.startsWith(titleStart) && !/\bCase\b/.test(r.title), r.title);
+    check(`${label}: the type is Casing, in the description and the keywords too`, r.type === "Casing" && /\bCasing\b/.test(r.metaDescription) && /casing/.test(r.primaryKeyword) && r.secondaryKeywords.some((x) => /casing price in bangladesh/.test(x)), `${r.type} | ${r.metaDescription} | ${r.primaryKeyword}`);
+    check(`${label}: keyword = title core + " price in bangladesh", a PC case`, keywordOk(r) && isPcCase(input), r.primaryKeyword);
+    check(`${label}: nothing is lost (no gate)`, !r.needsReview, r.flags.join());
+  }
+  {
+    const phone = gen(mk("Anker PowerCase iPhone 15 Clear Case", "Anker", ["Phone Case", "Mobile Accessories"]));
+    const laptop = gen(mk("Targus Laptop Case 15.6 inch Black", "Targus", ["Laptop Bag", "Accessories"]));
+    check("other types are not renamed: a phone case stays a Case, a laptop bag stays a bag", !/casing/i.test(`${phone.title} ${laptop.title}`) && !isPcCase(mk("Anker PowerCase iPhone 15 Clear Case", "Anker", ["Phone Case", "Mobile Accessories"])), `${phone.title} | ${laptop.title}`);
+    check("a keyboard, a headset and an SSD are untouched", ["Keyboard", "Headphone", "SSD"].every((leaf) => !/casing/i.test(generateProductSeo(mk(`Acme X1 ${leaf}`, "Acme", [leaf])).title)));
+    check("a name that has Casing AND Case keeps both (Casing is part of the line)", /Corsair Casing Crystal Series 280X RGB Case/.test(gen(mk("CORSAIR CASING Crystal Series 280X RGB Tempered Glass Micro ATX White Case # CC-9011137-WW", "Corsair", CASE)).title));
+    check("a name that says Case in a category called Casing becomes Casing", /Casing/.test(gen(mk("Acme C5 Mid Tower ATX Gaming Case", "Acme", CASE)).title));
+  }
+
+  // 2) Storage: the capacity is in the title, the description states capacity / interface / RPM, "3.5" is "3.5-inch".
+  const p300_2 = gen(mk('Toshiba PC Hard Drive P300 2TB - (2 Years) 7200 RPM, SATA 6 Gb/s, 256 MB Cache, 3.5" - HDWD320UZSVA', "Toshiba", HDD));
+  const p300_4 = gen(mk('Toshiba PC Hard Drive P300 4TB - (2 Years) 5400 RPM, SATA 6 Gb/s, 128 MB Cache, 3.5" - HDWD240UZSVA', "Toshiba", HDD));
+  equal("Toshiba P300 2TB: the title", p300_2.title, "Toshiba PC Hard Drive P300 2TB Price in Bangladesh");
+  equal("Toshiba P300 4TB: the title (must not become 'Toshiba PC Hard Drive P300')", p300_4.title, "Toshiba PC Hard Drive P300 4TB Price in Bangladesh");
+  check("Toshiba P300: capacity, RPM, interface and 3.5-inch are stated", /P300 4TB: 5400RPM, SATA, 3\.5-inch\./.test(p300_4.metaDescription) && /P300 2TB: 7200RPM, SATA, 3\.5-inch\./.test(p300_2.metaDescription), `${p300_2.metaDescription} || ${p300_4.metaDescription}`);
+  check("Toshiba P300: no bare number, no '6 Gb/s' mistaken for a capacity, the capacity said once", !/(^|[\s,:])3\.5([,.\s]|$)/.test(p300_4.metaDescription.replace("3.5-inch", "")) && !/6\s?Gb/i.test(p300_4.metaDescription) && (p300_4.metaDescription.match(/4TB/g) ?? []).length === 1 && p300_4.identityLost.length === 0, p300_4.metaDescription);
+  check("Toshiba P300: keyword keeps the capacity", p300_4.primaryKeyword === "toshiba pc hard drive p300 4tb price in bangladesh" && keywordOk(p300_4) && keywordOk(p300_2), p300_4.primaryKeyword);
+  {
+    const withStored = gen(mk('Toshiba PC Hard Drive P300 4TB - (2 Years) 5400 RPM, SATA 6 Gb/s, 3.5" - HDWD240UZSVA', "Toshiba", HDD, [attr("capacity", "Capacity", "2TB"), row("Form Factor", "3.5"), row("Interface", "SATA III")]));
+    check("the name's capacity outranks a stored one (title and description cannot disagree); stored specs fill the rest, a bare 3.5 becomes 3.5-inch", /P300 4TB/.test(withStored.title) && !/2TB/.test(withStored.metaDescription) && /3\.5-inch/.test(withStored.metaDescription) && /SATA/.test(withStored.metaDescription), `${withStored.title} | ${withStored.metaDescription}`);
+    const twoFive = gen(mk('Seagate BarraCuda 2TB 2.5" 5400 RPM SATA Internal Hard Drive', "Seagate", HDD));
+    check("2.5 is 2.5-inch", /2\.5-inch/.test(twoFive.metaDescription) && /2TB/.test(twoFive.title), `${twoFive.title} | ${twoFive.metaDescription}`);
+    const nvme = gen(mk("Samsung 990 PRO 1TB PCIe 4.0 NVMe M.2 SSD, 7450MB/s", "Samsung", SSD));
+    check("an SSD keeps its capacity in the title; the interface is stated", /Samsung 990 PRO 1TB/.test(nvme.title) && /NVMe/.test(nvme.metaDescription) && nvme.identityLost.length === 0, `${nvme.title} | ${nvme.metaDescription}`);
+    equal("drive facts: capacity", extractDriveCapacityFromName('Toshiba P300 4TB 7200 RPM, SATA 6 Gb/s, 256 MB Cache'), "4TB");
+    equal("drive facts: a transfer rate is not a capacity", extractDriveCapacityFromName("Generic HDD SATA 6 Gb/s 7200 RPM 256 MB Cache"), null);
+    equal("drive facts: 1.0TB is 1TB", extractDriveCapacityFromName("Seagate Expansion 1.0TB Portable"), "1TB");
+    equal("drive facts: 512GB", extractDriveCapacityFromName("Kingston NV2 512GB M.2 SSD"), "512GB");
+    equal("drive facts: two capacities are not guessed between", extractDriveCapacityFromName("WD Blue 1TB / 2TB"), null);
+    equal("drive facts: interface, rpm, inch", JSON.stringify(extractDriveFromName('Toshiba P300 4TB 5400 RPM, SATA 6 Gb/s, 3.5" HDD')), JSON.stringify({ capacity: "4TB", rpm: "5400 RPM", interface: "SATA", inch: "3.5 inch" }));
+    equal("a bare Form Factor 3.5 row is 3.5-inch", pickSpecPhrases([row("Form Factor", "3.5")], "hdd", "WD").join(), "3.5-inch");
+    equal("a bare Form Factor 2.5 row is 2.5-inch", pickSpecPhrases([row("Form Factor", "2.5")], "hdd", "WD").join(), "2.5-inch");
+    equal("lint: a bare number is a bad spec phrase", findBadSpecPhrases("Acme HDD: 3.5.", ["3.5"]).join(), 'bare number "3.5"');
+    // Too long to keep the capacity within 60 characters: skipped, never written without it.
+    const long = gen(mk("Western Digital WD Purple Surveillance Intelligent Hard Disk Drive Extra Long Series 4TB 5400 RPM SATA", "Western Digital", HDD));
+    check("a title that cannot keep the capacity within 60 characters is skipped (identity_lost), and still has the capacity", long.flags.includes("identity_lost") && long.identityLost.includes("4TB") && /4TB/.test(long.title) && long.needsReview && decideApply(long, { metaTitle: null, metaDescription: null, seoSource: null }, { minSpecs: 0 }).action === "skip: identity_lost", `${long.title} | ${long.flags.join()}`);
+  }
+
+  // 3) RAM: DDR generation and capacity in the title and the description; "RAM" is the type; Vengeance is a normal word.
+  // generated as a SET (titles that collide get their differentiator): the real names of five Vengeance kits
+  const ddr5 = (capacity: string) => [attr("capacity", "Capacity", capacity), attr("ramType", "Memory Type", "DDR5")];
+  const [v16a, v16b, v16c, v16d, v32] = generateProductSeoSet([
+    mk("Corsair VENGEANCE® 16GB (1x16GB) DDR5 DRAM 5600MHz C40 Memory Kit — Black, CMK16GX5M1B5600C40", "Corsair", RAM, ddr5("16GB")),
+    mk("Corsair VENGEANCE® 16GB (1x16GB) DDR5 DRAM 6000MT/s CL36 AMD EXPO & Intel XMP Memory Kit, CMK16GX5M1E6000Z36", "Corsair", RAM, ddr5("16GB")),
+    mk("CORSAIR Vengeance 16GB (2 x 8GB) DDR5 5600MT/s CL40 Desktop memory Model, CMK16GX5M2B5600Z40", "Corsair", RAM, ddr5("16GB")),
+    mk("CORSAIR Vengeance 16GB (2 x 8GB) DDR5 6000MT/s CL36 Desktop memory Model CMK16GX5M2E6000Z36", "Corsair", RAM, ddr5("16GB")),
+    mk("Corsair VENGEANCE® 32GB (2x16GB) DDR5 DRAM 5200MHz C40 Memory Kit — Black, CMK32GX5M2B5200C40", "Corsair", RAM, ddr5("32GB")),
+  ]) as [SeoResult, SeoResult, SeoResult, SeoResult, SeoResult];
+  all.push(v16a, v16b, v16c, v16d, v32);
+  for (const [label, r] of [["16GB 5600MHz", v16a], ["16GB 6000MT/s", v16b], ["16GB (2x8GB) 5600", v16c], ["16GB (2x8GB) 6000", v16d], ["32GB", v32]] as [string, SeoResult][]) {
+    check(`Corsair Vengeance ${label}: capacity, DDR5 and RAM are in the title, Vengeance in normal case`, /^Corsair Vengeance \d\dGB DDR5 /.test(r.title) && /\bRAM\b/.test(r.title) && !/VENGEANCE/.test(r.title) && !/Memory/.test(r.title), r.title);
+    check(`Corsair Vengeance ${label}: the description says them too, no gate, keyword = title core`, /Vengeance \d\dGB DDR5/.test(r.metaDescription) && r.identityLost.length === 0 && keywordOk(r), `${r.metaDescription} | ${r.flags.join()}`);
+    check(`Corsair Vengeance ${label}: a kit's module size is not a title word ("16GB DDR5 8GB")`, !/DDR5 \d+GB/.test(r.title), r.title);
+  }
+  check("the four 16GB DDR5 Vengeance titles differ (speed / kit), none loses the capacity or the DDR type", new Set([v16a, v16b, v16c, v16d].map((r) => r.title)).size === 4, [v16a, v16b, v16c, v16d].map((r) => r.title).join(" / "));
+  {
+    const stale = gen(mk("Corsair VENGEANCE 16GB DDR5 6000MT/s CL36 Memory Kit", "Corsair", RAM, [attr("capacity", "Capacity", "8GB"), attr("ramType", "Memory Type", "DDR4")]));
+    check("the name's DDR generation and capacity outrank stale stored ones", /16GB DDR5/.test(stale.title) && !/DDR4|8GB/.test(`${stale.title} ${stale.metaDescription}`), `${stale.title} | ${stale.metaDescription}`);
+    const ddr4 = gen(mk("Kingston FURY Beast 8GB 3200MHz DDR4 CL16 Desktop RAM", "Kingston", RAM));
+    check("DDR4 8GB: both in the title", /8GB DDR4/.test(ddr4.title) && /\bRAM\b/.test(ddr4.title), ddr4.title);
+    const fromSpecs = gen(mk("G.Skill Ripjaws V Memory Kit", "G.Skill", RAM, [attr("capacity", "Capacity", "16GB"), attr("ramType", "Memory Type", "DDR4")]));
+    check("capacity and DDR taken from stored specs when the name has none", /16GB DDR4/.test(fromSpecs.title), fromSpecs.title);
+    equal("ram facts", JSON.stringify(extractRamFromModuleName("CORSAIR Vengeance 16GB (2 x 8GB) DDR5 5600MT/s CL40 Desktop memory")), JSON.stringify({ capacity: "16GB", ddr: "DDR5", speed: "5600MT/s", kit: "2x8GB", latency: "CL40" }));
+    const unknown = gen(mk("Acme Memory Module", "Acme", RAM));
+    check("a RAM name with no capacity or DDR type states none and is not gated", !unknown.flags.includes("identity_lost"), unknown.flags.join());
+    const longRam = gen(mk("G.SKILL Trident Z5 RGB Royal Neo Limited Series Extra Long Name 32GB DDR5 6400MHz", "G.Skill", RAM));
+    check("a RAM title that cannot keep capacity and DDR within 60 characters is skipped", longRam.flags.includes("identity_lost") && decideApply(longRam, { metaTitle: null, metaDescription: null, seoSource: null }, { minSpecs: 0 }).action === "skip: identity_lost", `${longRam.title} | ${longRam.flags.join()}`);
+  }
+
+  // 4) Combos keep "Combo".
+  {
+    const targus = gen(mk("Targus AKM610AP Wireless Mouse and Keyboard Combo, 3 Years Warranty", "Targus", ["Keyboard", "Accessories"]));
+    check("Targus AKM610AP combo: 'Combo' is in the title and the keyword", /Combo/.test(targus.title) && /combo/.test(targus.primaryKeyword) && keywordOk(targus) && targus.identityLost.length === 0, `${targus.title} | ${targus.primaryKeyword}`);
+    check("Targus AKM610AP combo: the phrase is kept whole (mouse AND keyboard)", /AKM610AP .*Mouse and Keyboard Combo/.test(targus.title), targus.title);
+    const afterComma = gen(mk("Acme K100, Wireless Keyboard and Mouse Combo, 2.4GHz", "Acme", ["Keyboard", "Accessories"]));
+    check("a Combo outside the model core is added to the title", /Combo/.test(afterComma.title), afterComma.title);
+    check("a promotional 'Combo Offer' is not a combo", !hasComboWord("Logitech M221 Silent Mouse Combo Offer") && hasComboWord("Targus Mouse and Keyboard Combo"));
+    const promo = gen(mk("Logitech M221 Silent Mouse Combo Offer", "Logitech", ["Mouse", "Accessories"]));
+    check("a promotional 'Combo Offer' does not create an identity", !promo.flags.includes("identity_lost"), promo.flags.join());
+  }
+  {
+    const base = generateProductSeo(mk("Toshiba PC Hard Drive P300 4TB", "Toshiba", HDD));
+    const lost: SeoResult = { ...base, identityLost: ["4TB"], flags: [...base.flags, "identity_lost"], needsReview: true };
+    equal("identity_lost: the row is skipped, even with --allow-few-specs and --overwrite", decideApply(lost, { metaTitle: null, metaDescription: null, seoSource: null }, { allowFewSpecs: true, overwrite: true }).action, "skip: identity_lost");
+    check("identity_lost on a row that already has generated text: its old text stays live", decideApply(lost, { metaTitle: "old", metaDescription: "old text", seoSource: "generated" }).action === "skip: identity_lost (generated text stays live)");
+  }
+
+  // 5) The microphone audit: spec rows that only COPY an attribute (admin editor merge -> save) are the guess again.
+  {
+    const fact = (key: string | undefined, label: string, value: string): SpecFact => (key ? attr(key, label, value) : row(label, value));
+    equal("mirror: a row identical to an attribute is dropped", dropMirroredRows([fact("microphone", "Microphone", "Yes"), fact(undefined, "Microphone", "Yes")]).length, 1);
+    equal("mirror: case and spaces do not matter", dropMirroredRows([fact("audioType", "Type", "Over-ear"), fact(undefined, " type ", "over-ear")]).length, 1);
+    equal("mirror: the attribute itself stays", dropMirroredRows([fact("audioType", "Type", "Over-ear"), fact(undefined, "Type", "Over-ear")])[0]?.key, "audioType");
+    equal("mirror: a row a human changed (another value) stays", dropMirroredRows([fact("microphone", "Microphone", "Yes"), fact(undefined, "Microphone", "Built-in")]).length, 2);
+    equal("mirror: a row with no attribute of that label stays", dropMirroredRows([fact(undefined, "Microphone", "Yes"), fact("connectivity", "Connectivity", "Wireless")]).length, 2);
+    const comfo = (rows: SpecFact[]) => generateProductSeo(mk("Edifier Comfo Q OWS Headphone Back, No ANC, 32 Hours Battery - 1 Year Warranty", "Edifier", HP, rows));
+    // what the admin editor + a plain save write: every attribute copied as a key-less row of the same label and value
+    const saved = comfo([attr("audioType", "Type", "Over-ear"), attr("microphone", "Microphone", "Yes"), attr("connectivity", "Connectivity", "Wireless"), row("Type", "Over-ear"), row("Microphone", "Yes"), row("Connectivity", "Wireless")]);
+    check("attributes copied into spec rows by an admin save make no claim (no over-ear, microphone, wireless)", !/over-ear|micro|wireless|built-in/i.test(saved.metaDescription), saved.metaDescription);
+    check("... and they are counted as removed claims", saved.unsupportedClaims.includes("over-ear") && saved.unsupportedClaims.includes("microphone") && saved.unsupportedClaims.includes("wireless"), saved.unsupportedClaims.join());
+    const typed = comfo([attr("microphone", "Microphone", "Yes"), row("Microphone", "Built-in")]);
+    check("a row someone typed ('Microphone: Built-in', unlike the attribute's Yes) is the one remaining source: 'built-in microphone'", /built-in microphone/.test(typed.metaDescription), typed.metaDescription);
+    check("... and the review file names that source", typed.claimSources.some((x) => x === 'microphone <- spec row "Microphone: Built-in"') && typed.claimSources.some((x) => x === "built-in <- spec row \"Microphone: Built-in\""), typed.claimSources.join(" | "));
+    equal("claim sources: the name", claimSources("wireless headset", "Acme Wireless Headset", ["Headphone"], []).join(), "wireless <- name");
+    equal("claim sources: the category", claimSources("wireless mouse", "Acme M1", ["Wireless Mouse"], []).join(), "wireless <- category");
+    equal("claim sources: nothing", claimSources("headset with microphone", "Acme Z1 Headset", ["Headphone"], [attr("microphone", "Microphone", "Yes")]).join(), "microphone <- ?");
+  }
+
+  // Every fixture of this block keeps the invariants.
+  check("no fixture of this block is flagged bad_spec_phrase, claim_conflict or model_token_lost", all.every((r) => r.badSpecPhrases.length === 0 && r.claimConflicts.length === 0 && !r.flags.includes("model_token_lost")), all.filter((r) => r.badSpecPhrases.length > 0 || r.claimConflicts.length > 0 || r.flags.includes("model_token_lost")).map((r) => r.title).join(" | "));
 }
 
 // --- stored meta helpers -------------------------------------------------------

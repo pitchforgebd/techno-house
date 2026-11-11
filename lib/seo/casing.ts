@@ -119,7 +119,9 @@ export const PLAIN_WORDS = new Set(
     // ... and what the v2.4 sweep found shouted in product names
     "micro full mid compact computer casing mechanical tempered glass aluminum aluminium transparent standard orange " +
     "yellow brown earphones earbuds developing controller server rack magenta cyan graphite channel main film storage " +
-    "optical cassette alloy thermal front carriage delivery telephone panoramic bottle meter offline supply"
+    "optical cassette alloy thermal front carriage delivery telephone panoramic bottle meter offline supply " +
+    // brand lines that are plain words (Corsair VENGEANCE / DOMINATOR)
+    "vengeance dominator"
   ).split(" "),
 );
 
@@ -129,9 +131,11 @@ export function softenPlainWords(token: string): string {
   return token.replace(/[A-Z]{2,}/g, (word) => (PLAIN_WORDS.has(word.toLowerCase()) ? word.charAt(0) + word.slice(1).toLowerCase() : word));
 }
 
-/** The type word a shopper expects: a raw name's or category's "CASING" is a "Case". */
-const STANDARD_TYPE: Record<string, string> = { casing: "Case", casings: "Case" };
-export const standardType = (word: string) => STANDARD_TYPE[word.toLowerCase().replace(/[^a-z]/g, "")] ?? word;
+/**
+ * Bangladeshi shops (and our own category) call a PC case a "Casing", and people search "casing price in bangladesh":
+ * for a PC case the type word is "Casing". A raw "Casing" stays as it is. (v2.4 had it the other way round.)
+ */
+export const pcCaseWord = (word: string) => (/^case$/i.test(word) ? "Casing" : word);
 
 /** "LATITUDE" -> "Latitude" for a shouted brand / line word (never an acronym or a known canonical form). */
 export function titleCaseShouted(word: string): string {

@@ -194,6 +194,7 @@ const flagged = (result: SeoResult, flag: string, extra: Partial<SeoResult> = {}
   equal("gate spec_zero", failedCriteria(base(flagged(rich, "spec_zero"))).join(), "spec_zero");
   equal("gate claim_conflict", failedCriteria(base(flagged(rich, "claim_conflict"))).join(), "claim_conflict");
   equal("gate bad_spec_phrase", failedCriteria(base(flagged(rich, "bad_spec_phrase"))).join(), "bad_spec_phrase");
+  equal("gate identity_lost (v2.5)", failedCriteria(base(flagged(rich, "identity_lost"))).join(), "identity_lost");
   equal("a type that is only a bucket (unusable_type) fails the type criterion", failedCriteria(base({ ...flagged(rich, "unusable_type"), type: "" })).join(), "type");
   equal("unusable_type fails the type criterion even if a type string is present", failedCriteria(base(flagged(rich, "unusable_type"))).join(), "type");
   equal("title over 60 is a length failure", failedCriteria(base(flagged(rich, "title_over_60", { title: "x".repeat(SEO_TITLE_MAX + 1) }))).join(), "lengths");
@@ -218,7 +219,7 @@ const flagged = (result: SeoResult, flag: string, extra: Partial<SeoResult> = {}
     rich, thin, { ...rich, specsAvailable: 2 }, { ...rich, type: "" },
     flagged(rich, "title_collision"), flagged(rich, "model_token_lost"), flagged(rich, "foreign_code"), flagged(rich, "bad_chars"), flagged(rich, "spec_zero"),
     flagged(rich, "title_over_60", { title: "y".repeat(70) }),
-    flagged(rich, "claim_conflict"), flagged(rich, "bad_spec_phrase"), { ...flagged(rich, "unusable_type"), type: "" },
+    flagged(rich, "claim_conflict"), flagged(rich, "bad_spec_phrase"), flagged(rich, "identity_lost"), { ...flagged(rich, "unusable_type"), type: "" },
     { ...rich, metaDescription: "short" }, { ...rich, metaDescription: "z".repeat(200) },
   ];
   let compared = 0;
@@ -264,7 +265,7 @@ const flagged = (result: SeoResult, flag: string, extra: Partial<SeoResult> = {}
   equal("funnel: bad_chars removes 1", step("bad_chars")?.removed, 1);
   equal("funnel: lengths removes 1", step("lengths")?.removed, 1);
   equal("funnel: passing", f.passing, 6);
-  check("funnel: the v2.4 gates are steps of the waterfall", ["claim_conflict", "bad_spec_phrase"].every((id) => step(id) !== undefined && step(id)?.removed === 0), f.steps.map((x) => x.id).join());
+  check("funnel: the v2.4 gates are steps of the waterfall", ["claim_conflict", "bad_spec_phrase", "identity_lost"].every((id) => step(id) !== undefined && step(id)?.removed === 0), f.steps.map((x) => x.id).join());
   check("funnel: the waterfall adds up", f.total - f.steps.reduce((sum, s) => sum + s.removed, 0) === f.passing);
   check("funnel: `left` only ever goes down and ends at passing", f.steps.every((s, i) => s.left <= (i === 0 ? f.total : f.steps[i - 1]?.left ?? 0)) && f.steps[f.steps.length - 1]?.left === f.passing);
   check("funnel: own failures are never fewer than removals", f.steps.every((s) => s.ownFail >= s.removed));
