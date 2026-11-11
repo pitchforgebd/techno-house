@@ -9163,3 +9163,18 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       154->0, zero 1->0, over-ear w/o source 78->0, lower-case 6->0; no defect
       among rows that would be written. `test:seo-product` 1,292. Code only;
       wrong attribute rows already stored are NOT repaired (owner decision).
+- [x] AD-404 SEO phase 8 FIX v2.3 — batch tooling, filter funnel, description
+      polish (branch `seo-phase-8-fix-3`, pushed, NOT merged). Detail:
+      `docs/SEO-NOTES.md` "Phase 8 v2.3". `--select-batch` ignored
+      `--allow-few-specs` (hard-coded >= 3): it now honours it and
+      `--min-specs=0..4` and prints the minimum used. `--explain-filter`
+      (read-only) writes `filter-funnel.md`: own failures + waterfall per
+      criterion (price, image, coming soon, brand, type, specs, unique title,
+      gates, lengths), the "< 3 specs" bucket by family, minimum 3/2/1/0, 10
+      examples per bucket; selection and funnel share one filter. Options parsed
+      strictly (`lib/seo/apply-cli.ts`): `--limit 20` and `--limit=20`, "limited
+      to N of M", abort on a bad / missing value or unknown option; dead `--only`
+      bypass removed. Batch files: next free `batch-<N>.csv`, never overwritten.
+      Separate commit: the description's spec part no longer repeats the title
+      (titles / keywords / specsAvailable unchanged; earbuds are not "in-ear").
+      `test:seo-product` 1,356 + 157. Code only; nothing run on production.
