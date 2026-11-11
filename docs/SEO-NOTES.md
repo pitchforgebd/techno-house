@@ -1318,6 +1318,92 @@ descriptive and may be dropped. If you prefer the literal reading, it is a one-l
 A build + `pm2 restart techno-house` is only needed to ship the admin form's suggestion placeholder; the storefront
 and the apply script do not need it.
 
+### Phase 8 v2.2 — generator hygiene
+
+Branch `seo-phase-8-fix-2` (from main after PR #10, which has v2.1). Code only: no schema change, no
+database access beyond read-only `findMany` for the local sweep, nothing run on production.
+
+#### What the production dry-run (387 products) found, and the cause of each
+
+| Defect | Cause | Fix |
+|---|---|---|
+| `Dell LATITUDE 3420-CORP-(Core i3-1115G4-14" FHD Laptop`, `…MT-CORP-(INTEL 8GB RAM Brand PC`, part number `G13(21NXS0N800)` in the title | the core only ended at a token that *starts* with "(", so `-(Core` and `G13(21N…)` were glued into the model; quotes (`14"`) were not boundaries | `(`, `[`, `"` (and `14"` / `14''` as the inch unit) end the core wherever they sit in a token; trailing hyphens and channel SKU suffixes (`-CORP`, `-BRAC-SUPP`, `-ASA`, `-BG`) are stripped; bracket content never reaches the title, keyword or collision extras |
+| `LATITUDE`, `OPTIPLEX`, `INTEL` shouted | only a fixed generic-word list was softened | shouted brand / line words (5+ capitals) **before the first model code** become Title Case; the model run keeps the raw spelling (`MT`, `WF7`, `B650-PLUS` — also fixes `B650-Plus` that the shared shouting list produced inside a model code) |
+| `0GB storage`, RAM lost (`16.0GB DDR5, 512GB SSD`) | **`scripts/deploy/populate-import-attributes.ts`** wrote the stored attributes: `(\d{1,3})\s*GB` matches the `0GB` in `16.0GB`, and storage took the first GB figure *near* "SSD", which for `8GB, 1x8GB-512GB SSD` is the RAM figure (local data: `ram=0GB; storage=0GB`, `storage=8GB`). The generator trusted them | shared parser `lib/catalog/spec-extract.ts`: sizes read as whole decimals (`16.0GB` = 16, `1.0TB` = 1TB), RAM vs storage by the nearest keyword (DDR / LPDDR / RAM / Memory / MHz vs SSD / NVMe / HDD / eMMC), the corporate `8GB, 1x8GB-512GB SSD` convention, two storage sizes = ambiguous = not stated, zero is never a value. **The populate script now uses it too**, and the generator reads RAM / storage / CPU **from the raw name** and replaces a stored attribute that is zero, repeats the RAM figure or contradicts the name |
+| `over-ear` for Edifier Comfo Q OWS; "with built-in microphone" for headsets | the same script **guesses** `Over-ear` for any "headset / headphone" and `Microphone=Yes` for any "headset"; the generator turned "Yes" into "Built-in microphone" | a form factor / microphone is stated only when the raw name says it, or a stored spec **row** (no attribute key) does; an attribute `Over-ear` or bare `Yes` without name evidence is ignored; "built-in" only when a spec says so; no ANC / Bluetooth-version claim is ever emitted |
+| `bluetooth`, lower-case standards | free text from slots | `lib/seo/casing.ts`: one map (Bluetooth, Wi-Fi, USB, USB-C, Type-C, HDMI, DisplayPort, DDR3/4/5, LPDDR, IPS, OLED, LED, RGB, SSD, HDD, NVMe, SATA, PCIe, RAM, QHD/FHD/UHD, 4K, GHz/MHz/Hz/GB/TB units, AMD, Intel, NVIDIA, GIGABYTE, ASUS, MSI, HP, LG …) applied to non-model title words, description text and collision extras (keywords are lower-case anyway) |
+| `…Scanner)` (type word taken from after a cut kept its bracket), `512GB storage` as a title extra | found by the sweep below | edge punctuation stripped from that word; the storage extra is the size (+ SSD / HDD) |
+
+#### New gates (the row is skipped, counted and listed)
+
+- **`bad_chars`**: title, keyword or description contains a quote, ANY bracket, a character outside
+  `A–Z a–z 0–9 space . , : ; & + / % ' | -` (and our own " – " lead), a double space, or a word that starts
+  or ends with a hyphen. Dry-run summary: count, kinds and the first 25 slugs; preview CSV column `bad_chars`.
+- **`spec_zero`**: a description spec value that is zero or empty (`0GB storage`, `0 ports`). Zero is also
+  rejected at the source (every spec phrase and every attribute), so the gate is the safety net: on the local
+  catalogue it skips 0 rows because nothing zero reaches a description any more. Column `zero_specs`.
+- Both sit in `lib/seo/product-seo-apply.ts` (unit-tested), before the stored-text rules, so they also beat `--overwrite`.
+
+#### Before → after (fixtures from the real raw names; Latitude 3540 / 7450 are reconstructed in the same style because the local DB has no such rows)
+
+| Product | Before (v2.1) | After (v2.2) |
+|---|---|---|
+| Latitude 3420 FHD | `Dell LATITUDE 3420-CORP-(Core i3-1115G4-14" FHD Laptop` | `Dell Latitude 3420 8GB RAM Laptop Price in Bangladesh` (set; split from the HD model by the RAM in the name) · `…Laptop: Core i3-1115G4, 8GB RAM, 512GB SSD.` |
+| Latitude 3420 HD | `Dell LATITUDE 3420-CORP-(CORE I3-1115G4-14" HD Laptop` · `Core i3, 4GB RAM` | `Dell Latitude 3420 4GB RAM Laptop …` · `Core i3-1115G4, 4GB RAM, 1TB HDD` |
+| Latitude 3440 | `Dell LATITUDE 3440-CORP-(Core i3-1215U-14" FHD Laptop` | `Dell Latitude 3440 Laptop Price in Bangladesh \| Techno House` · `Core i3-1215U, 8GB RAM, 512GB SSD` |
+| Latitude 3540 / 7450 | `…3540-CORP-(Core i5-1335U-15.6" FHD Laptop` | `Dell Latitude 3540 Laptop …` / `Dell Latitude 7450 Laptop …` · `Core i5-1335U, 16GB RAM, 512GB SSD` |
+| Optiplex 3000 MT | `Dell OPTIPLEX 3000 MT-CORP-(INTEL Brand PC Price in BD` | `Dell Optiplex 3000 MT Brand PC Price in Bangladesh` · `Core i5-12500, 8GB RAM, 1TB storage` |
+| ThinkPad X1 Carbon G13 | `Lenovo ThinkPad X1 Carbon G13(21NXS0N800) Laptop` | `Lenovo ThinkPad X1 Carbon G13 Laptop Price in Bangladesh` · `Core Ultra 7 255H, 32GB RAM, 1TB SSD` |
+| Lenovo V15 G5 IRL (16.0GB) | `…Laptop – Core i5, 0GB storage.` | `…Laptop, Core i5-13420H, 16GB RAM, 512GB SSD.` |
+| Edifier Comfo Q OWS | `…Headphone Back – over-ear headphone.` | `…Headphone Back.` + the neutral specs pointer (no form factor; flagged `few_specs`) |
+| Logitech G435 | `…: bluetooth over-ear headset with built-in microphone.` | `…Headset: Bluetooth headset.` (`few_specs`) |
+| Logitech ZONE 300 | `…: bluetooth over-ear headset with built-in mic.` | `…Headset: Bluetooth headset.` (`few_specs`) |
+| the five earlier samples | — | title, keyword and description **byte-identical** to v2.1 (compared against main; titles asserted in the tests). The " – " description lead is kept on purpose, so the gate allows exactly that character |
+
+(Headsets now carry fewer specs because the two "specs" the import script guessed are gone. With
+fewer than 3 they are skipped by default, as intended: nothing unsupported is written.)
+
+#### Sweep over all 4,309 local products (read-only; v2.1 from main vs v2.2 on the same inputs)
+
+| Defect class (rows) | Before | After |
+|---|---|---|
+| quote / bracket in title, keyword or description | 154 | **0** |
+| zero spec (`0GB`, `0TB`, `0GHz` …) in the description | 1 | **0** |
+| `over-ear` in the description, raw name does not say it | 78 | **0** |
+| lower-case proper noun / standard (bluetooth, usb, ssd …) | 6 | **0** |
+| double space | 0 | 0 |
+| hyphen at the start / end of a word | 0 | 0 |
+
+Rows now skipped by each new gate: `bad_chars` **208** (179 contain `_`: `HO/Rabbi_Max International_…` licence strings; 8 `*`
+as in `2*USB3.0`; 7 `=`; the rest stray non-ASCII: soft hyphens, zero-width spaces, fullwidth brackets, curly apostrophes,
+`Ý`), `spec_zero` **0**, `model_token_lost` 0, `foreign_code` 0. Rows that would be written: 207 → **260** (the raw-name
+RAM / storage / CPU lifted 137 laptops and desktops to ≥ 3 specs; headsets dropped out as above). **Defects among
+the rows that would be written: none** (before: 1 bracket, 27 unsupported over-ear, 5 lower-case standards).
+
+#### Verification
+
+`tsc` 0 errors; eslint clean; `next build` OK (build `osX_SuE7Z3pRX0ft0HsEP`, separate worktree); `test:seo-product` **1,292** checks (was 928: the 12 real-name fixtures in
+the set and alone, exact-name parser cases, casing map, gates, claim rules; every v2.1 check unchanged and passing, the
+five earlier samples' titles asserted); `test:seo-product-meta` 11, `test:security` 27, `test:seo` 92,
+`seo:check-schema --offline` 49, `test:seo-meta` 383, `test:seo-phase5` 198, `test:seo-phase6` 59.
+
+v2.1 expectations changed on purpose: `3420-CORP` is now `3420` (channel suffix); "with microphone" is a legitimate
+phrase for an explicit stored mic spec.
+
+#### Needs owner decision (Phase 8 v2.2)
+
+1. **The wrong attributes are still in the database.** The populate script keeps existing values ("already had a value,
+   untouched"), so fixing it does not repair `ram=0GB`, `storage=8GB`, `audioType=Over-ear` rows that are already
+   stored; they also drive the catalogue filters. The generator no longer trusts them, but a one-off cleanup (rows equal
+   to `0GB`, storage repeating RAM, guessed `Over-ear` / `Microphone=Yes`) is yours to approve; I did not touch data.
+2. **Headsets have fewer than 3 specs** and are skipped by default until real specs exist (the name often has only
+   "Bluetooth", "Wired"). `--allow-few-specs` writes them with a neutral specs-pointer sentence.
+3. **The `bad_chars` allow-list is deliberately conservative**: product names with `*`, `=`, `_`, `#`, curly quotes or other
+   non-ASCII are skipped for a human name rather than cleaned automatically. Widening it is a one-line regex in
+   `findBadChars`.
+4. **The populate script changed** (RAM / storage extraction only, for future runs): `storage` is now the keyword-matched
+   figure (it used to be the first figure near "SSD"), and two unclear storage figures return nothing.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
