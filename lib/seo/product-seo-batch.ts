@@ -8,7 +8,7 @@
  * Criteria, in the order the filter applies them (stock is ignored on purpose):
  *   price > 0, a real image, not "coming soon", a real brand, a usable product type, at least `minSpecs`
  *   specs (default 3), a resolved unique title, none of the gate flags (model_token_lost, foreign_code,
- *   bad_chars, spec_zero), valid lengths (title <= 60, description 120-155).
+ *   bad_chars, spec_zero, claim_conflict, bad_spec_phrase), valid lengths (title <= 60, description 120-155).
  * Products that already have stored text are not part of the population: they are never selected.
  */
 import { DEFAULT_MIN_SPECS } from "@/lib/seo/product-seo-apply";
@@ -40,6 +40,8 @@ export type CriterionId =
   | "foreign_code"
   | "bad_chars"
   | "spec_zero"
+  | "claim_conflict"
+  | "bad_spec_phrase"
   | "lengths";
 
 export const CRITERIA: { id: CriterionId; label: (minSpecs: number) => string }[] = [
@@ -47,13 +49,15 @@ export const CRITERIA: { id: CriterionId; label: (minSpecs: number) => string }[
   { id: "image", label: () => "real image (not the placeholder)" },
   { id: "coming_soon", label: () => "not marked coming soon" },
   { id: "brand", label: () => "real brand (not empty / No brand / Generic)" },
-  { id: "type", label: () => "usable product type" },
+  { id: "type", label: () => "usable product type (not a bucket like \"Mobile Accessory\")" },
   { id: "specs", label: (min) => (min === 0 ? "specs: any number (title + type only is enough)" : `at least ${min} spec${min === 1 ? "" : "s"}`) },
   { id: "unique_title", label: () => "resolved unique title (no collision)" },
   { id: "model_token_lost", label: () => "gate: model_token_lost" },
   { id: "foreign_code", label: () => "gate: foreign_code" },
   { id: "bad_chars", label: () => "gate: bad_chars" },
   { id: "spec_zero", label: () => "gate: spec_zero" },
+  { id: "claim_conflict", label: () => "gate: claim_conflict" },
+  { id: "bad_spec_phrase", label: () => "gate: bad_spec_phrase" },
   { id: "lengths", label: () => `valid lengths (title <= ${SEO_TITLE_MAX}, description ${SEO_DESC_MIN}-${SEO_DESC_MAX})` },
 ];
 
@@ -66,10 +70,10 @@ export function failedCriteria(candidate: BatchCandidate, minSpecs: number = DEF
   if (!candidate.hasRealImage) failed.push("image");
   if (candidate.isComingSoon) failed.push("coming_soon");
   if (!brand || GENERIC_BRAND.test(brand)) failed.push("brand");
-  if (!result.type) failed.push("type");
+  if (!result.type || result.flags.includes("unusable_type")) failed.push("type");
   if (result.specsAvailable < minSpecs) failed.push("specs");
   if (result.flags.includes("title_collision")) failed.push("unique_title");
-  for (const gate of ["model_token_lost", "foreign_code", "bad_chars", "spec_zero"] as const) {
+  for (const gate of ["model_token_lost", "foreign_code", "bad_chars", "spec_zero", "claim_conflict", "bad_spec_phrase"] as const) {
     if (result.flags.includes(gate)) failed.push(gate);
   }
   if (

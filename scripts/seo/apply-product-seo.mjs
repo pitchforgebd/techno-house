@@ -54,7 +54,7 @@ import { config as loadEnvFiles } from "dotenv";
 import { getPrisma } from "@/lib/db/prisma";
 import { ArgError, describeMinSpecs, limitNote, nextBatchNumber, parseApplyArgs } from "@/lib/seo/apply-cli";
 import { productTitle } from "@/lib/seo/page-meta";
-import { countActions, decideApply } from "@/lib/seo/product-seo-apply";
+import { countActions, decideApply, isStaleGenerated, rowsToWrite } from "@/lib/seo/product-seo-apply";
 import { biggestBlocker, buildFunnel, isSelectable, renderFunnelMarkdown, topLines } from "@/lib/seo/product-seo-batch";
 import { generateProductSeoSet } from "@/lib/seo/product-seo";
 
@@ -291,11 +291,12 @@ function previewRow({ product, result, decision, alt }, chain) {
     new_title: result.title, new_title_len: result.title.length, title_rule: result.titleRule,
     new_meta_description: result.metaDescription, new_meta_len: result.metaDescription.length,
     keyword: result.primaryKeyword, secondary_keywords: result.secondaryKeywords.join(" | "),
-    flags: result.flags.join("; "), model_tokens_lost: result.modelTokensLost.join(" "), bad_chars: result.badChars.join(" | "), zero_specs: result.zeroSpecs.join(" | "), collision_group: result.collisionGroup ?? "",
+    flags: result.flags.join("; "), model_tokens_lost: result.modelTokensLost.join(" "), bad_chars: result.badChars.join(" | "), zero_specs: result.zeroSpecs.join(" | "),
+    claim_conflicts: result.claimConflicts.join(" | "), bad_spec_phrases: result.badSpecPhrases.join(" | "), unsupported_claims: result.unsupportedClaims.join(" | "), type: result.type, collision_group: result.collisionGroup ?? "",
     new_alt: result.imageAlt, alt_action: alt ? `set (was "${alt.before}")` : "",
   };
 }
-const PREVIEW_HEADER = ["id", "slug", "name", "category", "action", "current_title", "stored_title", "stored_source", "new_title", "new_title_len", "title_rule", "new_meta_description", "new_meta_len", "keyword", "secondary_keywords", "flags", "model_tokens_lost", "bad_chars", "zero_specs", "collision_group", "new_alt", "alt_action"];
+const PREVIEW_HEADER = ["id", "slug", "name", "category", "action", "current_title", "stored_title", "stored_source", "new_title", "new_title_len", "title_rule", "new_meta_description", "new_meta_len", "keyword", "secondary_keywords", "flags", "model_tokens_lost", "bad_chars", "zero_specs", "claim_conflicts", "bad_spec_phrases", "unsupported_claims", "type", "collision_group", "new_alt", "alt_action"];
 
 async function writePreview(rows, limit) {
   await mkdir(OUT, { recursive: true });
@@ -307,6 +308,18 @@ async function writePreview(rows, limit) {
   const kinds = new Map();
   for (const { result } of badChars) for (const kind of result.badChars) kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
   const noSuffix = rows.filter(({ result }) => result.flags.includes("title_without_price_suffix")).length;
+  // v2.4 gates and the refresh view
+  const conflicts = rows.filter(({ result }) => result.flags.includes("claim_conflict"));
+  const badSpec = rows.filter(({ result }) => result.flags.includes("bad_spec_phrase"));
+  const noType = rows.filter(({ result }) => result.flags.includes("unusable_type"));
+  const claimDropped = rows.filter(({ result }) => result.flags.includes("unsupported_claim"));
+  const claimKinds = new Map();
+  for (const { result } of claimDropped) for (const kind of result.unsupportedClaims) claimKinds.set(kind, (claimKinds.get(kind) ?? 0) + 1);
+  const claimSkipped = claimDropped.filter(({ decision }) => decision.action.startsWith("skip: unsupported_claim")).length;
+  const generatedRows = rows.filter(({ product }) => product.seoSource === "generated" && (squash(product.metaTitle) || squash(product.metaDescription)));
+  const refreshCount = (action) => generatedRows.filter(({ decision }) => decision.action === action).length;
+  const stale = generatedRows.filter(({ decision }) => isStaleGenerated(decision));
+  const list = (items, text) => [...items.slice(0, 25).map(text), ...(items.length > 25 ? [`- … ${items.length - 25} more (see apply-preview.csv)`] : [])];
   const lines = [
     `# Product SEO ${APPLY ? "APPLY" : "DRY RUN"}`, "",
     `Database: ${databaseName()} · ${new Date().toISOString()} · ${rows.length} product(s)${BATCH_FILE ? ` from ${BATCH_FILE}` : ""}`,
@@ -324,6 +337,20 @@ async function writePreview(rows, limit) {
     ...(badChars.length > 25 ? [`- … ${badChars.length - 25} more (column bad_chars in apply-preview.csv)`] : []),
     `**spec_zero: ${zeroSpec.length}** (a description spec value that is zero or empty, e.g. "0GB storage"; never written)${zeroSpec.length ? ":" : ""}`,
     ...zeroSpec.slice(0, 25).map(({ product, result }) => `- ${product.slug}: ${result.zeroSpecs.join("; ")}`),
+    `**claim_conflict: ${conflicts.length}** (a form factor in the description that the raw name contradicts; never written)${conflicts.length ? ":" : ""}`,
+    ...list(conflicts, ({ product, result }) => `- ${product.slug}: ${result.claimConflicts.join("; ")}`),
+    `**bad_spec_phrase: ${badSpec.length}** (machine-looking wording: "8GB size", "6.57 inch, 6.57 inches", one quantity in two phrases; never written)${badSpec.length ? ":" : ""}`,
+    ...list(badSpec, ({ product, result }) => `- ${product.slug}: ${result.badSpecPhrases.join("; ")}`),
+    `**unusable_type: ${noType.length}** (the category is only a bucket such as "Mobile Accessory" and the name states no product type; never written)${noType.length ? ":" : ""}`,
+    ...list(noType, ({ product, chain }) => `- ${product.slug} (${chain[0] ?? "no category"}): ${product.name.slice(0, 70)}`),
+    `**unsupported_claim: ${claimDropped.length}** row(s) had a claim removed because neither the name nor a trusted spec row backs it${claimDropped.length ? ` (${[...claimKinds.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} x${n}`).join(", ")}); ${claimSkipped} of them are now skipped: too few specs left` : ""}${claimDropped.length ? ":" : ""}`,
+    ...list(claimDropped, ({ product, result, decision }) => `- ${product.slug}: ${result.unsupportedClaims.join(", ")} removed -> ${decision.action}`),
+    ...(generatedRows.length
+      ? [
+          `Rows that already have generated text: ${generatedRows.length} -> ${refreshCount("update")} update, ${refreshCount("unchanged")} unchanged, ${stale.length} blocked (the new text is not written and the OLD generated text stays live)${stale.length ? ":" : ""}`,
+          ...list(stale, ({ product, decision }) => `- ${product.slug}: ${decision.action}`),
+        ]
+      : []),
     `Titles with no "Price in …" suffix (model core + type only, nothing dropped from the core): ${noSuffix}`, "",
     `Alts to change (--apply-alts ${APPLY_ALTS ? "ON" : "off"}): ${rows.filter((r) => r.alt).length}`, "",
     "Review: apply-preview.csv (current vs new title, description, keyword, flags, collision group).",
@@ -354,7 +381,7 @@ async function saveBackup(rows) {
 
 async function applyRows(prisma, rows) {
   requireConfirmedDb();
-  const toWrite = rows.filter((row) => row.decision.write || row.alt);
+  const toWrite = rowsToWrite(rows);
   if (toWrite.length === 0) {
     console.log("nothing to write");
     return;
