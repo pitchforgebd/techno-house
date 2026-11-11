@@ -442,9 +442,13 @@ export function CatalogProductCard({
           breathing room. */}
       <div className="flex flex-1 flex-col px-3 pt-2.5 pb-3">
         <Link href={href} prefetch={false}>
-          <h3 className="line-clamp-2 min-h-9 text-label font-semibold tracking-tight text-text">
+          {/* An h2, not an h3: a listing page goes h1 (the category) straight
+              to the cards, and h3 right after h1 skips a level. The compact
+              card keeps h3 because it sits under a section heading. Same
+              classes, so the look is unchanged. */}
+          <h2 className="line-clamp-2 min-h-9 text-label font-semibold tracking-tight text-text">
             {product.name}
-          </h3>
+          </h2>
         </Link>
 
         {/* No SKU/model-code line — a shopper comparing products on a
