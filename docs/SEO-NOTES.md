@@ -1781,6 +1781,256 @@ name-derived one only when it reads). The project-wide `npm run lint` still repo
 5. **The 6 `identity_lost` rows** are drives whose name is longer than 60 characters even with the capacity ("SEAGATE STLC8000400 ONE
    TOUCH HUB 8TB …", flash drives filed under "Portable Hard Disk Drive"); they need a shorter name or a hand-written title.
 
+### Phase 7 findings — mobile performance and accessibility (measure and diagnose only)
+
+Branch `seo-phase-7` (from main after PR #14). **Step 1 changed no code**: this section is the only change. Nothing was
+run against production and no database was written (the local server only reads the dev database).
+
+#### How it was measured (and what that can and cannot tell)
+
+- `next build` of main (`2d705d5`) in a scratch worktree, `next start` on port 3100 started with
+  `Start-Process` and checked against that build's `_buildManifest.js`; Lighthouse **13.5.0** (via `npx`, nothing added to the repo),
+  Chrome 157, mobile preset, default simulated throttling (Slow 4G, 4x CPU), **3 runs per page, medians**. Run-to-run noise on this
+  machine is about +-3 points, with occasional single-run outliers (identical setups scored 81 / 85 / 79, 87 / 73 / 86 and 63 / 85 / 84),
+  which is why medians are used; LCP is steadier than the score.
+- **Local is not production.** The local database has no analytics tag ids (so GTM / GA4 / Meta Pixel / Tawk.to never load here), almost
+  every product has the placeholder image (4,284 of 4,309), and there is no nginx in front (none of the WebP-copy / cache rules from
+  `deploy/nginx-seo.conf` apply). So the structural findings below (JS, fonts, CSS, HTML, accessibility, the header logo) are measured; the
+  **product-image and third-party findings are not** and are marked so. The accessibility score here (87) matches production's (86).
+- Controlled experiments (category page, 3 runs each, no code change): block fonts, block `_rsc` prefetches, block all JS, and serve the
+  header logo at three sizes.
+
+#### Baseline (local, medians of 3) against production's PageSpeed
+
+| Page | Perf | LCP | TBT | CLS | A11y | LCP element |
+|---|---|---|---|---|---|---|
+| Home | 86 | 4.0 s | 118 ms | 0 | 97 | header search placeholder text |
+| /category/laptop | 81 | 4.6 s | 164 ms | 0 | 87 | **first product-card image (180x180, at y = 768 px, just at the fold), `loading="lazy"`**, no fetchpriority; phases: TTFB 217 ms, load delay 159 ms, load 10 ms, render delay 77 ms (run 1) |
+| Laptop product page | 84 | 4.4 s | 92 ms | 0 | 93 | breadcrumb text |
+| Monitor product page | 84 | 4.4 s | 101 ms | 0 | 93 | breadcrumb text |
+| /offers | 84 | 4.4 s | 95 ms | 0 | 96 | first offer-card image, `loading="lazy"` |
+| *production, as you measured* | category 57, home 86 | category 10.3 s | category 630 ms | – | category 86, home 97 | – |
+
+Home matches production (86). The category page does not (81 against 57): the gap is the things missing locally.
+
+#### Controlled experiments (category page, median of 3)
+
+| Variant | Perf | LCP | TBT | Transfer |
+|---|---|---|---|---|
+| baseline | 81 | 4.6 s | 164 ms | 596 KB |
+| all 6 font files blocked | **91** | 3.2 s | 92 ms | 364 KB |
+| all JS blocked | **93** | 3.2 s | 0 ms | 333 KB |
+| `_rsc` link prefetches blocked | 83 | 4.6 s | 104 ms | 536 KB |
+| header logo = original PNG (1,187 KB) | **73** (73 / 84 / 70) | **10.3 s** (10.4 / 4.5 / 10.3) | 107 ms | 1,783 KB |
+| header logo = its 131 KB WebP copy | 82 | 4.7 s | 106 ms | 727 KB |
+| header logo = right-sized 288 px (19 KB) | 82 | 4.4 s | 116 ms | 615 KB |
+
+With the original PNG two of three runs reach LCP 10.3 s (the figure you saw in production) and one stays at 4.5 s: the 1.2 MB file
+queues ahead of the lazy LCP image on the simulated 1.6 Mbps link. Whether production serves the PNG or a WebP copy of it depends on
+whether `optimize-uploads.mjs --apply` and the nginx blocks of `deploy/nginx-seo.conf` were applied; that is not visible from here.
+
+#### Findings, ranked (gain = estimated mobile Lighthouse points / LCP; "measured" = from the experiments above)
+
+| # | Cause | Evidence | Pages | Est. gain | Risk | Effort | Proposed fix |
+|---|---|---|---|---|---|---|---|
+| 1 | **Header logo is a 1536x1024 PNG (1.19 MB) shown at 96 px high** and preloaded on every page | `public/uploads/general/fbdf9f15….png` 1536x1024, 1,187 KB (131 KB even as WebP); `<img style="height:96px;width:auto">` x3 (header, mobile header, lazy footer) + `<link rel="preload" as="image">` on every page; the custom loader returns `/uploads/*` as is, so no resizing | all | measured: 73 -> 82, LCP 10.3 -> 4.4 s, -1.17 MB (if production serves the original); 131 KB -> 19 KB: ~0-3 pts, -112 KB | low (same picture at 2x; keep 3x for 432 px) | S | replace the logo asset with a right-sized file (about 432 px wide WebP / PNG, <= 30 KB) in Admin -> branding (data change, no code) and/or render it through `next/image` with real width/height; keep or drop the preload |
+| 2 | **Listing images are delivered at stored size, and the first row is lazy** (production only) | the loader returns `/uploads/*` unchanged for every `srcset` width, so all candidates are the same URL; cards show ~180-206 CSS px but fetch the stored file (<= 1000 px / <= 80 KB if converted, the original up to 5 MB if not); `lcp-discovery` fails on category and offers (`fetchpriority` no, `loading=lazy` yes); 21 cards | category, home, offers, brand, search | **not measurable locally** (placeholder SVG). At ~60-80 KB per image the 8-10 images near the fold are 0.5-0.8 MB = 2.5-4 s of the simulated link | low-medium | M | (a) `priority` on the first row of cards (2-4); (b) generate small WebP derivatives (e.g. 240 / 480 px) next to uploads and let the loader pick by width (sharp is already a dependency; nginx rule); needs one production check first (see questions) |
+| 3 | **Fonts: 6 files, 232 KB on every page, 107 KB of it for the taka sign** | four families loaded in the root layout: Plus Jakarta Sans (28 KB), Inter (49), IBM Plex Mono 400 + 500 (22), Noto Sans Bengali latin (26) and **Noto Sans Bengali bengali subset (107 KB)**, requested on every page because "৳" (U+09F3) is in its unicode-range; no preload, discovered from CSS | all | measured: 81 -> 91, LCP 4.6 -> 3.2 s, TBT -70 ms (all fonts). Realistic: dropping the 107 + 26 KB Bengali files = 57% of font bytes, ~ +5-6 pts | medium (glyph shapes must not change) | M | serve "৳" from a tiny (about 2 KB) subset of the same Noto glyph instead of the 107 KB file; load the Bengali / mono / Inter files only where a theme or page uses them (Design Studio can switch the body font); keep `swap` |
+| 4 | **Third-party scripts** (production only) | GTM, GA4, Meta Pixel and Tawk.to are injected `afterInteractive` from `AnalyticsConfiguration` (`components/analytics/storefront-analytics.tsx`, chat widget); none load locally. Production category TBT 630 ms against 164 ms locally: ~470 ms is unexplained by anything measured here | all | **not measurable locally**; likely the largest part of the TBT gap | medium (tracking: needs your decision, nothing is removed) | S-M | after a production trace: load the chat widget on interaction / idle (`lazyOnload`), defer GTM past `load`, avoid loading GA4 twice if it is also inside GTM |
+| 5 | **JavaScript: 600 KB raw / 200 KB gz in 13 files on every route; 46% of it executed on load** | framework (react-dom + app router + flight client) ~384 KB raw; the project's 38 client modules on the category route ~190 KB raw (header search / cart / account / mobile nav / mega-nav, footer newsletter and CTA, tracking bootstrap, popup, site alert, sale-alert toast, jump-up effects, feedback provider, and 2 islands per product card x 21); main thread: script evaluation 635 ms + style/layout 428 ms (4x CPU); hydration long tasks 157 + 54 ms | all | measured upper bound (no JS at all): 81 -> 93, TBT -164 ms. Realistic: -60-80 KB raw, +3-4 pts, TBT -50-80 ms | medium (popup / toast timing) | M-L | defer the non-critical layout islands (popup, site alert, sale toast, jump-up, newsletter, tracking) behind `dynamic()` after idle; one delegated client component for card actions instead of 2 per card; framework bytes cannot shrink |
+| 6 | **`<Link>` prefetch of every visible product link** | 27 `_rsc` requests / 60 KB on the category page, the first 541 ms after the document | category, home, listings | measured: 81 -> 83, TBT -60 ms, -60 KB | low (a card -> product click is slightly slower) | S | `prefetch={false}` on product-card links (prefetch on hover / touch is the alternative) |
+| 7 | **Two render-blocking stylesheets** | 169 KB raw (26 KB gz) + 22 KB raw (4 KB gz, the font-face CSS); coverage on the first screen: the big one is 91% used (not bloat), the small one 10%; Lighthouse: FCP -230 to -410 ms | all | ~ +1-3 pts | medium (HTML grows ~26 KB gz, CSS no longer cached across pages) | S | `experimental.inlineCss`, or inline only the small font CSS; measure before keeping |
+| 8 | **Large HTML with the whole RSC payload inline** | category 384 KB raw / 63 KB gz, of which ~150 KB is inline flight data (every card's product props); home 533 KB / 95 KB gz (230 KB of flight data) | category, home | ~ +1 pt, -30 KB gz | low | M | pass only the fields the client islands use; do not serialise card data twice |
+| 9 | **Every page is rendered per request, no HTML caching** | `Cache-Control: private, no-cache, no-store` (the storefront layout reads the customer cookie); ~10 awaited reads in the layout; local TTFB 100-470 ms (first hit 1.2 s) | all | -50-200 ms TTFB (production TTFB not known) | medium | M | cache the layout's configuration reads (`unstable_cache` / revalidate); only after production TTFB is known |
+| 10 | **Legacy-JS polyfills in the main chunk** | Lighthouse: 14 KB wasted, LCP -100-150 ms (estimate); the 110 KB `nomodule` polyfill file is not downloaded by modern Chrome | all | small | medium (older Android WebViews) | S | leave unless the browser support target is raised |
+| 11 | **Public assets have no long cache** | `/products/placeholder.svg` (and `/brands/*`, `/home/*`) are sent `public, max-age=0` by Node; only `/_next/static` (1 year, immutable) and `/uploads` (nginx, 30 days) are long-cached | repeat visits | none on a first load | low | S | `headers()` in `next.config.ts` or an nginx rule for those folders |
+
+**CLS** is 0.000 on all five pages in all 33 local runs (cards use `aspect-[4/3]`, the logo box is fixed): no CLS work is proposed;
+production CLS is not known (the logo is `width:auto` and would only shift if a slow logo changed the header width).
+**TBT** is already under 200 ms locally (medians 92-164 ms); the production overage is the third-party and JS items.
+**LCP <= 2.5 s is not reachable by one fix**: with either all fonts or all JS removed, the category LCP is still 3.2 s here (HTML 62 KB gz
++ blocking CSS + the lazy LCP image on the simulated link). It needs items 1, 2, 3, 6 and 7 together and probably a smaller HTML document;
+**Performance >= 85 on category and product pages looks reachable** (1 + 3 + 6 alone is ~ +15 on the experiments' numbers).
+
+#### Accessibility: every failing audit, with selectors (Lighthouse, 3 runs per page, union)
+
+| Page (score) | Audit (weight) | Element / selector | Source | Fix (no visual change) |
+|---|---|---|---|---|
+| category (87) | `aria-allowed-attr` (10) | `nav.mt-5 > ul.flex > li > a.inline-flex` has `aria-pressed="false"` on a link | `features/catalog/category-brand-pills.tsx:43` | use `aria-current` (or drop `aria-pressed`) on the link |
+| category (87) | `color-contrast` (7) | `div.min-w-0 > div.mt-8 > nav.flex > span.th-btn`: #7d8a9a on #f4f7fb = **3.27:1** (needs 4.5) | `components/ui/pagination.tsx` (disabled / current ghost button) | darken the disabled-state text token to >= 4.5:1 |
+| category (87) | `heading-order` (3) | `article.group > div.flex > a > h3.line-clamp-2` (h3 follows h1 with no h2) | `features/catalog/product-card.tsx` (and the compact card) | render the card title as `h2` in listings, same classes |
+| all five | `target-size` (7) | footer `div.space-y-4 > p.flex > span.space-y-1 > a.block` (the two phone links): 179.5 x **19.6 px**, 23.2 px of free space (needs 24) | `components/layout/site-footer.tsx:326` | `min-h-6` + vertical centring (a few px of footer height) |
+| home (97) | `target-size` (7) | `div.mx-auto > div.relative > div.absolute > button.h-1.5` (hero dots, 2-3 of them): 10 x **6 px**, 6 px of free space around each (needs 24) | `features/home/home-hero-slider.tsx:153` | enlarge the hit area with padding / a transparent border, same dot |
+| laptop and monitor (93) | `aria-required-children` (10) | `div.grid > div.mt-10 > section > div.flex.flex-wrap.gap-2[role="list"]` holds `button`s, not `listitem`s | `features/product/product-detail-sections.tsx:118` | drop `role="list"` (it is a tab-like button row) or wrap in `<ul>/<li>` |
+| laptop and monitor (93) | `label-content-name-mismatch` (0) | `figure.w-full > div.relative > div.relative > button.group[aria-label="View full image 1 of 1"]` | `features/product/product-gallery.tsx` | informational (weight 0) |
+| offers (96) | `label-content-name-mismatch` (0) | `div.mx-auto > ul.mt-8 > li.min-w-0 > a.group[aria-label="View details for …"]` | offers card | informational (weight 0) |
+
+The four category fixes add up to weight 27 of the failing set: **category 87 -> about 100**; product pages 93 -> about 100 with the list-role and
+tap-target fixes. Best Practices (96) fails only `errors-in-console` here, caused by the local 404s of `/uploads/*` (a local-setup artefact). SEO is 100 on every page.
+
+#### What I could not measure, and the question that follows
+
+1. **Production image delivery** (item 2) and **third-party cost** (item 4): the local data and missing tags hide them. One read-only pass against the
+   public site would settle both: Lighthouse on `/category/laptop` (it fires the live analytics tags and the Pixel's PageView, as PageSpeed does) and
+   a few `curl -I` calls on a logo / product image (WebP copy served? cache headers?). I have not touched production; this needs your go-ahead.
+   Alternatively paste PageSpeed's "Opportunities / Diagnostics" for the category page.
+2. **Is the nginx WebP / cache block of Phase 4 live, and was `optimize-uploads.mjs --apply` run?** If yes, the logo is the 131 KB copy and item 1 is
+   worth about 0-3 points; if no, it is the single biggest fix (LCP 10.3 s in the experiment).
+
+#### Scratch artefacts (not in the repo)
+
+The scratch worktree `...\scratchpad\wt6` was used for the builds; it now holds the logo test file under `public/uploads` and a build made with it. It has a
+`node_modules` junction, so I left it in place for you to remove. Lighthouse reports and scripts are under `...\scratchpad\p7`.
+
+### Phase 7 step 0 — production evidence (read-only, 2026-11-12)
+
+Only `GET` / `HEAD` requests and Lighthouse were made against `https://technohouse.com.bd`: 3 Lighthouse runs on `/category/laptop`, 3 on `/`
+(same Lighthouse 13.5.0, mobile preset, simulated Slow 4G + 4x CPU, run from this machine), one HTML fetch of `/` and `/category/laptop`, and
+`HEAD` / `GET` on the logo and three images, with and without `Accept: image/webp`. Nothing was changed on the server and no load was generated.
+
+#### Are the nginx WebP and cache rules live, and were the uploads optimized? Yes to both
+
+| URL (production) | `Accept: image/webp` | without it | Headers |
+|---|---|---|---|
+| header logo `/uploads/general/632753d8-….png` (589x424) | `image/webp`, **26,734 B** (Last-Modified 9 Nov 2026) | `image/png`, 99,456 B (20 Oct) | `Vary: Accept`, `Cache-Control: public, max-age=2592000` (30 d) |
+| product image `/uploads/products/cc6f77fb-….png` (469x416) | `image/webp`, 22,078 B (9 Nov) | `image/png`, 243,239 B | same |
+| hero `/uploads/home/f9af9cc3-….jpeg` | `image/webp`, 96,626 B (9 Nov) | `image/jpeg`, 134,565 B | same |
+| product image `/uploads/products/ebabe643-….webp` | `image/webp`, 13,036 B | same bytes | `Cache-Control: public, max-age=2592000`, no `Vary` (already WebP) |
+
+So the `Accept` negotiation of `deploy/nginx-seo.conf` and its 30-day `/uploads` cache are in force, and `optimize-uploads.mjs` was run: the `.webp`
+siblings were written on 9 Nov 2026 (18:27 to 18:32 GMT). A Lighthouse (WebP-capable Chrome) therefore downloads the small copies: on the category page
+the 18 images total **207 KB** (logo 26 KB, product cards 6 to 21 KB each). The 10.3 s LCP in your earlier PageSpeed reading is **not reproduced today**
+(3.6 to 4.4 s); the optimizer timestamps (9 Nov) are consistent with that reading having been taken before it ran, but that is an inference.
+
+#### Production Lighthouse (3 runs each; median, range in brackets)
+
+| Page | Perf | LCP | TBT | CLS | A11y | Best practices | SEO |
+|---|---|---|---|---|---|---|---|
+| /category/laptop | **60** (54 / 60 / 71) | **4.0 s** (3.6 / 4.0 / 4.4) | **1,750 ms** (799 / 1,750 / 5,091) | 0 | 86 | **77** | 100 |
+| / (home) | **72** (60 / 72 / 73) | 4.1 s (4.0 / 4.1 / 4.3) | 533 ms (507 / 533 / 1,737) | 0 | 97 | **77** | 100 |
+
+- **LCP element on the category page is the same as locally**: the first product-card image (`div.relative > a.block > div.relative > img.object-cover`,
+  180x180 at y = 724 px), `loading="lazy"`, no `fetchpriority`. Phases (run 1): TTFB 165 ms, **resource load delay 470 ms**, load 369 ms, render delay 51 ms; runs 2 and 3:
+  load delay 422 ms and about the same. `lcp-discovery-insight` fails ("fetchpriority=high should be applied", "should not use loading=lazy"). Home's LCP is an eager
+  banner image (alt "Flash deal", 380x320, y = 188 px), with the "fetchpriority on the preload" check failing.
+- **TBT is a third-party problem here, and it is noisy**: 799 to 5,091 ms between runs of the same page. The long tasks of run 1 (19 in total) are led by
+  gtag `destination` 422 ms, Meta `signals/config` 336 ms, `fbevents.js` 194 ms, with first-party tasks of similar size (a 370 ms chunk at 4.1 s,
+  a 280 ms Turbopack runtime task, the 345 ms page-document task at 1.3 s). Simulated throttling on one shared machine makes single runs swing, so treat the median as the figure.
+- **Best practices is 77, not the 96 you saw earlier**, from two audits that both come from tracking: `third-party-cookies` (Meta's `fr` cookie, weight 5) and
+  `inspector-issues` (a cookie issue plus Content-Security-Policy issues for `cdn.jsdelivr.net` and `*.run.app`, which are not in the Report-Only policy's `script-src` / `connect-src`).
+  Nothing is blocked today because the policy is Report-Only; the day it is enforced those two hosts must be added or the Meta conversions call breaks.
+- Accessibility failures are the same ones found locally (category 86; four `a.block` footer links flagged there, not just the phones; home 97).
+- CLS is 0 on both pages in all runs.
+
+#### What the category page weighs in production (1,523 KB)
+
+| Part | Size | Note |
+|---|---|---|
+| Scripts | 950 KB / 19 requests | **third-party 764 KB (50% of the whole page)**, first-party 14 files 337 KB |
+| Fonts | **225 KB / 6 files** | the same six files as locally, all preloaded (Link header), at 205 ms |
+| Images | 207 KB / 18 requests | already WebP |
+| Fetch | 53 KB / 29 requests | 27 of them `_rsc` link prefetches (52 KB), the first at 1,285 ms |
+| CSS | 31 KB / 2 files | render-blocking |
+| Document | 49 KB gz | TTFB 165 to 417 ms ("server responds quickly") |
+
+Third-party chain, all injected by the one tag in the HTML, **GTM-KXL5QMLW** (no Tawk.to, no direct GA4 or Pixel tag, no Tawk request in any of the 6 runs):
+`gtm.js` 129 KB at 1.3 s, then GA4 (`G-HR3V1Y4SL1`) `gtag/js` 177 KB and `gtag/destination` 178 KB at 1.8 s, then Meta Pixel `fbevents.js` 112 KB and
+`signals/config/1674448247520461` 150 KB, then `cdn.jsdelivr.net/npm/meta-capi-param-builder-clientjs` 18 KB at 3.0 s, a call to a Cloud Run `…run.app/events` endpoint and the
+`facebook.com/tr` PageView. Main-thread time per Lighthouse's third-party insight (run 1): Google Tag Manager 192 ms, Facebook 131 ms; in run 2 Facebook alone was 414 ms.
+
+#### What this changes in the Step 1 ranking
+
+| Step 1 item | After production evidence |
+|---|---|
+| 1 Header logo 1.19 MB | **Does not exist in production.** The local 1.19 MB logo is dev data. Production's logo is 26.7 KB as WebP (already under 30 KB). A 267x192 WebP (2x of the 133x96 it is shown at) would be 11.8 KB, i.e. **-15 KB**, about 75 ms on the simulated link. It is an admin upload (Design Studio -> Logo, `SiteSettings.logoSrc`, gitignored `/uploads`), not a repo file, so it cannot be changed by code without a data change. **Skipped** (see below). |
+| 2 Listing images | The "0.5 to 0.8 MB" fear is refuted: cards are 6 to 21 KB WebP. What is left is the **420 to 470 ms load delay** of the lazy first card (fixable with `fetchpriority`) and 77 KiB (category) / 370 KiB (home) of "larger than displayed" savings, estimated at LCP -150 ms / -50 ms. A derivative pipeline is **not justified** by these numbers; the nginx rule already serves WebP. |
+| 3 Fonts | Confirmed on production: 6 files, 225 KB, preloaded on every page. |
+| 4 Third-party | **Now measured and the largest single factor**: 764 KB, TBT median 1,750 ms. Proposals only (below). |
+| 6 Prefetch | Confirmed: 27 requests, 52 KB. |
+
+#### Proposals for the tracking tags (not implemented; you asked for proposals only)
+
+1. **Load GTM after the page is idle or on first interaction** (for example after `load` plus 2 to 3 s, or the first scroll / touch). In lab terms it takes 764 KB and most of the 1.0 to 1.7 s of long tasks out of the first load. Cost: visitors who leave in under that time are not recorded, and Meta / GA4 page-view counts drop by that share. Needs your decision on how much early-bounce data may be lost.
+2. **Ask why the Google tag loads both `gtag/js` and `gtag/destination` (355 KB together)** on the category page. One is the GA4 config, the other is a second destination (Google Ads or a second measurement id); if the second one is unused, removing it in GTM saves 178 KB and the 422 ms gtag task.
+3. **`meta-capi-param-builder-clientjs` from jsDelivr** (18 KB plus a call to a `…run.app` endpoint): self-host it, or load it only where a conversion event fires, instead of on every page.
+4. **Add `cdn.jsdelivr.net` (script-src) and the Cloud Run host (connect-src) to the Report-Only CSP** now, so enforcing it later does not break the Meta conversions path; this also clears the `inspector-issues` audit.
+5. **Server-side tagging** (a GTM server container or sending the Pixel through the existing Conversions API only) would move the Pixel and GA4 off the visitor's device entirely: the biggest saving and the biggest project.
+
+Only items 1 to 5 above (and the CSP list in item 4) can clear the two failing best-practices audits (weights 5 and 1).
+
+#### Decisions taken for Step 2 on this evidence
+
+- Item 1 (logo): skipped. Production already serves 26.7 KB; the file is an admin upload, so replacing it is a data change, and the repo contains no logo file to swap. If you want the 15 KB back, re-upload a 267x192 version in Admin -> Design Studio -> Logo.
+- Item 2 (listing images): `fetchpriority="high"` + eager on the first row only; no loader and no derivatives.
+- Item 6 (Tawk.to): skipped. Tawk is not loaded in production (no request, no tag in the HTML), the chat configuration is database-only so the path cannot be exercised locally without a database write, and the change would have no effect today. When Tawk is enabled, the change is `strategy="lazyOnload"` on the `th-tawkto` script in `components/chat/storefront-chat-widget.tsx`.
+
+### Phase 7 step 2 — what was changed, with before/after numbers
+
+Branch `seo-phase-7`, one cause per commit. No canonical, title, meta, JSON-LD or sitemap code was touched, nothing was run against production in this step,
+no database, nginx, pm2 or `.env` change, no new dependency.
+
+#### How the numbers were taken
+
+- Lighthouse 13.5.0 mobile (simulated Slow 4G + 4x CPU), `next build` + `next start` of each state in a scratch worktree, the **medians** of the stated number of runs.
+- **Calibration.** Local data has a 1.19 MB logo and placeholder images, which makes the header logo, not the first product card, the LCP element, unlike
+  production. So for the Step 2 runs the local logo file was swapped for an 80x58 WebP (a scratch-only change, outside the repo) and the first card became the LCP element, exactly as in production
+  (lazy, no fetchpriority, a load delay). "Before" is the base code (`2d705d5`) measured in that same setup. The earlier Step 1 numbers (81 etc.) used a missing logo and are not comparable.
+- The **category page's LCP is bimodal** after the font change: 2.4 to 2.5 s in about a third of runs, 3.2 to 3.4 s in the rest, so 3-run medians can land on either side
+  (a first 3-run set read 97 and a later 10-run set at the same commit read 93). Larger samples are quoted where it mattered. TBT swung 45 to 825 ms between runs of the same code on this machine
+  (other apps running), so TBT is not used as evidence in either direction.
+
+#### Per item
+
+| # | Commit | Before -> after (local, median) | Production expectation |
+|---|---|---|---|
+| 0 | `695869b` | production evidence, see "Phase 7 step 0" | – |
+| 1 | – | **skipped**: production already serves the logo as a 26.7 KB WebP; it is an admin upload (not a repo file), so replacing it is a data change; a 267x192 WebP would be 11.8 KB (-15 KB) | re-upload in Admin -> Design Studio -> Logo if wanted |
+| 2 | `e3afc4a` | category: LCP resource load delay **212 -> 31 ms**, `lcp-discovery` **fails -> passes** (fetchpriority applied, eager, discoverable); perf 84 -> 84, LCP 4.43 -> 4.35 s (the simulated LCP was bound by the 232 KB of fonts) | production's load delay is 420 to 470 ms, so expect about -400 ms of LCP on the category page |
+| 3 | `f880dfd` | **fonts 6 files / 232 KB -> 1 / 28 KB**; category 84 -> **93** (10 runs, 89 to 97), LCP 4.35 -> 3.2 s (2.4 s in 4 of 10 runs), 599 -> 395 KB; home 84 -> 96; laptop 85 -> 92; **0 differing pixels** in mobile screenshots of home, category and a product page; per-font glyph counts identical | production loads the same six files (225 KB): expect -198 KB per page and, from the Step 1 experiment that blocked the fonts, about +10 points and -1.4 s LCP |
+| 4 | `6d00612` | category `_rsc` prefetches **27 -> 22** (exactly the `/product/*` ones in the lab viewport), requests 48 -> 43, 395 -> 384 KB; perf 93 -> 93 (10 vs 18 runs, no score gain claimed); home 96 -> 97; laptop 92 -> 97 | a real visitor scrolling a 20-card page triggered a prefetch per card; that is gone |
+| 5 | six `a11y:` commits | **accessibility 100 on all five pages**: category 86, home 97, laptop 93, monitor 92, offers 96 -> 100 | production fails the same audits (category 86, home 97): same result expected |
+| 6 | – | **skipped**: Tawk.to is not loaded in production (no Tawk tag or request in the HTML or in six Lighthouse runs) and the chat configuration is database-only, so the path cannot be exercised locally without a DB write; when it is enabled the change is `strategy="lazyOnload"` on the `th-tawkto` script in `components/chat/storefront-chat-widget.tsx` | – |
+
+Whole-branch result, local (base code vs final code, same setup):
+
+| Page | Perf before -> after | LCP before -> after | A11y before -> after | Runs (after) |
+|---|---|---|---|---|
+| /category/laptop | 84 -> **93** (range 89 to 97) | 4.43 -> 2.51 s | 86 -> **100** | 9 |
+| / (home) | 84 -> **92** (range 76 to 97) | 4.45 -> 2.66 s | 97 -> **100** | 11 |
+| laptop product | 85 -> **95** | 4.32 -> 2.58 s | 93 -> **100** | 3 |
+| monitor product | 85 -> **96** | 4.30 -> 2.56 s | 92 -> **100** | 3 |
+| /offers | 85 -> **91** | 4.29 -> 3.35 s | 96 -> **100** | 3 |
+
+A same-session A/B (base build then final build, 6 runs each, back to back, to take machine load out of it): category **84 -> 96**, home **85 -> 93**, LCP 4.40 -> 2.52 s and 4.00 -> 2.65 s.
+CLS was 0.000 in every post-change run but one: 1 of 90 Lighthouse runs (49 of them on the category page) reported 0.122 (the "Laptop Price / Sort By" panel moved). It did not recur in the 60 or so Lighthouse runs after it,
+nor in 40 unthrottled and 16 throttled browser loads of the category page, so it is recorded here as an unexplained one-off, not as a finding (the 6 category runs before any change were all 0.000, which is too few to say it is older than this branch). TBT stayed inside the run-to-run noise.
+
+#### What changed visibly (everything else is pixel-identical, checked by screenshot diff)
+
+Compared on home, category and a product page with the promo popup suppressed: the top of every page is identical except the home hero's dots, and below that only the footer differs.
+
+- **Footer contact links** are 24 px tall (were 19.6): the footer is 8 to 9 px taller. Needed for the tap-target audit.
+- **Hero slider dots** are 24x24 tap targets with the same dot inside; the gap between inactive dots goes from 8 to 14 px (24 px targets cannot sit closer). 212 pixels differ in the home screenshot.
+- Card titles on listing pages are `h2` instead of `h3` (same classes); the compact card on home and related products stays `h3`. The heading outline of a category page now has about 20 h2 product titles.
+- The product page's section jump-nav is a `ul` / `li` list (same look); the disabled Previous / Next are `role="link" aria-disabled="true"`.
+
+#### Checks
+
+`tsc --noEmit` clean; `eslint` clean on every changed file (the whole repo has 1 error and 8 warnings, none in these files: `features/marketing/offer-countdown.tsx` `set-state-in-effect`, unchanged);
+`test:seo` 92, `test:seo-canonical` 34, `test:seo-meta` 383, `test:seo-phase5` 198, `test:seo-phase6` 59, `test:seo-product` 163, `test:seo-product-meta` 11, `seo:check-schema --offline` 49, `test:security` 27,
+`test:a11y` 10, `test:bundle` 10, `test:storefront-links` 95, `test:product-specifications` 10 (one assertion updated to the new `ul`), `test:theme` 230 all pass; `npm run build` passes.
+`test:regression` runs 19 suites: 17 pass, **2 fail and fail identically on the untouched base code** (`product-layout`: "similar-products rail ... sticky"; `product-coming-soon`: "Stock/Model/SKU/Brand pills all use size md"), and
+`test:listing` (not in the regression list) has one stale assertion ("the detailed card shows the SKU") that also fails on base. They read files this branch did not touch; not fixed here.
+
+#### What this does not fix, and what it means for production
+
+- **Production Performance will not reach 85 on these commits alone.** The score is 30% TBT, and production's category TBT is a median of 1,750 ms, almost all of it the GTM-loaded tags (Step 0).
+  Rough arithmetic with Lighthouse's weights: LCP 4.0 -> about 2.5 to 3.2 s adds roughly 8 to 10 points to production's 60, so about 68 to 72 for the category page (an estimate, not a measurement);
+  reaching 85 needs TBT under about 500 ms, i.e. one or more of the tag proposals in Step 0, which were not implemented.
+- Not approved, left as listed in Step 1: JS island deferral, inline CSS, RSC payload trimming, layout caching, polyfills, static-asset cache headers.
+- Noticed, not done: the `/offers` cards are lazy too (LCP load delay 285 ms locally; the offer card is a different component); the home hero's preload lacks `fetchpriority` on production's audit; the 15 KB logo re-upload above.
+- A derivative-image pipeline is **not justified**: production already serves 6 to 21 KB WebP cards.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)

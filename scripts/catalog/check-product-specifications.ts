@@ -138,7 +138,8 @@ function main(): void {
   // --- ProductDetailSections jump-nav --------------------------------------------------------
   check(
     "the jump-nav tabs are rounded pills with a gap between them, not flush rectangles",
-    sections.includes('<div className="flex flex-wrap gap-2" role="list">') &&
+    sections.includes('<ul className="flex flex-wrap gap-2">') &&
+      !sections.includes('role="list"') &&
       sections.includes("rounded-sm border") &&
       !sections.includes("-ml-px"),
   );

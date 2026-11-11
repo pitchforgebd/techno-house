@@ -17,29 +17,46 @@ const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
 });
 
+// `preload: false`: only `font-mono` text (a SKU on the product page, order
+// codes, admin tables) uses it, so it is fetched when such text renders rather
+// than preloaded on every page, including the ones that never show any.
 const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "500"],
   variable: "--font-ibm-plex-mono",
+  preload: false,
 });
 
 /**
- * Pre-loaded so Admin → Design Studio → Typography can switch the real
+ * Declared here so Admin → Design Studio → Typography can switch the real
  * storefront body/heading font (AD-272) without a runtime font-loader —
- * next/font requires static imports, so every selectable font is loaded
- * here once and picked by CSS variable in the storefront layout.
+ * next/font requires static imports, so every selectable font is declared
+ * once and picked by CSS variable in the storefront layout.
+ *
+ * `preload: false` on the two that are only ever an opt-in choice. A preload
+ * is fetched whether or not any text uses the family, and neither is in the
+ * default `--font-sans` stack, so on a store that has not picked them they
+ * cost every visitor about 180 KB (Inter 49 KB, Noto Sans Bengali 133 KB) for
+ * nothing: a browser check of home, a category and a product page showed zero
+ * glyphs drawn by either. (The taka sign is drawn by the system's Bengali
+ * font, e.g. Nirmala UI, not by the Noto web font.) Their @font-face rules are
+ * still emitted: a browser downloads a face only when text actually uses it,
+ * so choosing one in Design Studio keeps working (it loads on demand, with
+ * `swap`).
  */
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+  preload: false,
 });
 
 const notoSansBengali = Noto_Sans_Bengali({
   subsets: ["bengali", "latin"],
   display: "swap",
   variable: "--font-noto-bengali",
+  preload: false,
 });
 
 export const metadata: Metadata = {

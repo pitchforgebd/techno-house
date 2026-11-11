@@ -40,7 +40,10 @@ export function CategoryBrandPills({
             <li key={brand.slug}>
               <Link
                 href={href}
-                aria-pressed={active}
+                // A filter link, not a toggle button: `aria-pressed` is only
+                // valid on buttons. `aria-current` says the same thing (this
+                // brand is the active filter) in a way links are allowed to.
+                aria-current={active ? "true" : undefined}
                 title={`${brand.name} (${brand.count})`}
                 className={cn(
                   "inline-flex h-9 items-center border bg-surface px-4 text-[0.8125rem] font-medium tracking-tight transition-colors",
