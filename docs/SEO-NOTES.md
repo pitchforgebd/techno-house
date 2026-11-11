@@ -1882,6 +1882,88 @@ tap-target fixes. Best Practices (96) fails only `errors-in-console` here, cause
 The scratch worktree `...\scratchpad\wt6` was used for the builds; it now holds the logo test file under `public/uploads` and a build made with it. It has a
 `node_modules` junction, so I left it in place for you to remove. Lighthouse reports and scripts are under `...\scratchpad\p7`.
 
+### Phase 7 step 0 — production evidence (read-only, 2026-11-12)
+
+Only `GET` / `HEAD` requests and Lighthouse were made against `https://technohouse.com.bd`: 3 Lighthouse runs on `/category/laptop`, 3 on `/`
+(same Lighthouse 13.5.0, mobile preset, simulated Slow 4G + 4x CPU, run from this machine), one HTML fetch of `/` and `/category/laptop`, and
+`HEAD` / `GET` on the logo and three images, with and without `Accept: image/webp`. Nothing was changed on the server and no load was generated.
+
+#### Are the nginx WebP and cache rules live, and were the uploads optimized? Yes to both
+
+| URL (production) | `Accept: image/webp` | without it | Headers |
+|---|---|---|---|
+| header logo `/uploads/general/632753d8-….png` (589x424) | `image/webp`, **26,734 B** (Last-Modified 9 Nov 2026) | `image/png`, 99,456 B (20 Oct) | `Vary: Accept`, `Cache-Control: public, max-age=2592000` (30 d) |
+| product image `/uploads/products/cc6f77fb-….png` (469x416) | `image/webp`, 22,078 B (9 Nov) | `image/png`, 243,239 B | same |
+| hero `/uploads/home/f9af9cc3-….jpeg` | `image/webp`, 96,626 B (9 Nov) | `image/jpeg`, 134,565 B | same |
+| product image `/uploads/products/ebabe643-….webp` | `image/webp`, 13,036 B | same bytes | `Cache-Control: public, max-age=2592000`, no `Vary` (already WebP) |
+
+So the `Accept` negotiation of `deploy/nginx-seo.conf` and its 30-day `/uploads` cache are in force, and `optimize-uploads.mjs` was run: the `.webp`
+siblings were written on 9 Nov 2026 (18:27 to 18:32 GMT). A Lighthouse (WebP-capable Chrome) therefore downloads the small copies: on the category page
+the 18 images total **207 KB** (logo 26 KB, product cards 6 to 21 KB each). The 10.3 s LCP in your earlier PageSpeed reading is **not reproduced today**
+(3.6 to 4.4 s); the optimizer timestamps (9 Nov) are consistent with that reading having been taken before it ran, but that is an inference.
+
+#### Production Lighthouse (3 runs each; median, range in brackets)
+
+| Page | Perf | LCP | TBT | CLS | A11y | Best practices | SEO |
+|---|---|---|---|---|---|---|---|
+| /category/laptop | **60** (54 / 60 / 71) | **4.0 s** (3.6 / 4.0 / 4.4) | **1,750 ms** (799 / 1,750 / 5,091) | 0 | 86 | **77** | 100 |
+| / (home) | **72** (60 / 72 / 73) | 4.1 s (4.0 / 4.1 / 4.3) | 533 ms (507 / 533 / 1,737) | 0 | 97 | **77** | 100 |
+
+- **LCP element on the category page is the same as locally**: the first product-card image (`div.relative > a.block > div.relative > img.object-cover`,
+  180x180 at y = 724 px), `loading="lazy"`, no `fetchpriority`. Phases (run 1): TTFB 165 ms, **resource load delay 470 ms**, load 369 ms, render delay 51 ms; runs 2 and 3:
+  load delay 422 ms and about the same. `lcp-discovery-insight` fails ("fetchpriority=high should be applied", "should not use loading=lazy"). Home's LCP is an eager
+  banner image (alt "Flash deal", 380x320, y = 188 px), with the "fetchpriority on the preload" check failing.
+- **TBT is a third-party problem here, and it is noisy**: 799 to 5,091 ms between runs of the same page. The long tasks of run 1 (19 in total) are led by
+  gtag `destination` 422 ms, Meta `signals/config` 336 ms, `fbevents.js` 194 ms, with first-party tasks of similar size (a 370 ms chunk at 4.1 s,
+  a 280 ms Turbopack runtime task, the 345 ms page-document task at 1.3 s). Simulated throttling on one shared machine makes single runs swing, so treat the median as the figure.
+- **Best practices is 77, not the 96 you saw earlier**, from two audits that both come from tracking: `third-party-cookies` (Meta's `fr` cookie, weight 5) and
+  `inspector-issues` (a cookie issue plus Content-Security-Policy issues for `cdn.jsdelivr.net` and `*.run.app`, which are not in the Report-Only policy's `script-src` / `connect-src`).
+  Nothing is blocked today because the policy is Report-Only; the day it is enforced those two hosts must be added or the Meta conversions call breaks.
+- Accessibility failures are the same ones found locally (category 86; four `a.block` footer links flagged there, not just the phones; home 97).
+- CLS is 0 on both pages in all runs.
+
+#### What the category page weighs in production (1,523 KB)
+
+| Part | Size | Note |
+|---|---|---|
+| Scripts | 950 KB / 19 requests | **third-party 764 KB (50% of the whole page)**, first-party 14 files 337 KB |
+| Fonts | **225 KB / 6 files** | the same six files as locally, all preloaded (Link header), at 205 ms |
+| Images | 207 KB / 18 requests | already WebP |
+| Fetch | 53 KB / 29 requests | 27 of them `_rsc` link prefetches (52 KB), the first at 1,285 ms |
+| CSS | 31 KB / 2 files | render-blocking |
+| Document | 49 KB gz | TTFB 165 to 417 ms ("server responds quickly") |
+
+Third-party chain, all injected by the one tag in the HTML, **GTM-KXL5QMLW** (no Tawk.to, no direct GA4 or Pixel tag, no Tawk request in any of the 6 runs):
+`gtm.js` 129 KB at 1.3 s, then GA4 (`G-HR3V1Y4SL1`) `gtag/js` 177 KB and `gtag/destination` 178 KB at 1.8 s, then Meta Pixel `fbevents.js` 112 KB and
+`signals/config/1674448247520461` 150 KB, then `cdn.jsdelivr.net/npm/meta-capi-param-builder-clientjs` 18 KB at 3.0 s, a call to a Cloud Run `…run.app/events` endpoint and the
+`facebook.com/tr` PageView. Main-thread time per Lighthouse's third-party insight (run 1): Google Tag Manager 192 ms, Facebook 131 ms; in run 2 Facebook alone was 414 ms.
+
+#### What this changes in the Step 1 ranking
+
+| Step 1 item | After production evidence |
+|---|---|
+| 1 Header logo 1.19 MB | **Does not exist in production.** The local 1.19 MB logo is dev data. Production's logo is 26.7 KB as WebP (already under 30 KB). A 267x192 WebP (2x of the 133x96 it is shown at) would be 11.8 KB, i.e. **-15 KB**, about 75 ms on the simulated link. It is an admin upload (Design Studio -> Logo, `SiteSettings.logoSrc`, gitignored `/uploads`), not a repo file, so it cannot be changed by code without a data change. **Skipped** (see below). |
+| 2 Listing images | The "0.5 to 0.8 MB" fear is refuted: cards are 6 to 21 KB WebP. What is left is the **420 to 470 ms load delay** of the lazy first card (fixable with `fetchpriority`) and 77 KiB (category) / 370 KiB (home) of "larger than displayed" savings, estimated at LCP -150 ms / -50 ms. A derivative pipeline is **not justified** by these numbers; the nginx rule already serves WebP. |
+| 3 Fonts | Confirmed on production: 6 files, 225 KB, preloaded on every page. |
+| 4 Third-party | **Now measured and the largest single factor**: 764 KB, TBT median 1,750 ms. Proposals only (below). |
+| 6 Prefetch | Confirmed: 27 requests, 52 KB. |
+
+#### Proposals for the tracking tags (not implemented; you asked for proposals only)
+
+1. **Load GTM after the page is idle or on first interaction** (for example after `load` plus 2 to 3 s, or the first scroll / touch). In lab terms it takes 764 KB and most of the 1.0 to 1.7 s of long tasks out of the first load. Cost: visitors who leave in under that time are not recorded, and Meta / GA4 page-view counts drop by that share. Needs your decision on how much early-bounce data may be lost.
+2. **Ask why the Google tag loads both `gtag/js` and `gtag/destination` (355 KB together)** on the category page. One is the GA4 config, the other is a second destination (Google Ads or a second measurement id); if the second one is unused, removing it in GTM saves 178 KB and the 422 ms gtag task.
+3. **`meta-capi-param-builder-clientjs` from jsDelivr** (18 KB plus a call to a `…run.app` endpoint): self-host it, or load it only where a conversion event fires, instead of on every page.
+4. **Add `cdn.jsdelivr.net` (script-src) and the Cloud Run host (connect-src) to the Report-Only CSP** now, so enforcing it later does not break the Meta conversions path; this also clears the `inspector-issues` audit.
+5. **Server-side tagging** (a GTM server container or sending the Pixel through the existing Conversions API only) would move the Pixel and GA4 off the visitor's device entirely: the biggest saving and the biggest project.
+
+Only items 1 to 5 above (and the CSP list in item 4) can clear the two failing best-practices audits (weights 5 and 1).
+
+#### Decisions taken for Step 2 on this evidence
+
+- Item 1 (logo): skipped. Production already serves 26.7 KB; the file is an admin upload, so replacing it is a data change, and the repo contains no logo file to swap. If you want the 15 KB back, re-upload a 267x192 version in Admin -> Design Studio -> Logo.
+- Item 2 (listing images): `fetchpriority="high"` + eager on the first row only; no loader and no derivatives.
+- Item 6 (Tawk.to): skipped. Tawk is not loaded in production (no request, no tag in the HTML), the chat configuration is database-only so the path cannot be exercised locally without a database write, and the change would have no effect today. When Tawk is enabled, the change is `strategy="lazyOnload"` on the `th-tawkto` script in `components/chat/storefront-chat-widget.tsx`.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
