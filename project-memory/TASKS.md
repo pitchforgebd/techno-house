@@ -9193,3 +9193,15 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       stays live)", apply writes only write + update rows. Separate commit: shouted
       plain words -> normal case, "Casing" -> "Case". `test:seo-product` 1,635 +
       162. Code only; nothing run on production.
+- [x] AD-406 SEO phase 8 FIX v2.5 — local wording, identity, audit (branch
+      `seo-phase-8-fix-5`, pushed, NOT merged). Detail: `docs/SEO-NOTES.md`
+      "Phase 8 v2.5". PC cases are "Casing" again (reverses v2.4; titles,
+      descriptions, keywords). Identity stays in the title: HDD / SSD capacity,
+      RAM capacity + DDR generation (type "RAM"), "Combo"; protected from the
+      word-dropping ladder; gate `identity_lost` skips a title that cannot hold
+      them in 60 chars. Drives / RAM state RPM, interface, 3.5-inch, speed, kit
+      from the name. Audit: the admin editor merges attributes into spec rows and
+      every save writes them back as key-less rows, so import-script guesses looked
+      hand-typed; rows identical to an attribute are now dropped
+      (`dropMirroredRows`); review CSV columns `claim_sources`, `identity_lost`.
+      `test:seo-product` 1,716 + 163. Code only; nothing run on production.

@@ -20,9 +20,15 @@
  */
 import { formFactorOf, formFactorsIn } from "@/lib/catalog/form-factor";
 import { extractGpuChipFromName, extractGpuMemoryFromName } from "@/lib/catalog/gpu-extract";
+import {
+  extractDriveCapacityFromName,
+  extractDriveFromName,
+  extractRamFromModuleName,
+  hasComboWord,
+} from "@/lib/catalog/identity-extract";
 import { extractNameSpecs, type NameSpecs } from "@/lib/catalog/spec-extract";
-import { applyCasing, casingOfToken, isShoutedWord, softenPlainWords, standardType, titleCaseShouted } from "@/lib/seo/casing";
-import { claimEvidence, findBadSpecPhrases, unsupportedClaims } from "@/lib/seo/claims";
+import { applyCasing, casingOfToken, isShoutedWord, pcCaseWord, softenPlainWords, titleCaseShouted } from "@/lib/seo/casing";
+import { claimEvidence, claimSources, dropMirroredRows, findBadSpecPhrases, unsupportedClaims } from "@/lib/seo/claims";
 import { cutAtWord, softenShouting } from "@/lib/seo/page-meta";
 
 export const SEO_TITLE_MAX = 60;
@@ -82,6 +88,10 @@ export type SeoResult = {
   unsupportedClaims: string[];
   /** How many stored specs were dropped because of such a claim (what the description would otherwise have stated). */
   claimSpecsDropped: number;
+  /** Identity the name states (capacity, DDR generation, "Combo") that the title does not keep (must be empty). */
+  identityLost: string[];
+  /** Where each claim of the description comes from: the name, the category, a spec row ("?" = nothing backs it). */
+  claimSources: string[];
   /** Set when the title still collides with another product after disambiguation. */
   collisionGroup: string | null;
   /** True when the result must not be written without a human look. */
@@ -295,10 +305,10 @@ const SLOTS: Record<string, Slot> = {
   capture_res: { keys: [], label: /(max (?:input|resolution)|resolution|passthrough|capture)/i, read: (v) => { const m = v.match(/\b(8K|4K|2K|1440p|1080p)\s?(?:@|at)?\s?(\d{2,3})?\s?(?:fps|hz)?/i); return m ? `${g(m, 1).toUpperCase()}${g(m, 2) ? ` ${g(m, 2)}fps` : ""} capture` : null; } },
   capture_if: { keys: [], label: /^(interface|connection|bus|connectivity)$/i, read: (v) => { const m = v.match(/(USB[ -]?(?:3(?:\.\d)?|C|4)?|PCIe[^,;]{0,8}|Thunderbolt \d?)/i); return m ? squash(g(m, 1)) : null; } },
   storage_cap: { keys: ["capacity", "storage"], label: /^(capacity|storage|storage capacity|drive capacity|disk capacity|size)$/i, read: (v) => { const m = v.match(GB); return m ? `${trimNum(g(m, 1))}${g(m, 2).toUpperCase()}` : null; } },
-  drive_if: { keys: [], label: /^(interface|connection|protocol|bus)$/i, read: (v) => { const m = v.match(/(NVMe|SATA(?: III| 3)?|M\.2|PCIe(?: \d\.\d)?|USB[ -]?[3C]?)/i); return m ? squash(g(m, 1)) : null; } },
+  drive_if: { keys: [], label: /^(interface|connection|protocol|bus)$/i, read: (v) => { const m = v.match(/(NVMe|SATA(?: III| 3)?|M\.2|PCIe(?: \d\.\d)?|USB[ -]?(?:3(?:\.\d)?|C)?)/i); return m ? squash(g(m, 1)) : null; } },
   read_speed: { keys: [], label: /(read speed|sequential read|read)/i, read: (v) => { const m = v.match(/(\d{3,5})\s?MB\/s/i); return m ? `${g(m, 1)}MB/s read` : null; } },
   rpm: { keys: [], label: /(rpm|speed|rotation)/i, read: (v) => { const m = v.match(/(5400|7200|10000|15000)\s?rpm/i); return m ? `${g(m, 1)}RPM` : null; } },
-  drive_form: { keys: [], label: /^(form factor|size|form)$/i, read: (v) => { const m = v.match(/(M\.2 ?\d{4}|2\.5"?|3\.5"?|2\.5 inch|3\.5 inch|U\.2)/i); return m ? squash(g(m, 1)).replace(/"$/, " inch") : null; } },
+  drive_form: { keys: [], label: /^(form factor|size|form)$/i, read: (v) => { const inch = v.match(/(?:^|[^\d.])([23]\.5)\s?(?:"|”|″|inch(?:es)?\b|in\b)?/i); if (inch) return `${g(inch, 1)}-inch`; const m = v.match(/(M\.2 ?\d{4}|U\.2)/i); return m ? squash(g(m, 1)) : null; } },
   mouse_dpi: { keys: [], label: /(dpi|resolution|sensitivity)/i, read: (v) => { const m = v.match(/(\d{3,6})\s?dpi/i); return m ? `${g(m, 1)} DPI` : null; } },
   kb_switch: { keys: [], label: /(switch|key type|keyboard type|type)/i, read: (v) => { const m = v.match(/(mechanical|membrane|scissor|optical)/i); return m ? `${g(m, 1).replace(/^./, (c) => c.toUpperCase()).toLowerCase().replace(/^./, (c) => c.toUpperCase())} keys` : null; } },
   speaker_power: { keys: [], label: /(power|rms|output)/i, read: (v) => { const m = v.match(/(\d{1,4})\s?W\b/i); return m ? `${g(m, 1)}W output` : null; } },
@@ -550,6 +560,14 @@ function softenType(token: string): string {
   return TYPE_WORDS[lower] || TYPE_PHRASE_WORDS.has(lower) ? token.replace(w, w.charAt(0) + w.slice(1).toLowerCase()) : token;
 }
 
+const PC_CASE_NAME = /\btower\b|\b(?:pc|computer|gaming)\s+(?:case|casing)\b|\b(?:case|casing)\b.*\b(?:atx|itx)\b|\b(?:atx|itx)\b.*\b(?:case|casing)\b/i;
+
+/** A PC case (not a phone or laptop case): the case family, and our "Casing" category, a form factor or a tower in the name. */
+export function isPcCase(input: Pick<SeoProductInput, "name" | "categoryChain">): boolean {
+  if (familyOf(input.categoryChain).id !== "case") return false;
+  return input.categoryChain.some((name) => /^casings?$/i.test(squash(name))) || formFactorsIn(input.name).length > 0 || PC_CASE_NAME.test(input.name);
+}
+
 export function analyseName(input: SeoProductInput, categoryHeads: string[] = [], groups: string[] = []): NameInfo {
   const brand = squash(input.brand);
   const realBrand = brand && !GENERIC_BRAND.test(brand) ? brand : "";
@@ -700,9 +718,12 @@ export function analyseName(input: SeoProductInput, categoryHeads: string[] = []
   // model run. Model codes (a digit) and acronyms / line names (not in the dictionary) are left as written.
   for (let i = brandLen; i < core.length; i += 1) core[i] = softenPlainWords(core[i] ?? "");
   const typeIdxs = findTypeIdxs(core, brandLen, categoryHeads, groups);
-  // The standard type word: a name's "CASING" is a "Case".
+  // v2.5: a PC case is a "Casing" (what local shops and shoppers call it); a name that already says Casing keeps it, and a
+  // name that has a Casing earlier ("Corsair Casing Crystal Series ... Case") keeps its Case.
   const lastType = Math.max(-1, ...typeIdxs);
-  if (lastType >= 0) core[lastType] = standardType(core[lastType] ?? "");
+  if (lastType >= 0 && isPcCase(input) && !core.some((token, i) => i !== lastType && /^casing$/i.test(token))) {
+    core[lastType] = pcCaseWord(core[lastType] ?? "");
+  }
   let restType: string | null = null;
   const restIdx = [...findTypeIdxs(rest, 0, [])][0];
   // "(A3 Flatebed Scanner)," -> "Scanner": edge punctuation is never part of the type word.
@@ -732,6 +753,8 @@ type Prep = {
   evidence: string;
   droppedClaims: string[];
   droppedClaimSpecs: number;
+  /** What the title must keep because it IS the product: capacity, DDR generation, "Combo" (gate identity_lost). */
+  identity: string[];
 };
 
 const ZERO_VALUE = /^\s*0+(?:\.0+)?\s*(?:gb|tb|mb|ghz|mhz|hz)?\s*$/i;
@@ -828,10 +851,42 @@ export function reconcileFacts(input: SeoProductInput, familyId: FamilyId): Spec
     const type = named?.type ?? stored?.value.match(/(GDDR\d[A-Z]?|HBM\d?[A-Z]?)/i)?.[1]?.toUpperCase() ?? null;
     if (size) facts.push({ key: "memory", label: "VRAM", value: `${String(size).replace(/GB$/i, "")}GB${type ? ` ${type}` : ""}` });
   }
+  if (familyId === "hdd" || familyId === "ssd") {
+    // v2.5: the capacity is part of the product's identity and the name states it: it outranks a stored value, so the title and
+    // the description cannot disagree. RPM, interface and 3.5 / 2.5 inch are stated only when no stored spec says them.
+    const drive = extractDriveFromName(input.name);
+    const has = (slotId: string) => facts.some((f) => slotMatch(slotId, f) && SLOTS[slotId]?.read(squash(f.value), { brand: input.brand }) != null);
+    if (drive.capacity) {
+      facts = facts.filter((f) => !slotMatch("storage_cap", f));
+      facts.push({ key: "capacity", label: "Capacity", value: drive.capacity });
+    }
+    if (drive.rpm && familyId === "hdd" && !has("rpm")) facts.push({ label: "RPM", value: drive.rpm });
+    if (drive.interface && !has("drive_if")) facts.push({ label: "Interface", value: drive.interface });
+    if (drive.inch && !has("drive_form")) facts.push({ label: "Form Factor", value: drive.inch });
+  }
+  if (familyId === "ram") {
+    const ram = extractRamFromModuleName(input.name);
+    const has = (slotId: string) => facts.some((f) => slotMatch(slotId, f) && SLOTS[slotId]?.read(squash(f.value), { brand: input.brand }) != null);
+    if (ram.capacity) {
+      facts = facts.filter((f) => !slotMatch("ram_capacity", f));
+      facts.push({ key: "capacity", label: "Capacity", value: ram.capacity });
+    }
+    if (ram.ddr) {
+      // the DDR generation is identity too: the name outranks a stored one, so title and description cannot disagree
+      facts = facts.filter((f) => !slotMatch("mem_type", f));
+      facts.push({ key: "ramType", label: "Memory Type", value: ram.ddr });
+    }
+    if (ram.speed && !has("mem_speed")) facts.push({ label: "Speed", value: ram.speed });
+    if (ram.kit && !has("ram_kit")) facts.push({ label: "Kit", value: ram.kit });
+    if (ram.latency && !has("cas")) facts.push({ label: "CAS Latency", value: ram.latency });
+  }
   return facts;
 }
 
-function prepare(input: SeoProductInput): Prep {
+function prepare(raw: SeoProductInput): Prep {
+  // v2.5 audit: a spec row that only COPIES an attribute is the attribute's guess again, not a second source. (The admin editor
+  // shows attributes as spec rows and every save of the product form writes them back as rows: lib/seo/claims.ts.)
+  const input: SeoProductInput = { ...raw, specs: dropMirroredRows(raw.specs) };
   const family = familyOf(input.categoryChain);
   const facts = reconcileFacts(input, family.id);
   const typeList = typeCandidates(input.categoryChain);
@@ -841,35 +896,58 @@ function prepare(input: SeoProductInput): Prep {
   const typeInCore = name.typeIdxs.size > 0;
   let type = "";
   if (typeInCore) {
-    type = standardType(name.core[Math.max(...name.typeIdxs)] ?? "");
+    type = name.core[Math.max(...name.typeIdxs)] ?? "";
   } else {
     // The raw name's own word wins when it agrees with the category ("Headset" for a Headphone category);
     // otherwise the category's type.
     const restGroup = name.restType ? typeGroupOf(name.restType) : null;
     const agrees = restGroup !== null && typeList.some((t) => typeGroupOf(t) === restGroup);
-    type = standardType(name.restType && agrees ? name.restType : typeList[0] ?? name.restType ?? "");
+    type = name.restType && agrees ? name.restType : typeList[0] ?? name.restType ?? "";
   }
+  if (isPcCase(input)) type = pcCaseWord(type);
+  // Memory modules are "RAM" (the category, and what shoppers search), not the "Memory" of "Memory Kit" in the name.
+  if (family.id === "ram" && !typeInCore && typeList.some((t) => /\bram\b/i.test(t))) type = "RAM";
   const evidence = claimEvidence(input.name, input.categoryChain, input.specs);
   const refused: string[] = [];
   const specs = pickSpecs(facts, family.id, input.brand, 4, { accept: (phrase) => unsupportedClaims(phrase, evidence).length === 0, rejected: refused });
-  // Claims removed at either level are counted: the phrase refused here, and the stored facts reconcileFacts() dropped
-  // (a guessed Microphone=Yes / Over-ear / Bluetooth attribute the name does not back).
+  // Claims removed at either level are counted: the phrase refused here, and the stored facts reconcileFacts() (or the mirror
+  // filter) dropped (a guessed Microphone=Yes / Over-ear / Bluetooth attribute the name does not back).
   const keptFacts = new Set(facts);
-  const droppedFacts = input.specs.filter((fact) => !keptFacts.has(fact)).map((fact) => `${fact.label} ${fact.value}`);
+  const droppedFacts = raw.specs.filter((fact) => !keptFacts.has(fact)).map((fact) => `${fact.label} ${fact.value}`);
   const droppedTexts = [...new Set([...refused, ...droppedFacts])];
   const droppedClaims = [...new Set(droppedTexts.flatMap((text) => unsupportedClaims(text, evidence)))];
   const droppedClaimSpecs = droppedTexts.filter((text) => unsupportedClaims(text, evidence).length > 0).length;
+  const fixedExtras: Extra[] = [];
+  const coreTokens = new Set(name.core.map(normTok));
   // A graphics chip is part of WHICH product this is: keep it in the title when the name (anywhere) or a stored spec
   // writes it. The chip is never derived from the SKU (GV-N5070... is a board code).
-  const fixedExtras: Extra[] = [];
   if (family.id === "gpu") {
     const chip = extractGpuChipFromName(input.name) ?? specs.find((s) => s.slot === "gpu_chip")?.phrase ?? null;
-    const have = new Set(name.core.map(normTok));
-    if (chip && !chip.split(" ").map(normTok).filter(Boolean).every((token) => have.has(token))) {
+    if (chip && !chip.split(" ").map(normTok).filter(Boolean).every((token) => coreTokens.has(token))) {
       fixedExtras.push({ kind: "chip", text: applyCasing(chip) });
     }
   }
-  return { input, family, name, typeList, type, typeInCore, specs, facts, fixedExtras, evidence, droppedClaims, droppedClaimSpecs };
+  // v2.5 identity: for drives and memory one figure IS the product (a 2TB is not a 4TB, DDR4 is not DDR5), and a combo is
+  // not a mouse. These stay in the title; if they cannot fit in 60 characters the row is skipped (gate identity_lost).
+  const identity: string[] = [];
+  const slotPhrase = (slot: string) => specs.find((s) => s.slot === slot)?.phrase ?? null;
+  const keep = (kind: string, text: string | null | undefined) => {
+    if (!text) return;
+    identity.push(text);
+    if (!coreTokens.has(normTok(text))) fixedExtras.push({ kind, text });
+  };
+  if (family.id === "hdd" || family.id === "ssd") keep("capacity", extractDriveCapacityFromName(input.name) ?? slotPhrase("storage_cap"));
+  if (family.id === "ram") {
+    const ram = extractRamFromModuleName(input.name);
+    keep("capacity", ram.capacity ?? slotPhrase("ram_capacity"));
+    keep("ddr", ram.ddr ?? slotPhrase("mem_type")?.match(/(?:LP)?DDR[2-5]X?/i)?.[0]?.toUpperCase());
+  }
+  if (hasComboWord(input.name)) {
+    const inCore = name.core.some((token, i) => i >= name.brandLen && /^combo$/i.test(stripEdge(token)));
+    if (inCore) identity.push("Combo");
+    else if (family.id === "keyboard" || family.id === "mouse") keep("combo", "Combo");
+  }
+  return { input, family, name, typeList, type, typeInCore, specs, facts, fixedExtras, evidence, droppedClaims, droppedClaimSpecs, identity };
 }
 
 const SUFFIX_PB = " Price in Bangladesh";
@@ -898,13 +976,21 @@ function isHighEntropyCode(raw: string): boolean {
  *    follows them ("Gaming Headset Blue": yes; "Black Edition CPU Cooler": no).
  * The type word is never in a run. The model run and everything before it are never dropped.
  */
-function droppableRuns(name: NameInfo): [number, number][] {
+function droppableRuns(name: NameInfo, identity: Set<string> = new Set()): [number, number][] {
   const floor = Math.max(name.must, name.brandLen);
   const descriptiveTail = name.core.slice(name.brandLen, name.must).some((_, i) => isHighEntropyCode(name.coreRaw[name.brandLen + i] ?? ""));
   const droppable = new Array<boolean>(name.core.length).fill(false);
+  // v2.5: "Wireless Mouse and Keyboard Combo": from the first type word to "Combo" nothing is dropped (a combo is not a mouse).
+  const comboAt = name.core.findIndex((token, i) => i >= name.brandLen && /^combo$/i.test(stripEdge(token)));
+  const kept = new Set<number>();
+  if (comboAt >= 0) {
+    const firstType = [...name.typeIdxs].filter((i) => i < comboAt).sort((a, b) => a - b)[0];
+    for (let i = firstType ?? comboAt; i <= comboAt; i += 1) kept.add(i);
+  }
   let tailClosed = true;
   for (let i = name.core.length - 1; i >= floor; i -= 1) {
-    if (name.typeIdxs.has(i)) continue; // the type word stays, and does not end the closed tail
+    // the type word, a combo phrase and an identity token (a capacity the name writes in its core) stay, and do not end the closed tail
+    if (name.typeIdxs.has(i) || kept.has(i) || identity.has(normTok(name.core[i] ?? ""))) continue;
     if (descriptiveTail || (isGenericToken(name.core[i] ?? "") && tailClosed)) droppable[i] = true;
     else tailClosed = false;
   }
@@ -921,10 +1007,12 @@ function droppableRuns(name: NameInfo): [number, number][] {
   return runs;
 }
 
+const identityTokens = (prep: Prep) => new Set(prep.identity.map(normTok));
+
 function coreWith(prep: Prep, keepRuns: number, extras: Extra[]): { tokens: string[]; text: string } {
   const { name } = prep;
   // Everything stays except the generic runs being dropped (from the end): a token is never removed by default.
-  const dropped = droppableRuns(name).slice(keepRuns);
+  const dropped = droppableRuns(name, identityTokens(prep)).slice(keepRuns);
   const kept = name.core.filter((_, i) => !dropped.some(([a, b]) => i >= a && i < b));
   const extra = extras.map((e) => e.text);
   const tokens = prep.typeInCore ? [...kept, ...extra] : [...kept, ...extra, prep.type].filter(Boolean);
@@ -932,7 +1020,7 @@ function coreWith(prep: Prep, keepRuns: number, extras: Extra[]): { tokens: stri
 }
 
 function composeTitle(prep: Prep, extras: Extra[]): { title: string; core: string; rule: string; flags: string[] } {
-  const runs = droppableRuns(prep.name).length;
+  const runs = droppableRuns(prep.name, identityTokens(prep)).length;
   const tries: { suffix: string; keep: number; label: string }[] = [];
   for (const [suffix, label] of [[SUFFIX_PB, "Price in Bangladesh"], [SUFFIX_BD, "'Price in BD' fallback"]] as const) {
     for (let keep = runs; keep >= 0; keep -= 1) {
@@ -1214,9 +1302,11 @@ function foreignCodes(prep: Prep, title: string, extras: Extra[]): string[] {
 function render(prep: Prep, collisionExtras: Extra[]): SeoResult {
   const { input, family, name } = prep;
   let extras = [...prep.fixedExtras, ...collisionExtras];
-  // The chip is wanted in the title, but not at the price of a title that no longer fits in 60 (never cut, so that row would be skipped).
-  if (prep.fixedExtras.length > 0 && coreWith(prep, 0, extras).text.length > SEO_TITLE_MAX && coreWith(prep, 0, collisionExtras).text.length <= SEO_TITLE_MAX) {
-    extras = collisionExtras;
+  // The chip is wanted in the title, but not at the price of a title that no longer fits in 60 (never cut, so that row would be
+  // skipped). Identity extras (capacity, DDR) are not optional: they stay, and a title that cannot hold them is skipped.
+  if (prep.fixedExtras.some((e) => e.kind === "chip") && coreWith(prep, 0, extras).text.length > SEO_TITLE_MAX) {
+    const withoutChip = extras.filter((e) => e.kind !== "chip");
+    if (coreWith(prep, 0, withoutChip).text.length <= SEO_TITLE_MAX) extras = withoutChip;
   }
   const title = composeTitle(prep, extras);
   const shortCore = coreWith(prep, 0, extras).text;
@@ -1246,6 +1336,11 @@ function render(prep: Prep, collisionExtras: Extra[]): SeoResult {
   const droppedClaims = [...new Set([...prep.droppedClaims, ...leaked])];
   if (droppedClaims.length > 0) flags.push("unsupported_claim");
   if (!prep.type) flags.push("unusable_type");
+  // v2.5 gate: what the name says IS the product (capacity, DDR generation, Combo) must be in the title.
+  const titleWords = new Set(title.title.split(/\s+/).map(normTok));
+  const missingIdentity = prep.identity.filter((token) => !titleWords.has(normTok(token)));
+  const identityLost = missingIdentity.length > 0 ? missingIdentity : prep.identity.length > 0 && title.flags.includes("title_over_60") ? [...prep.identity] : [];
+  if (identityLost.length > 0) flags.push("identity_lost");
   const typeLower = nounOf(prep.type);
   const secondary = [
     `${keywordCore} price in bd`,
@@ -1276,10 +1371,12 @@ function render(prep: Prep, collisionExtras: Extra[]): SeoResult {
     badSpecPhrases,
     unsupportedClaims: droppedClaims,
     claimSpecsDropped: prep.droppedClaimSpecs,
+    identityLost,
+    claimSources: claimSources(specPart, input.name, input.categoryChain, input.specs),
     collisionGroup: null,
     needsReview:
       flags.includes("title_over_60") || lost.length > 0 || foreign.length > 0 || badChars.length > 0 || zeroSpecs.length > 0 ||
-      claimConflicts.length > 0 || badSpecPhrases.length > 0 || leaked.length > 0 || !prep.type,
+      claimConflicts.length > 0 || badSpecPhrases.length > 0 || leaked.length > 0 || !prep.type || identityLost.length > 0,
   };
 }
 
@@ -1301,7 +1398,7 @@ export function generateProductSeo(input: SeoProductInput): SeoResult {
 // A whole set: disambiguate colliding titles
 // ---------------------------------------------------------------------------
 
-const SPEC_NAME_TOKEN = /^(?:\d+(?:\.\d+)?(?:gb|tb|mb|mhz|ghz|w|va|mah|inch|"|mm|mp|ft|m)|ddr[2-5])$/i;
+const SPEC_NAME_TOKEN = /^(?:\d+(?:\.\d+)?(?:gb|tb|mb|mhz|mts|ghz|w|va|mah|inch|"|mm|mp|ft|m)|ddr[2-5]|cl\d{2})$/i;
 
 type Distinguisher = { kind: string; text: string };
 
@@ -1342,9 +1439,15 @@ function distinguishers(prep: Prep, group: Prep[], titleTokens: Set<string>): Di
   // Spec-like / colour words from the whole raw name that the title does not
   // already carry and that not every member of the group has.
   const others = group.filter((p) => p !== prep).map((p) => new Set(p.name.all.map((t) => t.toLowerCase())));
+  // v2.5: a memory kit "16GB (2 x 8GB)" is 16GB (the identity); its "8GB" is a module, not a differentiator. The kit layout is.
+  if (prep.family.id === "ram") {
+    const kit = extractRamFromModuleName(prep.input.name).kit;
+    if (kit) out.push({ kind: "kit", text: kit });
+  }
   for (const token of prep.name.all) {
     const key = token.toLowerCase().replace(/[^a-z0-9."]/g, "");
     if (!(SPEC_NAME_TOKEN.test(key) || COLOURS.has(key))) continue;
+    if (prep.family.id === "ram" && /^\d+(?:gb|tb)$/.test(key)) continue;
     if (titleTokens.has(normTok(token))) continue;
     if (others.every((set) => set.has(token.toLowerCase()))) continue;
     out.push({ kind: COLOURS.has(key) ? "colour" : "name", text: cleanExtra(token) });
@@ -1376,14 +1479,14 @@ export function generateProductSeoSet(inputs: SeoProductInput[]): SeoResult[] {
       const options = new Map(
         group.map((prep) => [prep, distinguishers(prep, group, new Set(render(prep, extrasOf(prep)).title.split(/\s+/).map(normTok)))] as const),
       );
-      const kinds = ["ram", "storage", "capacity", "size", "cpu", "colour", "name", "code"];
+      const kinds = ["ram", "storage", "capacity", "kit", "size", "cpu", "colour", "name", "code"];
       for (const kind of kinds) {
         const values = group.map((prep) => options.get(prep)?.find((d) => d.kind === kind)?.text ?? "");
         const distinct = new Set(values.map((v) => v.toLowerCase()));
         if (distinct.size <= 1) continue;
         group.forEach((prep, i) => {
           const value = values[i] ?? "";
-          const have = extrasOf(prep).map((e) => e.text).join(" ").toLowerCase();
+          const have = [...prep.fixedExtras, ...extrasOf(prep)].map((e) => e.text).join(" ").toLowerCase();
           if (value && !have.includes(value.toLowerCase())) extras.set(prep, [...extrasOf(prep), { kind, text: applyCasing(value) }]);
         });
         break;

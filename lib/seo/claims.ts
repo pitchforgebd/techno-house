@@ -40,6 +40,21 @@ const BARE = /^(?:yes|no|true|false|y|n|supported|none|n\/a|-+)$/i;
 const squash = (text: string) => text.replace(/\s+/g, " ").trim();
 
 /**
+ * Spec rows that are only a COPY of an attribute (v2.5 audit). The admin product editor shows a product's attribute
+ * values as spec rows (lib/data/prisma/mappers.ts mergeSpecGroupsWithAttributes, via toProductDetail -> toEditor), and
+ * the single-product form posts those groups back on EVERY save (admin-product-form.tsx -> syncSpecGroups). So any
+ * admin save of a product whose attributes the import script guessed ("Type: Over-ear", "Microphone: Yes",
+ * "Connectivity: Wireless") writes the guesses back as real, key-less spec rows: the same label, the same value.
+ * A row identical to an attribute of the same product is that copy and is not evidence of anything; a row a human
+ * changed (different value) is not a copy and stays.
+ */
+export function dropMirroredRows<T extends ClaimFact>(facts: T[]): T[] {
+  const pair = (fact: ClaimFact) => `${squash(fact.label).toLowerCase()}\u0000${squash(fact.value).toLowerCase()}`;
+  const attributePairs = new Set(facts.filter((fact) => fact.key).map(pair));
+  return facts.filter((fact) => fact.key || !attributePairs.has(pair(fact)));
+}
+
+/**
  * The lower-case text a claim may be backed by. `rows` are the stored facts: those with a `key` (attributes) and
  * bare Yes / No values never count.
  */
@@ -62,6 +77,27 @@ export function unsupportedClaims(text: string, evidence: string): string[] {
   const version = text.match(/\bbluetooth\s?v?(\d(?:\.\d)?)\b/i)?.[1];
   if (version && !new RegExp(`(?:^|[^\\d.])${version.replace(".", "\\.")}(?:[^\\d]|$)`).test(evidence) && !out.includes("bluetooth")) {
     out.push(`bluetooth ${version}`);
+  }
+  return out;
+}
+
+/**
+ * Where each claim in `text` comes from, for the dry-run review ("microphone <- spec row 'Microphone: Built-in'"):
+ * the raw name, a category name, an informative spec row, or "?" when nothing backs it.
+ */
+export function claimSources(text: string, name: string, categoryChain: string[], rows: ClaimFact[]): string[] {
+  const out: string[] = [];
+  const nameText = claimEvidence(name, [], []);
+  const categoryText = claimEvidence("", categoryChain, []);
+  const informative = rows.filter((row) => !row.key && !BARE.test(squash(row.value)));
+  for (const rule of RULES) {
+    if (!rule.say.test(text)) continue;
+    if (rule.backed.test(nameText)) out.push(`${rule.id} <- name`);
+    else if (rule.backed.test(categoryText)) out.push(`${rule.id} <- category`);
+    else {
+      const row = informative.find((candidate) => rule.backed.test(claimEvidence("", [], [candidate])));
+      out.push(row ? `${rule.id} <- spec row "${squash(row.label)}: ${squash(row.value)}"` : `${rule.id} <- ?`);
+    }
   }
   return out;
 }
@@ -89,6 +125,8 @@ const quantityTokens = (phrase: string) =>
  */
 export function findBadSpecPhrases(text: string, phrases: string[]): string[] {
   const found: string[] = [];
+  // A spec phrase that is only a number ("3.5") says nothing: it needs its unit or its noun ("3.5-inch").
+  for (const phrase of phrases) if (/^\d+(?:\.\d+)?$/.test(squash(phrase))) found.push(`bare number "${squash(phrase)}"`);
   for (const m of text.matchAll(MEASURE_SIZE)) found.push(m[0]);
   const twice = text.match(SAME_QTY_TWICE);
   if (twice) found.push(twice[0]);

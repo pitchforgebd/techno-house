@@ -45,9 +45,12 @@ function blocker(result: SeoResult, options: ApplyOptions): string | null {
   if (result.flags.includes("foreign_code")) return "skip: foreign_code";
   if (result.flags.includes("bad_chars")) return "skip: bad_chars";
   if (result.flags.includes("spec_zero")) return "skip: spec_zero";
-  // v2.4 gates: a form factor the name contradicts, machine-looking spec wording, a type that is only a bucket name.
+  // v2.4 / v2.5 gates: a form factor the name contradicts, machine-looking spec wording, a type that is only a bucket name,
+  // an identity the title lost.
   if (result.flags.includes("claim_conflict")) return "skip: claim_conflict";
   if (result.flags.includes("bad_spec_phrase")) return "skip: bad_spec_phrase";
+  // v2.5: the title cannot keep what the name says IS the product (capacity, DDR generation, Combo) within 60 characters.
+  if (result.flags.includes("identity_lost")) return "skip: identity_lost";
   if (result.flags.includes("unusable_type") || !result.type) return "skip: unusable_type";
   if (result.needsReview) return "skip: needs_review";
   if (result.title.length > SEO_TITLE_MAX) return "skip: title over 60";

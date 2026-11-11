@@ -1649,6 +1649,138 @@ vacuously; repaired, and it passes for real.
    key-less row, bare Yes, "Built-in", non-Yes values) and the net catches the rest; if batch 2 still shows one after re-running the
    dry run, its `unsupported_claims` column in `apply-preview.csv` names the claim and the row.
 
+### Phase 8 v2.5 — local wording, identity that survives shortening, copied-attribute audit
+
+Branch `seo-phase-8-fix-5` (from main after PR #13, which has v2.4). Code only: no schema change, nothing run on
+production. The local database was read, never written (the script's Prisma client throws on any write outside
+`--apply` / `--restore`).
+
+#### 1. PC cases are "Casing" (this reverses v2.4)
+
+v2.4 made "Casing" a "Case". Local shops (Star Tech, Ryans, Ultra Tech, bdstall) and our own category say **Casing**, and
+people search "casing price in bangladesh". Now the type word of a **PC case** is "Casing" in the title, the description and
+the keywords (keyword = title core + " price in bangladesh" is unchanged, so it says "casing"). A PC case = the case
+family AND (our category "Casing", or a form factor in the name, or a tower / "PC case" / "ATX … case" in the name): a
+phone case, a laptop case and every other type are not renamed. A raw "Casing" stays as written; a name that already
+has "Casing" earlier ("Corsair CASING Crystal Series … Case") keeps its "Case". `pcCaseWord` replaces v2.4's `standardType`.
+
+#### 2. Identity that survives shortening
+
+The title is the model core plus the type word, and "Price in Bangladesh" is preferred over descriptive words, so a
+2TB and a 4TB "Toshiba PC Hard Drive P300" ended up with the same title ("… P300") and RAM had no DDR type. Now, for these
+families, the figure that IS the product is part of the title and **cannot be dropped**:
+
+- **HDD / SSD**: the capacity the name states (`4TB`, `512GB`; a transfer rate such as "6 Gb/s" or a cache such as
+  "256 MB" is never a capacity; two different capacities are not guessed between). "Toshiba PC Hard Drive P300 4TB".
+- **RAM**: the capacity and the DDR generation (`16GB DDR5`), and the type is **"RAM"**, not the "Memory" of "Memory
+  Kit". A kit "16GB (2 x 8GB)" is 16GB; its "8GB" is a module, and the kit layout (`2x8GB`) is what tells two 16GB kits apart.
+  "Corsair Vengeance 16GB DDR5 RAM" (VENGEANCE / DOMINATOR are plain words and take normal case).
+- **Combos**: "Combo" and, when the name has it, "Mouse and Keyboard" before it (a promotional "Combo Offer" is not a combo).
+- The name's capacity and DDR generation **outrank a stored one**, so the title and the description cannot disagree.
+- **Gate `identity_lost`**: if any of these is missing from the title, or cannot fit within 60 characters, the row is skipped,
+  counted and listed in the dry run (and is a criterion of `--explain-filter`). A title without the capacity or the DDR type is never written.
+
+The descriptions state what the name states: capacity (once, in the title), RPM, interface and **3.5-inch / 2.5-inch** for
+drives; speed, kit layout and CAS latency for RAM. A spec phrase that is only a number ("3.5") no longer exists, and the
+`bad_spec_phrase` lint flags any that appears.
+
+#### 3. Audit: where "built-in microphone" on the Edifier Comfo Q OWS comes from
+
+What I could establish from the code (I cannot see the production rows):
+
+| Writer | Writes | For "Edifier Comfo Q OWS Headphone Back, No ANC, …" |
+|---|---|---|
+| `populate-import-attributes.ts` `extractMicrophone` | attribute `microphone` = **Yes** (never "Built-in"), only when the name has "mic" or "headset" | nothing (the name has neither); `extractAudioType` guesses `audioType = Over-ear` from "headphone" |
+| bulk CSV import (`lib/catalog/bulk-csv.ts`) | no attributes, no spec rows ("Variants, colors, attributes, and spec… are not touched") | nothing |
+| `prisma/seed.ts`, `scripts/deploy/*` | no microphone row | nothing |
+| admin product form (`syncSpecGroups`) | whatever the form posts | **see below** |
+
+**Finding.** The admin editor loads a product through the storefront mapper (`toEditor` -> `toProductDetail` ->
+`mergeSpecGroupsWithAttributes`, `lib/data/prisma/mappers.ts`), which shows every attribute value as a spec row when the
+product has none ("Specifications" group; "Attributes" group when it has some). The single-product form posts **all** its
+spec groups on **every** save (`admin-product-form.tsx` -> `syncSpecGroups`). So any admin save of a product whose attributes the
+import script guessed writes the guesses back as real **key-less spec rows with the same label and the same value**
+("Type: Over-ear", "Form Factor: ATX", "Microphone: Yes"). The generator trusts key-less rows (a human typed them); v2.2-v2.4
+therefore trusted the import script's guesses once an admin had saved the product. The local database shows it: **20
+products carry rows that exactly copy their attributes** (Socket = AM5 ×6, RAM = 16GB ×5, Form factor = Micro-ATX ×4, Form
+Factor = ATX ×2 ...), so it is not hypothetical.
+
+That path cannot write "Built-in" by itself (the attribute only holds Yes / No). **The only way left in the code to get
+"built-in microphone" without the name saying it is a key-less spec row whose value says "built-in"** — typed in the admin
+form (or inserted outside the repository). I cannot tell which one the production Comfo row is. The next dry run names it:
+`apply-preview.csv` has a new column **`claim_sources`**, e.g. `microphone <- spec row "Microphone: Built-in"`.
+
+**Change** (the copy is a guess, so it is untrusted; a typed row is not): a key-less row **identical to an attribute of the same
+product** (same label, same value, ignoring case and spaces) is dropped from the facts and from the claim evidence
+(`dropMirroredRows`, `lib/seo/claims.ts`); a row whose value differs from the attribute stays. Removed claims are counted
+as `unsupported_claim` as before. No importer is changed.
+
+#### Before -> after (the real names)
+
+| Product | v2.4 | v2.5 |
+|---|---|---|
+| Toshiba PC Hard Drive P300 2TB | `… P300 2TB` · `Toshiba PC Hard Drive P300 2TB` (no specs) | `… P300 2TB` · `… P300 2TB – 7200RPM, SATA, 3.5-inch` |
+| Toshiba PC Hard Drive P300 4TB | same (no specs) | `… P300 4TB` · `Key specs of … P300 4TB: 5400RPM, SATA, 3.5-inch` |
+| Corsair VENGEANCE 16GB DDR5 6000MT/s CL36 | `Corsair Vengeance Memory Price in Bangladesh \| Techno House` · `… Memory: 16GB, DDR5 memory` | `Corsair Vengeance 16GB DDR5 RAM Price in Bangladesh` · `… RAM: 6000MT/s, CL36 latency` |
+| Corsair VENGEANCE 16GB DDR5 5600MHz (Black) | `Corsair Vengeance Black Memory` | `Corsair Vengeance 16GB DDR5 Black RAM` |
+| Targus AKM610AP Wireless Mouse and Keyboard Combo | `Targus AKM610AP Wireless Mouse Keyboard` | `Targus AKM610AP Mouse and Keyboard Combo Price in Bangladesh` (the ladder drops "Wireless" before it drops the "Price in Bangladesh" suffix) |
+| Edifier Comfo Q OWS (the import script's attributes copied into rows by an admin save) | `… Headphone Back – over-ear headphone` | `Edifier Comfo Q OWS Headphone Back` (no claim) |
+| Edifier Comfo Q OWS (a row typed "Microphone: Built-in") | `headphone with built-in microphone` | unchanged: a typed row is the one remaining source; `claim_sources` shows it |
+| Corsair 2800X RS-R ARGB White Micro-ATX PC Case | `Corsair 2800X RS-R ARGB Case` | `Corsair 2800X RS-R ARGB Casing` (+ `Micro-ATX form factor`) |
+| DeepCool CK560 WH E-ATX Mid-Tower Gaming Casing | `… Gaming Case` | `… Gaming Casing` |
+| Delux DW301 ATX Thermal Casing / Xtreme Xjogos XJ07 ATX Casing | `… Thermal Case` | `… Thermal Casing` |
+
+#### Sweep over all 4,309 local products (read-only; v2.4 from main against v2.5 on the same inputs)
+
+Local population: 221 storage, 141 RAM, 25 names with "Combo", 138 PC cases.
+
+| Metric (rows) | v2.4 | v2.5 |
+|---|---|---|
+| HDD / SSD: the name states a capacity and the title lost it | 44 | **0** |
+| RAM: the title lost the capacity / the DDR type | 11 / 82 | **0 / 0** |
+| the name says Combo and the title lost it | 13 | 1 (a "2PACK COMBO" fan set, not a keyboard / mouse combo) |
+| PC case titled "Case" (not "Casing") | 133 | 2 (a zero-width character in the name: skipped as `bad_chars`) |
+| PC case titled "Casing" | 5 | 136 |
+| RAM typed "Memory" in the title | 70 | 4 (the name's own type word in its core: "AORUS Memory …") |
+| bare-number spec phrase | 0 | 0 |
+| storage descriptions that state RPM / interface / inch | 0 | 108 |
+| gate `identity_lost` (skipped) | 0 | **6** (all titles that cannot hold the capacity within 60 characters) |
+| title_collision | 458 | 444 |
+| title differs from v2.4, ignoring case | – | 281 |
+| keyword != title core + " price in bangladesh" | 0 | 0 |
+| products with a spec row that only copies an attribute (dropped) | – | 20 |
+
+Rows that would be written at minimum 3 / 2 / 0 specs: **227 / 524 / 3496 -> 341 / 681 / 3506**. **Newly skipped: 0 / 0 /
+4** (all four at minimum 0, all `identity_lost`: rows that v2.4 would have written with no capacity in the title).
+**Newly written: 114 / 157 / 14**: the specs the name states (capacity, RPM, interface, speed, kit) count as specs, so drives and RAM
+modules reach the minimum that they did not before. That changes what `--select-batch` offers.
+
+#### Verification (2026-11-11, local)
+
+`tsc` 0 errors; eslint clean on `lib` and `scripts`; `next build` OK (build `ooAyZl2DiFmiCKEVYil1F`, separate worktree); `test:seo-product`
+**1,716** + **163** checks (1,635 + 162 in v2.4). Every v2.4 check passes except the ones that encode v2.4's decision and
+three v2.3 description checks, changed on purpose: "Casing" is the type word (the v2.4 casing tests expected "Case"), and the
+v2.3 Toshiba fixture's description now states the name's RPM / SATA / 3.5-inch
+(it used to keep only the stored "6.0 Gbit/s interface" row: the stored interface row did not read, and a stored fact now blocks a
+name-derived one only when it reads). The project-wide `npm run lint` still reports one error in
+`features/marketing/offer-countdown.tsx`, a file this branch does not touch (identical to main).
+
+#### Needs owner decision (Phase 8 v2.5)
+
+1. **Fix the admin editor at the source.** Every admin save of a product whose attributes are import-script guesses turns the
+   guesses into spec rows that look hand-typed (and the storefront shows them as specs). The generator now ignores copies, but
+   the rows are still stored. Options: stop merging attributes into the editor's spec groups, or post only the groups the admin
+   touched. That is a UI / data-flow change outside this task; I did not make it.
+2. **Find the production Comfo Q OWS row.** Run the dry run on the server and read `claim_sources` for the headset rows: a
+   `spec row "Microphone: Built-in"` is a row someone typed (or inserted); you can correct or delete it in the admin.
+3. **Rows already live keep their text** until they are refreshed from a batch file: v2.4's "Case" titles and the RAM / drive
+   titles without capacity / DDR are `update` rows for `--apply`; the refresh block of the dry run lists any row whose new text is blocked.
+4. **Targus "Wireless"**: the title ladder prefers the "Price in Bangladesh" suffix over descriptive words, so "Wireless" goes
+   before "Combo" is touched. Keeping "Wireless" means a title without the suffix ("Targus AKM610AP Wireless Mouse and Keyboard
+   Combo", 49 characters). Say if you prefer that.
+5. **The 6 `identity_lost` rows** are drives whose name is longer than 60 characters even with the capacity ("SEAGATE STLC8000400 ONE
+   TOUCH HUB 8TB …", flash drives filed under "Portable Hard Disk Drive"); they need a shorter name or a hand-written title.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)

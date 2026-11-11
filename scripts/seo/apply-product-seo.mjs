@@ -292,11 +292,11 @@ function previewRow({ product, result, decision, alt }, chain) {
     new_meta_description: result.metaDescription, new_meta_len: result.metaDescription.length,
     keyword: result.primaryKeyword, secondary_keywords: result.secondaryKeywords.join(" | "),
     flags: result.flags.join("; "), model_tokens_lost: result.modelTokensLost.join(" "), bad_chars: result.badChars.join(" | "), zero_specs: result.zeroSpecs.join(" | "),
-    claim_conflicts: result.claimConflicts.join(" | "), bad_spec_phrases: result.badSpecPhrases.join(" | "), unsupported_claims: result.unsupportedClaims.join(" | "), type: result.type, collision_group: result.collisionGroup ?? "",
+    claim_conflicts: result.claimConflicts.join(" | "), bad_spec_phrases: result.badSpecPhrases.join(" | "), unsupported_claims: result.unsupportedClaims.join(" | "), claim_sources: result.claimSources.join(" | "), identity_lost: result.identityLost.join(" | "), type: result.type, collision_group: result.collisionGroup ?? "",
     new_alt: result.imageAlt, alt_action: alt ? `set (was "${alt.before}")` : "",
   };
 }
-const PREVIEW_HEADER = ["id", "slug", "name", "category", "action", "current_title", "stored_title", "stored_source", "new_title", "new_title_len", "title_rule", "new_meta_description", "new_meta_len", "keyword", "secondary_keywords", "flags", "model_tokens_lost", "bad_chars", "zero_specs", "claim_conflicts", "bad_spec_phrases", "unsupported_claims", "type", "collision_group", "new_alt", "alt_action"];
+const PREVIEW_HEADER = ["id", "slug", "name", "category", "action", "current_title", "stored_title", "stored_source", "new_title", "new_title_len", "title_rule", "new_meta_description", "new_meta_len", "keyword", "secondary_keywords", "flags", "model_tokens_lost", "bad_chars", "zero_specs", "claim_conflicts", "bad_spec_phrases", "unsupported_claims", "claim_sources", "identity_lost", "type", "collision_group", "new_alt", "alt_action"];
 
 async function writePreview(rows, limit) {
   await mkdir(OUT, { recursive: true });
@@ -312,6 +312,7 @@ async function writePreview(rows, limit) {
   const conflicts = rows.filter(({ result }) => result.flags.includes("claim_conflict"));
   const badSpec = rows.filter(({ result }) => result.flags.includes("bad_spec_phrase"));
   const noType = rows.filter(({ result }) => result.flags.includes("unusable_type"));
+  const identityLost = rows.filter(({ result }) => result.flags.includes("identity_lost"));
   const claimDropped = rows.filter(({ result }) => result.flags.includes("unsupported_claim"));
   const claimKinds = new Map();
   for (const { result } of claimDropped) for (const kind of result.unsupportedClaims) claimKinds.set(kind, (claimKinds.get(kind) ?? 0) + 1);
@@ -343,6 +344,8 @@ async function writePreview(rows, limit) {
     ...list(badSpec, ({ product, result }) => `- ${product.slug}: ${result.badSpecPhrases.join("; ")}`),
     `**unusable_type: ${noType.length}** (the category is only a bucket such as "Mobile Accessory" and the name states no product type; never written)${noType.length ? ":" : ""}`,
     ...list(noType, ({ product, chain }) => `- ${product.slug} (${chain[0] ?? "no category"}): ${product.name.slice(0, 70)}`),
+    `**identity_lost: ${identityLost.length}** (the name states a capacity / DDR generation / "Combo" that the title cannot keep within 60 characters; never written)${identityLost.length ? ":" : ""}`,
+    ...list(identityLost, ({ product, result }) => `- ${product.slug}: ${result.identityLost.join(", ")} -> ${result.title}`),
     `**unsupported_claim: ${claimDropped.length}** row(s) had a claim removed because neither the name nor a trusted spec row backs it${claimDropped.length ? ` (${[...claimKinds.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} x${n}`).join(", ")}); ${claimSkipped} of them are now skipped: too few specs left` : ""}${claimDropped.length ? ":" : ""}`,
     ...list(claimDropped, ({ product, result, decision }) => `- ${product.slug}: ${result.unsupportedClaims.join(", ")} removed -> ${decision.action}`),
     ...(generatedRows.length
