@@ -419,7 +419,7 @@ const SHOUTED_WORDS = new Set(
   ).split(" "),
 );
 
-function softenShouting(text: string): string {
+export function softenShouting(text: string): string {
   return text.replace(/\b[A-Z]{2,}\b/gu, (word) =>
     SHOUTED_WORDS.has(word.toLowerCase())
       ? word.charAt(0) + word.slice(1).toLowerCase()

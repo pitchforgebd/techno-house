@@ -41,6 +41,7 @@ import path from "node:path";
 import { config as loadEnvFiles } from "dotenv";
 import { getPrisma } from "@/lib/db/prisma";
 import { productTitle } from "@/lib/seo/page-meta";
+import { countActions, decideApply } from "@/lib/seo/product-seo-apply";
 import {
   SEO_DESC_MAX,
   SEO_DESC_MIN,
@@ -225,24 +226,9 @@ async function generateAll(prisma) {
 // decisions
 // ---------------------------------------------------------------------------
 
-/** What would happen to this product, and why. */
+/** What would happen to this product, and why (lib/seo/product-seo-apply.ts, unit-tested). */
 function decide({ product, result }) {
-  if (result.needsReview) return { action: "skip: needs_review", write: false };
-  if (result.title.length > SEO_TITLE_MAX) return { action: "skip: title over 60", write: false };
-  if (result.metaDescription.length < SEO_DESC_MIN || result.metaDescription.length > SEO_DESC_MAX) {
-    return { action: "skip: description outside 120-155", write: false };
-  }
-  if (result.specsAvailable < 3 && !ALLOW_FEW_SPECS) {
-    return { action: "skip: fewer than 3 specs (use --allow-few-specs)", write: false };
-  }
-  const stored = Boolean(squash(product.metaTitle) || squash(product.metaDescription));
-  if (stored && product.seoSource !== "generated" && !OVERWRITE) {
-    return { action: product.seoSource === "admin" ? "skip: written by hand (use --overwrite)" : "skip: has stored text with no source (use --overwrite)", write: false };
-  }
-  if (stored && squash(product.metaTitle) === result.title && squash(product.metaDescription) === result.metaDescription && product.seoSource === "generated") {
-    return { action: "unchanged", write: false };
-  }
-  return { action: stored ? "update (generated -> new generated)" : "write", write: true };
+  return decideApply(result, product, { overwrite: OVERWRITE, allowFewSpecs: ALLOW_FEW_SPECS });
 }
 
 function altChange({ product, result }) {
@@ -290,22 +276,28 @@ function previewRow({ product, result, decision, alt }, chain) {
     new_title: result.title, new_title_len: result.title.length, title_rule: result.titleRule,
     new_meta_description: result.metaDescription, new_meta_len: result.metaDescription.length,
     keyword: result.primaryKeyword, secondary_keywords: result.secondaryKeywords.join(" | "),
-    flags: result.flags.join("; "), collision_group: result.collisionGroup ?? "",
+    flags: result.flags.join("; "), model_tokens_lost: result.modelTokensLost.join(" "), collision_group: result.collisionGroup ?? "",
     new_alt: result.imageAlt, alt_action: alt ? `set (was "${alt.before}")` : "",
   };
 }
-const PREVIEW_HEADER = ["id", "slug", "name", "category", "action", "current_title", "stored_title", "stored_source", "new_title", "new_title_len", "title_rule", "new_meta_description", "new_meta_len", "keyword", "secondary_keywords", "flags", "collision_group", "new_alt", "alt_action"];
+const PREVIEW_HEADER = ["id", "slug", "name", "category", "action", "current_title", "stored_title", "stored_source", "new_title", "new_title_len", "title_rule", "new_meta_description", "new_meta_len", "keyword", "secondary_keywords", "flags", "model_tokens_lost", "collision_group", "new_alt", "alt_action"];
 
 async function writePreview(rows) {
   await mkdir(OUT, { recursive: true });
   await writeCsv("apply-preview.csv", PREVIEW_HEADER, rows.map((entry) => previewRow(entry, entry.chain)));
-  const counts = new Map();
-  for (const { decision } of rows) counts.set(decision.action, (counts.get(decision.action) ?? 0) + 1);
+  const lost = rows.filter(({ result }) => result.flags.includes("model_token_lost"));
+  const foreign = rows.filter(({ result }) => result.flags.includes("foreign_code"));
+  const noSuffix = rows.filter(({ result }) => result.flags.includes("title_without_price_suffix")).length;
   const lines = [
     `# Product SEO ${APPLY ? "APPLY" : "DRY RUN"}`, "",
     `Database: ${databaseName()} · ${new Date().toISOString()} · ${rows.length} product(s)${BATCH_FILE ? ` from ${BATCH_FILE}` : ""}${LIMIT ? ` (limit ${LIMIT})` : ""}`, "",
     "| action | products |", "|---|---|",
-    ...[...counts.entries()].sort((a, b) => b[1] - a[1]).map(([action, n]) => `| ${action} | ${n} |`), "",
+    ...countActions(rows.map((r) => r.decision)).map(([action, n]) => `| ${action} | ${n} |`), "",
+    `**model_token_lost: ${lost.length}** (never written; model token missing from the title)${lost.length ? ":" : ""}`,
+    ...lost.slice(0, 25).map(({ product, result }) => `- ${product.slug}: lost ${result.modelTokensLost.join(", ")}`),
+    ...(lost.length > 25 ? [`- … ${lost.length - 25} more (column model_tokens_lost in apply-preview.csv)`] : []), "",
+    `foreign_code (a code in the title that is not in the raw name; never written): ${foreign.length}`,
+    `Titles with no "Price in …" suffix (model core + type only, nothing dropped from the core): ${noSuffix}`, "",
     `Alts to change (--apply-alts ${APPLY_ALTS ? "ON" : "off"}): ${rows.filter((r) => r.alt).length}`, "",
     "Review: apply-preview.csv (current vs new title, description, keyword, flags, collision group).",
   ];
