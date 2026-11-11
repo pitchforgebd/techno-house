@@ -9205,3 +9205,21 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       hand-typed; rows identical to an attribute are now dropped
       (`dropMirroredRows`); review CSV columns `claim_sources`, `identity_lost`.
       `test:seo-product` 1,716 + 163. Code only; nothing run on production.
+- [x] AD-407 SEO phase 7 — mobile performance + accessibility (branch
+      `seo-phase-7`, pushed, NOT merged). Detail: `docs/SEO-NOTES.md` "Phase 7
+      findings", "Phase 7 step 0", "Phase 7 step 2". Step 0 (read-only look at
+      production): nginx WebP negotiation + 30-day cache are live and uploads
+      are optimized; the tags loaded through GTM (GA4, Meta Pixel, CAPI param
+      builder) are 764 KB and the main TBT driver (median 1,750 ms) and were NOT
+      changed (proposals only). Code: listing first row eager + first two
+      fetchpriority=high; Inter / Noto Sans Bengali / IBM Plex Mono no longer
+      preloaded (fonts 232 -> 28 KB; a Design Studio font choice still works,
+      loaded on demand); prefetch={false} on product-card links; accessibility
+      100 locally on all five audited pages (aria-current on brand links,
+      aria-disabled Previous/Next, h2 on listing cards, footer links min-h-6,
+      24x24 hero dots, jump-nav ul/li). Skipped: logo (production already serves
+      26.7 KB WebP; admin upload) and Tawk.to (not loaded in production). Local
+      Lighthouse: category 84 -> 93, home 84 -> 92, LCP 4.4 -> 2.5 s. Three
+      suites fail on base too (`test:product-layout`, `test:product-coming-soon`,
+      `test:listing`). No DB, nginx, pm2 or .env change; nothing run on production
+      in the code step.

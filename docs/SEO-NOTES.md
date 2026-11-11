@@ -1964,6 +1964,73 @@ Only items 1 to 5 above (and the CSP list in item 4) can clear the two failing b
 - Item 2 (listing images): `fetchpriority="high"` + eager on the first row only; no loader and no derivatives.
 - Item 6 (Tawk.to): skipped. Tawk is not loaded in production (no request, no tag in the HTML), the chat configuration is database-only so the path cannot be exercised locally without a database write, and the change would have no effect today. When Tawk is enabled, the change is `strategy="lazyOnload"` on the `th-tawkto` script in `components/chat/storefront-chat-widget.tsx`.
 
+### Phase 7 step 2 — what was changed, with before/after numbers
+
+Branch `seo-phase-7`, one cause per commit. No canonical, title, meta, JSON-LD or sitemap code was touched, nothing was run against production in this step,
+no database, nginx, pm2 or `.env` change, no new dependency.
+
+#### How the numbers were taken
+
+- Lighthouse 13.5.0 mobile (simulated Slow 4G + 4x CPU), `next build` + `next start` of each state in a scratch worktree, the **medians** of the stated number of runs.
+- **Calibration.** Local data has a 1.19 MB logo and placeholder images, which makes the header logo, not the first product card, the LCP element, unlike
+  production. So for the Step 2 runs the local logo file was swapped for an 80x58 WebP (a scratch-only change, outside the repo) and the first card became the LCP element, exactly as in production
+  (lazy, no fetchpriority, a load delay). "Before" is the base code (`2d705d5`) measured in that same setup. The earlier Step 1 numbers (81 etc.) used a missing logo and are not comparable.
+- The **category page's LCP is bimodal** after the font change: 2.4 to 2.5 s in about a third of runs, 3.2 to 3.4 s in the rest, so 3-run medians can land on either side
+  (a first 3-run set read 97 and a later 10-run set at the same commit read 93). Larger samples are quoted where it mattered. TBT swung 45 to 825 ms between runs of the same code on this machine
+  (other apps running), so TBT is not used as evidence in either direction.
+
+#### Per item
+
+| # | Commit | Before -> after (local, median) | Production expectation |
+|---|---|---|---|
+| 0 | `695869b` | production evidence, see "Phase 7 step 0" | – |
+| 1 | – | **skipped**: production already serves the logo as a 26.7 KB WebP; it is an admin upload (not a repo file), so replacing it is a data change; a 267x192 WebP would be 11.8 KB (-15 KB) | re-upload in Admin -> Design Studio -> Logo if wanted |
+| 2 | `e3afc4a` | category: LCP resource load delay **212 -> 31 ms**, `lcp-discovery` **fails -> passes** (fetchpriority applied, eager, discoverable); perf 84 -> 84, LCP 4.43 -> 4.35 s (the simulated LCP was bound by the 232 KB of fonts) | production's load delay is 420 to 470 ms, so expect about -400 ms of LCP on the category page |
+| 3 | `f880dfd` | **fonts 6 files / 232 KB -> 1 / 28 KB**; category 84 -> **93** (10 runs, 89 to 97), LCP 4.35 -> 3.2 s (2.4 s in 4 of 10 runs), 599 -> 395 KB; home 84 -> 96; laptop 85 -> 92; **0 differing pixels** in mobile screenshots of home, category and a product page; per-font glyph counts identical | production loads the same six files (225 KB): expect -198 KB per page and, from the Step 1 experiment that blocked the fonts, about +10 points and -1.4 s LCP |
+| 4 | `6d00612` | category `_rsc` prefetches **27 -> 22** (exactly the `/product/*` ones in the lab viewport), requests 48 -> 43, 395 -> 384 KB; perf 93 -> 93 (10 vs 18 runs, no score gain claimed); home 96 -> 97; laptop 92 -> 97 | a real visitor scrolling a 20-card page triggered a prefetch per card; that is gone |
+| 5 | six `a11y:` commits | **accessibility 100 on all five pages**: category 86, home 97, laptop 93, monitor 92, offers 96 -> 100 | production fails the same audits (category 86, home 97): same result expected |
+| 6 | – | **skipped**: Tawk.to is not loaded in production (no Tawk tag or request in the HTML or in six Lighthouse runs) and the chat configuration is database-only, so the path cannot be exercised locally without a DB write; when it is enabled the change is `strategy="lazyOnload"` on the `th-tawkto` script in `components/chat/storefront-chat-widget.tsx` | – |
+
+Whole-branch result, local (base code vs final code, same setup):
+
+| Page | Perf before -> after | LCP before -> after | A11y before -> after | Runs (after) |
+|---|---|---|---|---|
+| /category/laptop | 84 -> **93** (range 89 to 97) | 4.43 -> 2.51 s | 86 -> **100** | 9 |
+| / (home) | 84 -> **92** (range 76 to 97) | 4.45 -> 2.66 s | 97 -> **100** | 11 |
+| laptop product | 85 -> **95** | 4.32 -> 2.58 s | 93 -> **100** | 3 |
+| monitor product | 85 -> **96** | 4.30 -> 2.56 s | 92 -> **100** | 3 |
+| /offers | 85 -> **91** | 4.29 -> 3.35 s | 96 -> **100** | 3 |
+
+A same-session A/B (base build then final build, 6 runs each, back to back, to take machine load out of it): category **84 -> 96**, home **85 -> 93**, LCP 4.40 -> 2.52 s and 4.00 -> 2.65 s.
+CLS was 0.000 in every post-change run but one: 1 of 90 Lighthouse runs (49 of them on the category page) reported 0.122 (the "Laptop Price / Sort By" panel moved). It did not recur in the 60 or so Lighthouse runs after it,
+nor in 40 unthrottled and 16 throttled browser loads of the category page, so it is recorded here as an unexplained one-off, not as a finding (the 6 category runs before any change were all 0.000, which is too few to say it is older than this branch). TBT stayed inside the run-to-run noise.
+
+#### What changed visibly (everything else is pixel-identical, checked by screenshot diff)
+
+Compared on home, category and a product page with the promo popup suppressed: the top of every page is identical except the home hero's dots, and below that only the footer differs.
+
+- **Footer contact links** are 24 px tall (were 19.6): the footer is 8 to 9 px taller. Needed for the tap-target audit.
+- **Hero slider dots** are 24x24 tap targets with the same dot inside; the gap between inactive dots goes from 8 to 14 px (24 px targets cannot sit closer). 212 pixels differ in the home screenshot.
+- Card titles on listing pages are `h2` instead of `h3` (same classes); the compact card on home and related products stays `h3`. The heading outline of a category page now has about 20 h2 product titles.
+- The product page's section jump-nav is a `ul` / `li` list (same look); the disabled Previous / Next are `role="link" aria-disabled="true"`.
+
+#### Checks
+
+`tsc --noEmit` clean; `eslint` clean on every changed file (the whole repo has 1 error and 8 warnings, none in these files: `features/marketing/offer-countdown.tsx` `set-state-in-effect`, unchanged);
+`test:seo` 92, `test:seo-canonical` 34, `test:seo-meta` 383, `test:seo-phase5` 198, `test:seo-phase6` 59, `test:seo-product` 163, `test:seo-product-meta` 11, `seo:check-schema --offline` 49, `test:security` 27,
+`test:a11y` 10, `test:bundle` 10, `test:storefront-links` 95, `test:product-specifications` 10 (one assertion updated to the new `ul`), `test:theme` 230 all pass; `npm run build` passes.
+`test:regression` runs 19 suites: 17 pass, **2 fail and fail identically on the untouched base code** (`product-layout`: "similar-products rail ... sticky"; `product-coming-soon`: "Stock/Model/SKU/Brand pills all use size md"), and
+`test:listing` (not in the regression list) has one stale assertion ("the detailed card shows the SKU") that also fails on base. They read files this branch did not touch; not fixed here.
+
+#### What this does not fix, and what it means for production
+
+- **Production Performance will not reach 85 on these commits alone.** The score is 30% TBT, and production's category TBT is a median of 1,750 ms, almost all of it the GTM-loaded tags (Step 0).
+  Rough arithmetic with Lighthouse's weights: LCP 4.0 -> about 2.5 to 3.2 s adds roughly 8 to 10 points to production's 60, so about 68 to 72 for the category page (an estimate, not a measurement);
+  reaching 85 needs TBT under about 500 ms, i.e. one or more of the tag proposals in Step 0, which were not implemented.
+- Not approved, left as listed in Step 1: JS island deferral, inline CSS, RSC payload trimming, layout caching, polyfills, static-asset cache headers.
+- Noticed, not done: the `/offers` cards are lazy too (LCP load delay 285 ms locally; the offer card is a different component); the home hero's preload lacks `fetchpriority` on production's audit; the 15 KB logo re-upload above.
+- A derivative-image pipeline is **not justified**: production already serves 6 to 21 KB WebP cards.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
