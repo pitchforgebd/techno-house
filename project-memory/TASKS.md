@@ -9132,3 +9132,18 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `scripts/seo/apply-product-seo.mjs`: dry run default, --apply
       --confirm-db, JSON backup, --restore, admin text protected,
       --select-batch, --apply-alts (off). NOT run on production.
+
+- [x] AD-402 SEO phase 8 FIX — generator v2.1, model identity (branch
+      `seo-phase-8-fix`, pushed, NOT merged). Detail: `docs/SEO-NOTES.md`
+      "Phase 8 fix". Production dry-run (413 products) lost model words
+      ("A ELITE WF7", "H ARGB", "PRO"), used a SKU code ("GIG-B550M-5"), wrote
+      Headphone for a Headset, a keyword that differed from the title, and
+      "with <adjective list>" descriptions. v2.1: model core = brand + raw name
+      up to the first spec boundary, never cut; model run + droppable tail rules
+      (entropy-aware); title ladder Price in Bangladesh -> Price in BD -> core
+      alone, over 60 refused; no SKU/modelNumber codes; the name's own type word
+      when it agrees with the category; keyword = title core; per-family natural
+      descriptions; `model_token_lost` / `foreign_code` gates in the pure
+      `lib/seo/product-seo-apply.ts` (skip, counted + listed in the dry-run
+      summary). Tests `npm run test:seo-product` 928 (was 369). Code only: no
+      schema change, no migration. NOT run on production.
