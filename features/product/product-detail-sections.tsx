@@ -115,27 +115,32 @@ export function ProductDetailSections({
 
   return (
     <section ref={containerRef} aria-label="Product details">
-      <div className="flex flex-wrap gap-2" role="list">
+      {/* A real list: an ARIA list role on a div whose children are buttons
+          is not valid (a list may only contain list items). */}
+      <ul className="flex flex-wrap gap-2">
         {sections.map((section) => {
           const active = section.id === activeId;
           return (
-            <button
-              key={section.id}
-              type="button"
-              aria-current={active ? "true" : undefined}
-              className={cn(
-                "min-h-11 min-w-[7.5rem] rounded-sm border px-4 text-label font-semibold transition-colors sm:min-w-[8.5rem]",
-                active
-                  ? "border-text bg-text text-primary-foreground"
-                  : "border-border bg-surface text-text hover:bg-surface-muted",
-              )}
-              onClick={() => jumpTo(section.id)}
-            >
-              {section.label}
-            </button>
+            // `flex` so the button is blockified: a bare inline-block button in
+            // an <li> sits on a text baseline and adds a few px under itself.
+            <li key={section.id} className="flex">
+              <button
+                type="button"
+                aria-current={active ? "true" : undefined}
+                className={cn(
+                  "min-h-11 min-w-[7.5rem] rounded-sm border px-4 text-label font-semibold transition-colors sm:min-w-[8.5rem]",
+                  active
+                    ? "border-text bg-text text-primary-foreground"
+                    : "border-border bg-surface text-text hover:bg-surface-muted",
+                )}
+                onClick={() => jumpTo(section.id)}
+              >
+                {section.label}
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       {sections.map((section, index) => (
         <div
