@@ -19,7 +19,16 @@ export type StoredMeta = {
   seoSource: string | null;
 };
 
-export type ApplyOptions = { overwrite?: boolean; allowFewSpecs?: boolean };
+/** Fewest specs a description must state before a row is written (the default). */
+export const DEFAULT_MIN_SPECS = 3;
+
+/**
+ * `minSpecs` is the explicit minimum (0-4). `allowFewSpecs` is the old switch for "no minimum" (= 0); an
+ * explicit `minSpecs` wins over it. Neither: DEFAULT_MIN_SPECS.
+ */
+export type ApplyOptions = { overwrite?: boolean; allowFewSpecs?: boolean; minSpecs?: number };
+export const effectiveMinSpecs = (options: ApplyOptions = {}): number =>
+  options.minSpecs ?? (options.allowFewSpecs ? 0 : DEFAULT_MIN_SPECS);
 export type ApplyDecision = { action: string; write: boolean };
 
 const squash = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
@@ -39,8 +48,15 @@ export function decideApply(
   if (result.metaDescription.length < SEO_DESC_MIN || result.metaDescription.length > SEO_DESC_MAX) {
     return { action: "skip: description outside 120-155", write: false };
   }
-  if (result.specsAvailable < 3 && !options.allowFewSpecs) {
-    return { action: "skip: fewer than 3 specs (use --allow-few-specs)", write: false };
+  const minSpecs = effectiveMinSpecs(options);
+  if (result.specsAvailable < minSpecs) {
+    return {
+      action:
+        minSpecs === DEFAULT_MIN_SPECS
+          ? "skip: fewer than 3 specs (use --allow-few-specs)"
+          : `skip: fewer than ${minSpecs} specs (--min-specs=${minSpecs})`,
+      write: false,
+    };
   }
   const hasStored = Boolean(squash(stored.metaTitle) || squash(stored.metaDescription));
   if (hasStored && stored.seoSource !== "generated" && !options.overwrite) {
