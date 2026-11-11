@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import { formFactorOf, formFactorsIn } from "@/lib/catalog/form-factor";
 import { extractGpuChipFromName, extractGpuMemoryFromName } from "@/lib/catalog/gpu-extract";
 import { extractNameSpecs, plainNumber } from "@/lib/catalog/spec-extract";
-import { applyCasing } from "@/lib/seo/casing";
+import { PLAIN_WORDS, applyCasing, softenPlainWords, standardType } from "@/lib/seo/casing";
 import { claimEvidence, findBadSpecPhrases, unsupportedClaims } from "@/lib/seo/claims";
 import { countActions, decideApply, isStaleGenerated, rowsToWrite } from "@/lib/seo/product-seo-apply";
 import {
@@ -1008,6 +1008,70 @@ check("the real-name fixtures are unique in the set", new Set(realSet.map((r) =>
     equal("the refresh dry run counts every row: nothing is silent", countActions(rows.map((r) => r.decision)).map(([a, n]) => `${a}=${n}`).sort().join(" | "), ["skip: claim_conflict (generated text stays live)=1", "skip: has stored text with no source (use --overwrite)=1", "skip: written by hand (use --overwrite)=1", "unchanged=1", "update=1", "write=1"].sort().join(" | "));
     equal("an alt-only change still goes through rowsToWrite (opt-in --apply-alts)", rowsToWrite([{ id: "alt", decision: decideApply(next, same), alt: { imageId: "i" } }]).length, 1);
   }
+}
+
+// --- v2.4 (cosmetic): shouted plain English words are normal words; the type word is the standard one ------------
+
+{
+  const unit: [string, string][] = [
+    ["MID-TOWER", "Mid-Tower"], ["MOTHERBOARD", "Motherboard"], ["CASING", "Casing"], ["KEYBOARD", "Keyboard"], ["GAMING", "Gaming"],
+    ["MECHANICAL", "Mechanical"], ["BLACK", "Black"], ["(BLACK)", "(Black)"], ["BLACK,", "Black,"], ["MICRO", "Micro"],
+    // kept: brands, model lines, acronyms, standards, model codes (a digit)
+    ["MSI", "MSI"], ["AORUS", "AORUS"], ["MORTAR", "MORTAR"], ["RGB", "RGB"], ["ARGB", "ARGB"], ["ATX", "ATX"], ["M-ATX", "M-ATX"],
+    ["DDR5", "DDR5"], ["WIFI6E", "WIFI6E"], ["WIFI", "WIFI"], ["PSU", "PSU"], ["B650-PLUS", "B650-PLUS"], ["K552", "K552"], ["WF7", "WF7"],
+    ["Gaming", "Gaming"], ["black", "black"],
+  ];
+  for (const [input, expected] of unit) equal(`softenPlainWords("${input}")`, softenPlainWords(input), expected);
+  equal("standard type: CASING", standardType("CASING"), "Case");
+  equal("standard type: Casing", standardType("Casing"), "Case");
+  equal("standard type: Case", standardType("Case"), "Case");
+  equal("standard type: Keyboard is untouched", standardType("Keyboard"), "Keyboard");
+
+  let k = 0;
+  const mk = (name: string, brand: string, chain: string[]): SeoProductInput => {
+    k += 1;
+    return { id: `cap-${k}`, name, brand, categoryChain: chain, sku: `CAP-${k}`, modelNumber: null, specs: [] };
+  };
+  const CASE = ["Casing", "Component"];
+  const MB = ["Motherboard", "Component"];
+  const fx2: [string, SeoProductInput, string[], string[]][] = [
+    // [label, input, must be in the title, must NOT be in the title or description]
+    ["Xtreme M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS", mk("XTREME M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS WITH 3 ARGB FAN WITHOUT PSU", "Xtreme", CASE), ["Xtreme M95B Mini Tower M-ATX Black Case Tempered Glass"], ["MINI TOWER", "BLACK", "TEMPERED", "CASE "]],
+    ["Xtreme C31B M-ATX BLACK CASE", mk("XTREME C31B M-ATX BLACK CASE TEMPERED GLASS WITH 3 RGB FAN WITHOUT PSU", "Xtreme", CASE), ["Xtreme C31B M-ATX Black Case Tempered Glass"], ["BLACK", "TEMPERED"]],
+    ["Delux J601 MICRO ATX COMPUTER CASE", mk("DELUX J601 MICRO ATX COMPUTER CASE WITH 200W REAL POWER SUPPLY, 2Y WARRANTY FOR PSU", "Delux", CASE), ["Delux J601 Micro ATX Computer Case"], ["MICRO", "COMPUTER"]],
+    ["MSI B760M GAMING PLUS WIFI 6E M-ATX", mk("MSI B760M GAMING PLUS WIFI 6E M-ATX", "MSI", MB), ["MSI B760M Gaming Plus"], ["GAMING"]],
+    ["MSI MAG B860M MORTAR ... MOTHERBOARD", mk("MSI MAG B860M MORTAR WIFI LGA 1851 M-ATX MOTHERBOARD", "MSI", MB), ["MSI MAG B860M MORTAR", "Motherboard"], ["MOTHERBOARD"]],
+    ["GIGABYTE B650 AORUS ELITE AX ICE WIFI6E ATX MOTHERBOARD DDR5", mk("GIGABYTE B650 AORUS ELITE AX ICE WIFI6E ATX MOTHERBOARD DDR5", "Gigabyte", MB), ["B650 AORUS ELITE AX ICE WIFI6E ATX Motherboard DDR5"], ["MOTHERBOARD"]],
+    ["Redragon K552 KUMARA MECHANICAL GAMING KEYBOARD BLACK RGB", mk("REDRAGON K552 KUMARA MECHANICAL GAMING KEYBOARD BLACK RGB", "Redragon", ["Keyboard", "Accessories"]), ["K552 KUMARA Mechanical Gaming Keyboard Black RGB"], ["MECHANICAL", "KEYBOARD", "BLACK"]],
+    ["a hyphenated word: MID-TOWER", mk("ACME X100 MID-TOWER ATX GAMING CASE", "Acme", CASE), ["Acme X100 Mid-Tower ATX Gaming Case"], ["MID-TOWER", "GAMING"]],
+    ["ASUS TUF GAMING B650-PLUS (a model code with a word inside it is kept)", mk("ASUS TUF GAMING B650-PLUS WIFI DDR5 ATX MOTHERBOARD", "ASUS", MB), ["TUF Gaming B650-PLUS"], ["MOTHERBOARD"]],
+  ];
+  const results = fx2.map(([, input]) => generateProductSeo(input));
+  fx2.forEach(([label, , must, mustNot], i) => {
+    const r = results[i]!;
+    for (const text of must) check(`${label}: title has "${text}"`, r.title.includes(text), r.title);
+    const both = `${r.title} ${r.metaDescription}`;
+    for (const text of mustNot) check(`${label}: no shouted "${text.trim()}" left`, !both.includes(text), both);
+    check(`${label}: no model token lost, keyword = title core + " price in bangladesh"`, !r.flags.includes("model_token_lost") && r.primaryKeyword === `${r.titleCore.toLowerCase()} price in bangladesh`, `${r.flags.join()} :: ${r.primaryKeyword}`);
+  });
+  // The type word is the standard one.
+  const onlyCasing = generateProductSeo(mk("XTREME C77 CASING TEMPERED GLASS BLACK", "Xtreme", CASE));
+  check("a name whose only type word is CASING: the type is Case", onlyCasing.type === "Case" && /\bCase\b/.test(onlyCasing.title) && !/casing/i.test(onlyCasing.title), `${onlyCasing.type} | ${onlyCasing.title}`);
+  const categoryCasing = generateProductSeo(mk("Xtreme C41 Tempered Glass Black", "Xtreme", CASE));
+  check("a category called Casing and no type word in the name: the type is Case", categoryCasing.type === "Case" && /Black Case Price/.test(categoryCasing.title) && !/casing/i.test(categoryCasing.title), `${categoryCasing.type} | ${categoryCasing.title}`);
+  const both = generateProductSeo(mk("CORSAIR CASING Crystal Series 280X RGB Tempered Glass Micro ATX White Case # CC-9011137-WW", "Corsair", CASE));
+  check("a name with Casing AND Case keeps both words (Casing is part of the line, Case is the type)", /Corsair Casing Crystal Series 280X RGB Case/.test(both.title), both.title);
+  // No plain English word stays shouted anywhere in the output of the fixtures of this file.
+  const every = [...results, onlyCasing, categoryCasing, both, ...set, ...realSet];
+  const shouted = (r: SeoResult) =>
+    // whole whitespace tokens: a token with a digit is a model code ("B650-PLUS") and is exempt; "MID-TOWER" is checked per part
+    `${r.title} ${r.metaDescription}`
+      .split(/\s+/)
+      .map((token) => token.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, ""))
+      .filter((token) => token && !/\d/.test(token))
+      .flatMap((token) => token.split("-"))
+      .filter((word) => /^[A-Z]{2,}$/.test(word) && PLAIN_WORDS.has(word.toLowerCase()));
+  check("no dictionary word is left shouted in any title or description of the fixtures", every.every((r) => shouted(r).length === 0), every.filter((r) => shouted(r).length > 0).map((r) => `${r.title} [${shouted(r).join()}]`).join(" | "));
 }
 
 // --- stored meta helpers -------------------------------------------------------

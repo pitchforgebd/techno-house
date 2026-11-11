@@ -21,7 +21,7 @@
 import { formFactorOf, formFactorsIn } from "@/lib/catalog/form-factor";
 import { extractGpuChipFromName, extractGpuMemoryFromName } from "@/lib/catalog/gpu-extract";
 import { extractNameSpecs, type NameSpecs } from "@/lib/catalog/spec-extract";
-import { applyCasing, casingOfToken, isShoutedWord, titleCaseShouted } from "@/lib/seo/casing";
+import { applyCasing, casingOfToken, isShoutedWord, softenPlainWords, standardType, titleCaseShouted } from "@/lib/seo/casing";
 import { claimEvidence, findBadSpecPhrases, unsupportedClaims } from "@/lib/seo/claims";
 import { cutAtWord, softenShouting } from "@/lib/seo/page-meta";
 
@@ -696,7 +696,13 @@ export function analyseName(input: SeoProductInput, categoryHeads: string[] = []
     }
     core[i] = token;
   }
+  // v2.4: plain English words the name SHOUTS ("BLACK", "CASE", "TEMPERED", "MID-TOWER") are ordinary words, also inside the
+  // model run. Model codes (a digit) and acronyms / line names (not in the dictionary) are left as written.
+  for (let i = brandLen; i < core.length; i += 1) core[i] = softenPlainWords(core[i] ?? "");
   const typeIdxs = findTypeIdxs(core, brandLen, categoryHeads, groups);
+  // The standard type word: a name's "CASING" is a "Case".
+  const lastType = Math.max(-1, ...typeIdxs);
+  if (lastType >= 0) core[lastType] = standardType(core[lastType] ?? "");
   let restType: string | null = null;
   const restIdx = [...findTypeIdxs(rest, 0, [])][0];
   // "(A3 Flatebed Scanner)," -> "Scanner": edge punctuation is never part of the type word.
@@ -835,13 +841,13 @@ function prepare(input: SeoProductInput): Prep {
   const typeInCore = name.typeIdxs.size > 0;
   let type = "";
   if (typeInCore) {
-    type = name.core[Math.max(...name.typeIdxs)] ?? "";
+    type = standardType(name.core[Math.max(...name.typeIdxs)] ?? "");
   } else {
     // The raw name's own word wins when it agrees with the category ("Headset" for a Headphone category);
     // otherwise the category's type.
     const restGroup = name.restType ? typeGroupOf(name.restType) : null;
     const agrees = restGroup !== null && typeList.some((t) => typeGroupOf(t) === restGroup);
-    type = name.restType && agrees ? name.restType : typeList[0] ?? name.restType ?? "";
+    type = standardType(name.restType && agrees ? name.restType : typeList[0] ?? name.restType ?? "");
   }
   const evidence = claimEvidence(input.name, input.categoryChain, input.specs);
   const refused: string[] = [];
@@ -1300,7 +1306,7 @@ const SPEC_NAME_TOKEN = /^(?:\d+(?:\.\d+)?(?:gb|tb|mb|mhz|ghz|w|va|mah|inch|"|mm
 type Distinguisher = { kind: string; text: string };
 
 /** A raw-name token used as a collision extra: brackets / quotes removed, "14inch" -> "14 inch", canonical case. */
-const cleanExtra = (token: string) => applyCasing(token.replace(/[()[\],"“”]/g, "").replace(/^(\d+(?:\.\d+)?)inch$/i, "$1 inch"));
+const cleanExtra = (token: string) => softenPlainWords(applyCasing(token.replace(/[()[\],"“”]/g, "").replace(/^(\d+(?:\.\d+)?)inch$/i, "$1 inch")));
 
 /**
  * What tells this product apart from the rest of its colliding group: a spec
