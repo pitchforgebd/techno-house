@@ -32,6 +32,7 @@ import { config as loadEnvFiles } from "dotenv";
 loadEnvFiles({ path: [".env.local", ".env"], quiet: true });
 
 import { getPrisma } from "../../lib/db/prisma";
+import { formFactorOf, formFactorsIn } from "../../lib/catalog/form-factor";
 import { extractRamFromName, extractStorageSizeFromName } from "../../lib/catalog/spec-extract";
 
 type Extractor = { key: string; extract: (name: string) => string | null };
@@ -97,11 +98,13 @@ function extractSocket(name: string): string | null {
 }
 
 function extractMbFormFactor(name: string): string | null {
-  if (/mini-?itx/i.test(name)) return "Mini-ITX";
-  if (/e-?atx/i.test(name)) return "E-ATX";
-  if (/micro-?atx/i.test(name) || /\bm-?atx\b/i.test(name) || /\b[A-Z]\d{2,3}M\b/.test(name))
-    return "Micro-ATX";
-  if (/\batx\b/i.test(name)) return "ATX";
+  // The words first, in every spelling (M-ATX, mATX, M.ATX, MicroATX, Micro ATX, E-ATX, EATX, Mini ITX ...; a bare ATX
+  // only without a prefix): lib/catalog/form-factor.ts, shared with the SEO generator.
+  const written = formFactorOf(name);
+  if (written) return written;
+  // Chipset conventions, kept for the catalogue filter (the SEO generator does not use them: it states a form
+  // factor only where the name or a stored spec row WRITES it).
+  if (/\b[A-Z]\d{2,3}M\b/.test(name)) return "Micro-ATX";
   // Gigabyte-style chipset code with no "M" suffix conventionally means
   // full-size ATX (e.g. "X870 GAMING WF6", "B650 EAGLE AX").
   if (/\b[ABHXZ]\d{2,3}[A-Z]?\b(?!M)/.test(name)) return "ATX";
@@ -109,11 +112,11 @@ function extractMbFormFactor(name: string): string | null {
 }
 
 function extractCasingFormFactor(name: string): string | null {
-  if (/mini-?itx/i.test(name)) return "Mini-ITX";
-  if (/e-?atx/i.test(name)) return "E-ATX";
-  if (/micro-?atx/i.test(name)) return "Micro-ATX";
+  const forms = formFactorsIn(name);
+  const only = forms.length === 1 ? forms[0] : undefined;
+  if (only && only !== "ATX") return only; // Mini-ITX / E-ATX / Micro-ATX, any spelling ("Micro ATX" and "M-ATX" were read as ATX)
   if (/(mid|full)[\s-]?(tower|case)\b/i.test(name) || /\btower\b/i.test(name)) return "Tower";
-  if (/\batx\b/i.test(name)) return "ATX";
+  if (only) return "ATX";
   return null;
 }
 

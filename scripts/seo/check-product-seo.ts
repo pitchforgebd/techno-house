@@ -15,9 +15,12 @@
  * determinism (also independent of input order), wording variants exist.
  */
 import { readFileSync } from "node:fs";
+import { formFactorOf, formFactorsIn } from "@/lib/catalog/form-factor";
+import { extractGpuChipFromName, extractGpuMemoryFromName } from "@/lib/catalog/gpu-extract";
 import { extractNameSpecs, plainNumber } from "@/lib/catalog/spec-extract";
-import { applyCasing } from "@/lib/seo/casing";
-import { countActions, decideApply } from "@/lib/seo/product-seo-apply";
+import { PLAIN_WORDS, applyCasing, softenPlainWords, standardType } from "@/lib/seo/casing";
+import { claimEvidence, findBadSpecPhrases, unsupportedClaims } from "@/lib/seo/claims";
+import { countActions, decideApply, isStaleGenerated, rowsToWrite } from "@/lib/seo/product-seo-apply";
 import {
   findBadChars,
   findZeroSpecs,
@@ -26,6 +29,7 @@ import {
   hashId,
   isJunkValue,
   dropTitleRepeats,
+  findFormFactorConflicts,
   pickSpecPhrases,
   pickSpecs,
   planSeoMetaWrite,
@@ -176,7 +180,7 @@ check("phrases never repeat a word", pickSpecPhrases([{ label: "RAM", value: "16
   check("motherboard: socket, chipset, form factor, memory type", ["AM5 socket", "B650 chipset", "Micro-ATX form factor", "DDR5 memory"].every((s) => picked(family[2]!).includes(s)), picked(family[2]!).join(" | "));
   check("monitor and motherboard descriptions carry 3+ of their specs", monitor.specsUsed.length >= 3 && mb.specsUsed.length >= 3, `${monitor.specsUsed.length} / ${mb.specsUsed.length}`);
   const gpu = generateProductSeo(family[3]!);
-  check("gpu: chip + VRAM", gpu.specsUsed[0]?.includes("RTX 4060 Ti") && gpu.specsUsed.some((s) => s.includes("8GB GDDR6 VRAM")), gpu.specsUsed.join(" | "));
+  check("gpu: chip + VRAM", gpu.specsUsed[0]?.includes("RTX 4060 Ti") && gpu.specsUsed.some((s) => s === "8GB GDDR6"), gpu.specsUsed.join(" | "));
   const cpu = generateProductSeo(family[4]!);
   check("processor: cores, threads, base/boost", ["6 cores", "12 threads", "4.7GHz base", "5.3GHz boost"].every((s) => picked(family[4]!).includes(s)), picked(family[4]!).join(" | "));
   check("processor description carries 3+ specs", cpu.specsUsed.length >= 3, cpu.specsUsed.join(" | "));
@@ -410,7 +414,13 @@ check("model fixtures: all keywords unique", new Set(set.map((r) => r.primaryKey
   const boards = set.slice(-7).map((r) => r.title);
   check("7 B650 boards with different model lines keep their own line words", new Set(boards).size === 7 && boards.every((t) => /B650/i.test(t)), boards.join(" | "));
 }
-check("the five production samples: headset description reads naturally (stored specs say over-ear and built-in microphone)", /wired over-ear headset with built-in mic(?:rophone)?\./.test(generateProductSeo(inputs[2]!).metaDescription), generateProductSeo(inputs[2]!).metaDescription);
+// v2.4: "Over-ear" is a stored spec ROW and stays; "Wired" and the built-in microphone exist only as ATTRIBUTES (the import
+// script's guesses) and the name says neither, so those two claims are dropped (they were "wired over-ear headset with built-in microphone").
+{
+  const hs50 = generateProductSeo(inputs[2]!);
+  check("the five production samples: headset keeps the row's over-ear and drops the attribute-only claims", /over-ear headset\./.test(hs50.metaDescription) && !/micro|wired|built-in/i.test(hs50.metaDescription) && hs50.unsupportedClaims.includes("microphone") && hs50.unsupportedClaims.includes("wired") && hs50.flags.includes("unsupported_claim"), `${hs50.metaDescription} :: ${hs50.unsupportedClaims.join()}`);
+  check("the five production samples: headset title unchanged", hs50.title === "Corsair HS50 PRO STEREO Gaming Headset Price in Bangladesh", hs50.title);
+}
 check("monitor description: '27 inch 3840x2160 IPS monitor, 60Hz'", /27 inch 3840x2160 IPS monitor, 60Hz/.test(generateProductSeo(inputs[modelFx.findIndex((m) => m.name.startsWith("LG 27UP"))]!).metaDescription), generateProductSeo(inputs[modelFx.findIndex((m) => m.name.startsWith("LG 27UP"))]!).metaDescription);
 check("generator is deterministic and order-independent for the v2.1 set", JSON.stringify(generateProductSeoSet([...inputs].reverse()).reverse().map((r) => r.title)) === JSON.stringify(set.map((r) => r.title)));
 
@@ -444,7 +454,7 @@ check("generator is deterministic and order-independent for the v2.1 set", JSON.
   const lostDecision = decideApply(lost, stored);
   check("decideApply: model_token_lost -> skip, never written", lostDecision.action === "skip: model_token_lost" && lostDecision.write === false, lostDecision.action);
   check("decideApply: model_token_lost beats --overwrite", decideApply(lost, { metaTitle: "x", metaDescription: "y", seoSource: "admin" }, { overwrite: true }).write === false);
-  check("decideApply: model_token_lost beats 'unchanged'", decideApply(lost, { metaTitle: ok.title, metaDescription: ok.metaDescription, seoSource: "generated" }).action === "skip: model_token_lost");
+  check("decideApply: model_token_lost beats 'unchanged'", decideApply(lost, { metaTitle: ok.title, metaDescription: ok.metaDescription, seoSource: "generated" }).action === "skip: model_token_lost (generated text stays live)");
   check("decideApply: foreign_code -> skip", decideApply({ ...ok, flags: [...ok.flags, "foreign_code"], needsReview: true }, stored).action === "skip: foreign_code");
   check("decideApply: hand-written text is kept without --overwrite", decideApply(ok, { metaTitle: "Mine", metaDescription: null, seoSource: "admin" }).action === "skip: written by hand (use --overwrite)");
   check("decideApply: --overwrite replaces it", decideApply(ok, { metaTitle: "Mine", metaDescription: null, seoSource: "admin" }, { overwrite: true }).write === true);
@@ -496,7 +506,7 @@ real.forEach((r, i) => {
     // an unsupported form-factor claim: only when the raw name says it (the stored attribute here is the import script's guess)
     const claimed = result.metaDescription.match(FORM_WORDS)?.[0] ?? null;
     check(`${where}: form factor claimed only if the raw name says it`, !claimed || new RegExp(claimed.replace("-", "[- ]?"), "i").test(r.name), `${claimed} | ${result.metaDescription}`);
-    check(`${where}: no shouted brand / line word left (LATITUDE, OPTIPLEX, INTEL)`, ![result.title, result.metaDescription].some((x) => /(?:LATITUDE|OPTIPLEX|INTEL|CORE)/.test(x)), result.title);
+    check(`${where}: no shouted brand / line word left (LATITUDE, OPTIPLEX, INTEL)`, ![result.title, result.metaDescription].some((x) => /\b(?:LATITUDE|OPTIPLEX|INTEL|CORE)\b/.test(x)), result.title);
     for (const token of r.must ?? []) check(`${where}: keeps "${token}"`, words(result.title).includes(token.toLowerCase()), result.title);
     for (const word of r.never ?? []) check(`${where}: never "${word}"`, ![result.title, result.primaryKeyword, result.metaDescription].some((x) => x.toLowerCase().includes(word.toLowerCase())), `${result.title} | ${result.metaDescription}`);
   }
@@ -737,6 +747,331 @@ check("the real-name fixtures are unique in the set", new Set(realSet.map((r) =>
     return r.specsUsed.length === 0 && /^Logitech G102 Gaming Mouse\. See full specifications on the product page\. (?:Check price|Price) and availability at Techno House\. Delivery/.test(r.metaDescription);
   })(), results[0]!.metaDescription);
   check("the claim checker itself catches an invented claim", unsupported({ ...results[0]!, metaDescription: "Logitech G102 Gaming Mouse: wireless, 16000 DPI. Price and availability at Techno House." }, cases[0]![0]).join() === "wireless,16000");
+}
+
+// --- v2.4: claim accuracy -------------------------------------------------------------------------------------
+
+{
+  let k = 0;
+  type Shape = SpecFact[];
+  const mk = (name: string, brand: string, chain: string[], specs: Shape = []): SeoProductInput => {
+    k += 1;
+    return { id: `v24-${k}`, name, brand, categoryChain: chain, sku: `V24-${k}`, modelNumber: null, specs };
+  };
+  const attr = (key: string, label: string, value: string): SpecFact => ({ key, label, value });
+  const row = (label: string, value: string): SpecFact => ({ label, value });
+  const MB = ["Motherboard", "Component"];
+  const CASE = ["Casing", "Component"];
+  const HP = ["Headphone", "Accessories"];
+  const PHONE = ["Mobile Accessories", "Phone"];
+  const GPU = ["Graphics Card", "Component"];
+  const plainAtx = (text: string) => /(^|[^-\w])ATX form factor/.test(text); // "Micro-ATX form factor" / "E-ATX form factor" do not count
+  const keywordOk = (r: SeoResult) => r.primaryKeyword === `${r.titleCore.toLowerCase()} price in bangladesh`;
+  const fixtures: SeoResult[] = [];
+  const gen = (input: SeoProductInput) => {
+    const r = generateProductSeo(input);
+    fixtures.push(r);
+    return r;
+  };
+
+  // 1) The parser: every spelling, and a bare ATX only without a prefix.
+  const spellings: [string, string | null][] = [
+    ["M-ATX", "Micro-ATX"], ["mATX", "Micro-ATX"], ["M.ATX", "Micro-ATX"], ["MicroATX", "Micro-ATX"], ["Micro ATX", "Micro-ATX"],
+    ["Micro-ATX", "Micro-ATX"], ["micro atx", "Micro-ATX"], ["uATX", "Micro-ATX"], ["M ATX", "Micro-ATX"],
+    ["E-ATX", "E-ATX"], ["EATX", "E-ATX"], ["E ATX", "E-ATX"], ["Extended ATX", "E-ATX"],
+    ["Mini-ITX", "Mini-ITX"], ["Mini ITX", "Mini-ITX"], ["mITX", "Mini-ITX"], ["ITX", "Mini-ITX"],
+    ["ATX", "ATX"], ["Standard ATX Mid Tower", "ATX"], ["Platinum ATX", "ATX"],
+    ["MSI MAG B860M MORTAR WIFI LGA 1851 M-ATX MOTHERBOARD", "Micro-ATX"],
+    ["MSI B760M GAMING PLUS WIFI 6E M-ATX", "Micro-ATX"],
+    ["MSI PRO B850M-B GEN4 AM5 M-ATX", "Micro-ATX"],
+    ["MSI MEG X870E GODLIKE WiFi 7 AMD AM5 E-ATX", "E-ATX"],
+    ["CORSAIR iCUE LINK 2500X RGB Micro ATX Dual Chamber PC Case - Black", "Micro-ATX"],
+    ["MSI B450M-A PRO MAX II", null], // a chipset "M" is not a statement; nothing is claimed
+    ["650W ATX12V Power Supply", null], // ATX12V is the PSU standard, not a form factor word
+    ["ATX / Micro-ATX / Mini-ITX", null], // lists several: nothing is claimed
+  ];
+  for (const [text, expected] of spellings) equal(`form factor of "${text}"`, formFactorOf(text), expected);
+  equal("a list keeps all three", formFactorsIn("Supports ATX, M-ATX and Mini ITX").join("|"), "Mini-ITX|Micro-ATX|ATX");
+  check("the import script reads the form factor with the shared parser", (() => {
+    const source = readFileSync("scripts/deploy/populate-import-attributes.ts", "utf8");
+    return source.includes('from "../../lib/catalog/form-factor"') && /extractMbFormFactor[\s\S]{0,400}formFactorOf\(name\)/.test(source) && /extractCasingFormFactor[\s\S]{0,200}formFactorsIn\(name\)/.test(source);
+  })());
+
+  // 2) Motherboards and cases: the form factor comes from the name or a spec ROW, never from the stored attribute.
+  const boards: [string, SeoProductInput, string | null][] = [
+    ["MSI MAG B860M MORTAR WIFI (M-ATX)", mk("MSI MAG B860M MORTAR WIFI LGA 1851 M-ATX MOTHERBOARD", "MSI", MB, [attr("socket", "Socket", "LGA1851"), attr("formFactor", "Form Factor", "ATX")]), "Micro-ATX form factor"],
+    ["MSI B760M GAMING PLUS WIFI 6E M-ATX", mk("MSI B760M GAMING PLUS WIFI 6E M-ATX", "MSI", MB, [attr("socket", "Socket", "LGA1700"), attr("formFactor", "Form Factor", "ATX")]), "Micro-ATX form factor"],
+    ["MSI PRO B850M-B GEN4 AM5 M-ATX", mk("MSI PRO B850M-B GEN4 AM5 M-ATX", "MSI", MB, [attr("socket", "Socket", "AM5"), attr("formFactor", "Form Factor", "ATX")]), "Micro-ATX form factor"],
+    ["MSI MEG X870E GODLIKE (E-ATX)", mk("MSI MEG X870E GODLIKE WiFi 7 AMD AM5 E-ATX", "MSI", MB, [attr("socket", "Socket", "AM5"), attr("formFactor", "Form Factor", "ATX")]), "E-ATX form factor"],
+    ["MSI B450M-A PRO MAX II: stored ATX attribute only (the import script's default guess)", mk("MSI B450M-A PRO MAX II", "MSI", MB, [attr("socket", "Socket", "AM4"), attr("formFactor", "Form Factor", "ATX")]), null],
+    ["MSI B450M-A PRO MAX II: stored attribute M-ATX (right data, a spelling the old reader turned into ATX)", mk("MSI B450M-A PRO MAX II", "MSI", MB, [attr("socket", "Socket", "AM4"), attr("formFactor", "Form Factor", "M-ATX")]), "Micro-ATX form factor"],
+    ["MSI B450M-A PRO MAX II: stored attribute Micro-ATX", mk("MSI B450M-A PRO MAX II", "MSI", MB, [attr("socket", "Socket", "AM4"), attr("formFactor", "Form Factor", "Micro-ATX")]), "Micro-ATX form factor"],
+    ["a name that says Micro-ATX outranks a stored ATX attribute", mk("MSI PRO B760M-P Micro ATX", "MSI", MB, [attr("socket", "Socket", "LGA1700"), attr("formFactor", "Form Factor", "ATX")]), "Micro-ATX form factor"],
+    ["a name that says ATX accepts the stored ATX attribute", mk("MSI MAG X870 TOMAHAWK WIFI, AM5, ATX", "MSI", MB, [attr("socket", "Socket", "AM5"), attr("formFactor", "Form Factor", "ATX")]), "ATX form factor"],
+    ["MSI B450M-A PRO MAX II: a spec row says M-ATX", mk("MSI B450M-A PRO MAX II", "MSI", MB, [attr("socket", "Socket", "AM4"), row("Form Factor", "M-ATX")]), "Micro-ATX form factor"],
+    ["MSI PRO H810M-E: a spec row says Micro ATX", mk("MSI PRO H810M-E WIFI", "MSI", MB, [attr("socket", "Socket", "LGA1851"), row("Form Factor", "Micro ATX")]), "Micro-ATX form factor"],
+    ["the name outranks a conflicting row", mk("MSI MAG B860M MORTAR WIFI M-ATX MOTHERBOARD", "MSI", MB, [attr("socket", "Socket", "LGA1851"), row("Form Factor", "ATX")]), "Micro-ATX form factor"],
+    ["Corsair iCUE LINK 2500X RGB Micro ATX case", mk("CORSAIR iCUE LINK 2500X RGB Micro ATX Dual Chamber PC Case - Black, CC-9011267-WW", "Corsair", CASE, [attr("formFactor", "Form Factor", "ATX")]), "Micro-ATX form factor"],
+    ["Xtreme M31B M-ATX case", mk("XTREME M31B M-ATX BLACK CASE TEMPERED GLASS WITH 3 RGB FAN WITHOUT PSU", "Xtreme", CASE, [attr("formFactor", "Form Factor", "ATX")]), "Micro-ATX form factor"],
+    ["a case that says plain ATX (in the tail of the name)", mk("Delux Q7 Gaming Case, 2x USB, ATX", "Delux", CASE, [attr("formFactor", "Form Factor", "Micro-ATX")]), "ATX form factor"],
+  ];
+  for (const [label, input, expected] of boards) {
+    const r = gen(input);
+    const text = `${r.title} ${r.metaDescription}`;
+    if (expected) check(`${label}: says "${expected}"`, r.metaDescription.includes(expected), r.metaDescription);
+    else check(`${label}: no form factor claim at all`, !/form factor/.test(r.metaDescription), r.metaDescription);
+    check(`${label}: never a plain "ATX form factor" when the name says M / E / Micro`, !(/(^|[^-\w])(?:M-?ATX|E-?ATX|Micro[ -]?ATX)/i.test(input.name) && plainAtx(text)), r.metaDescription);
+    check(`${label}: no claim_conflict`, r.claimConflicts.length === 0 && !r.flags.includes("claim_conflict"), r.metaDescription);
+    check(`${label}: keyword = title core + " price in bangladesh"`, keywordOk(r), r.primaryKeyword);
+  }
+
+  // The gate itself: a description that contradicts the name.
+  equal("conflict: M-ATX in the name, ATX in the text", findFormFactorConflicts("MSI X M-ATX Board", "MSI X: ATX form factor.").length, 1);
+  equal("conflict: E-ATX in the name, Micro-ATX in the text", findFormFactorConflicts("MSI X E-ATX Board", "MSI X: Micro-ATX form factor.").length, 1);
+  equal("no conflict: the name says none", findFormFactorConflicts("MSI B450M-A PRO", "MSI B450M-A PRO: ATX form factor.").length, 0);
+  equal("no conflict: the same form, another spelling", findFormFactorConflicts("X Micro ATX Case", "X Micro ATX Case: Micro-ATX form factor.").length, 0);
+  {
+    const base = generateProductSeo(mk("MSI B760M GAMING PLUS WIFI 6E M-ATX", "MSI", MB, [attr("socket", "Socket", "LGA1700"), row("Form Factor", "M-ATX"), row("Memory Type", "DDR5")]));
+    const conflicted: SeoResult = { ...base, claimConflicts: ["ATX in the description, the name says Micro-ATX"], flags: [...base.flags, "claim_conflict"], needsReview: true };
+    check("claim_conflict: the row is skipped, even with --allow-few-specs and --overwrite", decideApply(conflicted, { metaTitle: null, metaDescription: null, seoSource: null }, { allowFewSpecs: true, overwrite: true }).action === "skip: claim_conflict");
+  }
+
+  // 3) Claims: only the name's words or an informative spec row. The stored attributes are the import script's guesses.
+  const poisoned: [string, SeoProductInput][] = [
+    ["Edifier W600BT", mk("Edifier W600BT Wireless Headphone Grey No ANC 30Hr 1 Year Warranty", "Edifier", HP, [attr("audioType", "Type", "In-ear"), attr("connectivity", "Connectivity", "Wireless"), attr("microphone", "Microphone", "Yes"), row("Microphone", "Yes")])],
+    ["Edifier Gm3 Plus TWS", mk("Edifier Gm3 Plus TWS Black No ANC, 1 Year Warranty", "Edifier", HP, [attr("audioType", "Type", "True Wireless"), attr("connectivity", "Connectivity", "Bluetooth"), attr("microphone", "Microphone", "Yes"), row("Microphone", "Yes")])],
+    ["Edifier NeoBuds Plus", mk("Edifier NeoBuds Plus Black 48dB ANC Buds with Hi-Res, LDAC, Wireless, 45 Hours Battery - 1 Year Warranty", "Edifier", HP, [attr("audioType", "Type", "In-ear"), attr("connectivity", "Connectivity", "Wireless"), attr("microphone", "Microphone", "Yes")])],
+    ["Edifier Comfo Q OWS", mk("Edifier Comfo Q OWS Headphone Back, No ANC, 32 Hours Battery - 1 Year Warranty", "Edifier", HP, [attr("audioType", "Type", "Over-ear"), attr("microphone", "Microphone", "Yes"), row("Microphone", "Yes")])],
+    ["Honor Choice Earbuds X7 Lite", mk("HONOR CHOICE Earbuds X7 Lite White, 6 Month Warranty.", "Honor", ["Earphone", "Gadget"], [attr("audioType", "Type", "In-ear"), attr("microphone", "Microphone", "Yes"), row("Microphone", "Yes")])],
+  ];
+  for (const [label, input] of poisoned) {
+    const r = gen(input);
+    check(`${label}: no microphone, mic or built-in (the name never says it)`, !/micro|\bmic\b|built-in/i.test(r.metaDescription), r.metaDescription);
+    check(`${label}: no ANC claim`, !/\bANC\b/.test(r.metaDescription.replace(r.titleCore, "")), r.metaDescription);
+    check(`${label}: the removed claims are counted and the row says so`, r.unsupportedClaims.includes("microphone") && r.flags.includes("unsupported_claim"), `${r.unsupportedClaims.join()} :: ${r.flags.join()}`);
+    check(`${label}: keyword = title core + " price in bangladesh"`, keywordOk(r), r.primaryKeyword);
+  }
+  const resultOf = (label: string) => generateProductSeo(poisoned.find(([l]) => l === label)![1]);
+  check("W600BT: in-ear is not claimed (the name does not say it; W600BT is an over-ear)", !/in-ear/.test(resultOf("Edifier W600BT").metaDescription));
+  check("Gm3 Plus TWS: no Bluetooth claim (the attribute guessed it)", !/bluetooth/i.test(resultOf("Edifier Gm3 Plus TWS").metaDescription));
+  check("Comfo Q OWS: no over-ear (the name says OWS, the attribute guessed Over-ear)", !/over-ear/i.test(resultOf("Edifier Comfo Q OWS").metaDescription));
+  check("NeoBuds Plus: 'wireless' stays (the name says Wireless); in-ear does not", /wireless/i.test(resultOf("Edifier NeoBuds Plus").metaDescription) && !/in-ear/.test(resultOf("Edifier NeoBuds Plus").metaDescription), resultOf("Edifier NeoBuds Plus").metaDescription);
+  check("Honor Choice Earbuds X7 Lite: the type is Earbuds, nothing else is claimed", resultOf("Honor Choice Earbuds X7 Lite").type === "Earbuds" && !/in-ear|micro/.test(resultOf("Honor Choice Earbuds X7 Lite").metaDescription));
+  {
+    const noAnc = gen(mk("Edifier W220T TWS Black No ANC 1 Year Warranty", "Edifier", HP, []));
+    check("'No ANC' is part of the name: not an unsupported claim, not a review flag", !noAnc.flags.includes("unsupported_claim") && !noAnc.needsReview && noAnc.unsupportedClaims.length === 0, `${noAnc.flags.join()} :: ${noAnc.metaDescription}`);
+  }
+  // ... and the claims that ARE supported are still made.
+  {
+    const named = gen(mk("Acme Z100 Wired Headset with Mic", "Acme", HP, [attr("microphone", "Microphone", "Yes"), attr("connectivity", "Connectivity", "Wired")]));
+    check("the name says Wired and Mic: both are claimed", /wired/i.test(named.metaDescription) && /microphone/i.test(named.metaDescription), named.metaDescription);
+    check("a supported claim is not counted as removed", named.unsupportedClaims.length === 0 && !named.flags.includes("unsupported_claim"), named.unsupportedClaims.join());
+    const rowBuiltIn = gen(mk("Acme Z200 Headset", "Acme", HP, [row("Microphone", "Built-in"), row("Type", "Over-ear"), attr("connectivity", "Connectivity", "Wireless")]));
+    check("an informative spec ROW (Built-in, Over-ear) is trusted", /built-in microphone/.test(rowBuiltIn.metaDescription) && /over-ear/.test(rowBuiltIn.metaDescription), rowBuiltIn.metaDescription);
+    const bareRow = gen(mk("Acme Z300 Headset", "Acme", HP, [row("Microphone", "Yes"), row("Type", "Over-ear")]));
+    check("a bare 'Microphone: Yes' row is not evidence", !/micro/i.test(bareRow.metaDescription) && /over-ear/.test(bareRow.metaDescription), bareRow.metaDescription);
+  }
+  // The net does not care which stored shape leaked: it checks the text against the name and the informative rows.
+  {
+    const ev = (name: string, rows: SpecFact[] = []) => claimEvidence(name, ["Headphone"], rows);
+    equal("net: nothing backs a microphone", unsupportedClaims("wireless headset with microphone", ev("Acme Z1 Headset")).join(), "microphone,wireless");
+    equal("net: the name backs it", unsupportedClaims("wireless headset with microphone", ev("Acme Z1 Wireless Headset with Mic")).join(), "");
+    equal("net: an attribute is not evidence", unsupportedClaims("headset with microphone", ev("Acme Z1 Headset", [attr("microphone", "Microphone", "Built-in")])).join(), "microphone");
+    equal("net: a bare Yes row is not evidence", unsupportedClaims("headset with microphone", ev("Acme Z1 Headset", [row("Microphone", "Yes")])).join(), "microphone");
+    equal("net: an informative row is evidence", unsupportedClaims("headset with built-in microphone", ev("Acme Z1 Headset", [row("Microphone", "Built-in")])).join(), "");
+    equal("net: 'No ANC' in the name is not support for ANC", unsupportedClaims("ANC headphone", ev("Edifier Comfo Q OWS No ANC")).join(), "ANC");
+    equal("net: '48dB ANC' backs ANC", unsupportedClaims("ANC headphone", ev("Edifier NeoBuds Plus 48dB ANC Buds")).join(), "");
+    equal("net: 'without noise cancelling' is not support", unsupportedClaims("noise cancelling headset", ev("Acme Z1 without noise cancelling")).join(), "ANC");
+    equal("net: in-ear needs the words in-ear", unsupportedClaims("in-ear headphone", ev("Edifier NeoBuds Plus Buds")).join(), "in-ear");
+    equal("net: 'In-Earphone' in the name backs in-ear", unsupportedClaims("in-ear headphone", ev("Huawei AM116 In-Earphone 3.5 mm jack Mic")).join(), "");
+    equal("net: 'built-in earbuds' does not back in-ear", unsupportedClaims("in-ear headphone", ev("Acme Case with built-in earbuds")).join(), "in-ear");
+    equal("net: over-ear, on-ear and open-ear are separate claims", unsupportedClaims("on-ear headphone", ev("Acme Over-Ear Headphone")).join(), "on-ear");
+    equal("net: Bluetooth backed by the name, its version is not", unsupportedClaims("Bluetooth 5.3 headset", ev("Acme Bluetooth Headset")).join(), "bluetooth 5.3");
+    equal("net: the version from the name", unsupportedClaims("Bluetooth 5.3 headset", ev("Acme Headset BT 5.3")).join(), "");
+    equal("net: a category word is evidence (a 'Wireless Mouse' category)", unsupportedClaims("wireless mouse", claimEvidence("Acme M1", ["Wireless Mouse"], [])).join(), "");
+    equal("net: no claim words, nothing to check", unsupportedClaims("Core i5-1335U, 16GB RAM, 512GB SSD", ev("Acme Laptop")).join(), "");
+    const belowMin: SeoResult = { ...generateProductSeo(mk("Edifier W600BT Wireless Headphone", "Edifier", HP, [attr("microphone", "Microphone", "Yes"), row("Microphone", "Yes")])), specsAvailable: 1, claimSpecsDropped: 1 };
+    equal("unsupported_claim below the minimum: the row is skipped and says why", decideApply({ ...belowMin, flags: [...belowMin.flags, "unsupported_claim"] }, { metaTitle: null, metaDescription: null, seoSource: null }, { minSpecs: 2 }).action, "skip: unsupported_claim: fewer than 2 specs once it is dropped");
+    equal("a row that was short anyway is a plain 'fewer than' skip, not an unsupported_claim skip", decideApply({ ...belowMin, specsAvailable: 0, claimSpecsDropped: 1, flags: [...belowMin.flags, "unsupported_claim"] }, { metaTitle: null, metaDescription: null, seoSource: null }, { minSpecs: 3 }).action, "skip: fewer than 3 specs (use --allow-few-specs)");
+    check("the generator counts the specs it dropped for a claim", resultOf("Edifier W600BT").claimSpecsDropped >= 1 && resultOf("Edifier Gm3 Plus TWS").claimSpecsDropped >= 1, `${resultOf("Edifier W600BT").claimSpecsDropped}`);
+    check("unsupported_claim with enough specs left: the row is written without the claim", decideApply({ ...belowMin, specsAvailable: 3, flags: [...belowMin.flags, "unsupported_claim"] }, { metaTitle: null, metaDescription: null, seoSource: null }, { minSpecs: 2 }).write === true);
+  }
+
+  // 4) A generic category is not a product type.
+  {
+    const honor600 = gen(mk("HONOR 600 Pro (12+256) Black, 1 Year Warranty.", "Honor", PHONE, [row("Display", "6.57 inches"), row("Size", "6.57 inches")]));
+    const honorX7d = gen(mk("HONOR X7d (8+256) Titanium Black, 1 Year Warranty", "Honor", PHONE, [row("Display", "6.77 inches"), row("Size", "6.77 inches")]));
+    for (const [label, r] of [["HONOR 600 Pro", honor600], ["HONOR X7d", honorX7d]] as [string, SeoResult][]) {
+      check(`${label}: never an "Accessory"`, !/accessor/i.test(`${r.title} ${r.metaDescription} ${r.primaryKeyword}`), r.title);
+      check(`${label}: no usable type -> flag unusable_type, review, skipped`, r.type === "" && r.flags.includes("unusable_type") && r.needsReview && decideApply(r, { metaTitle: null, metaDescription: null, seoSource: null }, { allowFewSpecs: true }).action === "skip: unusable_type", `${r.type} ${r.flags.join()}`);
+      check(`${label}: no "size" phrase, the diagonal once`, !/size/.test(r.metaDescription) && (r.metaDescription.match(/6\.\d\d? inch/g) ?? []).length === 1, r.metaDescription);
+      check(`${label}: keyword = title core + " price in bangladesh"`, keywordOk(r), r.primaryKeyword);
+    }
+    check("a name that states its type is usable even in Mobile Accessories", (() => {
+      const r = gen(mk("HONOR X9c Smartphone (8+256) Midnight Black", "Honor", PHONE, [row("Display", "6.78 inches"), row("Size", "6.78 inches")]));
+      return r.type === "Smartphone" && !r.flags.includes("unusable_type") && !/accessor/i.test(r.title) && !/size/.test(r.metaDescription);
+    })());
+    check("earbuds in Mobile Accessories take the name's own type, not the bucket", (() => {
+      const r = gen(mk("Honor Choice Earbuds X5 White, 35 Hr Battery Backup, ANC  Bluetooth Earbuds, 1 Year Warranty", "Honor", PHONE));
+      return r.type === "Earbuds" && /Earbuds/.test(r.title) && !/accessor/i.test(r.title);
+    })());
+    check("an umbrella leaf still falls through to the parent category (unchanged)", generateProductSeo(mk("Acme X1 Wireless", "Acme", ["Accessories", "Headphone"])).type === "Headphone");
+    check("a real category type is untouched", generateProductSeo(mk("Acme Z9 Gaming", "Acme", ["Keyboard", "Accessories"])).type === "Keyboard");
+    equal("duplicate phrase: 6.57 inch display + 6.57 inches size is one spec", pickSpecPhrases([row("Display", "6.57 inches"), row("Size", "6.57 inches")], "other", "Honor").join(" | "), "6.57 inch display");
+    check("duplicate phrase: a bare Size row never becomes an '8GB size' phrase", !pickSpecPhrases([row("Size", "8GB")], "other", "Acme").some((phrase) => /size/.test(phrase)), pickSpecPhrases([row("Size", "8GB")], "other", "Acme").join());
+  }
+
+  // 5) Graphics cards: "8GB GDDR6", no "size", no maximum resolution, no chip from a SKU.
+  {
+    const gpuRows = (size: string): Shape => [row("Size", size), row("Resolution", "7680x4320")];
+    const r9060 = gen(mk("GIGABYTE AMD # GV-R9060XTGAMING OC-8GD, GDDR6, Memory Clock-20 Gbps, Memory Bus-128 bit, Power supply requirement: 450W", "Gigabyte", GPU, gpuRows("8GB")));
+    const arc = gen(mk("GIGABYTE Intel Arc A310 GV-IA310WF2-4GD WINDFORCE 4G GDDR6 Graphics Card Graphics Clock: 2000 MHz Memory: 4GB GDDR6 Memory Bandwidth (GB/sec): 124 GB/s Output: DP x2, HDMI x2", "Gigabyte", GPU, gpuRows("4GB")));
+    const rtx = gen(mk("GIGABYTE GeForce RTX 3050 WINDFORCE OC 6GB GDDR6", "Gigabyte", GPU, gpuRows("6GB")));
+    const n5070 = gen(mk("GIGABYTE NVIDIA # GV-N5070GAMING OC-16GD", "Gigabyte", GPU, gpuRows("16GB")));
+    for (const [label, r] of [["GV-R9060XTGAMING OC-8GD", r9060], ["Arc A310 WINDFORCE", arc], ["GeForce RTX 3050 WINDFORCE OC 6GB", rtx], ["GV-N5070GAMING OC-16GD", n5070]] as [string, SeoResult][]) {
+      check(`${label}: never "<n>GB size" and no maximum-resolution phrase`, !/\d\s?GB size|size|7680|resolution/i.test(r.metaDescription), r.metaDescription);
+      check(`${label}: clean (no bad_spec_phrase), keyword = title core + " price in bangladesh"`, r.badSpecPhrases.length === 0 && keywordOk(r), r.badSpecPhrases.join());
+    }
+    check("GV-R9060XTGAMING OC-8GD: 8GB with the type from the name -> '8GB GDDR6'", /8GB GDDR6\./.test(r9060.metaDescription), r9060.metaDescription);
+    check("GV-R9060XTGAMING OC-8GD: the Radeon chip is NOT derived from the SKU", !/radeon|RX ?9060/i.test(`${r9060.title} ${r9060.metaDescription}`), r9060.title);
+    check("Arc A310: the chip is in the title and the memory is '4GB GDDR6'", /Arc A310/.test(arc.title) && /4GB GDDR6/.test(arc.metaDescription), `${arc.title} | ${arc.metaDescription}`);
+    check("GeForce RTX 3050 (in the name's core): the chip stays in the title; 6GB without an invented type", /RTX 3050/.test(rtx.title) && /6GB GDDR6/.test(rtx.metaDescription), `${rtx.title} | ${rtx.metaDescription}`);
+    check("GV-N5070GAMING: no RTX 5070 anywhere (a SKU is not a statement); the stored 16GB is 'VRAM', not 'size'", !/RTX|5070 /.test(`${n5070.title} ${n5070.metaDescription}`.replace("GV-N5070GAMING", "")) && /16GB VRAM/.test(n5070.metaDescription), `${n5070.title} | ${n5070.metaDescription}`);
+    // The chip written only in the tail of the name goes into the title when the title still fits.
+    const tail = gen(mk("GIGABYTE # GV-N3050OC-6GD, GeForce RTX 3050 6GB GDDR6", "Gigabyte", GPU, gpuRows("6GB")));
+    check("a chip in the name's tail is added to the title when it fits", /GV-N3050OC-6GD GeForce RTX 3050 Graphics Card/.test(tail.title) && tail.title.length <= 60 && !tail.flags.includes("foreign_code"), tail.title);
+    const longSku = gen(mk("GIGABYTE NVIDIA # GV-N3050WF2OC-6GD, GeForce RTX 3050 WINDFORCE OC 6GB GDDR6", "Gigabyte", GPU, gpuRows("6GB")));
+    check("a chip that would push the title over 60 is left out (the row is not turned into a skip)", !/RTX 3050/.test(longSku.title) && longSku.title.length <= 60 && !longSku.flags.includes("title_over_60"), longSku.title);
+    equal("memory from the name: 4G GDDR6", JSON.stringify(extractGpuMemoryFromName("Arc A310 WINDFORCE 4G GDDR6 Graphics Card")), JSON.stringify({ size: "4GB", type: "GDDR6" }));
+    equal("memory from the name: 8GB GDDR6X", JSON.stringify(extractGpuMemoryFromName("RTX 4070 8GB GDDR6X")), JSON.stringify({ size: "8GB", type: "GDDR6X" }));
+    equal("memory from the name: a type with no size", JSON.stringify(extractGpuMemoryFromName("GV-R9060XTGAMING OC-8GD, GDDR6, Memory Bus-128 bit")), JSON.stringify({ size: null, type: "GDDR6" }));
+    equal("memory from the name: a SKU's 8GD / 16GD is not a size", extractGpuMemoryFromName("GV-N5070GAMING OC-16GD"), null);
+    equal("memory from the name: 124 GB/s is bandwidth, not memory", extractGpuMemoryFromName("Memory Bandwidth (GB/sec): 124 GB/s"), null);
+    equal("memory from the name: two different sizes are not guessed between", extractGpuMemoryFromName("RTX 3050 6GB or 8GB")?.size ?? null, null);
+    equal("chip: GeForce RTX 3050", extractGpuChipFromName("GIGABYTE GeForce RTX 3050 WINDFORCE OC 6GB"), "GeForce RTX 3050");
+    equal("chip: RTX 5060 Ti", extractGpuChipFromName("Gigabyte RTX 5060 Ti 16GB"), "RTX 5060 Ti");
+    equal("chip: Arc A310", extractGpuChipFromName("GIGABYTE Intel Arc A310 GV-IA310WF2-4GD"), "Arc A310");
+    equal("chip: Radeon RX 9060 XT", extractGpuChipFromName("Gigabyte Radeon RX 9060 XT GAMING OC 16G"), "Radeon RX 9060 XT");
+    equal("chip: none from GV-N5070GAMING", extractGpuChipFromName("GIGABYTE NVIDIA # GV-N5070GAMING OC-16GD"), null);
+    equal("chip: none from GV-R9060XTGAMING OC-8GD", extractGpuChipFromName("GIGABYTE AMD # GV-R9060XTGAMING OC-8GD"), null);
+  }
+
+  // 6) The bad-phrase lint.
+  equal("lint: '8GB size'", findBadSpecPhrases("Acme Card – 8GB size, 7680x4320 resolution.", ["8GB size", "7680x4320 resolution"]).join(), "8GB size");
+  equal("lint: '6.57 inches size'", findBadSpecPhrases("Honor – 6.57 inch display, 6.57 inches size.", ["6.57 inch display", "6.57 inches size"]).includes("6.57 inches size"), true);
+  equal("lint: '6.57 inch, 6.57 inches'", findBadSpecPhrases("Honor: 6.57 inch, 6.57 inches.", ["6.57 inch", "6.57 inches"]).length > 0, true);
+  equal("lint: the same quantity in two phrases", findBadSpecPhrases("Acme: 8GB RAM, 8GB GDDR6.", ["8GB RAM", "8GB GDDR6"]).join(), "8gb twice");
+  equal("lint: a clean description", findBadSpecPhrases("Dell: Core i5-1335U, 16GB RAM, 512GB SSD, 15.6 inch display.", ["Core i5-1335U", "16GB RAM", "512GB SSD", "15.6 inch display"]).length, 0);
+  {
+    const base = generateProductSeo(mk("Acme Card", "Acme", GPU, []));
+    const bad: SeoResult = { ...base, badSpecPhrases: ["8GB size"], flags: [...base.flags, "bad_spec_phrase"], needsReview: true };
+    equal("bad_spec_phrase: the row is skipped", decideApply(bad, { metaTitle: null, metaDescription: null, seoSource: null }, { allowFewSpecs: true }).action, "skip: bad_spec_phrase");
+  }
+  // None of the fixtures of this file (the five samples, the family fixtures, the real names, the v2.4 fixtures) trips a gate it should not.
+  {
+    const all = [...fixtures, ...set, ...realSet];
+    check("no earlier fixture is flagged bad_spec_phrase or claim_conflict", all.every((r) => r.badSpecPhrases.length === 0 && r.claimConflicts.length === 0), all.filter((r) => r.badSpecPhrases.length > 0 || r.claimConflicts.length > 0).map((r) => r.title).join(" | "));
+    check("every fixture keeps keyword = title core + ' price in bangladesh'", all.every(keywordOk), all.filter((r) => !keywordOk(r)).map((r) => r.title).join(" | "));
+  }
+
+  // 7) Refresh: rows that already have generated text.
+  {
+    const input = mk("MSI B760M GAMING PLUS WIFI 6E M-ATX", "MSI", MB, [attr("socket", "Socket", "LGA1700"), row("Form Factor", "M-ATX"), row("Memory Type", "DDR5")]);
+    const next = generateProductSeo(input);
+    const none = { metaTitle: null, metaDescription: null, seoSource: null };
+    const oldGenerated = { metaTitle: next.title, metaDescription: next.metaDescription.replace("Micro-ATX", "ATX"), seoSource: "generated" };
+    const same = { metaTitle: next.title, metaDescription: next.metaDescription, seoSource: "generated" };
+    const byHand = { metaTitle: "My own title", metaDescription: "Written by the shop owner.", seoSource: "admin" };
+    const noSource = { metaTitle: "Old title", metaDescription: "Old text", seoSource: null };
+    equal("refresh: generated text that changed is an `update`", decideApply(next, oldGenerated).action, "update");
+    check("refresh: ... and it is written", decideApply(next, oldGenerated).write === true);
+    equal("refresh: generated text that did not change is `unchanged`", decideApply(next, same).action, "unchanged");
+    check("refresh: ... and it is not written", decideApply(next, same).write === false);
+    equal("a new row is a `write`", decideApply(next, none).action, "write");
+    equal("an admin-edited row is skipped", decideApply(next, byHand).action, "skip: written by hand (use --overwrite)");
+    check("an admin-edited row is NOT written, whatever the new text is", decideApply(next, byHand).write === false && decideApply(next, byHand, { allowFewSpecs: true }).write === false && decideApply(next, byHand, { minSpecs: 0 }).write === false);
+    check("an admin-edited row is replaced only with --overwrite", decideApply(next, byHand, { overwrite: true }).action === "update");
+    equal("stored text with no source is skipped too", decideApply(next, noSource).action, "skip: has stored text with no source (use --overwrite)");
+    const conflicted: SeoResult = { ...next, claimConflicts: ["x"], flags: [...next.flags, "claim_conflict"], needsReview: true };
+    const stale = decideApply(conflicted, oldGenerated);
+    check("refresh: a generated row whose new text is blocked says so (its old text stays live)", stale.action === "skip: claim_conflict (generated text stays live)" && isStaleGenerated(stale) && stale.write === false, stale.action);
+    check("an admin row with a blocked new text is a plain skip (nothing stale about it)", decideApply(conflicted, byHand).action === "skip: claim_conflict" && !isStaleGenerated(decideApply(conflicted, byHand)));
+    const rows = [
+      { id: "new", decision: decideApply(next, none) },
+      { id: "changed", decision: decideApply(next, oldGenerated) },
+      { id: "same", decision: decideApply(next, same) },
+      { id: "admin", decision: decideApply(next, byHand) },
+      { id: "nosource", decision: decideApply(next, noSource) },
+      { id: "blocked", decision: decideApply(conflicted, oldGenerated) },
+    ];
+    equal("apply writes only `write` and `update` rows (never unchanged, hand-written or blocked)", rowsToWrite(rows).map((r) => r.id).join(), "new,changed");
+    equal("the refresh dry run counts every row: nothing is silent", countActions(rows.map((r) => r.decision)).map(([a, n]) => `${a}=${n}`).sort().join(" | "), ["skip: claim_conflict (generated text stays live)=1", "skip: has stored text with no source (use --overwrite)=1", "skip: written by hand (use --overwrite)=1", "unchanged=1", "update=1", "write=1"].sort().join(" | "));
+    equal("an alt-only change still goes through rowsToWrite (opt-in --apply-alts)", rowsToWrite([{ id: "alt", decision: decideApply(next, same), alt: { imageId: "i" } }]).length, 1);
+  }
+}
+
+// --- v2.4 (cosmetic): shouted plain English words are normal words; the type word is the standard one ------------
+
+{
+  const unit: [string, string][] = [
+    ["MID-TOWER", "Mid-Tower"], ["MOTHERBOARD", "Motherboard"], ["CASING", "Casing"], ["KEYBOARD", "Keyboard"], ["GAMING", "Gaming"],
+    ["MECHANICAL", "Mechanical"], ["BLACK", "Black"], ["(BLACK)", "(Black)"], ["BLACK,", "Black,"], ["MICRO", "Micro"],
+    // kept: brands, model lines, acronyms, standards, model codes (a digit)
+    ["MSI", "MSI"], ["AORUS", "AORUS"], ["MORTAR", "MORTAR"], ["RGB", "RGB"], ["ARGB", "ARGB"], ["ATX", "ATX"], ["M-ATX", "M-ATX"],
+    ["DDR5", "DDR5"], ["WIFI6E", "WIFI6E"], ["WIFI", "WIFI"], ["PSU", "PSU"], ["B650-PLUS", "B650-PLUS"], ["K552", "K552"], ["WF7", "WF7"],
+    ["Gaming", "Gaming"], ["black", "black"],
+  ];
+  for (const [input, expected] of unit) equal(`softenPlainWords("${input}")`, softenPlainWords(input), expected);
+  equal("standard type: CASING", standardType("CASING"), "Case");
+  equal("standard type: Casing", standardType("Casing"), "Case");
+  equal("standard type: Case", standardType("Case"), "Case");
+  equal("standard type: Keyboard is untouched", standardType("Keyboard"), "Keyboard");
+
+  let k = 0;
+  const mk = (name: string, brand: string, chain: string[]): SeoProductInput => {
+    k += 1;
+    return { id: `cap-${k}`, name, brand, categoryChain: chain, sku: `CAP-${k}`, modelNumber: null, specs: [] };
+  };
+  const CASE = ["Casing", "Component"];
+  const MB = ["Motherboard", "Component"];
+  const fx2: [string, SeoProductInput, string[], string[]][] = [
+    // [label, input, must be in the title, must NOT be in the title or description]
+    ["Xtreme M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS", mk("XTREME M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS WITH 3 ARGB FAN WITHOUT PSU", "Xtreme", CASE), ["Xtreme M95B Mini Tower M-ATX Black Case Tempered Glass"], ["MINI TOWER", "BLACK", "TEMPERED", "CASE "]],
+    ["Xtreme C31B M-ATX BLACK CASE", mk("XTREME C31B M-ATX BLACK CASE TEMPERED GLASS WITH 3 RGB FAN WITHOUT PSU", "Xtreme", CASE), ["Xtreme C31B M-ATX Black Case Tempered Glass"], ["BLACK", "TEMPERED"]],
+    ["Delux J601 MICRO ATX COMPUTER CASE", mk("DELUX J601 MICRO ATX COMPUTER CASE WITH 200W REAL POWER SUPPLY, 2Y WARRANTY FOR PSU", "Delux", CASE), ["Delux J601 Micro ATX Computer Case"], ["MICRO", "COMPUTER"]],
+    ["MSI B760M GAMING PLUS WIFI 6E M-ATX", mk("MSI B760M GAMING PLUS WIFI 6E M-ATX", "MSI", MB), ["MSI B760M Gaming Plus"], ["GAMING"]],
+    ["MSI MAG B860M MORTAR ... MOTHERBOARD", mk("MSI MAG B860M MORTAR WIFI LGA 1851 M-ATX MOTHERBOARD", "MSI", MB), ["MSI MAG B860M MORTAR", "Motherboard"], ["MOTHERBOARD"]],
+    ["GIGABYTE B650 AORUS ELITE AX ICE WIFI6E ATX MOTHERBOARD DDR5", mk("GIGABYTE B650 AORUS ELITE AX ICE WIFI6E ATX MOTHERBOARD DDR5", "Gigabyte", MB), ["B650 AORUS ELITE AX ICE WIFI6E ATX Motherboard DDR5"], ["MOTHERBOARD"]],
+    ["Redragon K552 KUMARA MECHANICAL GAMING KEYBOARD BLACK RGB", mk("REDRAGON K552 KUMARA MECHANICAL GAMING KEYBOARD BLACK RGB", "Redragon", ["Keyboard", "Accessories"]), ["K552 KUMARA Mechanical Gaming Keyboard Black RGB"], ["MECHANICAL", "KEYBOARD", "BLACK"]],
+    ["a hyphenated word: MID-TOWER", mk("ACME X100 MID-TOWER ATX GAMING CASE", "Acme", CASE), ["Acme X100 Mid-Tower ATX Gaming Case"], ["MID-TOWER", "GAMING"]],
+    ["ASUS TUF GAMING B650-PLUS (a model code with a word inside it is kept)", mk("ASUS TUF GAMING B650-PLUS WIFI DDR5 ATX MOTHERBOARD", "ASUS", MB), ["TUF Gaming B650-PLUS"], ["MOTHERBOARD"]],
+  ];
+  const results = fx2.map(([, input]) => generateProductSeo(input));
+  fx2.forEach(([label, , must, mustNot], i) => {
+    const r = results[i]!;
+    for (const text of must) check(`${label}: title has "${text}"`, r.title.includes(text), r.title);
+    const both = `${r.title} ${r.metaDescription}`;
+    for (const text of mustNot) check(`${label}: no shouted "${text.trim()}" left`, !both.includes(text), both);
+    check(`${label}: no model token lost, keyword = title core + " price in bangladesh"`, !r.flags.includes("model_token_lost") && r.primaryKeyword === `${r.titleCore.toLowerCase()} price in bangladesh`, `${r.flags.join()} :: ${r.primaryKeyword}`);
+  });
+  // The type word is the standard one.
+  const onlyCasing = generateProductSeo(mk("XTREME C77 CASING TEMPERED GLASS BLACK", "Xtreme", CASE));
+  check("a name whose only type word is CASING: the type is Case", onlyCasing.type === "Case" && /\bCase\b/.test(onlyCasing.title) && !/casing/i.test(onlyCasing.title), `${onlyCasing.type} | ${onlyCasing.title}`);
+  const categoryCasing = generateProductSeo(mk("Xtreme C41 Tempered Glass Black", "Xtreme", CASE));
+  check("a category called Casing and no type word in the name: the type is Case", categoryCasing.type === "Case" && /Black Case Price/.test(categoryCasing.title) && !/casing/i.test(categoryCasing.title), `${categoryCasing.type} | ${categoryCasing.title}`);
+  const both = generateProductSeo(mk("CORSAIR CASING Crystal Series 280X RGB Tempered Glass Micro ATX White Case # CC-9011137-WW", "Corsair", CASE));
+  check("a name with Casing AND Case keeps both words (Casing is part of the line, Case is the type)", /Corsair Casing Crystal Series 280X RGB Case/.test(both.title), both.title);
+  // No plain English word stays shouted anywhere in the output of the fixtures of this file.
+  const every = [...results, onlyCasing, categoryCasing, both, ...set, ...realSet];
+  const shouted = (r: SeoResult) =>
+    // whole whitespace tokens: a token with a digit is a model code ("B650-PLUS") and is exempt; "MID-TOWER" is checked per part
+    `${r.title} ${r.metaDescription}`
+      .split(/\s+/)
+      .map((token) => token.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, ""))
+      .filter((token) => token && !/\d/.test(token))
+      .flatMap((token) => token.split("-"))
+      .filter((word) => /^[A-Z]{2,}$/.test(word) && PLAIN_WORDS.has(word.toLowerCase()));
+  check("no dictionary word is left shouted in any title or description of the fixtures", every.every((r) => shouted(r).length === 0), every.filter((r) => shouted(r).length > 0).map((r) => `${r.title} [${shouted(r).join()}]`).join(" | "));
 }
 
 // --- stored meta helpers -------------------------------------------------------

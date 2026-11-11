@@ -9178,3 +9178,18 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       Separate commit: the description's spec part no longer repeats the title
       (titles / keywords / specsAvailable unchanged; earbuds are not "in-ear").
       `test:seo-product` 1,356 + 157. Code only; nothing run on production.
+- [x] AD-405 SEO phase 8 FIX v2.4 — claim accuracy (branch `seo-phase-8-fix-4`,
+      pushed, NOT merged). Detail: `docs/SEO-NOTES.md` "Phase 8 v2.4". Batch-2
+      dry-run errors fixed at the cause: form factor (`lib/catalog/form-factor.ts`:
+      M-ATX / Micro ATX -> Micro-ATX, E-ATX, Mini-ITX, bare ATX only without a
+      prefix; the name outranks stored values; shared with the import script);
+      claims (microphone, ANC, wireless / wired, Bluetooth, over- / in-ear) only
+      from the name, category or an informative spec row, never from attributes
+      (`lib/seo/claims.ts`, gate `unsupported_claim` drops + counts, skips only
+      under the minimum); generic category types ("Mobile Accessory") are not a
+      type -> `unusable_type`; GPU memory "8GB GDDR6", no "size" / maximum
+      resolution, chip never from a SKU; gates `claim_conflict`,
+      `bad_spec_phrase`; refresh: `update` / `unchanged` / "(generated text
+      stays live)", apply writes only write + update rows. Separate commit: shouted
+      plain words -> normal case, "Casing" -> "Case". `test:seo-product` 1,635 +
+      162. Code only; nothing run on production.

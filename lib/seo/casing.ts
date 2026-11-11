@@ -99,6 +99,40 @@ export function applyCasing(text: string): string {
   return text.replace(/\S+/g, (token) => casingOfToken(token));
 }
 
+/**
+ * Plain English words that raw POS names SHOUT ("MOTHERBOARD", "CASING", "KEYBOARD", "GAMING", "MECHANICAL", "BLACK",
+ * "MID-TOWER"): they become ordinary words. Deliberately a dictionary and not "every capital word": a model line
+ * (MORTAR, AORUS, ELITE), a brand (MSI) or an acronym (RGB, ATX, DDR5, WIFI6E, PSU) is not in it and is left alone, and a
+ * token with a digit is a model code and is never touched.
+ */
+export const PLAIN_WORDS = new Set(
+  (
+    // the storefront's own shouting list (lib/seo/page-meta.ts) ...
+    "with without plus power cord mini camera dome color colour laptop cooler single dual fan fans inch keyboard mouse " +
+    "combo wireless wired bangla gaming graphics card motherboard processor monitor speaker speakers cable adapter " +
+    "battery charger printer assembly spring fixing transfer cleaner control panel desktop black white silver blue red " +
+    "grey gray gold green pink purple edition built lens distance metal plastic replacement warranty tower case chassis " +
+    "series external internal portable drive hard disk solid state memory headphone headset earphone microphone router " +
+    "switch port ports office home smart watch phone tablet airflow bullet outdoor indoor night vision network digital " +
+    "video recorder unit kit set box stand holder mount bag cover sleeve pad table chair desk light lamp shredder " +
+    "scanner toner drum ink cartridge paper roller fuser belt sensor board module door lock access terminal reader " +
+    // ... and what the v2.4 sweep found shouted in product names
+    "micro full mid compact computer casing mechanical tempered glass aluminum aluminium transparent standard orange " +
+    "yellow brown earphones earbuds developing controller server rack magenta cyan graphite channel main film storage " +
+    "optical cassette alloy thermal front carriage delivery telephone panoramic bottle meter offline supply"
+  ).split(" "),
+);
+
+/** "MID-TOWER" -> "Mid-Tower", "CASING" -> "Casing". A token with a digit (a model code) and every word outside PLAIN_WORDS stay as written. */
+export function softenPlainWords(token: string): string {
+  if (/\d/.test(token)) return token;
+  return token.replace(/[A-Z]{2,}/g, (word) => (PLAIN_WORDS.has(word.toLowerCase()) ? word.charAt(0) + word.slice(1).toLowerCase() : word));
+}
+
+/** The type word a shopper expects: a raw name's or category's "CASING" is a "Case". */
+const STANDARD_TYPE: Record<string, string> = { casing: "Case", casings: "Case" };
+export const standardType = (word: string) => STANDARD_TYPE[word.toLowerCase().replace(/[^a-z]/g, "")] ?? word;
+
 /** "LATITUDE" -> "Latitude" for a shouted brand / line word (never an acronym or a known canonical form). */
 export function titleCaseShouted(word: string): string {
   const lower = word.toLowerCase();

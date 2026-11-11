@@ -33,32 +33,57 @@ export type ApplyDecision = { action: string; write: boolean };
 
 const squash = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
 
+/** The note on a skipped row that already carries generated text: the old text is NOT replaced, so say so. */
+export const STALE_NOTE = " (generated text stays live)";
+
+/**
+ * Why a row's NEW text must not be written, or null when nothing blocks it. Safety gates first (never written, whatever
+ * else is true), then the quality bar (lengths, minimum specs).
+ */
+function blocker(result: SeoResult, options: ApplyOptions): string | null {
+  if (result.flags.includes("model_token_lost")) return "skip: model_token_lost";
+  if (result.flags.includes("foreign_code")) return "skip: foreign_code";
+  if (result.flags.includes("bad_chars")) return "skip: bad_chars";
+  if (result.flags.includes("spec_zero")) return "skip: spec_zero";
+  // v2.4 gates: a form factor the name contradicts, machine-looking spec wording, a type that is only a bucket name.
+  if (result.flags.includes("claim_conflict")) return "skip: claim_conflict";
+  if (result.flags.includes("bad_spec_phrase")) return "skip: bad_spec_phrase";
+  if (result.flags.includes("unusable_type") || !result.type) return "skip: unusable_type";
+  if (result.needsReview) return "skip: needs_review";
+  if (result.title.length > SEO_TITLE_MAX) return "skip: title over 60";
+  if (result.metaDescription.length < SEO_DESC_MIN || result.metaDescription.length > SEO_DESC_MAX) {
+    return "skip: description outside 120-155";
+  }
+  const minSpecs = effectiveMinSpecs(options);
+  if (result.specsAvailable < minSpecs) {
+    // A claim the name / trusted specs do not back is dropped from the text; the row is called an unsupported_claim skip only
+    // when that is what left it short (with those specs it would have reached the minimum).
+    const claim = result.flags.includes("unsupported_claim") && result.specsAvailable + (result.claimSpecsDropped ?? 0) >= minSpecs
+      ? `unsupported_claim: fewer than ${minSpecs} specs once it is dropped`
+      : null;
+    if (claim) return `skip: ${claim}`;
+    return minSpecs === DEFAULT_MIN_SPECS
+      ? "skip: fewer than 3 specs (use --allow-few-specs)"
+      : `skip: fewer than ${minSpecs} specs (--min-specs=${minSpecs})`;
+  }
+  return null;
+}
+
+/**
+ * What to do with one product. For a row that already has GENERATED text (a refresh from a batch file) the answer is
+ * always one of: `update` (the text changed), `unchanged`, or a skip that says the generated text stays live. Hand-written
+ * text (seoSource 'admin') and text with no source are never touched without --overwrite.
+ */
 export function decideApply(
   result: SeoResult,
   stored: StoredMeta,
   options: ApplyOptions = {},
 ): ApplyDecision {
-  // Safety gates: never written, whatever else is true.
-  if (result.flags.includes("model_token_lost")) return { action: "skip: model_token_lost", write: false };
-  if (result.flags.includes("foreign_code")) return { action: "skip: foreign_code", write: false };
-  if (result.flags.includes("bad_chars")) return { action: "skip: bad_chars", write: false };
-  if (result.flags.includes("spec_zero")) return { action: "skip: spec_zero", write: false };
-  if (result.needsReview) return { action: "skip: needs_review", write: false };
-  if (result.title.length > SEO_TITLE_MAX) return { action: "skip: title over 60", write: false };
-  if (result.metaDescription.length < SEO_DESC_MIN || result.metaDescription.length > SEO_DESC_MAX) {
-    return { action: "skip: description outside 120-155", write: false };
-  }
-  const minSpecs = effectiveMinSpecs(options);
-  if (result.specsAvailable < minSpecs) {
-    return {
-      action:
-        minSpecs === DEFAULT_MIN_SPECS
-          ? "skip: fewer than 3 specs (use --allow-few-specs)"
-          : `skip: fewer than ${minSpecs} specs (--min-specs=${minSpecs})`,
-      write: false,
-    };
-  }
   const hasStored = Boolean(squash(stored.metaTitle) || squash(stored.metaDescription));
+  const blocked = blocker(result, options);
+  if (blocked) {
+    return { action: hasStored && stored.seoSource === "generated" ? `${blocked}${STALE_NOTE}` : blocked, write: false };
+  }
   if (hasStored && stored.seoSource !== "generated" && !options.overwrite) {
     return {
       action:
@@ -76,8 +101,16 @@ export function decideApply(
   ) {
     return { action: "unchanged", write: false };
   }
-  return { action: hasStored ? "update (generated -> new generated)" : "write", write: true };
+  return { action: hasStored ? "update" : "write", write: true };
 }
+
+/** The rows `--apply` writes: new text (`write`) and refreshed generated text (`update`); never unchanged or skipped rows. */
+export function rowsToWrite<T extends { decision: ApplyDecision; alt?: unknown }>(rows: T[]): T[] {
+  return rows.filter((row) => row.decision.write || Boolean(row.alt));
+}
+
+/** Rows whose generated text stays live because the new text is blocked (listed in the dry run: nothing is silent). */
+export const isStaleGenerated = (decision: ApplyDecision) => decision.action.endsWith(STALE_NOTE);
 
 /** Count rows per action, most common first. */
 export function countActions(decisions: ApplyDecision[]): [string, number][] {

@@ -18,8 +18,11 @@
  *    they are flagged `needsReview` and must not be written.
  *  - Image alt "{Brand} {Model} {Type}" always includes the type.
  */
+import { formFactorOf, formFactorsIn } from "@/lib/catalog/form-factor";
+import { extractGpuChipFromName, extractGpuMemoryFromName } from "@/lib/catalog/gpu-extract";
 import { extractNameSpecs, type NameSpecs } from "@/lib/catalog/spec-extract";
-import { applyCasing, casingOfToken, isShoutedWord, titleCaseShouted } from "@/lib/seo/casing";
+import { applyCasing, casingOfToken, isShoutedWord, softenPlainWords, standardType, titleCaseShouted } from "@/lib/seo/casing";
+import { claimEvidence, findBadSpecPhrases, unsupportedClaims } from "@/lib/seo/claims";
 import { cutAtWord, softenShouting } from "@/lib/seo/page-meta";
 
 export const SEO_TITLE_MAX = 60;
@@ -71,6 +74,14 @@ export type SeoResult = {
   badChars: string[];
   /** Spec values that are zero or empty in the description (must be empty). */
   zeroSpecs: string[];
+  /** A form factor in the description that the raw name contradicts (must be empty). */
+  claimConflicts: string[];
+  /** Machine-looking spec wording: "8GB size", "6.57 inch, 6.57 inches", one quantity twice (must be empty). */
+  badSpecPhrases: string[];
+  /** Claims (microphone, ANC, wireless, in-ear ...) the name / trusted specs do not back: dropped before writing. */
+  unsupportedClaims: string[];
+  /** How many stored specs were dropped because of such a claim (what the description would otherwise have stated). */
+  claimSpecsDropped: number;
   /** Set when the title still collides with another product after disambiguation. */
   collisionGroup: string | null;
   /** True when the result must not be written without a human look. */
@@ -162,8 +173,17 @@ function familyOf(chain: string[]): Family {
   );
 }
 
+/**
+ * A leaf that names a bucket, not a product ("Mobile Accessories", "Laptop Accessories", "Computer Peripherals"):
+ * a phone sitting in "Mobile Accessories" must never be called "Mobile Accessory", and its parent ("Phone") would be
+ * just as wrong for the accessories next to it. Such a leaf means: no category type, the raw name must state one.
+ */
+const GENERIC_LEAF = /\b(?:accessor(?:y|ies)|gadgets?|components?|peripherals?|equipment|products?|items?|miscellaneous|others?)$/iu;
+
 /** Readable product type candidates, leaf first: umbrella categories skipped. */
 function typeCandidates(chain: string[]): string[] {
+  const leaf = squash((chain[0] ?? "").replace(/\([^)]*\)/g, " "));
+  if (leaf && !UMBRELLA.test(leaf) && GENERIC_LEAF.test(leaf)) return [];
   return chain
     .filter((name) => name && !UMBRELLA.test(squash(name)))
     .map(singular)
@@ -214,7 +234,6 @@ const INCH = /(\d{1,3}(?:\.\d{1,2})?)\s?(?:inch(?:es)?|in\b|"|”|″)/i;
 const CPU_OK = /(core\s?(?:i[3579]|ultra|\d)|\bi[3579]-?\d|ryzen|athlon|celeron|pentium|xeon|threadripper|epyc|apple m\d|\bm[1-9]\b|snapdragon|\bn\d{2,3}\b)/i;
 const GPU_OK = /(rtx|gtx|geforce|radeon|\brx\s?\d|arc\s?[ab]\d|quadro|iris|uhd graphics|vega|integrated)/i;
 const SOCKET_OK = /^(AM[3-5]\+?|LGA\s?\d{3,4}|FM[12]\+?|sTRX?\d|SP[35]|TR4|sWRX8)/i;
-const FORM_OK = /(E-?ATX|Micro-?ATX|mATX|Mini-?ITX|ATX)/i;
 
 const SLOTS: Record<string, Slot> = {
   cpu: { keys: ["processor"], label: /^(processor|cpu|processor (?:model|name|type)|cpu (?:model|name|type))$/i, read: (v) => (CPU_OK.test(v) && v.length <= 32 ? squash(v.replace(/\s*processor$/i, "")) : null) },
@@ -225,10 +244,10 @@ const SLOTS: Record<string, Slot> = {
   refresh: { keys: [], label: /^(refresh rate|refresh|max refresh rate)$/i, read: (v) => { const m = v.match(/(\d{2,3})\s?hz\b/i); return m ? `${g(m, 1)}Hz refresh rate` : null; } },
   panel: { keys: ["panel"], label: /^(panel|panel type|display type|screen type)$/i, read: (v) => { const m = v.match(/^(IPS|VA|TN|OLED|AMOLED|PLS|AMVA|MVA)\b/i); return m ? `${g(m, 1).toUpperCase()} panel` : null; } },
   gpu_chip: { keys: ["graphics"], label: /^(graphics|gpu|graphics chip|chipset|gpu model|graphics processor|video card|graphics card)$/i, read: (v) => (GPU_OK.test(v) && v.length <= 32 ? squash(v) : null) },
-  vram: { keys: ["memory"], label: /^(memory|video memory|vram|graphics memory|memory size|memory capacity)$/i, read: (v) => { const m = v.match(GB); if (!m) return null; const t = g(v.match(/(GDDR\d\w?)/i), 1).toUpperCase(); return `${trimNum(g(m, 1))}${g(m, 2).toUpperCase()}${t ? ` ${t}` : ""} VRAM`; } },
+  vram: { keys: ["memory"], label: /^(memory|video memory|vram|graphics memory|memory size|memory capacity)$/i, read: (v) => { const m = v.match(GB); if (!m) return null; const t = g(v.match(/(GDDR\d[A-Z]?|HBM\d?[A-Z]?)/i), 1).toUpperCase(); return `${trimNum(g(m, 1))}${g(m, 2).toUpperCase()} ${t || "VRAM"}`; } },
   socket: { keys: ["socket"], label: /^(socket|cpu socket|socket type|supported socket)$/i, read: (v) => (SOCKET_OK.test(v) ? `${squash(v).toUpperCase().replace(/^LGA\s/, "LGA")} socket` : null) },
   mb_chipset: { keys: [], label: /^chipset$/i, read: (v) => { const m = v.match(/\b([ABHXZQWC]\d{2,3}[A-Z]?|TRX\d+|WRX\d+)\b/i); return m ? `${g(m, 1).toUpperCase()} chipset` : null; } },
-  form_factor: { keys: ["formFactor"], label: /^(form factor|motherboard form factor|board size|supported form factor)$/i, read: (v) => { const m = v.match(FORM_OK); return m ? `${g(m, 1).replace(/^micro-?atx$/i, "Micro-ATX").replace(/^mini-?itx$/i, "Mini-ITX").toUpperCase().replace("MICRO-ATX", "Micro-ATX").replace("MINI-ITX", "Mini-ITX")} form factor` : null; } },
+  form_factor: { keys: ["formFactor"], label: /^(form factor|motherboard form factor|board size|supported form factor)$/i, read: (v) => { const ff = formFactorOf(v); return ff ? `${ff} form factor` : null; } },
   mem_type: { keys: ["ramType"], label: /^(memory type|ram type|supported memory|memory support|memory)$/i, read: (v) => { const m = v.match(/DDR[2-5]\w*/i); return m ? `${m[0].toUpperCase()} memory` : null; } },
   mem_speed: { keys: [], label: /^(speed|memory speed|frequency|clock speed|bus|bus speed)$/i, read: (v) => { const m = v.match(/(\d{3,5})\s?(MHz|MT\/s)/i); return m ? `${g(m, 1)}${g(m, 2).replace(/mt\/s/i, "MT/s").replace(/mhz/i, "MHz")}` : null; } },
   ram_capacity: { keys: ["capacity", "ram"], label: /^(capacity|memory capacity|ram capacity|size|memory size|total capacity)$/i, read: (v) => { const m = v.match(GB); return m ? `${trimNum(g(m, 1))}${g(m, 2).toUpperCase()}` : null; } },
@@ -244,7 +263,7 @@ const SLOTS: Record<string, Slot> = {
   cooler_type: { keys: ["coolerType"], label: /^(cooler type|cooling type|type|cooling method)$/i, read: (v) => (/^(air|liquid|aio|water)/i.test(v) ? (/^air/i.test(v) ? "Air cooling" : "Liquid cooling") : null) },
   fan_size: { keys: ["size"], label: /(fan size|fan)/i, read: (v) => { const m = v.match(/(\d{2,3})\s?mm/i); return m ? `${g(m, 1)}mm fan` : null; } },
   tdp: { keys: [], label: /^(tdp|max tdp|thermal design power|tdp support)$/i, read: (v) => { const m = v.match(/(\d{2,3})\s?W/i); return m ? `${g(m, 1)}W TDP` : null; } },
-  case_type: { keys: [], label: /^(case type|type|form factor|case size)$/i, read: (v) => { const m = v.match(/(Mini|Mid|Full|Super)[- ]?Tower|\bMicro-?ATX\b|\bMini-?ITX\b|\bCube\b/i); return m ? `${squash(m[0]).replace(/^./, (c) => c.toUpperCase())} case` : null; } },
+  case_type: { keys: [], label: /^(case type|type|form factor|case size)$/i, read: (v) => { const m = v.match(/(Mini|Mid|Full|Super)[- ]?Tower|\bCube\b/i); return m ? `${squash(m[0]).replace(/^./, (c) => c.toUpperCase())} case` : null; } },
   side_panel: { keys: [], label: /(side panel|window)/i, read: (v) => { const m = v.match(/(tempered glass|acrylic|mesh|glass)/i); return m ? `${g(m, 1).toLowerCase().replace(/^./, (c) => c.toUpperCase())} side panel` : null; } },
   connectivity: { keys: ["connectivity"], label: /^(connectivity|connection|connection type|interface|connector|interface type)$/i, read: (v) => (/^(wireless|bluetooth|wired|usb(?:[- ]?[ac])?|wi-?fi|2\.4g|ethernet|hdmi|displayport|sata|pcie|nvme|m\.2)/i.test(v) && v.length <= 28 ? squash(v) : null) },
   net_speed: { keys: [], label: /^(speed|data rate|max speed|network speed|wifi speed|wireless speed|transfer rate)$/i, read: (v) => { const m = v.match(/(\d+(?:\.\d+)?)\s?(Mbps|Gbps)/i); return m ? `${trimNum(g(m, 1))}${g(m, 2).replace(/mbps/i, "Mbps").replace(/gbps/i, "Gbps")}` : null; } },
@@ -322,7 +341,7 @@ const BLOCKED_LABEL = /(brand|manufacturer|item|series|warranty|model|sku|upc|ea
 const normLabel = (label: string) => squash(label.replace(/[:：]+$/, "")).toLowerCase();
 /** "2 TB" -> "2tb", "15.6 inch" -> "15.6inch": a quantity is the same quantity however it is spaced. No lookbehind (bundled into the admin form). */
 const QTY_UNIT = /(\d)\s+(tb|gb|mb|ghz|mhz|hz|w|v|mm|cm|inch|mp|mbps|gbps|ppm|dpi|va|mah|ah)\b/gi;
-const normQty = (text: string) => text.toLowerCase().replace(QTY_UNIT, "$1$2");
+const normQty = (text: string) => text.toLowerCase().replace(/(\d)\s*(?:inches|inch|in\b|["”″])/g, "$1inch").replace(QTY_UNIT, "$1$2");
 const phraseKey = (p: string) => normQty(p);
 
 function validPhrase(phrase: string): boolean {
@@ -335,18 +354,33 @@ export function zeroQuantity(text: string): string | null {
   return m ? (m[0] ?? "").trim() : null;
 }
 
+const FILL_LABEL = /^(interface|connectivity|capacity|speed|ports?|power|memory|storage|output|input)$/;
+const DISPLAY_FAMILIES = new Set<FamilyId>(["monitor", "laptop", "flat-panel", "ip-phone"]);
+
 /** 3-4 real spec values (slot id + phrase) for the product's family. Never invents a value. */
-export function pickSpecs(facts: SpecFact[], family: FamilyId, brand: string, max = 4): SpecValue[] {
+export function pickSpecs(
+  facts: SpecFact[],
+  family: FamilyId,
+  brand: string,
+  max = 4,
+  opts: { accept?: (phrase: string) => boolean; rejected?: string[] } = {},
+): SpecValue[] {
   const out: SpecValue[] = [];
-  const add = (slot: string, phrase: string | null) => {
-    if (!phrase || !validPhrase(phrase) || zeroQuantity(phrase)) return;
+  /** "added" / "skipped" (a duplicate or invalid phrase) / "refused" (opts.accept said no: try the next fact). */
+  const add = (slot: string, phrase: string | null): "added" | "skipped" | "refused" => {
+    if (!phrase || !validPhrase(phrase) || zeroQuantity(phrase)) return "skipped";
+    if (opts.accept && !opts.accept(phrase)) {
+      opts.rejected?.push(phrase);
+      return "refused";
+    }
     const key = phraseKey(phrase);
     const firstToken = key.split(" ")[0] ?? "";
     if (out.some(({ phrase: other }) => {
       const o = phraseKey(other);
       return o.includes(key) || key.includes(o) || (/\d/.test(firstToken) && o.split(" ")[0] === firstToken);
-    })) return;
+    })) return "skipped";
     out.push({ slot, phrase });
+    return "added";
   };
   const usable = facts.filter((fact) => squash(fact.value) !== "");
   const ctx: Ctx = { brand };
@@ -364,10 +398,7 @@ export function pickSpecs(facts: SpecFact[], family: FamilyId, brand: string, ma
       if (bool ? !slot.allowBool : isJunkValue(value, brand)) continue;
       if (!bool && hasRepeatedWord(value)) continue;
       const phrase = slot.read(value, ctx);
-      if (phrase) {
-        add(slotId, phrase);
-        break;
-      }
+      if (phrase && add(slotId, phrase) !== "refused") break;
     }
   }
   // Fill: numeric spec rows from a safe label list ("4 ports", "2400 dpi").
@@ -377,7 +408,9 @@ export function pickSpecs(facts: SpecFact[], family: FamilyId, brand: string, ma
       const label = normLabel(fact.label);
       const value = squash(fact.value);
       if (BLOCKED_LABEL.test(label) || isJunkValue(value, brand)) continue;
-      if (!/^(interface|connectivity|resolution|capacity|speed|ports?|power|memory|storage|size|output|input)$/.test(label)) continue;
+      // v2.4: no "size" ("8GB size", "6.57 inches size" say nothing) and "resolution" only where the product HAS a
+      // display: a graphics card's "7680x4320" is the largest picture it can drive, not its resolution.
+      if (!(FILL_LABEL.test(label) || (label === "resolution" && DISPLAY_FAMILIES.has(family)))) continue;
       if (!/^\d/.test(value) || value.length > 18 || !/[a-z]/i.test(value)) continue;
       add("fill", `${value} ${label}`);
     }
@@ -663,7 +696,13 @@ export function analyseName(input: SeoProductInput, categoryHeads: string[] = []
     }
     core[i] = token;
   }
+  // v2.4: plain English words the name SHOUTS ("BLACK", "CASE", "TEMPERED", "MID-TOWER") are ordinary words, also inside the
+  // model run. Model codes (a digit) and acronyms / line names (not in the dictionary) are left as written.
+  for (let i = brandLen; i < core.length; i += 1) core[i] = softenPlainWords(core[i] ?? "");
   const typeIdxs = findTypeIdxs(core, brandLen, categoryHeads, groups);
+  // The standard type word: a name's "CASING" is a "Case".
+  const lastType = Math.max(-1, ...typeIdxs);
+  if (lastType >= 0) core[lastType] = standardType(core[lastType] ?? "");
   let restType: string | null = null;
   const restIdx = [...findTypeIdxs(rest, 0, [])][0];
   // "(A3 Flatebed Scanner)," -> "Scanner": edge punctuation is never part of the type word.
@@ -687,6 +726,12 @@ type Prep = {
   typeInCore: boolean;
   specs: SpecValue[];
   facts: SpecFact[];
+  /** Always part of the title core (a graphics chip the name / a stored spec writes). */
+  fixedExtras: Extra[];
+  /** What a claim may be backed by (lib/seo/claims.ts) and the claims dropped because nothing backed them. */
+  evidence: string;
+  droppedClaims: string[];
+  droppedClaimSpecs: number;
 };
 
 const ZERO_VALUE = /^\s*0+(?:\.0+)?\s*(?:gb|tb|mb|ghz|mhz|hz)?\s*$/i;
@@ -737,20 +782,51 @@ export function reconcileFacts(input: SeoProductInput, familyId: FamilyId): Spec
     const nameForm = AUDIO_FORM.find(([re]) => re.test(input.name))?.[1] ?? null;
     const nameMic = /\bmic(?:rophone)?\b/i.test(input.name);
     const nameBuiltIn = /built[- ]?in\s+mic/i.test(input.name);
+    const bare = (value: string) => /^(yes|no|true|false|y|n|supported)$/i.test(squash(value));
     facts = facts.filter((f) => {
+      // v2.4: an ATTRIBUTE (it has a key) was written by the import script from the name, by guessing ("buds" ->
+      // In-ear, "headset" -> Over-ear, "headset" -> Microphone=Yes). The claim comes from the name's own words
+      // (added below) or from a stored spec ROW; never from an attribute.
       if (slotMatch("audio_type", f)) {
-        if (nameForm) return false; // the name is the authority; its own form is added below
-        // An attribute saying Over-ear without the name saying so is the import script's default guess.
-        return !(f.key && /over[- ]?ear/i.test(f.value));
+        if (f.key) return false;
+        const rowForm = AUDIO_FORM.find(([re]) => re.test(f.value))?.[1] ?? null;
+        return !nameForm || rowForm === nameForm; // the name outranks a row
       }
-      if (slotMatch("mic", f)) {
-        const explicit = !/^(yes|true|y|supported)$/i.test(squash(f.value));
-        return nameMic || !f.key || explicit; // a bare Yes on an attribute is the import script's "headset => mic" guess
+      if (slotMatch("mic", f)) return !f.key && !bare(f.value); // "Microphone: Yes" adds nothing the guess did not
+      if (slotMatch("connectivity", f) && f.key) {
+        const word = squash(f.value).match(/^(bluetooth|wireless|wired|usb|2\.4\s?g)/i)?.[1];
+        return Boolean(word) && new RegExp(`\\b${escapeRe(word ?? "")}`, "i").test(input.name); // only a word the name really says
       }
       return true;
     });
     if (nameForm) facts.push({ label: "Type", value: nameForm });
     if (nameMic && !facts.some((f) => slotMatch("mic", f))) facts.push({ label: "Microphone", value: nameBuiltIn ? "Built-in microphone" : "Yes" });
+  }
+  if (familyId === "motherboard" || familyId === "case") {
+    // v2.4: the form factor is parsed properly ("M-ATX", "mATX", "Micro ATX" -> Micro-ATX, "E-ATX", "Mini ITX"; a bare ATX
+    // only without a prefix) and the NAME outranks any stored value. A stored value is used when the name says nothing:
+    // a spec row as it is, an attribute unless it says plain ATX: the import script read "M-ATX" / "Micro ATX" as plain
+    // ATX and guessed ATX for any chipset code without an "M", so a plain-ATX attribute needs the name to say ATX.
+    const nameForms = formFactorsIn(input.name);
+    facts = facts.filter((f) => {
+      if (!slotMatch("form_factor", f)) return true;
+      const stored = formFactorOf(f.value);
+      if (nameForms.length > 0) return stored !== null && nameForms.includes(stored);
+      return f.key ? stored !== null && stored !== "ATX" : true;
+    });
+    const only = nameForms.length === 1 ? nameForms[0] : null;
+    if (only) facts.push({ key: "formFactor", label: "Form Factor", value: only });
+  }
+  if (familyId === "gpu") {
+    // v2.4: memory is "<size> <type>" with the type from the name; a bare Size / Capacity row (value in GB) is the
+    // memory size, not a "size" phrase.
+    const isMemory = (f: SpecFact) => /^(memory|video memory|vram|graphics memory|memory size|memory capacity|size|capacity)$/.test(normLabel(f.label)) && /\d\s?(?:GB|G)\b/i.test(f.value);
+    const stored = facts.find(isMemory);
+    facts = facts.filter((f) => !isMemory(f));
+    const named = extractGpuMemoryFromName(input.name);
+    const size = named?.size ?? stored?.value.match(/(\d{1,2})\s?G/i)?.[1];  // a stored size is trusted; the name's wins when it states one
+    const type = named?.type ?? stored?.value.match(/(GDDR\d[A-Z]?|HBM\d?[A-Z]?)/i)?.[1]?.toUpperCase() ?? null;
+    if (size) facts.push({ key: "memory", label: "VRAM", value: `${String(size).replace(/GB$/i, "")}GB${type ? ` ${type}` : ""}` });
   }
   return facts;
 }
@@ -765,15 +841,35 @@ function prepare(input: SeoProductInput): Prep {
   const typeInCore = name.typeIdxs.size > 0;
   let type = "";
   if (typeInCore) {
-    type = name.core[Math.max(...name.typeIdxs)] ?? "";
+    type = standardType(name.core[Math.max(...name.typeIdxs)] ?? "");
   } else {
     // The raw name's own word wins when it agrees with the category ("Headset" for a Headphone category);
     // otherwise the category's type.
     const restGroup = name.restType ? typeGroupOf(name.restType) : null;
     const agrees = restGroup !== null && typeList.some((t) => typeGroupOf(t) === restGroup);
-    type = name.restType && agrees ? name.restType : typeList[0] ?? name.restType ?? "";
+    type = standardType(name.restType && agrees ? name.restType : typeList[0] ?? name.restType ?? "");
   }
-  return { input, family, name, typeList, type, typeInCore, specs: pickSpecs(facts, family.id, input.brand, 4), facts };
+  const evidence = claimEvidence(input.name, input.categoryChain, input.specs);
+  const refused: string[] = [];
+  const specs = pickSpecs(facts, family.id, input.brand, 4, { accept: (phrase) => unsupportedClaims(phrase, evidence).length === 0, rejected: refused });
+  // Claims removed at either level are counted: the phrase refused here, and the stored facts reconcileFacts() dropped
+  // (a guessed Microphone=Yes / Over-ear / Bluetooth attribute the name does not back).
+  const keptFacts = new Set(facts);
+  const droppedFacts = input.specs.filter((fact) => !keptFacts.has(fact)).map((fact) => `${fact.label} ${fact.value}`);
+  const droppedTexts = [...new Set([...refused, ...droppedFacts])];
+  const droppedClaims = [...new Set(droppedTexts.flatMap((text) => unsupportedClaims(text, evidence)))];
+  const droppedClaimSpecs = droppedTexts.filter((text) => unsupportedClaims(text, evidence).length > 0).length;
+  // A graphics chip is part of WHICH product this is: keep it in the title when the name (anywhere) or a stored spec
+  // writes it. The chip is never derived from the SKU (GV-N5070... is a board code).
+  const fixedExtras: Extra[] = [];
+  if (family.id === "gpu") {
+    const chip = extractGpuChipFromName(input.name) ?? specs.find((s) => s.slot === "gpu_chip")?.phrase ?? null;
+    const have = new Set(name.core.map(normTok));
+    if (chip && !chip.split(" ").map(normTok).filter(Boolean).every((token) => have.has(token))) {
+      fixedExtras.push({ kind: "chip", text: applyCasing(chip) });
+    }
+  }
+  return { input, family, name, typeList, type, typeInCore, specs, facts, fixedExtras, evidence, droppedClaims, droppedClaimSpecs };
 }
 
 const SUFFIX_PB = " Price in Bangladesh";
@@ -1115,8 +1211,13 @@ function foreignCodes(prep: Prep, title: string, extras: Extra[]): string[] {
     .filter((t) => !rawNorm.has(normTok(t)) && !specExtra.has(normTok(t)));
 }
 
-function render(prep: Prep, extras: Extra[]): SeoResult {
+function render(prep: Prep, collisionExtras: Extra[]): SeoResult {
   const { input, family, name } = prep;
+  let extras = [...prep.fixedExtras, ...collisionExtras];
+  // The chip is wanted in the title, but not at the price of a title that no longer fits in 60 (never cut, so that row would be skipped).
+  if (prep.fixedExtras.length > 0 && coreWith(prep, 0, extras).text.length > SEO_TITLE_MAX && coreWith(prep, 0, collisionExtras).text.length <= SEO_TITLE_MAX) {
+    extras = collisionExtras;
+  }
   const title = composeTitle(prep, extras);
   const shortCore = coreWith(prep, 0, extras).text;
   // The description's spec part says only what the title does not (specsAvailable still counts every usable spec).
@@ -1134,6 +1235,17 @@ function render(prep: Prep, extras: Extra[]): SeoResult {
   if (badChars.length > 0) flags.push("bad_chars");
   const zeroSpecs = findZeroSpecs(description.text, usedSpecs);
   if (zeroSpecs.length > 0) flags.push("spec_zero");
+  // v2.4 gates. A form factor the raw name contradicts; machine-looking spec wording; a claim nothing backs (dropped
+  // before composing, so a claim still in the text is a bug: that row is skipped); a type that is only a bucket name.
+  const claimConflicts = findFormFactorConflicts(input.name, description.text);
+  if (claimConflicts.length > 0) flags.push("claim_conflict");
+  const badSpecPhrases = findBadSpecPhrases(description.text, usedSpecs);
+  if (badSpecPhrases.length > 0) flags.push("bad_spec_phrase");
+  const specPart = [title.core, shortCore].sort((a, b) => b.length - a.length).reduce((text, core) => text.split(core).join(" "), description.text);
+  const leaked = unsupportedClaims(specPart, prep.evidence);
+  const droppedClaims = [...new Set([...prep.droppedClaims, ...leaked])];
+  if (droppedClaims.length > 0) flags.push("unsupported_claim");
+  if (!prep.type) flags.push("unusable_type");
   const typeLower = nounOf(prep.type);
   const secondary = [
     `${keywordCore} price in bd`,
@@ -1160,9 +1272,24 @@ function render(prep: Prep, extras: Extra[]): SeoResult {
     modelTokensLost: lost,
     badChars,
     zeroSpecs,
+    claimConflicts,
+    badSpecPhrases,
+    unsupportedClaims: droppedClaims,
+    claimSpecsDropped: prep.droppedClaimSpecs,
     collisionGroup: null,
-    needsReview: flags.includes("title_over_60") || lost.length > 0 || foreign.length > 0 || badChars.length > 0 || zeroSpecs.length > 0,
+    needsReview:
+      flags.includes("title_over_60") || lost.length > 0 || foreign.length > 0 || badChars.length > 0 || zeroSpecs.length > 0 ||
+      claimConflicts.length > 0 || badSpecPhrases.length > 0 || leaked.length > 0 || !prep.type,
   };
+}
+
+/** A form factor in the description that the raw name contradicts ("Micro ATX" in the name, "ATX form factor" in the text). */
+export function findFormFactorConflicts(name: string, description: string): string[] {
+  const fromName = formFactorsIn(name);
+  if (fromName.length === 0) return [];
+  return formFactorsIn(description)
+    .filter((form) => !fromName.includes(form))
+    .map((form) => `${form} in the description, the name says ${fromName.join(" / ")}`);
 }
 
 /** One product on its own (no collision handling). Used by the admin form's suggestion. */
@@ -1179,7 +1306,7 @@ const SPEC_NAME_TOKEN = /^(?:\d+(?:\.\d+)?(?:gb|tb|mb|mhz|ghz|w|va|mah|inch|"|mm
 type Distinguisher = { kind: string; text: string };
 
 /** A raw-name token used as a collision extra: brackets / quotes removed, "14inch" -> "14 inch", canonical case. */
-const cleanExtra = (token: string) => applyCasing(token.replace(/[()[\],"“”]/g, "").replace(/^(\d+(?:\.\d+)?)inch$/i, "$1 inch"));
+const cleanExtra = (token: string) => softenPlainWords(applyCasing(token.replace(/[()[\],"“”]/g, "").replace(/^(\d+(?:\.\d+)?)inch$/i, "$1 inch")));
 
 /**
  * What tells this product apart from the rest of its colliding group: a spec
