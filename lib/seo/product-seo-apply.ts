@@ -32,6 +32,8 @@ export function decideApply(
   // Safety gates: never written, whatever else is true.
   if (result.flags.includes("model_token_lost")) return { action: "skip: model_token_lost", write: false };
   if (result.flags.includes("foreign_code")) return { action: "skip: foreign_code", write: false };
+  if (result.flags.includes("bad_chars")) return { action: "skip: bad_chars", write: false };
+  if (result.flags.includes("spec_zero")) return { action: "skip: spec_zero", write: false };
   if (result.needsReview) return { action: "skip: needs_review", write: false };
   if (result.title.length > SEO_TITLE_MAX) return { action: "skip: title over 60", write: false };
   if (result.metaDescription.length < SEO_DESC_MIN || result.metaDescription.length > SEO_DESC_MAX) {

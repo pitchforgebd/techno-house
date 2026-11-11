@@ -14,8 +14,13 @@
  * words, no price / stock / warranty claims, uniqueness inside a set,
  * determinism (also independent of input order), wording variants exist.
  */
+import { readFileSync } from "node:fs";
+import { extractNameSpecs, plainNumber } from "@/lib/catalog/spec-extract";
+import { applyCasing } from "@/lib/seo/casing";
 import { countActions, decideApply } from "@/lib/seo/product-seo-apply";
 import {
+  findBadChars,
+  findZeroSpecs,
   generateProductSeo,
   generateProductSeoSet,
   hashId,
@@ -25,6 +30,7 @@ import {
   resolveProductMeta,
   type SeoProductInput,
   type SeoResult,
+  type SpecFact,
 } from "@/lib/seo/product-seo";
 
 let checks = 0;
@@ -63,9 +69,9 @@ const casio = fx("Casio", "Casio Portable THERMAL Printer PTP-II", ["Printer", "
 const asus = fx("ASUS", "ASUS VZ24EHF 23.8 Inch FHD IPS 100Hz Eye Care Gaming", ["Monitor"],
   [["Display Size", "23.8 inch", "size"], ["Resolution", "1920x1080"], ["Refresh Rate", "100Hz"], ["Panel Type", "IPS", "panel"]], { model: ["VZ24EHF"], type: "Monitor" });
 const dell8 = fx("Dell", "Dell Latitude 3420-CORP Core i5 11th Gen 8GB RAM 256GB SSD 14 Inch", ["All Laptop", "Laptop"],
-  [["Processor", "Core i5-1135G7", "processor"], ["RAM", "8GB", "ram"], ["Storage", "256GB SSD", "storage"], ["Display", "14 inch", "size"]], { model: ["3420-CORP"], type: "Laptop" });
+  [["Processor", "Core i5-1135G7", "processor"], ["RAM", "8GB", "ram"], ["Storage", "256GB SSD", "storage"], ["Display", "14 inch", "size"]], { model: ["3420"], type: "Laptop" });
 const dell4 = fx("Dell", "Dell Latitude 3420-CORP Core i5 11th Gen 4GB RAM 256GB SSD 14 Inch", ["All Laptop", "Laptop"],
-  [["Processor", "Core i5-1135G7", "processor"], ["RAM", "4GB", "ram"], ["Storage", "256GB SSD", "storage"], ["Display", "14 inch", "size"]], { model: ["3420-CORP"], type: "Laptop" });
+  [["Processor", "Core i5-1135G7", "processor"], ["RAM", "4GB", "ram"], ["Storage", "256GB SSD", "storage"], ["Display", "14 inch", "size"]], { model: ["3420"], type: "Laptop" });
 
 // Junk spec cases from the report.
 const junkLaptop = fx("Acme", "Acme Zen 15 Laptop", ["Laptop"],
@@ -131,7 +137,7 @@ equal("ASUS VZ24EHF now says Monitor", /^ASUS VZ24EHF Monitor Price in Banglades
   check("Dell 8GB vs 4GB: titles differ", r8 && r4 && r8.title !== r4.title, `${r8?.title} | ${r4?.title}`);
   check("Dell 8GB title carries 8GB, 4GB title carries 4GB", /8GB/.test(r8?.title ?? "") && /4GB/.test(r4?.title ?? ""), `${r8?.title} | ${r4?.title}`);
   check("Dell collision resolved, no review needed", !r8?.needsReview && !r4?.needsReview && r8?.collisionGroup === null);
-  check("Dell titles still <= 60 with model + type", [r8, r4].every((r) => r && r.title.length <= 60 && /3420-CORP/.test(r.title) && /Laptop/.test(r.title)), `${r8?.title} | ${r4?.title}`);
+  check("Dell titles still <= 60 with model + type", [r8, r4].every((r) => r && r.title.length <= 60 && /3420/.test(r.title) && !/CORP/.test(r.title) && /Laptop/.test(r.title)), `${r8?.title} | ${r4?.title}`);
 }
 
 // --- junk specs ----------------------------------------------------------------
@@ -274,7 +280,7 @@ const modelFx: Model[] = [
   { brand: "GIGABYTE", name: "GIGABYTE Intel Chipset B760M DS3H DDR4, Socket LGA1700, 4 x DDR4 DIMM", chain: ["Motherboard", "Component"], must: ["B760M", "DS3H", "DDR4"], type: "Motherboard",
     specs: [["Socket", "LGA1700", "socket"], ["Chipset", "B760"], ["Form Factor", "Micro-ATX", "formFactor"], ["Memory Type", "DDR4", "ramType"]] },
   // --- varied products ----------------------------------------------------------
-  { brand: "Dell", name: "Dell Latitude 3420-CORP Core i5 11th Gen 8GB RAM 256GB SSD 14 Inch", chain: ["All Laptop", "Laptop"], must: ["Latitude", "3420-CORP"], type: "Laptop",
+  { brand: "Dell", name: "Dell Latitude 3420-CORP Core i5 11th Gen 8GB RAM 256GB SSD 14 Inch", chain: ["All Laptop", "Laptop"], must: ["Latitude", "3420"], type: "Laptop",
     specs: [["Processor", "Core i5-1135G7", "processor"], ["RAM", "8GB", "ram"], ["Storage", "256GB SSD", "storage"], ["Display", "14 inch", "size"]] },
   { brand: "HP", name: "HP ProBook 450 G9 Core i5-1235U 16GB 512GB 15.6 inch", chain: ["All Laptop", "Laptop"], must: ["ProBook", "450", "G9"], type: "Laptop",
     specs: [["Processor", "Core i5-1235U", "processor"], ["RAM", "16GB", "ram"], ["Storage", "512GB SSD", "storage"], ["Display", "15.6 inch", "size"]] },
@@ -375,13 +381,13 @@ modelFx.forEach((m, i) => {
   check(`${where}: secondary keywords follow the same core`, r.secondaryKeywords.slice(0, 3).every((k) => k.startsWith(r.titleCore.toLowerCase())), r.secondaryKeywords.join(" | "));
   check(`${where}: alt = title core`, r.imageAlt === r.titleCore);
   // never a code that is not in the raw name (SKU "MSKU-n", modelNumber, "GIG-B550M-5" ...)
-  const rawTokens = new Set(`${m.name} ${m.brand}`.toLowerCase().split(/[\s,:|]+/).map((t) => t.replace(/[^a-z0-9]/g, "")).filter(Boolean));
+  const rawTokens = new Set(`${m.name} ${m.brand}`.toLowerCase().split(/[\s,:|(]+/).flatMap((t) => [t, t.replace(/(?:-(?:corp|brac|supp|bg|asa))+-?$/, "")]).map((t) => t.replace(/[^a-z0-9]/g, "")).filter(Boolean));
   const titleCodes = r.title.replace(/ \| Techno House$/, "").split(/\s+/).filter((t) => /\d/.test(t) && !/^(?:Price|in|BD|Bangladesh)$/.test(t));
   const foreign = titleCodes.filter((t) => !rawTokens.has(t.toLowerCase().replace(/[^a-z0-9]/g, "")));
   check(`${where}: every digit-bearing token of the title is in the raw name`, foreign.length === 0, `foreign: ${foreign.join(" ")} | ${r.title}`);
   // description grammar: "with" only before a noun phrase we wrote ("with built-in mic[rophone]"); never "with <adjective list>"
   const desc = r.metaDescription.slice(r.titleCore.length);
-  check(`${where}: no "with <bare adjective list>"`, !/\bwith\b(?! built-in mic)/i.test(desc) && !/, with\b/i.test(desc), r.metaDescription);
+  check(`${where}: no "with <bare adjective list>"`, !/\bwith\b(?! (?:built-in )?mic)/i.test(desc) && !/, with\b/i.test(desc), r.metaDescription);
   check(`${where}: description 120-155 and neutral`, r.metaDescription.length >= 120 && r.metaDescription.length <= 155 && !/\b(in stock|warranty|order online|৳|genuine)\b/i.test(r.metaDescription), `${r.metaDescription} (${r.metaDescription.length})`);
   check(`${where}: the whole-set result keeps the model tokens too`, m.must.every((t) => words(inSet.title).includes(t.toLowerCase())), inSet.title);
 });
@@ -400,7 +406,7 @@ check("model fixtures: all keywords unique", new Set(set.map((r) => r.primaryKey
   const boards = set.slice(-7).map((r) => r.title);
   check("7 B650 boards with different model lines keep their own line words", new Set(boards).size === 7 && boards.every((t) => /B650/i.test(t)), boards.join(" | "));
 }
-check("the five production samples: headset description reads naturally", /wired over-ear headset with built-in mic(?:rophone)?\./.test(generateProductSeo(inputs[2]!).metaDescription), generateProductSeo(inputs[2]!).metaDescription);
+check("the five production samples: headset description reads naturally (stored specs say over-ear and built-in microphone)", /wired over-ear headset with built-in mic(?:rophone)?\./.test(generateProductSeo(inputs[2]!).metaDescription), generateProductSeo(inputs[2]!).metaDescription);
 check("monitor description: '27 inch 3840x2160 IPS monitor, 60Hz'", /27 inch 3840x2160 IPS monitor, 60Hz/.test(generateProductSeo(inputs[modelFx.findIndex((m) => m.name.startsWith("LG 27UP"))]!).metaDescription), generateProductSeo(inputs[modelFx.findIndex((m) => m.name.startsWith("LG 27UP"))]!).metaDescription);
 check("generator is deterministic and order-independent for the v2.1 set", JSON.stringify(generateProductSeoSet([...inputs].reverse()).reverse().map((r) => r.title)) === JSON.stringify(set.map((r) => r.title)));
 
@@ -440,6 +446,160 @@ check("generator is deterministic and order-independent for the v2.1 set", JSON.
   check("decideApply: --overwrite replaces it", decideApply(ok, { metaTitle: "Mine", metaDescription: null, seoSource: "admin" }, { overwrite: true }).write === true);
   const counts = countActions([lostDecision, lostDecision, decideApply(ok, stored)]);
   check("countActions groups and orders rows (the dry-run summary lines)", counts[0]?.[0] === "skip: model_token_lost" && counts[0]?.[1] === 2 && counts[1]?.[0] === "write");
+}
+
+
+// =============================================================================
+// v2.2: generator hygiene (production dry-run, 387 products)
+// =============================================================================
+
+type Real = { label: string; brand: string; name: string; chain: string[]; specs: [string, string, string?][]; title?: string; must?: string[]; never?: string[]; reconstructed?: boolean };
+const LAPTOP = ["All Laptop", "Laptop"];
+// Stored attributes exactly as the old import script wrote them for these products (RAM figure stored as storage, 0GB, ...).
+const wrongDellAttrs = (cpu: string, ram: string): [string, string, string?][] => [["Processor", cpu, "processor"], ["RAM", ram, "ram"], ["Storage", ram, "storage"]];
+const real: Real[] = [
+  { label: "Latitude 3420 FHD", brand: "Dell", name: 'Dell LATITUDE 3420-CORP-(Core i3-1115G4-14" FHD (1920x 1080)-8GB, 1x8GB-512GB SSD-Non Backlit-BackPack-Free DOS-5Y)-ASA', chain: LAPTOP, specs: wrongDellAttrs("Core i3", "8GB"), must: ["Latitude", "3420"], never: ["CORP", "ASA", "Core i3-1115G4-14"] },
+  { label: "Latitude 3420 HD", brand: "Dell", name: 'DELL LATITUDE 3420-CORP-(CORE I3-1115G4-14" HD (1366X 768)-4GB, 1X4GB-1TB HDD-SINGLE POINTING BACKLIT-FREE DOS-3Y)', chain: LAPTOP, specs: wrongDellAttrs("Core i3", "4GB"), must: ["Latitude", "3420"] },
+  { label: "Latitude 3440", brand: "Dell", name: 'Dell LATITUDE 3440-CORP-(Core i3-1215U-14" FHD (1920x1080)-8GB, 1x8GB-512GB SSD-Single Pointing Backlit-BackPack-Free DOS-3Y)', chain: LAPTOP, specs: wrongDellAttrs("Core i3", "8GB"), must: ["Latitude", "3440"] },
+  { label: "Latitude 3540 (reconstructed)", reconstructed: true, brand: "Dell", name: 'Dell LATITUDE 3540-CORP-(Core i5-1335U-15.6" FHD (1920x1080)-16GB, 1x16GB-512GB SSD-Backlit-Free DOS-3Y)', chain: LAPTOP, specs: wrongDellAttrs("Core i5", "16GB"), must: ["Latitude", "3540"] },
+  { label: "Latitude 7450 (reconstructed)", reconstructed: true, brand: "Dell", name: 'Dell LATITUDE 7450-CORP-(Core Ultra 7 165U-14" FHD+ (1920x1200)-16GB, 1x16GB-512GB SSD-Backlit-Win 11 Pro-3Y)', chain: LAPTOP, specs: wrongDellAttrs("Core Ultra 7", "16GB"), must: ["Latitude", "7450"] },
+  { label: "Optiplex 3000 MT", brand: "Dell", name: "DELL OPTIPLEX 3000 MT-CORP-(INTEL CORE i5-12500 12TH GEN 3.0 GHz Up to 4.6 GHz/INTEL B660/8GB 3200MHz/1TB/USB KB/MOU/VGA/DP/HDMI/Free DOS/3 Yrs)", chain: ["Brand PC", "Desktop"], specs: [], must: ["Optiplex", "3000", "MT"], never: ["CORP", "12500-", "(", "B660"] },
+  { label: "ThinkPad X1 Carbon G13", brand: "Lenovo", name: "Lenovo ThinkPad X1 Carbon  G13(21NXS0N800) Core Ultra 7 255H Processor (P-core 2.0GHz Max P-core 5.1GHz), 32 GB RAM, 1TB  SSD, 14.0'' WUXGA Touch, Win 11 Pro , Intel Arc 140T GPU,", chain: LAPTOP, specs: wrongDellAttrs("Core Ultra 7", "32GB"), must: ["ThinkPad", "X1", "Carbon", "G13"], never: ["21NXS0N800"] },
+  { label: "V15 G5 IRL (16.0GB)", brand: "Lenovo", name: 'Lenovo V15 G5 IRL (83HFA09K00) Intel Core i5-13420H (P-cores up to 4.6GHz, 12MB), 15.6" FHD Non-Touch, 16.0GB DDR5, 512GB SSD, Luna Grey, Intel UHD Graphics, BT 5.2, Wi-Fi, 720P HD', chain: LAPTOP, specs: [["Processor", "Core i5", "processor"], ["RAM", "0GB", "ram"], ["Storage", "0GB", "storage"]], must: ["V15", "G5", "IRL"], never: ["83HFA09K00"] },
+  { label: "HP 240R G10 (8GB(1x8GB)DDR4)", brand: "HP", name: "HP 240R G10 Laptop,Intel Core 3-100U-1.20 To 4.70 GHz,8GB(1x8GB)DDR4-3200,512 GB SSD,14''FHD,Wi-Fi6,", chain: LAPTOP, specs: wrongDellAttrs("Core 3", "8GB"), must: ["240R", "G10"] },
+  { label: "Edifier Comfo Q OWS", brand: "Edifier", name: "Edifier Comfo Q OWS Headphone Back, No ANC, 32 Hours Battery - 1 Year Warranty", chain: ["Headphone", "Accessories"], specs: [["Type", "Over-ear", "audioType"]], must: ["Comfo", "OWS"], never: ["Over-ear", "ANC"] },
+  { label: "Logitech G435 Bluetooth", brand: "Logitech", name: "Logitech G435 Lightspeed Wireless & Bluetooth Gaming Headset, Black, 2Y (981-001051)", chain: ["Headphone", "Accessories"], specs: [["Type", "Over-ear", "audioType"], ["Connectivity", "Bluetooth", "connectivity"], ["Microphone", "Yes", "microphone"]], must: ["G435"], never: ["Over-ear", "981-001051"] },
+  { label: "ZONE 300", brand: "Logitech", name: "Logitech ZONE 300 Wireless Bluetooth Headset, BLACK, 1Y (981-001408)", chain: ["Headphone", "Accessories"], specs: [["Type", "Over-ear", "audioType"], ["Connectivity", "Bluetooth", "connectivity"], ["Microphone", "Yes", "microphone"]], must: ["ZONE", "300"], never: ["Over-ear", "981-001408"] },
+];
+const realInputs: SeoProductInput[] = real.map((r, i) => ({ id: `r${i}`, name: r.name, brand: r.brand, categoryChain: r.chain, sku: `RSKU-${i}`, modelNumber: null, specs: r.specs.map(([label, value, key]) => ({ label, value, key })) }));
+const realSet = generateProductSeoSet(realInputs);
+const SHOWN_BAD = /["()[\]]/;
+const hyphenEdge = (text: string) => text.split(/\s+/).some((t) => { const x = t.replace(/[.,:;]+$/, ""); return x.length > 0 && (x.startsWith("-") || x.endsWith("-")); });
+const FORM_WORDS = /\b(?:over-ear|on-ear|in-ear|earbuds?|neckband|open-ear)\b/i;
+
+real.forEach((r, i) => {
+  const out = generateProductSeo(realInputs[i]!);
+  const inSet = realSet[i]!;
+  for (const [which, result] of [["alone", out], ["in set", inSet]] as const) {
+    const where = `real name (${which}): ${r.label}`;
+    const texts = [result.title, result.primaryKeyword, result.metaDescription, result.imageAlt];
+    check(`${where}: no " ( ) [ ] in title / keyword / description / alt`, texts.every((x) => !SHOWN_BAD.test(x)), texts.join(" | "));
+    check(`${where}: no hyphen at either end, no double space`, texts.every((x) => !hyphenEdge(x) && !/\s{2}/.test(x) && x === x.trim()), texts.join(" | "));
+    check(`${where}: no zero or empty spec`, !/(?:^|[^\d.])0+(?:\.0+)?\s?(?:GB|TB|MB|GHz)\b/.test(result.metaDescription) && result.zeroSpecs.length === 0 && !result.flags.includes("spec_zero"), result.metaDescription);
+    check(`${where}: no bad_chars / spec_zero / model_token_lost / foreign_code`, !["bad_chars", "spec_zero", "model_token_lost", "foreign_code"].some((f) => result.flags.includes(f)), result.flags.join(","));
+    check(`${where}: keyword = title core + " price in bangladesh"`, result.primaryKeyword === `${result.titleCore.toLowerCase()} price in bangladesh` && result.title.toLowerCase().startsWith(result.titleCore.toLowerCase()), `${result.primaryKeyword} | ${result.title}`);
+    check(`${where}: title <= 60, description 120-155`, result.title.length <= 60 && result.metaDescription.length >= 120 && result.metaDescription.length <= 155, `${result.title} (${result.title.length}) / ${result.metaDescription.length}`);
+    // an unsupported form-factor claim: only when the raw name says it (the stored attribute here is the import script's guess)
+    const claimed = result.metaDescription.match(FORM_WORDS)?.[0] ?? null;
+    check(`${where}: form factor claimed only if the raw name says it`, !claimed || new RegExp(claimed.replace("-", "[- ]?"), "i").test(r.name), `${claimed} | ${result.metaDescription}`);
+    check(`${where}: no shouted brand / line word left (LATITUDE, OPTIPLEX, INTEL)`, ![result.title, result.metaDescription].some((x) => /(?:LATITUDE|OPTIPLEX|INTEL|CORE)/.test(x)), result.title);
+    for (const token of r.must ?? []) check(`${where}: keeps "${token}"`, words(result.title).includes(token.toLowerCase()), result.title);
+    for (const word of r.never ?? []) check(`${where}: never "${word}"`, ![result.title, result.primaryKeyword, result.metaDescription].some((x) => x.toLowerCase().includes(word.toLowerCase())), `${result.title} | ${result.metaDescription}`);
+  }
+});
+const realBy = (label: string) => realSet[real.findIndex((r) => r.label === label)]!;
+{
+  equal("Latitude 3420 FHD: title", realBy("Latitude 3420 FHD").title.replace(/ \| Techno House$/, "").replace(/ Price in (?:Bangladesh|BD)$/, ""), "Dell Latitude 3420 8GB RAM Laptop");
+  check("Latitude 3420 HD vs FHD share a core and are told apart by what the NAME says (RAM)", realBy("Latitude 3420 HD").title !== realBy("Latitude 3420 FHD").title && /4GB RAM/.test(realBy("Latitude 3420 HD").title), `${realBy("Latitude 3420 FHD").title} | ${realBy("Latitude 3420 HD").title}`);
+  check("...and neither needs review", !realBy("Latitude 3420 FHD").needsReview && !realBy("Latitude 3420 HD").needsReview);
+  check("Latitude 3440 is its own core", /^Dell Latitude 3440 /.test(realBy("Latitude 3440").title), realBy("Latitude 3440").title);
+  check("shouted line words become Title Case, the model code keeps its case", /^Dell Optiplex 3000 MT Brand PC Price/.test(realBy("Optiplex 3000 MT").title) && /^Dell Latitude 3540 /.test(realBy("Latitude 3540 (reconstructed)").title), `${realBy("Optiplex 3000 MT").title}`);
+  check("ThinkPad: bracketed part number is not in title or keyword", realBy("ThinkPad X1 Carbon G13").title.startsWith("Lenovo ThinkPad X1 Carbon G13 ") && !/21NXS0N800/i.test(realBy("ThinkPad X1 Carbon G13").primaryKeyword), realBy("ThinkPad X1 Carbon G13").title);
+  const d = (label: string) => realBy(label).metaDescription;
+  check("3420 FHD description: 8GB RAM and 512GB SSD (not '8GB storage')", /8GB RAM/.test(d("Latitude 3420 FHD")) && /512GB SSD/.test(d("Latitude 3420 FHD")) && !/8GB storage/.test(d("Latitude 3420 FHD")), d("Latitude 3420 FHD"));
+  check("3420 HD description: 4GB RAM and 1TB HDD", /4GB RAM/.test(d("Latitude 3420 HD")) && /1TB HDD/.test(d("Latitude 3420 HD")), d("Latitude 3420 HD"));
+  check("V15 G5 IRL: 16.0GB reads as 16GB RAM, 512GB SSD, never 0GB", /16GB RAM/.test(d("V15 G5 IRL (16.0GB)")) && /512GB SSD/.test(d("V15 G5 IRL (16.0GB)")) && !/0GB/.test(d("V15 G5 IRL (16.0GB)").replace(/10GB|20GB|30GB|40GB|50GB|60GB|\d0GB/g, "")), d("V15 G5 IRL (16.0GB)"));
+  check("HP 8GB(1x8GB)DDR4,512 GB SSD: RAM and storage the right way round", /8GB RAM/.test(d("HP 240R G10 (8GB(1x8GB)DDR4)")) && /512GB SSD/.test(d("HP 240R G10 (8GB(1x8GB)DDR4)")), d("HP 240R G10 (8GB(1x8GB)DDR4)"));
+  check("Comfo Q OWS: no form factor, no mic, no ANC claim, still states the type", !FORM_WORDS.test(d("Edifier Comfo Q OWS")) && !/\bmic/i.test(d("Edifier Comfo Q OWS")) && !/ANC/.test(d("Edifier Comfo Q OWS")) && /Headphone/.test(realBy("Edifier Comfo Q OWS").title), d("Edifier Comfo Q OWS"));
+  check("G435 / ZONE 300: 'Bluetooth' is capitalised, no 'over-ear', no mic claim from the word Headset", ["Logitech G435 Bluetooth", "ZONE 300"].every((l) => /Bluetooth/.test(d(l)) && !/\bbluetooth\b/.test(d(l)) && !FORM_WORDS.test(d(l)) && !/\bmic/i.test(d(l))), `${d("Logitech G435 Bluetooth")} | ${d("ZONE 300")}`);
+}
+check("the real-name fixtures are unique in the set", new Set(realSet.map((r) => r.title.toLowerCase())).size === realSet.length, realSet.map((r) => r.title).join("\n  "));
+
+// A stored form factor or mic IS used when the raw name says it, or when a stored spec ROW (not the guessed attribute) does.
+{
+  const hp = (name: string, specs: SpecFact[]) => generateProductSeo({ id: "h1", name, brand: "Acme", categoryChain: ["Headphone", "Accessories"], specs });
+  check("name says over-ear -> over-ear is stated", /over-ear/.test(hp("Acme Z100 Over-Ear Wired Headphone", [{ label: "Type", value: "Over-ear", key: "audioType" }, { label: "Connectivity", value: "Wired", key: "connectivity" }]).metaDescription));
+  check("a stored spec ROW (no attribute key) saying over-ear is trusted", /over-ear/.test(hp("Acme Z100 Headphone", [{ label: "Type", value: "Over-ear" }, { label: "Connectivity", value: "Wired", key: "connectivity" }]).metaDescription));
+  check("an in-ear name overrides a stored over-ear attribute", !/over-ear/.test(hp("Acme Z100 In-Ear Earphones", [{ label: "Type", value: "Over-ear", key: "audioType" }, { label: "Connectivity", value: "Wired", key: "connectivity" }]).metaDescription));
+  check("the name says Mic -> 'with microphone' (not 'built-in')", /with microphone|with mic\./.test(hp("Acme Z100 Headset with Noise-Cancelling Mic", [{ label: "Connectivity", value: "USB", key: "connectivity" }]).metaDescription) && !/built-in/.test(hp("Acme Z100 Headset with Noise-Cancelling Mic", [{ label: "Connectivity", value: "USB", key: "connectivity" }]).metaDescription));
+  check("a spec that says Built-in microphone is worded that way", /built-in mic/.test(hp("Acme Z100 Headphone", [{ label: "Microphone", value: "Built-in microphone" }, { label: "Connectivity", value: "Wired", key: "connectivity" }, { label: "Type", value: "On-ear" }]).metaDescription));
+}
+
+// Zero / empty attributes never reach a description.
+{
+  const r = generateProductSeo({ id: "z1", name: "Acme Zen 15 Laptop", brand: "Acme", categoryChain: LAPTOP, specs: [{ label: "RAM", value: "0GB", key: "ram" }, { label: "Storage", value: "0GB", key: "storage" }, { label: "Processor", value: "Core i5", key: "processor" }, { label: "Display", value: "15.6 inch", key: "size" }] });
+  check("0GB RAM / storage attributes are dropped, not stated", !/0GB/.test(r.metaDescription) && r.zeroSpecs.length === 0, r.metaDescription);
+  const same = generateProductSeo({ id: "z2", name: "Acme Zen 15 Laptop", brand: "Acme", categoryChain: LAPTOP, specs: [{ label: "RAM", value: "8GB", key: "ram" }, { label: "Storage", value: "8GB", key: "storage" }, { label: "Processor", value: "Core i5", key: "processor" }] });
+  check("a stored storage that just repeats the RAM figure is dropped", !/8GB storage/.test(same.metaDescription) && /8GB RAM/.test(same.metaDescription), same.metaDescription);
+}
+
+{
+  // The type word found after the cut must not carry the bracket it sat in: "... DS-60000 (A3 Flatebed Scanner), ADF".
+  const epson = generateProductSeo({ id: "e1", name: "B11B204241, EPSON Work Force DS-60000 (A3 Flatebed Scanner), ADF, 1YW", brand: "Epson", categoryChain: ["Scanner", "Office Equipment"], specs: [] });
+  check("type word from after a bracket is clean ('Scanner', not 'Scanner)')", /^Epson Work Force DS-60000 Scanner Price/.test(epson.title) && !/[()]/.test(epson.title + epson.metaDescription), epson.title);
+}
+
+// --- spec extraction (the cause of "0GB storage") ----------------------------------------
+{
+  const v15 = extractNameSpecs(real[7]!.name);
+  check("raw '16.0GB DDR5, 512GB SSD': RAM 16GB, storage 512GB SSD", v15.ram === "16GB" && v15.storage?.size === "512GB" && v15.storage?.kind === "SSD", JSON.stringify(v15));
+  check("...the 4.6GHz clock and 12MB cache are not sizes", !JSON.stringify(v15).includes("4.6") && !JSON.stringify(v15).includes("12MB"));
+  const cases: [string, string | null, string | null][] = [
+    ["Acme 16.0GB DDR5, 1.0TB NVMe SSD", "16GB", "1TB"],
+    ["Acme 8GB LPDDR5x soldered, 256GB eMMC", "8GB", "256GB"],
+    ["Acme 8GB RAM 512GB", "8GB", null],
+    ["Acme 2x8GB DDR4 3200MHz", "16GB", null],
+    ["Acme 512GB SSD, 16GB RAM", "16GB", "512GB"],
+    ["Acme 8GB, 1x8GB-512GB SSD-Win", "8GB", "512GB"],
+    ["Acme 8GB 3200MHz/1TB/256GB", "8GB", null],
+    ["Acme B650M DS3H", null, null],
+  ];
+  for (const [name, ram, size] of cases) {
+    const x = extractNameSpecs(name);
+    check(`extractNameSpecs(${JSON.stringify(name)})`, x.ram === ram && (x.storage?.size ?? null) === size, JSON.stringify(x));
+  }
+  equal("ambiguous storage (1TB/256GB) is not guessed", extractNameSpecs("Acme 8GB 3200MHz/1TB/256GB").storageAmbiguous, true);
+  check("decimals: plainNumber('16.0') = '16', '1.50' = '1.5', zero and junk = null", plainNumber("16.0") === "16" && plainNumber("1.50") === "1.5" && plainNumber("0") === null && plainNumber("0.0") === null && plainNumber("x") === null);
+  check("populate script and generator share the parser", readFileSync("scripts/deploy/populate-import-attributes.ts", "utf8").includes("@/lib/catalog/spec-extract") || readFileSync("scripts/deploy/populate-import-attributes.ts", "utf8").includes("lib/catalog/spec-extract"));
+}
+
+// --- the central casing map ------------------------------------------------------------------
+{
+  const cases: [string, string][] = [
+    ["bluetooth", "Bluetooth"], ["BLUETOOTH", "Bluetooth"], ["wifi", "Wi-Fi"], ["wi-fi", "Wi-Fi"], ["usb", "USB"], ["usb-c", "USB-C"], ["type-c", "Type-C"], ["hdmi", "HDMI"],
+    ["displayport", "DisplayPort"], ["ddr4", "DDR4"], ["ddr5", "DDR5"], ["lpddr5x", "LPDDR5x"], ["ips", "IPS"], ["oled", "OLED"], ["led", "LED"], ["rgb", "RGB"], ["ssd", "SSD"],
+    ["hdd", "HDD"], ["nvme", "NVMe"], ["ram", "RAM"], ["4.6ghz", "4.6GHz"], ["165hz", "165Hz"], ["3200mhz", "3200MHz"], ["512gb", "512GB"], ["qhd", "QHD"], ["fhd", "FHD"], ["uhd", "UHD"],
+    ["amd", "AMD"], ["intel", "Intel"], ["INTEL", "Intel"], ["nvidia", "NVIDIA"], ["gigabyte", "GIGABYTE"],
+  ];
+  for (const [input, expected] of cases) equal(`casing: ${input} -> ${expected}`, applyCasing(input), expected);
+  equal("casing keeps surrounding punctuation", applyCasing("(bluetooth),"), "(Bluetooth),");
+  equal("casing leaves unknown words and model codes alone", applyCasing("B650M ARGB Pro WF7"), "B650M ARGB Pro WF7");
+  // a model code keeps the case the raw name gave it even when it equals a mapped word
+  const asus = generateProductSeo({ id: "a1", name: "ASUS TUF GAMING B650-PLUS WIFI, Socket AM5", brand: "ASUS", categoryChain: ["Motherboard", "Component"], specs: [] });
+  check("model run keeps its case: WIFI in 'B650-PLUS WIFI' stays", /B650-PLUS WIFI/.test(asus.title), asus.title);
+  // no lower-case proper noun in any description body of the fixtures
+  const lowerProper = /\b(?:bluetooth|wifi|usb|hdmi|ddr[345]|ips|oled|led|rgb|ssd|hdd|nvme|amd|nvidia)\b/;
+  const bodies = [...set, ...realSet].map((r) => r.metaDescription.slice(r.titleCore.length));
+  check("no lower-case proper noun / standard in any description body", bodies.every((b) => !lowerProper.test(b)), bodies.filter((b) => lowerProper.test(b)).join(" | "));
+}
+
+// --- the two new gates ----------------------------------------------------------------------------
+{
+  const cases: [string, boolean][] = [
+    ['Dell Latitude 3420 14" Laptop', true], ["Dell Latitude (3420) Laptop", true], ["Dell [3420] Laptop", true], ["Dell Latitude 3420-CORP- Laptop", true],
+    ["-Dell Latitude 3420", true], ["Dell Latitude 3420-", true], ["Dell  Latitude 3420", true], ["Dell Latitude 3420 ®", true], ["Dell Latitude 3420 “Laptop”", true], ["Dell Latitude 3420 – Laptop", false],
+    ["Dell Latitude 3420 Laptop Price in Bangladesh | Techno House", false], ["Lenovo V15 G5 IRL Laptop: Core i5-13420H, 16GB RAM, 512GB SSD.", false], ["HP 12+256GB U/UTP 100%", false],
+  ];
+  for (const [text, bad] of cases) check(`findBadChars(${JSON.stringify(text)}) ${bad ? "flags" : "is clean"}`, (findBadChars(text).length > 0) === bad, findBadChars(text).join("; "));
+  check("findZeroSpecs: '0GB storage', '0 ports', '0.0GHz base' are zero; '10GB' and '16GB' are not", findZeroSpecs("", ["0GB storage"]).length === 1 && findZeroSpecs("", ["0 ports"]).length === 1 && findZeroSpecs("", ["0.0GHz base"]).length === 1 && findZeroSpecs("10GB RAM, 16GB RAM, 2.0GHz base", ["10GB RAM", "2.0GHz base"]).length === 0);
+  check("findZeroSpecs: empty / 'undefined' phrase", findZeroSpecs("", [""]).length === 1 && findZeroSpecs("", ["undefined RAM"]).length === 1);
+  const ok = generateProductSeo(realInputs[0]!);
+  const stored = { metaTitle: null, metaDescription: null, seoSource: null };
+  const bad: SeoResult = { ...ok, badChars: ['quote "'], flags: [...ok.flags, "bad_chars"], needsReview: true };
+  const zero: SeoResult = { ...ok, zeroSpecs: ["0GB"], flags: [...ok.flags, "spec_zero"], needsReview: true };
+  check("decideApply: bad_chars -> skip, even with --overwrite", decideApply(bad, stored).action === "skip: bad_chars" && decideApply(bad, { metaTitle: "x", metaDescription: "y", seoSource: "admin" }, { overwrite: true }).write === false);
+  check("decideApply: spec_zero -> skip", decideApply(zero, stored).action === "skip: spec_zero" && decideApply(zero, stored).write === false);
+  check("decideApply: a clean real row is written", decideApply(ok, stored, { allowFewSpecs: true }).write === true, decideApply(ok, stored, { allowFewSpecs: true }).action);
 }
 
 // --- stored meta helpers -------------------------------------------------------
