@@ -24,7 +24,12 @@ export function Pagination({
           Previous
         </Link>
       ) : (
+        // A dimmed, inert link: `role="link"` + `aria-disabled` tells assistive
+        // tech (and contrast checkers) the faded text is a disabled control,
+        // not low-contrast copy.
         <span
+          role="link"
+          aria-disabled="true"
           className={cn(
             buttonClassName({ variant: "ghost", size: "sm" }),
             "pointer-events-none opacity-50",
@@ -45,6 +50,8 @@ export function Pagination({
         </Link>
       ) : (
         <span
+          role="link"
+          aria-disabled="true"
           className={cn(
             buttonClassName({ variant: "ghost", size: "sm" }),
             "pointer-events-none opacity-50",
