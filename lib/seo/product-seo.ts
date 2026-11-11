@@ -320,7 +320,10 @@ const TEMPLATES: Record<FamilyId, string[]> = {
 
 const BLOCKED_LABEL = /(brand|manufacturer|item|series|warranty|model|sku|upc|ean|colou?r|weight|dimension|package|material|origin|country|name|description|note)/i;
 const normLabel = (label: string) => squash(label.replace(/[:：]+$/, "")).toLowerCase();
-const phraseKey = (p: string) => p.toLowerCase();
+/** "2 TB" -> "2tb", "15.6 inch" -> "15.6inch": a quantity is the same quantity however it is spaced. No lookbehind (bundled into the admin form). */
+const QTY_UNIT = /(\d)\s+(tb|gb|mb|ghz|mhz|hz|w|v|mm|cm|inch|mp|mbps|gbps|ppm|dpi|va|mah|ah)\b/gi;
+const normQty = (text: string) => text.toLowerCase().replace(QTY_UNIT, "$1$2");
+const phraseKey = (p: string) => normQty(p);
 
 function validPhrase(phrase: string): boolean {
   return phrase.length > 1 && phrase.length <= 36 && !CLAIM_WORDS.test(phrase) && !hasRepeatedWord(phrase);
@@ -687,11 +690,13 @@ type Prep = {
 };
 
 const ZERO_VALUE = /^\s*0+(?:\.0+)?\s*(?:gb|tb|mb|ghz|mhz|hz)?\s*$/i;
+/** A form factor is stated only in the words the raw name uses: "Earbuds" stays "Earbuds" (not "in-ear"); "TWS" says nothing about the fit. */
 const AUDIO_FORM: [RegExp, string][] = [
-  [/over[- ]?ear|circumaural/i, "Over-ear"],
+  [/over[- ]?ear/i, "Over-ear"],
   [/on[- ]?ear/i, "On-ear"],
   [/open[- ]?ear/i, "Open-ear"],
-  [/in[- ]?ear|ear ?phones?|ear ?buds?|\bbuds\b|\btws\b/i, "In-ear"],
+  [/\bin[- ]?ear/i, "In-ear"],
+  [/ear ?buds?\b/i, "Earbuds"],
   [/neckband/i, "Neckband"],
 ];
 
@@ -937,6 +942,43 @@ function composeBody(family: FamilyId, type: string, specs: SpecValue[], style: 
   }
 }
 
+/** Lower-case word tokens of a phrase with quantities joined ("2 TB" -> "2tb"): how a spec is compared with the title. */
+export function specTokens(text: string): string[] {
+  return normQty(text)
+    .split(/[^a-z0-9.+/-]+/)
+    .map((t) => t.replace(/^[-.+/]+|[-.+/]+$/g, ""))
+    .filter(Boolean);
+}
+
+/** Words that only say WHAT a value measures: the value carries the information ("512GB storage" = "512GB"). */
+const SPEC_FILLER = new Set("capacity storage memory display resolution refresh rate form factor interface speed length panel keys socket".split(" "));
+const STORAGE_KIND = new Set(["ssd", "hdd", "nvme", "emmc"]);
+
+/**
+ * The spec phrases that tell the reader something the title does not already say (v2.3). A phrase whose
+ * words (leaving out "capacity", "storage", "display" ...) are all in the title core is dropped:
+ * "Core Ultra 5 225: Core Ultra 5 225" and "P300 2TB - 2TB, 2 TB capacity" say each thing once.
+ * "512GB SSD" with only "512GB" in the title keeps what is new: "SSD storage".
+ */
+export function dropTitleRepeats(specs: SpecValue[], titleCore: string): SpecValue[] {
+  const inTitle = new Set(specTokens(titleCore));
+  // "8GB RAM" is "8GB" when the title carries a bare 8GB; but next to a storage word ("8GB SSD") that 8GB may be the storage.
+  const titleNamesStorage = [...STORAGE_KIND, "storage"].some((word) => inTitle.has(word));
+  const out: SpecValue[] = [];
+  for (const spec of specs) {
+    const tokens = specTokens(spec.phrase).filter((t) => !SPEC_FILLER.has(t) && !(t === "ram" && !titleNamesStorage));
+    const missing = tokens.filter((t) => !inTitle.has(t));
+    if (tokens.length > 0 && missing.length === 0) continue;
+    const quantities = tokens.filter((t) => /\d/.test(t));
+    if (quantities.length > 0 && quantities.every((t) => inTitle.has(t)) && missing.every((t) => STORAGE_KIND.has(t))) {
+      out.push({ slot: spec.slot, phrase: `${applyCasing(missing.join(" "))} storage` });
+      continue;
+    }
+    out.push(spec);
+  }
+  return out;
+}
+
 /** Trailing words the units / names already imply ("65 inch display", "Micro-ATX form factor", "DDR5 memory"). */
 const COMPACT = / (?:display|resolution|refresh rate|form factor|memory)$/;
 const LEADS_PLAIN = [
@@ -976,9 +1018,10 @@ function composeDescription(id: string, family: FamilyId, type: string, cores: s
         ]
       : n > 0
         ? [
-            { body: slice.map((s) => s.phrase).join(", "), leads: LEADS_LIST },
+            // "Key specs of ...: <one spec>" reads wrongly: that lead needs at least two.
+            { body: slice.map((s) => s.phrase).join(", "), leads: slice.length >= 2 ? LEADS_LIST : LEADS_PLAIN },
             // "65 inch display" -> "65 inch" when the units already say it: tried before dropping a spec.
-            { body: slice.map((s) => s.phrase.replace(COMPACT, "")).join(", "), leads: LEADS_LIST },
+            { body: slice.map((s) => s.phrase.replace(COMPACT, "")).join(", "), leads: slice.length >= 2 ? LEADS_LIST : LEADS_PLAIN },
           ]
         : [{ body: "", leads: LEADS_PLAIN }];
     for (const { body: rawBody, leads } of bodies) {
@@ -1076,7 +1119,9 @@ function render(prep: Prep, extras: Extra[]): SeoResult {
   const { input, family, name } = prep;
   const title = composeTitle(prep, extras);
   const shortCore = coreWith(prep, 0, extras).text;
-  const description = composeDescription(input.id, family.id, prep.type, shortCore !== title.core ? [title.core, shortCore] : [title.core], prep.specs);
+  // The description's spec part says only what the title does not (specsAvailable still counts every usable spec).
+  const descSpecs = dropTitleRepeats(prep.specs, title.core);
+  const description = composeDescription(input.id, family.id, prep.type, shortCore !== title.core ? [title.core, shortCore] : [title.core], descSpecs);
   const flags = [...title.flags, ...description.flags];
   if (!name.hasModel) flags.push("no_model_token");
   const lost = lostModelTokens(prep, title.title);
@@ -1084,7 +1129,7 @@ function render(prep: Prep, extras: Extra[]): SeoResult {
   const foreign = foreignCodes(prep, title.title, extras);
   if (foreign.length > 0) flags.push("foreign_code");
   const keywordCore = title.core.toLowerCase();
-  const usedSpecs = prep.specs.slice(0, description.used).map((spec) => spec.phrase);
+  const usedSpecs = descSpecs.slice(0, description.used).map((spec) => spec.phrase);
   const badChars = [...new Set([...findBadChars(title.title), ...findBadChars(`${keywordCore} price in bangladesh`), ...findBadChars(description.text)])];
   if (badChars.length > 0) flags.push("bad_chars");
   const zeroSpecs = findZeroSpecs(description.text, usedSpecs);
