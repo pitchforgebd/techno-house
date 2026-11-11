@@ -1530,6 +1530,125 @@ already says "Cat6 UTP 2m" / "Over-Ear" no longer has those specs repeated in th
 5. **Product names that repeat themselves** (a licence string, a Zebra name pasted twice) still produce a repeated core;
    that is the raw name's own text. 179 licence-style names are already skipped by `bad_chars`.
 
+### Phase 8 v2.4 — claim accuracy
+
+Branch `seo-phase-8-fix-4` (from main after PR #12, which has v2.3). Code only: no schema change, nothing run on
+production. The local database was read, never written (the script's Prisma client throws on any write outside
+`--apply` / `--restore`). Three commits: the accuracy fixes, the cosmetic casing change, these notes.
+
+#### What the batch-2 dry-run found, and the cause of each
+
+| Defect | Cause | Fix |
+|---|---|---|
+| "ATX form factor" on M-ATX / Micro ATX boards and cases (26 rows) | the generator's reader ended with a bare `ATX` alternative, so `M-ATX` / `mATX` matched its tail; the import script's casing reader did not know "Micro ATX" (a space) or "M-ATX" at all and fell through to ATX, and guessed ATX for any chipset code without an "M" | `lib/catalog/form-factor.ts`: Micro-ATX = M-ATX / mATX / M.ATX / MicroATX / Micro ATX / uATX, E-ATX = E-ATX / EATX / Extended ATX, Mini-ITX = Mini ITX / mITX / ITX, **a bare ATX only with no prefix**. Shared by the generator and `populate-import-attributes.ts`. The **name outranks any stored value**; a stored value is used when the name says nothing (a spec row as it is, an attribute unless it says plain ATX, which needs the name to say ATX). A name that lists several forms claims none |
+| "with microphone" with no mic in the name (13 live rows of batch 1, 7 of batch 2); in-ear / Bluetooth / wired from guesses | the import script writes `audioType`, `connectivity` and `microphone` attributes by guessing from the name ("buds" -> In-ear, "headset" -> Over-ear + Microphone=Yes, 3.5mm -> Wired); v2.2 blocked the Over-ear / bare-Yes attribute shapes only, so In-ear / Bluetooth / a spec **row** "Microphone: Yes" still fed claims | claims come from the raw name, the category names or an **informative spec row** only: **attributes never back a claim**, a bare Yes / No row is not evidence, "No ANC" in a name is not support for ANC (`lib/seo/claims.ts`). A shape-agnostic net checks every claim keyword (microphone, built-in, ANC, wireless, wired, Bluetooth + version, over- / in- / on- / open-ear, earbuds, neckband) against that evidence whatever stored shape leaked it |
+| "Honor 600 Pro Mobile Accessory", "6.57 inch, 6.57 inches size" | the leaf "Mobile Accessories" is not in the umbrella list, so it became the type; the `fill` rule turns any `Size: 6.57 inches` row into "6.57 inches size", and my v2.3 quantity normalisation had broken the "same first number" de-duplication ("6.57inch" vs "6.57") | a leaf that is a bucket (…Accessories / Gadgets / Components / Peripherals / Equipment) is **not a type**, and neither is its parent; the name must state one (Smartphone, Earbuds…) or the row is skipped with `unusable_type`. "size" is no longer a fill phrase; inch / inches / in / " are one unit when de-duplicating |
+| "8GB size, 7680x4320 resolution" on graphics cards (26 rows) | the same fill rule: `Size: 8GB` -> "8GB size", `Resolution: 7680x4320` (the largest picture the card can drive) -> "7680x4320 resolution" | GPU memory is read as "<size> <type>" (`lib/catalog/gpu-extract.ts`): **"8GB GDDR6"** with the type from the name, "8GB VRAM" when the name gives none, never "size"; "resolution" is a phrase only for products with a display (monitor, laptop, flat panel, IP phone). A chip written in the name or a stored spec is kept in the title when the title still fits; **never derived from a SKU** (`GV-N5070GAMING`, `GV-R9060XTGAMING`, `-8GD` / `-16GD` are board codes) |
+
+#### New gates (counted and listed in the dry run and in `apply-preview.csv`)
+
+- **`claim_conflict`** — a form factor in the description that the raw name contradicts: row skipped. (With the name-wins
+  rule above the generator cannot produce one; this is the net, like `foreign_code`.)
+- **`unsupported_claim`** — a claim nothing backs is **dropped** from the text; the dry run counts the rows and lists the
+  claims removed. The row is skipped (`skip: unsupported_claim: fewer than N specs once it is dropped`) **only when that
+  is what left it under the minimum**; a row that was short anyway stays a plain "fewer than N specs" skip.
+- **`unusable_type`** — a category that is only a bucket and a name that states no type: row skipped.
+- **`bad_spec_phrase`** — "<n>GB size", "<n> inches size", "<n> inch, <n> inches", or one quantity in two spec phrases: row skipped.
+- The same four are criteria of the `--explain-filter` funnel (`type` and two gate rows).
+
+#### Refresh: rows that already have generated text
+
+`decideApply` now answers, for a row with `seoSource = generated` in a batch file: **`update`** (the text changed) or
+**`unchanged`**, or — when the new text is blocked by a gate or the minimum — **`skip: <reason> (generated text stays live)`**,
+so nothing is silent. `--apply` writes only `write` and `update` rows (`rowsToWrite`; an alt-only change goes through only
+with `--apply-alts`). Hand-written text (`seoSource = admin`) and text with no source are skipped without `--overwrite`;
+tested, including a mixed batch where only the new and the changed row are written. The dry-run summary has a block
+"Rows that already have generated text: N -> n update, n unchanged, n blocked (the OLD generated text stays live)" with the list.
+
+#### Cosmetic (separate commit)
+
+Plain English words that raw names SHOUT become normal words in titles and descriptions, also inside the model run:
+MOTHERBOARD, CASING, KEYBOARD, GAMING, MECHANICAL, BLACK, TEMPERED, MID-TOWER -> "Mid-Tower", MICRO, COMPUTER, THERMAL,
+ASSEMBLY, SUPPLY… (`PLAIN_WORDS` in `lib/seo/casing.ts`: the storefront's own shouting list plus what the sweep found).
+It is a dictionary, not "every capital word": brands (MSI, UGREEN), model lines (AORUS, MORTAR, ELITE), acronyms and
+standards (RGB, ARGB, ATX, DDR5, WIFI6E, PSU) and any token with a digit (a model code: `B650-PLUS`, `M-ATX`) are never touched.
+The type word is the standard one: a name's or a category's "Casing" is **"Case"** (a name that has both, "Corsair CASING
+Crystal Series … Case", keeps both: Casing is part of the line).
+
+#### Before -> after (stored data shaped as the production rows are: a wrong or mis-spelt `formFactor`, guessed audio attributes, `Size` / `Resolution` rows)
+
+| Product | v2.3 | v2.4 |
+|---|---|---|
+| MSI MAG B860M MORTAR WIFI … M-ATX | `… Motherboard – LGA1851 socket, ATX form factor` | `… – LGA1851 socket, Micro-ATX form factor` |
+| MSI B760M GAMING PLUS WIFI 6E M-ATX | `MSI B760M GAMING PLUS Motherboard`, `ATX form factor` | `MSI B760M Gaming Plus Motherboard`, `Micro-ATX form factor` |
+| MSI PRO B850M-B GEN4 AM5 M-ATX | `ATX form factor` | `Micro-ATX form factor` |
+| MSI B450M-A PRO MAX II (stored `M-ATX`) | `AM4 socket, ATX form factor` | `AM4 socket, Micro-ATX form factor` (with only a plain-ATX attribute: no form-factor claim) |
+| MSI MEG X870E GODLIKE … E-ATX | `E-ATX form factor` | unchanged (correct) |
+| Corsair iCUE LINK 2500X RGB Micro ATX case | `… Case – ATX form factor` | `… Case – Micro-ATX form factor` |
+| Edifier W600BT Wireless Headphone | `in-ear headphone with microphone` | `Edifier W600BT Wireless Headphone` (no claim; skipped at min 2) |
+| Edifier Gm3 Plus TWS | `Bluetooth headphone with microphone` | no claim (skipped at min 2) |
+| Edifier NeoBuds Plus … Wireless | `wireless in-ear headphone` | `wireless headphone` (the name says Wireless, not in-ear) |
+| Edifier Comfo Q OWS Headphone Back | `headphone with microphone` | no claim |
+| Honor Choice Earbuds X7 Lite | `earbuds with microphone` | no claim |
+| HONOR 600 Pro (12+256) / HONOR X7d | `Honor 600 Pro Mobile Accessory`, `6.57 inch display, 6.57 inches size` | title without a type, **skipped: unusable_type** (the text would be `6.57 inch display` once) |
+| GIGABYTE AMD # GV-R9060XTGAMING OC-8GD, GDDR6 | `8GB size, 7680x4320 resolution` | `8GB GDDR6`; no Radeon chip invented from the SKU |
+| GIGABYTE Intel Arc A310 … 4G GDDR6 | `4GB size, 7680x4320` | `4GB GDDR6` (Arc A310 stays in the title) |
+| GIGABYTE GeForce RTX 3050 WINDFORCE OC 6GB | `6GB size, 7680x4320 resolution` | `6GB GDDR6` (type from the name) |
+| XTREME M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS | `Xtreme M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS` | `Xtreme M95B Mini Tower M-ATX Black Case Tempered Glass` |
+
+#### Sweep over all 4,309 local products (read-only; v2.3 from main against v2.4 on the same inputs)
+
+| Metric (rows) | v2.3 | v2.4 |
+|---|---|---|
+| form factor in the description contradicts the name (all "plain ATX" where the name says M / E / Micro) | 10 | **0** |
+| a claim in the spec part that nothing backs | 15 | **0** |
+| in-ear / over-ear / on-ear in the description, not in the name | 9 | 1 (the name says "In-Earphone": my check's own false positive) |
+| claims removed (flag `unsupported_claim`): over-ear 78, microphone 31, in-ear 10, wired 8 | 0 | 89 rows |
+| "accessory" in a title or description (phone-looking names: 5 -> 0) | 87 | 3 |
+| `unusable_type` (skipped) | 0 | 94 (49 were titled "… Accessory"; the rest already had no type) |
+| graphics card "size" / resolution phrase; duplicated spec phrase; `bad_spec_phrase`; `claim_conflict` | 0 | 0 (the local GPUs have no `Size` / `Resolution` rows: the fixtures cover them) |
+| title differs, ignoring case | – | 119 = 49 type removed + 70 category "Casing" -> "Case" |
+| keyword != title core + " price in bangladesh" | 0 | 0 |
+| shouted dictionary word in a title or description (cosmetic commit) | 667 | **0** |
+| rows that would be WRITTEN at minimum 3 / 2 / 0 specs | 260 / 557 / 3534 | 227 / 524 / 3496 |
+
+The 33 rows no longer written at minimum 2: 27 "fewer than 2 specs" (boards and cases whose only form-factor evidence was a
+plain-ATX attribute with no ATX in the name, the import script's default guess) and 6 `unsupported_claim` (headsets whose
+over-ear / microphone existed only as attributes). Nothing is newly written. The local data has no microphone attribute rows
+(production does), so the local sweep cannot show the production microphone leak; the fixtures and the shape-agnostic net do.
+
+#### Verification (2026-11-11, local)
+
+`tsc` 0 errors; eslint clean; `next build` OK (build `8U2xN0oioRWU3d9bbIAMA`, separate worktree); `test:seo-product` **1,635** + **162** checks
+(1,356 + 157 in v2.3); `test:seo-product-meta` 11, `test:seo` 92, `test:seo-meta` 383, `test:seo-phase5` 198,
+`test:seo-phase6` 59, `test:security` 27, `seo:check-schema --offline` 49. Every v2.3 check passes except four expectations
+changed on purpose: GPU memory is "8GB GDDR6" (was "… VRAM"); the HS50 sample keeps its over-ear **row** and drops the
+attribute-only "wired" and "built-in microphone"; a gated row that already has generated text says "(generated text stays live)".
+One v2.2 assertion (no shouted brand / line word left) held backspace characters instead of `\b` and had been passing
+vacuously; repaired, and it passes for real.
+
+#### Needs owner decision (Phase 8 v2.4)
+
+1. **Rows already live keep their text.** The 26 "ATX form factor" and the "with microphone" rows of batches 1 and 2 are
+   `seoSource = generated`; refreshing them needs a batch file of their slugs, and then `update` rewrites them. A row whose new text is
+   blocked (the phones in "Mobile Accessories": `unusable_type`) is **not** rewritten and its **old text, "… Mobile Accessory", stays live**; the dry run lists
+   those rows. Clearing such text (back to the built-in template) is a separate step I did not add, because you asked that apply
+   write only `update` rows. Say if you want a `--clear-blocked` option, or fix them by hand.
+2. **Coverage cost of dropping guessed claims.** Headsets whose over-ear / microphone were only attributes, and boards / cases
+   whose only form factor was a plain-ATX attribute, now carry fewer specs and fall under the minimum (33 rows at minimum 2 locally).
+   Accepting the import script's chipset convention (a name with `B450M` is Micro-ATX) would restore some boards; I did not, because
+   it is an inference, not what the name says. Say if you want it.
+3. **Sockets still come from the chipset mapping** in the import script (`B650` -> AM5, `B450` -> AM4): a deterministic standard
+   mapping, not a guess, and not in your list, so unchanged. Name-only would drop it from most boards.
+4. **The wrong attributes are still in the database** (`formFactor = ATX` on Micro-ATX products, guessed `audioType` / `microphone`,
+   the catalogue filters read them). The generator no longer trusts them; a one-off cleanup is yours to approve. The import
+   script now writes the right form factor for new imports.
+5. **A GPU chip that would push the title over 60 is left out** (a 63-character title would be a skipped row): `GV-N3050WF2OC-6GD
+   GeForce RTX 3050` stays chip-less. The chip is kept whenever it is in the name's core or fits.
+6. **I could not see the production data.** The microphone path is closed for every stored shape I could construct (attribute,
+   key-less row, bare Yes, "Built-in", non-Yes values) and the net catches the rest; if batch 2 still shows one after re-running the
+   dry run, its `unsupported_claims` column in `apply-preview.csv` names the claim and the row.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)
