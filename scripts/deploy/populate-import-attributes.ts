@@ -32,38 +32,18 @@ import { config as loadEnvFiles } from "dotenv";
 loadEnvFiles({ path: [".env.local", ".env"], quiet: true });
 
 import { getPrisma } from "../../lib/db/prisma";
+import { formFactorOf, formFactorsIn } from "../../lib/catalog/form-factor";
+import { extractRamFromName, extractStorageSizeFromName } from "../../lib/catalog/spec-extract";
 
 type Extractor = { key: string; extract: (name: string) => string | null };
 
-function windowContains(name: string, afterIndex: number, span: number, re: RegExp): boolean {
-  return re.test(name.slice(Math.max(0, afterIndex - span), afterIndex + span));
-}
-
-const RAM_KEYWORD =
-  /DDR-?\d|LPDDR-?\d|SODIMM|Unified Memory|on-?board|Soldered|\bRAM\b|\bRam\b|\bMemory\b/i;
-
-function extractRam(name: string): string | null {
-  for (const m of name.matchAll(/(\d{1,3})\s*GB/gi)) {
-    const after = m.index! + m[0].length;
-    if (windowContains(name, after, 30, RAM_KEYWORD)) {
-      return `${m[1]}GB`;
-    }
-  }
-  // Corporate-SKU convention with no "RAM"/"DDR" word at all:
-  // "...-8GB, 1x8GB-512GB SSD-..." — the first GB figure is the RAM size.
-  const m = name.match(/(\d{1,3})GB,\s*\d+\s*[xX]\s*\d+GB-/);
-  return m ? `${m[1]}GB` : null;
-}
-
-function extractStorage(name: string): string | null {
-  for (const m of name.matchAll(/(\d{1,4})\s*(GB|TB)/gi)) {
-    const after = m.index! + m[0].length;
-    if (windowContains(name, after, 20, /SSD|NVMe|HDD|eMMC|Storage/i)) {
-      return `${m[1]}${m[2]!.toUpperCase()}`;
-    }
-  }
-  return null;
-}
+// RAM and storage come from the shared, tested parser (lib/catalog/spec-extract.ts). The two extractors that
+// used to live here read "16.0GB" as "0GB" (`\d{1,3}GB` matched the digits after the decimal point), and took the
+// first GB figure NEAR "SSD" for storage, which for "8GB, 1x8GB-512GB SSD" is the RAM figure. Sizes are now read
+// as whole decimals and classified by the nearest keyword (DDR / RAM / MHz vs SSD / NVMe / HDD); anything unclear
+// returns null ("no confident match") instead of a guess.
+const extractRam = extractRamFromName;
+const extractStorage = extractStorageSizeFromName;
 
 function extractProcessor(name: string): string | null {
   let m = name.match(/\bM(\d)[a-zA-Z]*\s+chip\b/i);
@@ -118,11 +98,13 @@ function extractSocket(name: string): string | null {
 }
 
 function extractMbFormFactor(name: string): string | null {
-  if (/mini-?itx/i.test(name)) return "Mini-ITX";
-  if (/e-?atx/i.test(name)) return "E-ATX";
-  if (/micro-?atx/i.test(name) || /\bm-?atx\b/i.test(name) || /\b[A-Z]\d{2,3}M\b/.test(name))
-    return "Micro-ATX";
-  if (/\batx\b/i.test(name)) return "ATX";
+  // The words first, in every spelling (M-ATX, mATX, M.ATX, MicroATX, Micro ATX, E-ATX, EATX, Mini ITX ...; a bare ATX
+  // only without a prefix): lib/catalog/form-factor.ts, shared with the SEO generator.
+  const written = formFactorOf(name);
+  if (written) return written;
+  // Chipset conventions, kept for the catalogue filter (the SEO generator does not use them: it states a form
+  // factor only where the name or a stored spec row WRITES it).
+  if (/\b[A-Z]\d{2,3}M\b/.test(name)) return "Micro-ATX";
   // Gigabyte-style chipset code with no "M" suffix conventionally means
   // full-size ATX (e.g. "X870 GAMING WF6", "B650 EAGLE AX").
   if (/\b[ABHXZ]\d{2,3}[A-Z]?\b(?!M)/.test(name)) return "ATX";
@@ -130,11 +112,11 @@ function extractMbFormFactor(name: string): string | null {
 }
 
 function extractCasingFormFactor(name: string): string | null {
-  if (/mini-?itx/i.test(name)) return "Mini-ITX";
-  if (/e-?atx/i.test(name)) return "E-ATX";
-  if (/micro-?atx/i.test(name)) return "Micro-ATX";
+  const forms = formFactorsIn(name);
+  const only = forms.length === 1 ? forms[0] : undefined;
+  if (only && only !== "ATX") return only; // Mini-ITX / E-ATX / Micro-ATX, any spelling ("Micro ATX" and "M-ATX" were read as ATX)
   if (/(mid|full)[\s-]?(tower|case)\b/i.test(name) || /\btower\b/i.test(name)) return "Tower";
-  if (/\batx\b/i.test(name)) return "ATX";
+  if (only) return "ATX";
   return null;
 }
 

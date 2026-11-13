@@ -315,7 +315,7 @@ export async function SiteFooter() {
                   {branding.phone ? (
                     <a
                       href={branding.phoneHref}
-                      className={cn("block", accentTextClass)}
+                      className={cn("block min-h-6", accentTextClass)}
                     >
                       {branding.phone}
                     </a>
@@ -324,7 +324,7 @@ export async function SiteFooter() {
                     <a
                       key={phone}
                       href={`tel:${phone.replace(/[^\d+]/g, "")}`}
-                      className={cn("block", accentTextClass)}
+                      className={cn("block min-h-6", accentTextClass)}
                     >
                       {phone}
                     </a>
@@ -332,7 +332,7 @@ export async function SiteFooter() {
                   {branding.supportEmail ? (
                     <a
                       href={branding.emailHref}
-                      className={cn("block break-all", accentTextClass)}
+                      className={cn("block min-h-6 break-all", accentTextClass)}
                     >
                       {branding.supportEmail}
                     </a>
@@ -341,7 +341,7 @@ export async function SiteFooter() {
                     <a
                       key={email}
                       href={`mailto:${email}`}
-                      className={cn("block break-all", accentTextClass)}
+                      className={cn("block min-h-6 break-all", accentTextClass)}
                     >
                       {email}
                     </a>

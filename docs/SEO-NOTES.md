@@ -1318,6 +1318,719 @@ descriptive and may be dropped. If you prefer the literal reading, it is a one-l
 A build + `pm2 restart techno-house` is only needed to ship the admin form's suggestion placeholder; the storefront
 and the apply script do not need it.
 
+### Phase 8 v2.2 — generator hygiene
+
+Branch `seo-phase-8-fix-2` (from main after PR #10, which has v2.1). Code only: no schema change, no
+database access beyond read-only `findMany` for the local sweep, nothing run on production.
+
+#### What the production dry-run (387 products) found, and the cause of each
+
+| Defect | Cause | Fix |
+|---|---|---|
+| `Dell LATITUDE 3420-CORP-(Core i3-1115G4-14" FHD Laptop`, `…MT-CORP-(INTEL 8GB RAM Brand PC`, part number `G13(21NXS0N800)` in the title | the core only ended at a token that *starts* with "(", so `-(Core` and `G13(21N…)` were glued into the model; quotes (`14"`) were not boundaries | `(`, `[`, `"` (and `14"` / `14''` as the inch unit) end the core wherever they sit in a token; trailing hyphens and channel SKU suffixes (`-CORP`, `-BRAC-SUPP`, `-ASA`, `-BG`) are stripped; bracket content never reaches the title, keyword or collision extras |
+| `LATITUDE`, `OPTIPLEX`, `INTEL` shouted | only a fixed generic-word list was softened | shouted brand / line words (5+ capitals) **before the first model code** become Title Case; the model run keeps the raw spelling (`MT`, `WF7`, `B650-PLUS` — also fixes `B650-Plus` that the shared shouting list produced inside a model code) |
+| `0GB storage`, RAM lost (`16.0GB DDR5, 512GB SSD`) | **`scripts/deploy/populate-import-attributes.ts`** wrote the stored attributes: `(\d{1,3})\s*GB` matches the `0GB` in `16.0GB`, and storage took the first GB figure *near* "SSD", which for `8GB, 1x8GB-512GB SSD` is the RAM figure (local data: `ram=0GB; storage=0GB`, `storage=8GB`). The generator trusted them | shared parser `lib/catalog/spec-extract.ts`: sizes read as whole decimals (`16.0GB` = 16, `1.0TB` = 1TB), RAM vs storage by the nearest keyword (DDR / LPDDR / RAM / Memory / MHz vs SSD / NVMe / HDD / eMMC), the corporate `8GB, 1x8GB-512GB SSD` convention, two storage sizes = ambiguous = not stated, zero is never a value. **The populate script now uses it too**, and the generator reads RAM / storage / CPU **from the raw name** and replaces a stored attribute that is zero, repeats the RAM figure or contradicts the name |
+| `over-ear` for Edifier Comfo Q OWS; "with built-in microphone" for headsets | the same script **guesses** `Over-ear` for any "headset / headphone" and `Microphone=Yes` for any "headset"; the generator turned "Yes" into "Built-in microphone" | a form factor / microphone is stated only when the raw name says it, or a stored spec **row** (no attribute key) does; an attribute `Over-ear` or bare `Yes` without name evidence is ignored; "built-in" only when a spec says so; no ANC / Bluetooth-version claim is ever emitted |
+| `bluetooth`, lower-case standards | free text from slots | `lib/seo/casing.ts`: one map (Bluetooth, Wi-Fi, USB, USB-C, Type-C, HDMI, DisplayPort, DDR3/4/5, LPDDR, IPS, OLED, LED, RGB, SSD, HDD, NVMe, SATA, PCIe, RAM, QHD/FHD/UHD, 4K, GHz/MHz/Hz/GB/TB units, AMD, Intel, NVIDIA, GIGABYTE, ASUS, MSI, HP, LG …) applied to non-model title words, description text and collision extras (keywords are lower-case anyway) |
+| `…Scanner)` (type word taken from after a cut kept its bracket), `512GB storage` as a title extra | found by the sweep below | edge punctuation stripped from that word; the storage extra is the size (+ SSD / HDD) |
+
+#### New gates (the row is skipped, counted and listed)
+
+- **`bad_chars`**: title, keyword or description contains a quote, ANY bracket, a character outside
+  `A–Z a–z 0–9 space . , : ; & + / % ' | -` (and our own " – " lead), a double space, or a word that starts
+  or ends with a hyphen. Dry-run summary: count, kinds and the first 25 slugs; preview CSV column `bad_chars`.
+- **`spec_zero`**: a description spec value that is zero or empty (`0GB storage`, `0 ports`). Zero is also
+  rejected at the source (every spec phrase and every attribute), so the gate is the safety net: on the local
+  catalogue it skips 0 rows because nothing zero reaches a description any more. Column `zero_specs`.
+- Both sit in `lib/seo/product-seo-apply.ts` (unit-tested), before the stored-text rules, so they also beat `--overwrite`.
+
+#### Before → after (fixtures from the real raw names; Latitude 3540 / 7450 are reconstructed in the same style because the local DB has no such rows)
+
+| Product | Before (v2.1) | After (v2.2) |
+|---|---|---|
+| Latitude 3420 FHD | `Dell LATITUDE 3420-CORP-(Core i3-1115G4-14" FHD Laptop` | `Dell Latitude 3420 8GB RAM Laptop Price in Bangladesh` (set; split from the HD model by the RAM in the name) · `…Laptop: Core i3-1115G4, 8GB RAM, 512GB SSD.` |
+| Latitude 3420 HD | `Dell LATITUDE 3420-CORP-(CORE I3-1115G4-14" HD Laptop` · `Core i3, 4GB RAM` | `Dell Latitude 3420 4GB RAM Laptop …` · `Core i3-1115G4, 4GB RAM, 1TB HDD` |
+| Latitude 3440 | `Dell LATITUDE 3440-CORP-(Core i3-1215U-14" FHD Laptop` | `Dell Latitude 3440 Laptop Price in Bangladesh \| Techno House` · `Core i3-1215U, 8GB RAM, 512GB SSD` |
+| Latitude 3540 / 7450 | `…3540-CORP-(Core i5-1335U-15.6" FHD Laptop` | `Dell Latitude 3540 Laptop …` / `Dell Latitude 7450 Laptop …` · `Core i5-1335U, 16GB RAM, 512GB SSD` |
+| Optiplex 3000 MT | `Dell OPTIPLEX 3000 MT-CORP-(INTEL Brand PC Price in BD` | `Dell Optiplex 3000 MT Brand PC Price in Bangladesh` · `Core i5-12500, 8GB RAM, 1TB storage` |
+| ThinkPad X1 Carbon G13 | `Lenovo ThinkPad X1 Carbon G13(21NXS0N800) Laptop` | `Lenovo ThinkPad X1 Carbon G13 Laptop Price in Bangladesh` · `Core Ultra 7 255H, 32GB RAM, 1TB SSD` |
+| Lenovo V15 G5 IRL (16.0GB) | `…Laptop – Core i5, 0GB storage.` | `…Laptop, Core i5-13420H, 16GB RAM, 512GB SSD.` |
+| Edifier Comfo Q OWS | `…Headphone Back – over-ear headphone.` | `…Headphone Back.` + the neutral specs pointer (no form factor; flagged `few_specs`) |
+| Logitech G435 | `…: bluetooth over-ear headset with built-in microphone.` | `…Headset: Bluetooth headset.` (`few_specs`) |
+| Logitech ZONE 300 | `…: bluetooth over-ear headset with built-in mic.` | `…Headset: Bluetooth headset.` (`few_specs`) |
+| the five earlier samples | — | title, keyword and description **byte-identical** to v2.1 (compared against main; titles asserted in the tests). The " – " description lead is kept on purpose, so the gate allows exactly that character |
+
+(Headsets now carry fewer specs because the two "specs" the import script guessed are gone. With
+fewer than 3 they are skipped by default, as intended: nothing unsupported is written.)
+
+#### Sweep over all 4,309 local products (read-only; v2.1 from main vs v2.2 on the same inputs)
+
+| Defect class (rows) | Before | After |
+|---|---|---|
+| quote / bracket in title, keyword or description | 154 | **0** |
+| zero spec (`0GB`, `0TB`, `0GHz` …) in the description | 1 | **0** |
+| `over-ear` in the description, raw name does not say it | 78 | **0** |
+| lower-case proper noun / standard (bluetooth, usb, ssd …) | 6 | **0** |
+| double space | 0 | 0 |
+| hyphen at the start / end of a word | 0 | 0 |
+
+Rows now skipped by each new gate: `bad_chars` **208** (179 contain `_`: `HO/Rabbi_Max International_…` licence strings; 8 `*`
+as in `2*USB3.0`; 7 `=`; the rest stray non-ASCII: soft hyphens, zero-width spaces, fullwidth brackets, curly apostrophes,
+`Ý`), `spec_zero` **0**, `model_token_lost` 0, `foreign_code` 0. Rows that would be written: 207 → **260** (the raw-name
+RAM / storage / CPU lifted 137 laptops and desktops to ≥ 3 specs; headsets dropped out as above). **Defects among
+the rows that would be written: none** (before: 1 bracket, 27 unsupported over-ear, 5 lower-case standards).
+
+#### Verification
+
+`tsc` 0 errors; eslint clean; `next build` OK (build `osX_SuE7Z3pRX0ft0HsEP`, separate worktree); `test:seo-product` **1,292** checks (was 928: the 12 real-name fixtures in
+the set and alone, exact-name parser cases, casing map, gates, claim rules; every v2.1 check unchanged and passing, the
+five earlier samples' titles asserted); `test:seo-product-meta` 11, `test:security` 27, `test:seo` 92,
+`seo:check-schema --offline` 49, `test:seo-meta` 383, `test:seo-phase5` 198, `test:seo-phase6` 59.
+
+v2.1 expectations changed on purpose: `3420-CORP` is now `3420` (channel suffix); "with microphone" is a legitimate
+phrase for an explicit stored mic spec.
+
+#### Needs owner decision (Phase 8 v2.2)
+
+1. **The wrong attributes are still in the database.** The populate script keeps existing values ("already had a value,
+   untouched"), so fixing it does not repair `ram=0GB`, `storage=8GB`, `audioType=Over-ear` rows that are already
+   stored; they also drive the catalogue filters. The generator no longer trusts them, but a one-off cleanup (rows equal
+   to `0GB`, storage repeating RAM, guessed `Over-ear` / `Microphone=Yes`) is yours to approve; I did not touch data.
+2. **Headsets have fewer than 3 specs** and are skipped by default until real specs exist (the name often has only
+   "Bluetooth", "Wired"). `--allow-few-specs` writes them with a neutral specs-pointer sentence.
+3. **The `bad_chars` allow-list is deliberately conservative**: product names with `*`, `=`, `_`, `#`, curly quotes or other
+   non-ASCII are skipped for a human name rather than cleaned automatically. Widening it is a one-line regex in
+   `findBadChars`.
+4. **The populate script changed** (RAM / storage extraction only, for future runs): `storage` is now the keyword-matched
+   figure (it used to be the first figure near "SSD"), and two unclear storage figures return nothing.
+
+### Phase 8 v2.3 — batch tooling, filter funnel, description polish
+
+Branch `seo-phase-8-fix-3` (from main after PR #11, which has v2.2). Code only: no schema change, nothing run on
+production. The local database was read, never written (the script's Prisma client throws on any write call outside
+`--apply` / `--restore`).
+
+#### Why `--select-batch` selected 0 of the remaining ~1,904
+
+1. **Certain, fixed: the selection ignored `--allow-few-specs`.** The filter had `specsAvailable >= 3` written into it; the
+   flag was only read later by the apply decision. It now takes its minimum from the same option parsing as every other
+   mode (`--allow-few-specs` = 0, `--min-specs=N` = N, default 3) and prints which one it used.
+2. **Unknown without a measurement: which other criterion blocks them.** That is what `--explain-filter` answers. Run it
+   on the server before deciding anything: on the local database the biggest blocker is not the specs (see below).
+
+#### `--explain-filter` (read-only; alone, or together with `--select-batch`)
+
+For the active products WITHOUT stored text it writes `docs/seo-reports/product-seo/filter-funnel.md` and prints its top:
+
+- the population (active, with stored text split by source, without = the funnel);
+- **a waterfall**: for each criterion in the order the filter applies it — price > 0, real image, not coming soon, real
+  brand, usable type, at least N specs, resolved unique title, the gates `model_token_lost` / `foreign_code` /
+  `bad_chars` / `spec_zero`, valid lengths — how many fail it on their own (rows overlap), how many it removes first
+  (rows add up) and how many are left; then the biggest blocker;
+- **what a lower minimum would let through** (3 / 2 / 1 / 0);
+- **the "fewer than 3 specs" bucket by family** (with 0 / 1 / 2 specs, and how many would pass everything else at a
+  minimum of 2 and of 0);
+- **10 example names per bucket** (the bucket = the first criterion a product fails; spread over the list, not the first ten).
+
+The selection and the funnel call ONE function (`failedCriteria`, `lib/seo/product-seo-batch.ts`), so they cannot
+disagree; a test compares it with the old inline filter on 576 combinations. When a selection is short, its summary names
+the biggest blocker.
+
+How it looks on the local database (4,309 active products, none with stored text; the production numbers will differ):
+
+| # | criterion | fails on its own | removed here | left |
+|---|---|---|---|---|
+| 0 | start | | | 4309 |
+| 1 | price > 0 | 1352 | 1352 | 2957 |
+| 2 | real image (not the placeholder) | 4284 | 2932 | 25 |
+| 3-5 | not coming soon / real brand / usable type | 0 / 0 / 45 | 0 | 25 |
+| 6 | at least 3 specs | 4032 | 20 | 5 |
+| 7-12 | unique title / four gates / lengths | 460 / 0 / 0 / 208 / 0 / 242 | 0 | 5 |
+| | **pass every criterion** | | | **5** |
+
+Minimum 3 / 2 / 1 / 0 specs would pass 5 / 18 / 23 / 25. Locally the placeholder image is what removes most
+products; on production it may be that, the price, or something else. **I did not change any criterion** (see the owner
+decisions).
+
+#### `--select-batch`, `--min-specs`, `--limit`, batch files
+
+- `--select-batch[=N]` honours `--allow-few-specs` and `--min-specs=0..4` (explicit minimum wins over the flag) and
+  prints "minimum specs per description: 3 (default)" / "0 (--allow-few-specs) - title + type only is enough" /
+  "2 (--min-specs=2)". `--apply` and the dry run use the same minimum (`decideApply` takes it; its default-case message is unchanged).
+- **A description with few specs states only what the name or the stored specs contain**: with 0 specs it is the title core,
+  the neutral pointer sentence and the neutral closing; no spec is ever invented. A test runs 12 products with 0-2 specs through a claim checker
+  (no claim word and no number that the name, specs or title do not contain), and the local sweep below runs it on all 4,309.
+- **`--limit`** works as `--limit 20` and `--limit=20`, with `--apply` and the dry run, and the summary prints
+  `--limit 20: limited to 20 of 4309`. Before, `--limit 20` (space) was read as "no limit", silently. All options now go
+  through `lib/seo/apply-cli.ts`: a missing or non-numeric value, `0`, a negative or decimal number, an unknown option
+  (`--limt=20`), a repeated option, a stray word or an impossible combination (`--explain-filter` with `--apply`) abort
+  with a message **before the database is opened** (tested in the parser and by spawning the script).
+- The old `--apply` guard had `&& !arg("only")`: `--only` did nothing else, so `--apply --only=x` skipped the
+  "needs a batch file or limit" check. Removed; the guard is in the parser.
+- **Batch files are never overwritten**: `--select-batch` writes `batch-<N>.csv` (+ `batch-<N>-summary.md`) with the next
+  number above any existing `batch-*` file, or the file named by `--out=<file>.csv`; an existing file is refused, the
+  write itself is exclusive (`wx`), and the path is printed ("wrote ..."). `--out=<dir>` keeps its old meaning.
+
+#### Description polish (separate commit)
+
+The spec part of a description no longer repeats what the title already says. The title takes collision extras (CPU, size,
+storage, capacity); the description used to say them again.
+
+| Product | Before (v2.2) | After (v2.3) |
+|---|---|---|
+| Toshiba P300 2TB (1 / 2 / 4TB set) | `Toshiba PC Hard Drive P300 2TB: 2TB, 2 TB capacity, 6.0 Gbit/s interface.` | `Toshiba PC Hard Drive P300 2TB: 6.0 Gbit/s interface.` |
+| ThinkPad E14 G7 Core Ultra 5 225H | `… Core Ultra 5 225H Laptop – Core Ultra 5 225H, 16GB RAM.` | `… Core Ultra 5 225H Laptop – 16GB RAM, 512GB SSD.` |
+| Smart Flairedge (title `Smart Flairedge Laptop 512GB 15.6 inch Core i5-1335U`) | `…: Core i5-1335U, 8GB RAM.` | `…: 8GB RAM.` |
+
+Rule (`dropTitleRepeats`): a spec phrase whose words — leaving out the measuring nouns ("capacity", "storage", "display",
+"memory", "socket"...), and "RAM" unless the title also names a storage kind — are all in the title core is dropped.
+`2 TB` and `2TB` are one quantity. "512GB SSD" with only "512GB" in the title keeps what is new: "SSD storage". Titles,
+keywords and `specsAvailable` (the selection's spec count) are unchanged, so no product enters or leaves a batch because of this.
+The "Key specs of …:" lead is used only with two or more specs. The audio form factor is now taken only from the name's own
+words (`Earbuds` stays "earbuds", no longer "in-ear"; "TWS" and "earphones" claim nothing).
+
+Sweep over the 4,309 local products (read-only; v2.2 from main against v2.3 on the same inputs):
+
+| Metric (rows) | v2.2 | v2.3 |
+|---|---|---|
+| description says a quantity / code twice | 251 | **4** (junk raw names that repeat themselves: a licence string, a Zebra name pasted twice) |
+| "X: X" (the core repeated in the spec part) | 217 | 2 (same junk) |
+| title / keyword differs from v2.2 | – | **0 / 0** |
+| description differs from v2.2 | – | 354 |
+| description length outside 120-155 | 83 | 83 (unchanged: gated by "valid lengths") |
+| `specsAvailable` < 3 (what the selection counts) | 4032 | 4032 |
+| `few_specs` flag (the description states < 3 specs) | 4043 | 4131 |
+| claim or number not in the name / specs / title | 36 | **4** (all derivations, below) |
+| selection, minimum 3 / 2 / 1 / 0 | 5 / 18 / 23 / 25 | 5 / 18 / 23 / 25 |
+
+The 4 left are deterministic derivations of v2 / v2.2, not inventions: "NVMe" shown as "NVMe SSD", `2x 16GB` shown as
+32GB (two rows), a PSU certification "Bronze" shown as "80 Plus Bronze".
+
+#### Verification (2026-11-11, local)
+
+`tsc` 0 errors; eslint clean; `next build` OK (build `J6KeXOTW3ZsFe47U7aiKZ`, separate worktree); `test:seo-product` **1,356** + **157** checks
+(`check-product-seo.ts` was 1,292; the new `check-product-seo-batch.ts` is run by the same npm script); `test:seo-product-meta`
+11, `test:seo` 92, `test:seo-meta` 383, `test:seo-phase5` 198, `test:seo-phase6` 59, `test:security` 27,
+`seo:check-schema --offline` 49. Every v2.2 check passes; two expectations were adjusted on purpose (a title that
+already says "Cat6 UTP 2m" / "Over-Ear" no longer has those specs repeated in the description).
+
+#### Needs owner decision (Phase 8 v2.3)
+
+1. **Run `--explain-filter` on the server first.** If the biggest blocker there is the real-image or price criterion, the
+   question is whether those should gate a batch at all: the SEO text does not depend on either. They were put there to pick a
+   well-formed first batch to review. Relaxing them is a one-line change per criterion; I did not make it.
+2. **The 419 already generated rows keep the old text** (the selection never offers products with stored text). Re-applying
+   the new wording means a batch file of their slugs: `decideApply` updates `seoSource = generated` rows without
+   `--overwrite`, and still never touches hand-written ones.
+3. **`--apply --limit=N` applies to the first N products by id with no quality filter** (only `--batch-file` is
+   filtered; this is how v2 was built). Use a selected batch file; run the dry run with the same `--limit` first.
+4. **Thin descriptions** (fewer than 2 specs) are the title core + "See full specifications on the product page." + the
+   neutral closing. That pointer sentence is the v2 wording; say if you prefer to drop it (the description then needs 120+
+   characters from the core, which short titles do not reach).
+5. **Product names that repeat themselves** (a licence string, a Zebra name pasted twice) still produce a repeated core;
+   that is the raw name's own text. 179 licence-style names are already skipped by `bad_chars`.
+
+### Phase 8 v2.4 — claim accuracy
+
+Branch `seo-phase-8-fix-4` (from main after PR #12, which has v2.3). Code only: no schema change, nothing run on
+production. The local database was read, never written (the script's Prisma client throws on any write outside
+`--apply` / `--restore`). Three commits: the accuracy fixes, the cosmetic casing change, these notes.
+
+#### What the batch-2 dry-run found, and the cause of each
+
+| Defect | Cause | Fix |
+|---|---|---|
+| "ATX form factor" on M-ATX / Micro ATX boards and cases (26 rows) | the generator's reader ended with a bare `ATX` alternative, so `M-ATX` / `mATX` matched its tail; the import script's casing reader did not know "Micro ATX" (a space) or "M-ATX" at all and fell through to ATX, and guessed ATX for any chipset code without an "M" | `lib/catalog/form-factor.ts`: Micro-ATX = M-ATX / mATX / M.ATX / MicroATX / Micro ATX / uATX, E-ATX = E-ATX / EATX / Extended ATX, Mini-ITX = Mini ITX / mITX / ITX, **a bare ATX only with no prefix**. Shared by the generator and `populate-import-attributes.ts`. The **name outranks any stored value**; a stored value is used when the name says nothing (a spec row as it is, an attribute unless it says plain ATX, which needs the name to say ATX). A name that lists several forms claims none |
+| "with microphone" with no mic in the name (13 live rows of batch 1, 7 of batch 2); in-ear / Bluetooth / wired from guesses | the import script writes `audioType`, `connectivity` and `microphone` attributes by guessing from the name ("buds" -> In-ear, "headset" -> Over-ear + Microphone=Yes, 3.5mm -> Wired); v2.2 blocked the Over-ear / bare-Yes attribute shapes only, so In-ear / Bluetooth / a spec **row** "Microphone: Yes" still fed claims | claims come from the raw name, the category names or an **informative spec row** only: **attributes never back a claim**, a bare Yes / No row is not evidence, "No ANC" in a name is not support for ANC (`lib/seo/claims.ts`). A shape-agnostic net checks every claim keyword (microphone, built-in, ANC, wireless, wired, Bluetooth + version, over- / in- / on- / open-ear, earbuds, neckband) against that evidence whatever stored shape leaked it |
+| "Honor 600 Pro Mobile Accessory", "6.57 inch, 6.57 inches size" | the leaf "Mobile Accessories" is not in the umbrella list, so it became the type; the `fill` rule turns any `Size: 6.57 inches` row into "6.57 inches size", and my v2.3 quantity normalisation had broken the "same first number" de-duplication ("6.57inch" vs "6.57") | a leaf that is a bucket (…Accessories / Gadgets / Components / Peripherals / Equipment) is **not a type**, and neither is its parent; the name must state one (Smartphone, Earbuds…) or the row is skipped with `unusable_type`. "size" is no longer a fill phrase; inch / inches / in / " are one unit when de-duplicating |
+| "8GB size, 7680x4320 resolution" on graphics cards (26 rows) | the same fill rule: `Size: 8GB` -> "8GB size", `Resolution: 7680x4320` (the largest picture the card can drive) -> "7680x4320 resolution" | GPU memory is read as "<size> <type>" (`lib/catalog/gpu-extract.ts`): **"8GB GDDR6"** with the type from the name, "8GB VRAM" when the name gives none, never "size"; "resolution" is a phrase only for products with a display (monitor, laptop, flat panel, IP phone). A chip written in the name or a stored spec is kept in the title when the title still fits; **never derived from a SKU** (`GV-N5070GAMING`, `GV-R9060XTGAMING`, `-8GD` / `-16GD` are board codes) |
+
+#### New gates (counted and listed in the dry run and in `apply-preview.csv`)
+
+- **`claim_conflict`** — a form factor in the description that the raw name contradicts: row skipped. (With the name-wins
+  rule above the generator cannot produce one; this is the net, like `foreign_code`.)
+- **`unsupported_claim`** — a claim nothing backs is **dropped** from the text; the dry run counts the rows and lists the
+  claims removed. The row is skipped (`skip: unsupported_claim: fewer than N specs once it is dropped`) **only when that
+  is what left it under the minimum**; a row that was short anyway stays a plain "fewer than N specs" skip.
+- **`unusable_type`** — a category that is only a bucket and a name that states no type: row skipped.
+- **`bad_spec_phrase`** — "<n>GB size", "<n> inches size", "<n> inch, <n> inches", or one quantity in two spec phrases: row skipped.
+- The same four are criteria of the `--explain-filter` funnel (`type` and two gate rows).
+
+#### Refresh: rows that already have generated text
+
+`decideApply` now answers, for a row with `seoSource = generated` in a batch file: **`update`** (the text changed) or
+**`unchanged`**, or — when the new text is blocked by a gate or the minimum — **`skip: <reason> (generated text stays live)`**,
+so nothing is silent. `--apply` writes only `write` and `update` rows (`rowsToWrite`; an alt-only change goes through only
+with `--apply-alts`). Hand-written text (`seoSource = admin`) and text with no source are skipped without `--overwrite`;
+tested, including a mixed batch where only the new and the changed row are written. The dry-run summary has a block
+"Rows that already have generated text: N -> n update, n unchanged, n blocked (the OLD generated text stays live)" with the list.
+
+#### Cosmetic (separate commit)
+
+Plain English words that raw names SHOUT become normal words in titles and descriptions, also inside the model run:
+MOTHERBOARD, CASING, KEYBOARD, GAMING, MECHANICAL, BLACK, TEMPERED, MID-TOWER -> "Mid-Tower", MICRO, COMPUTER, THERMAL,
+ASSEMBLY, SUPPLY… (`PLAIN_WORDS` in `lib/seo/casing.ts`: the storefront's own shouting list plus what the sweep found).
+It is a dictionary, not "every capital word": brands (MSI, UGREEN), model lines (AORUS, MORTAR, ELITE), acronyms and
+standards (RGB, ARGB, ATX, DDR5, WIFI6E, PSU) and any token with a digit (a model code: `B650-PLUS`, `M-ATX`) are never touched.
+The type word is the standard one: a name's or a category's "Casing" is **"Case"** (a name that has both, "Corsair CASING
+Crystal Series … Case", keeps both: Casing is part of the line).
+
+#### Before -> after (stored data shaped as the production rows are: a wrong or mis-spelt `formFactor`, guessed audio attributes, `Size` / `Resolution` rows)
+
+| Product | v2.3 | v2.4 |
+|---|---|---|
+| MSI MAG B860M MORTAR WIFI … M-ATX | `… Motherboard – LGA1851 socket, ATX form factor` | `… – LGA1851 socket, Micro-ATX form factor` |
+| MSI B760M GAMING PLUS WIFI 6E M-ATX | `MSI B760M GAMING PLUS Motherboard`, `ATX form factor` | `MSI B760M Gaming Plus Motherboard`, `Micro-ATX form factor` |
+| MSI PRO B850M-B GEN4 AM5 M-ATX | `ATX form factor` | `Micro-ATX form factor` |
+| MSI B450M-A PRO MAX II (stored `M-ATX`) | `AM4 socket, ATX form factor` | `AM4 socket, Micro-ATX form factor` (with only a plain-ATX attribute: no form-factor claim) |
+| MSI MEG X870E GODLIKE … E-ATX | `E-ATX form factor` | unchanged (correct) |
+| Corsair iCUE LINK 2500X RGB Micro ATX case | `… Case – ATX form factor` | `… Case – Micro-ATX form factor` |
+| Edifier W600BT Wireless Headphone | `in-ear headphone with microphone` | `Edifier W600BT Wireless Headphone` (no claim; skipped at min 2) |
+| Edifier Gm3 Plus TWS | `Bluetooth headphone with microphone` | no claim (skipped at min 2) |
+| Edifier NeoBuds Plus … Wireless | `wireless in-ear headphone` | `wireless headphone` (the name says Wireless, not in-ear) |
+| Edifier Comfo Q OWS Headphone Back | `headphone with microphone` | no claim |
+| Honor Choice Earbuds X7 Lite | `earbuds with microphone` | no claim |
+| HONOR 600 Pro (12+256) / HONOR X7d | `Honor 600 Pro Mobile Accessory`, `6.57 inch display, 6.57 inches size` | title without a type, **skipped: unusable_type** (the text would be `6.57 inch display` once) |
+| GIGABYTE AMD # GV-R9060XTGAMING OC-8GD, GDDR6 | `8GB size, 7680x4320 resolution` | `8GB GDDR6`; no Radeon chip invented from the SKU |
+| GIGABYTE Intel Arc A310 … 4G GDDR6 | `4GB size, 7680x4320` | `4GB GDDR6` (Arc A310 stays in the title) |
+| GIGABYTE GeForce RTX 3050 WINDFORCE OC 6GB | `6GB size, 7680x4320 resolution` | `6GB GDDR6` (type from the name) |
+| XTREME M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS | `Xtreme M95B MINI TOWER M-ATX BLACK CASE TEMPERED GLASS` | `Xtreme M95B Mini Tower M-ATX Black Case Tempered Glass` |
+
+#### Sweep over all 4,309 local products (read-only; v2.3 from main against v2.4 on the same inputs)
+
+| Metric (rows) | v2.3 | v2.4 |
+|---|---|---|
+| form factor in the description contradicts the name (all "plain ATX" where the name says M / E / Micro) | 10 | **0** |
+| a claim in the spec part that nothing backs | 15 | **0** |
+| in-ear / over-ear / on-ear in the description, not in the name | 9 | 1 (the name says "In-Earphone": my check's own false positive) |
+| claims removed (flag `unsupported_claim`): over-ear 78, microphone 31, in-ear 10, wired 8 | 0 | 89 rows |
+| "accessory" in a title or description (phone-looking names: 5 -> 0) | 87 | 3 |
+| `unusable_type` (skipped) | 0 | 94 (49 were titled "… Accessory"; the rest already had no type) |
+| graphics card "size" / resolution phrase; duplicated spec phrase; `bad_spec_phrase`; `claim_conflict` | 0 | 0 (the local GPUs have no `Size` / `Resolution` rows: the fixtures cover them) |
+| title differs, ignoring case | – | 119 = 49 type removed + 70 category "Casing" -> "Case" |
+| keyword != title core + " price in bangladesh" | 0 | 0 |
+| shouted dictionary word in a title or description (cosmetic commit) | 667 | **0** |
+| rows that would be WRITTEN at minimum 3 / 2 / 0 specs | 260 / 557 / 3534 | 227 / 524 / 3496 |
+
+The 33 rows no longer written at minimum 2: 27 "fewer than 2 specs" (boards and cases whose only form-factor evidence was a
+plain-ATX attribute with no ATX in the name, the import script's default guess) and 6 `unsupported_claim` (headsets whose
+over-ear / microphone existed only as attributes). Nothing is newly written. The local data has no microphone attribute rows
+(production does), so the local sweep cannot show the production microphone leak; the fixtures and the shape-agnostic net do.
+
+#### Verification (2026-11-11, local)
+
+`tsc` 0 errors; eslint clean; `next build` OK (build `8U2xN0oioRWU3d9bbIAMA`, separate worktree); `test:seo-product` **1,635** + **162** checks
+(1,356 + 157 in v2.3); `test:seo-product-meta` 11, `test:seo` 92, `test:seo-meta` 383, `test:seo-phase5` 198,
+`test:seo-phase6` 59, `test:security` 27, `seo:check-schema --offline` 49. Every v2.3 check passes except four expectations
+changed on purpose: GPU memory is "8GB GDDR6" (was "… VRAM"); the HS50 sample keeps its over-ear **row** and drops the
+attribute-only "wired" and "built-in microphone"; a gated row that already has generated text says "(generated text stays live)".
+One v2.2 assertion (no shouted brand / line word left) held backspace characters instead of `\b` and had been passing
+vacuously; repaired, and it passes for real.
+
+#### Needs owner decision (Phase 8 v2.4)
+
+1. **Rows already live keep their text.** The 26 "ATX form factor" and the "with microphone" rows of batches 1 and 2 are
+   `seoSource = generated`; refreshing them needs a batch file of their slugs, and then `update` rewrites them. A row whose new text is
+   blocked (the phones in "Mobile Accessories": `unusable_type`) is **not** rewritten and its **old text, "… Mobile Accessory", stays live**; the dry run lists
+   those rows. Clearing such text (back to the built-in template) is a separate step I did not add, because you asked that apply
+   write only `update` rows. Say if you want a `--clear-blocked` option, or fix them by hand.
+2. **Coverage cost of dropping guessed claims.** Headsets whose over-ear / microphone were only attributes, and boards / cases
+   whose only form factor was a plain-ATX attribute, now carry fewer specs and fall under the minimum (33 rows at minimum 2 locally).
+   Accepting the import script's chipset convention (a name with `B450M` is Micro-ATX) would restore some boards; I did not, because
+   it is an inference, not what the name says. Say if you want it.
+3. **Sockets still come from the chipset mapping** in the import script (`B650` -> AM5, `B450` -> AM4): a deterministic standard
+   mapping, not a guess, and not in your list, so unchanged. Name-only would drop it from most boards.
+4. **The wrong attributes are still in the database** (`formFactor = ATX` on Micro-ATX products, guessed `audioType` / `microphone`,
+   the catalogue filters read them). The generator no longer trusts them; a one-off cleanup is yours to approve. The import
+   script now writes the right form factor for new imports.
+5. **A GPU chip that would push the title over 60 is left out** (a 63-character title would be a skipped row): `GV-N3050WF2OC-6GD
+   GeForce RTX 3050` stays chip-less. The chip is kept whenever it is in the name's core or fits.
+6. **I could not see the production data.** The microphone path is closed for every stored shape I could construct (attribute,
+   key-less row, bare Yes, "Built-in", non-Yes values) and the net catches the rest; if batch 2 still shows one after re-running the
+   dry run, its `unsupported_claims` column in `apply-preview.csv` names the claim and the row.
+
+### Phase 8 v2.5 — local wording, identity that survives shortening, copied-attribute audit
+
+Branch `seo-phase-8-fix-5` (from main after PR #13, which has v2.4). Code only: no schema change, nothing run on
+production. The local database was read, never written (the script's Prisma client throws on any write outside
+`--apply` / `--restore`).
+
+#### 1. PC cases are "Casing" (this reverses v2.4)
+
+v2.4 made "Casing" a "Case". Local shops (Star Tech, Ryans, Ultra Tech, bdstall) and our own category say **Casing**, and
+people search "casing price in bangladesh". Now the type word of a **PC case** is "Casing" in the title, the description and
+the keywords (keyword = title core + " price in bangladesh" is unchanged, so it says "casing"). A PC case = the case
+family AND (our category "Casing", or a form factor in the name, or a tower / "PC case" / "ATX … case" in the name): a
+phone case, a laptop case and every other type are not renamed. A raw "Casing" stays as written; a name that already
+has "Casing" earlier ("Corsair CASING Crystal Series … Case") keeps its "Case". `pcCaseWord` replaces v2.4's `standardType`.
+
+#### 2. Identity that survives shortening
+
+The title is the model core plus the type word, and "Price in Bangladesh" is preferred over descriptive words, so a
+2TB and a 4TB "Toshiba PC Hard Drive P300" ended up with the same title ("… P300") and RAM had no DDR type. Now, for these
+families, the figure that IS the product is part of the title and **cannot be dropped**:
+
+- **HDD / SSD**: the capacity the name states (`4TB`, `512GB`; a transfer rate such as "6 Gb/s" or a cache such as
+  "256 MB" is never a capacity; two different capacities are not guessed between). "Toshiba PC Hard Drive P300 4TB".
+- **RAM**: the capacity and the DDR generation (`16GB DDR5`), and the type is **"RAM"**, not the "Memory" of "Memory
+  Kit". A kit "16GB (2 x 8GB)" is 16GB; its "8GB" is a module, and the kit layout (`2x8GB`) is what tells two 16GB kits apart.
+  "Corsair Vengeance 16GB DDR5 RAM" (VENGEANCE / DOMINATOR are plain words and take normal case).
+- **Combos**: "Combo" and, when the name has it, "Mouse and Keyboard" before it (a promotional "Combo Offer" is not a combo).
+- The name's capacity and DDR generation **outrank a stored one**, so the title and the description cannot disagree.
+- **Gate `identity_lost`**: if any of these is missing from the title, or cannot fit within 60 characters, the row is skipped,
+  counted and listed in the dry run (and is a criterion of `--explain-filter`). A title without the capacity or the DDR type is never written.
+
+The descriptions state what the name states: capacity (once, in the title), RPM, interface and **3.5-inch / 2.5-inch** for
+drives; speed, kit layout and CAS latency for RAM. A spec phrase that is only a number ("3.5") no longer exists, and the
+`bad_spec_phrase` lint flags any that appears.
+
+#### 3. Audit: where "built-in microphone" on the Edifier Comfo Q OWS comes from
+
+What I could establish from the code (I cannot see the production rows):
+
+| Writer | Writes | For "Edifier Comfo Q OWS Headphone Back, No ANC, …" |
+|---|---|---|
+| `populate-import-attributes.ts` `extractMicrophone` | attribute `microphone` = **Yes** (never "Built-in"), only when the name has "mic" or "headset" | nothing (the name has neither); `extractAudioType` guesses `audioType = Over-ear` from "headphone" |
+| bulk CSV import (`lib/catalog/bulk-csv.ts`) | no attributes, no spec rows ("Variants, colors, attributes, and spec… are not touched") | nothing |
+| `prisma/seed.ts`, `scripts/deploy/*` | no microphone row | nothing |
+| admin product form (`syncSpecGroups`) | whatever the form posts | **see below** |
+
+**Finding.** The admin editor loads a product through the storefront mapper (`toEditor` -> `toProductDetail` ->
+`mergeSpecGroupsWithAttributes`, `lib/data/prisma/mappers.ts`), which shows every attribute value as a spec row when the
+product has none ("Specifications" group; "Attributes" group when it has some). The single-product form posts **all** its
+spec groups on **every** save (`admin-product-form.tsx` -> `syncSpecGroups`). So any admin save of a product whose attributes the
+import script guessed writes the guesses back as real **key-less spec rows with the same label and the same value**
+("Type: Over-ear", "Form Factor: ATX", "Microphone: Yes"). The generator trusts key-less rows (a human typed them); v2.2-v2.4
+therefore trusted the import script's guesses once an admin had saved the product. The local database shows it: **20
+products carry rows that exactly copy their attributes** (Socket = AM5 ×6, RAM = 16GB ×5, Form factor = Micro-ATX ×4, Form
+Factor = ATX ×2 ...), so it is not hypothetical.
+
+That path cannot write "Built-in" by itself (the attribute only holds Yes / No). **The only way left in the code to get
+"built-in microphone" without the name saying it is a key-less spec row whose value says "built-in"** — typed in the admin
+form (or inserted outside the repository). I cannot tell which one the production Comfo row is. The next dry run names it:
+`apply-preview.csv` has a new column **`claim_sources`**, e.g. `microphone <- spec row "Microphone: Built-in"`.
+
+**Change** (the copy is a guess, so it is untrusted; a typed row is not): a key-less row **identical to an attribute of the same
+product** (same label, same value, ignoring case and spaces) is dropped from the facts and from the claim evidence
+(`dropMirroredRows`, `lib/seo/claims.ts`); a row whose value differs from the attribute stays. Removed claims are counted
+as `unsupported_claim` as before. No importer is changed.
+
+#### Before -> after (the real names)
+
+| Product | v2.4 | v2.5 |
+|---|---|---|
+| Toshiba PC Hard Drive P300 2TB | `… P300 2TB` · `Toshiba PC Hard Drive P300 2TB` (no specs) | `… P300 2TB` · `… P300 2TB – 7200RPM, SATA, 3.5-inch` |
+| Toshiba PC Hard Drive P300 4TB | same (no specs) | `… P300 4TB` · `Key specs of … P300 4TB: 5400RPM, SATA, 3.5-inch` |
+| Corsair VENGEANCE 16GB DDR5 6000MT/s CL36 | `Corsair Vengeance Memory Price in Bangladesh \| Techno House` · `… Memory: 16GB, DDR5 memory` | `Corsair Vengeance 16GB DDR5 RAM Price in Bangladesh` · `… RAM: 6000MT/s, CL36 latency` |
+| Corsair VENGEANCE 16GB DDR5 5600MHz (Black) | `Corsair Vengeance Black Memory` | `Corsair Vengeance 16GB DDR5 Black RAM` |
+| Targus AKM610AP Wireless Mouse and Keyboard Combo | `Targus AKM610AP Wireless Mouse Keyboard` | `Targus AKM610AP Mouse and Keyboard Combo Price in Bangladesh` (the ladder drops "Wireless" before it drops the "Price in Bangladesh" suffix) |
+| Edifier Comfo Q OWS (the import script's attributes copied into rows by an admin save) | `… Headphone Back – over-ear headphone` | `Edifier Comfo Q OWS Headphone Back` (no claim) |
+| Edifier Comfo Q OWS (a row typed "Microphone: Built-in") | `headphone with built-in microphone` | unchanged: a typed row is the one remaining source; `claim_sources` shows it |
+| Corsair 2800X RS-R ARGB White Micro-ATX PC Case | `Corsair 2800X RS-R ARGB Case` | `Corsair 2800X RS-R ARGB Casing` (+ `Micro-ATX form factor`) |
+| DeepCool CK560 WH E-ATX Mid-Tower Gaming Casing | `… Gaming Case` | `… Gaming Casing` |
+| Delux DW301 ATX Thermal Casing / Xtreme Xjogos XJ07 ATX Casing | `… Thermal Case` | `… Thermal Casing` |
+
+#### Sweep over all 4,309 local products (read-only; v2.4 from main against v2.5 on the same inputs)
+
+Local population: 221 storage, 141 RAM, 25 names with "Combo", 138 PC cases.
+
+| Metric (rows) | v2.4 | v2.5 |
+|---|---|---|
+| HDD / SSD: the name states a capacity and the title lost it | 44 | **0** |
+| RAM: the title lost the capacity / the DDR type | 11 / 82 | **0 / 0** |
+| the name says Combo and the title lost it | 13 | 1 (a "2PACK COMBO" fan set, not a keyboard / mouse combo) |
+| PC case titled "Case" (not "Casing") | 133 | 2 (a zero-width character in the name: skipped as `bad_chars`) |
+| PC case titled "Casing" | 5 | 136 |
+| RAM typed "Memory" in the title | 70 | 4 (the name's own type word in its core: "AORUS Memory …") |
+| bare-number spec phrase | 0 | 0 |
+| storage descriptions that state RPM / interface / inch | 0 | 108 |
+| gate `identity_lost` (skipped) | 0 | **6** (all titles that cannot hold the capacity within 60 characters) |
+| title_collision | 458 | 444 |
+| title differs from v2.4, ignoring case | – | 281 |
+| keyword != title core + " price in bangladesh" | 0 | 0 |
+| products with a spec row that only copies an attribute (dropped) | – | 20 |
+
+Rows that would be written at minimum 3 / 2 / 0 specs: **227 / 524 / 3496 -> 341 / 681 / 3506**. **Newly skipped: 0 / 0 /
+4** (all four at minimum 0, all `identity_lost`: rows that v2.4 would have written with no capacity in the title).
+**Newly written: 114 / 157 / 14**: the specs the name states (capacity, RPM, interface, speed, kit) count as specs, so drives and RAM
+modules reach the minimum that they did not before. That changes what `--select-batch` offers.
+
+#### Verification (2026-11-11, local)
+
+`tsc` 0 errors; eslint clean on `lib` and `scripts`; `next build` OK (build `ooAyZl2DiFmiCKEVYil1F`, separate worktree); `test:seo-product`
+**1,716** + **163** checks (1,635 + 162 in v2.4). Every v2.4 check passes except the ones that encode v2.4's decision and
+three v2.3 description checks, changed on purpose: "Casing" is the type word (the v2.4 casing tests expected "Case"), and the
+v2.3 Toshiba fixture's description now states the name's RPM / SATA / 3.5-inch
+(it used to keep only the stored "6.0 Gbit/s interface" row: the stored interface row did not read, and a stored fact now blocks a
+name-derived one only when it reads). The project-wide `npm run lint` still reports one error in
+`features/marketing/offer-countdown.tsx`, a file this branch does not touch (identical to main).
+
+#### Needs owner decision (Phase 8 v2.5)
+
+1. **Fix the admin editor at the source.** Every admin save of a product whose attributes are import-script guesses turns the
+   guesses into spec rows that look hand-typed (and the storefront shows them as specs). The generator now ignores copies, but
+   the rows are still stored. Options: stop merging attributes into the editor's spec groups, or post only the groups the admin
+   touched. That is a UI / data-flow change outside this task; I did not make it.
+2. **Find the production Comfo Q OWS row.** Run the dry run on the server and read `claim_sources` for the headset rows: a
+   `spec row "Microphone: Built-in"` is a row someone typed (or inserted); you can correct or delete it in the admin.
+3. **Rows already live keep their text** until they are refreshed from a batch file: v2.4's "Case" titles and the RAM / drive
+   titles without capacity / DDR are `update` rows for `--apply`; the refresh block of the dry run lists any row whose new text is blocked.
+4. **Targus "Wireless"**: the title ladder prefers the "Price in Bangladesh" suffix over descriptive words, so "Wireless" goes
+   before "Combo" is touched. Keeping "Wireless" means a title without the suffix ("Targus AKM610AP Wireless Mouse and Keyboard
+   Combo", 49 characters). Say if you prefer that.
+5. **The 6 `identity_lost` rows** are drives whose name is longer than 60 characters even with the capacity ("SEAGATE STLC8000400 ONE
+   TOUCH HUB 8TB …", flash drives filed under "Portable Hard Disk Drive"); they need a shorter name or a hand-written title.
+
+### Phase 7 findings — mobile performance and accessibility (measure and diagnose only)
+
+Branch `seo-phase-7` (from main after PR #14). **Step 1 changed no code**: this section is the only change. Nothing was
+run against production and no database was written (the local server only reads the dev database).
+
+#### How it was measured (and what that can and cannot tell)
+
+- `next build` of main (`2d705d5`) in a scratch worktree, `next start` on port 3100 started with
+  `Start-Process` and checked against that build's `_buildManifest.js`; Lighthouse **13.5.0** (via `npx`, nothing added to the repo),
+  Chrome 157, mobile preset, default simulated throttling (Slow 4G, 4x CPU), **3 runs per page, medians**. Run-to-run noise on this
+  machine is about +-3 points, with occasional single-run outliers (identical setups scored 81 / 85 / 79, 87 / 73 / 86 and 63 / 85 / 84),
+  which is why medians are used; LCP is steadier than the score.
+- **Local is not production.** The local database has no analytics tag ids (so GTM / GA4 / Meta Pixel / Tawk.to never load here), almost
+  every product has the placeholder image (4,284 of 4,309), and there is no nginx in front (none of the WebP-copy / cache rules from
+  `deploy/nginx-seo.conf` apply). So the structural findings below (JS, fonts, CSS, HTML, accessibility, the header logo) are measured; the
+  **product-image and third-party findings are not** and are marked so. The accessibility score here (87) matches production's (86).
+- Controlled experiments (category page, 3 runs each, no code change): block fonts, block `_rsc` prefetches, block all JS, and serve the
+  header logo at three sizes.
+
+#### Baseline (local, medians of 3) against production's PageSpeed
+
+| Page | Perf | LCP | TBT | CLS | A11y | LCP element |
+|---|---|---|---|---|---|---|
+| Home | 86 | 4.0 s | 118 ms | 0 | 97 | header search placeholder text |
+| /category/laptop | 81 | 4.6 s | 164 ms | 0 | 87 | **first product-card image (180x180, at y = 768 px, just at the fold), `loading="lazy"`**, no fetchpriority; phases: TTFB 217 ms, load delay 159 ms, load 10 ms, render delay 77 ms (run 1) |
+| Laptop product page | 84 | 4.4 s | 92 ms | 0 | 93 | breadcrumb text |
+| Monitor product page | 84 | 4.4 s | 101 ms | 0 | 93 | breadcrumb text |
+| /offers | 84 | 4.4 s | 95 ms | 0 | 96 | first offer-card image, `loading="lazy"` |
+| *production, as you measured* | category 57, home 86 | category 10.3 s | category 630 ms | – | category 86, home 97 | – |
+
+Home matches production (86). The category page does not (81 against 57): the gap is the things missing locally.
+
+#### Controlled experiments (category page, median of 3)
+
+| Variant | Perf | LCP | TBT | Transfer |
+|---|---|---|---|---|
+| baseline | 81 | 4.6 s | 164 ms | 596 KB |
+| all 6 font files blocked | **91** | 3.2 s | 92 ms | 364 KB |
+| all JS blocked | **93** | 3.2 s | 0 ms | 333 KB |
+| `_rsc` link prefetches blocked | 83 | 4.6 s | 104 ms | 536 KB |
+| header logo = original PNG (1,187 KB) | **73** (73 / 84 / 70) | **10.3 s** (10.4 / 4.5 / 10.3) | 107 ms | 1,783 KB |
+| header logo = its 131 KB WebP copy | 82 | 4.7 s | 106 ms | 727 KB |
+| header logo = right-sized 288 px (19 KB) | 82 | 4.4 s | 116 ms | 615 KB |
+
+With the original PNG two of three runs reach LCP 10.3 s (the figure you saw in production) and one stays at 4.5 s: the 1.2 MB file
+queues ahead of the lazy LCP image on the simulated 1.6 Mbps link. Whether production serves the PNG or a WebP copy of it depends on
+whether `optimize-uploads.mjs --apply` and the nginx blocks of `deploy/nginx-seo.conf` were applied; that is not visible from here.
+
+#### Findings, ranked (gain = estimated mobile Lighthouse points / LCP; "measured" = from the experiments above)
+
+| # | Cause | Evidence | Pages | Est. gain | Risk | Effort | Proposed fix |
+|---|---|---|---|---|---|---|---|
+| 1 | **Header logo is a 1536x1024 PNG (1.19 MB) shown at 96 px high** and preloaded on every page | `public/uploads/general/fbdf9f15….png` 1536x1024, 1,187 KB (131 KB even as WebP); `<img style="height:96px;width:auto">` x3 (header, mobile header, lazy footer) + `<link rel="preload" as="image">` on every page; the custom loader returns `/uploads/*` as is, so no resizing | all | measured: 73 -> 82, LCP 10.3 -> 4.4 s, -1.17 MB (if production serves the original); 131 KB -> 19 KB: ~0-3 pts, -112 KB | low (same picture at 2x; keep 3x for 432 px) | S | replace the logo asset with a right-sized file (about 432 px wide WebP / PNG, <= 30 KB) in Admin -> branding (data change, no code) and/or render it through `next/image` with real width/height; keep or drop the preload |
+| 2 | **Listing images are delivered at stored size, and the first row is lazy** (production only) | the loader returns `/uploads/*` unchanged for every `srcset` width, so all candidates are the same URL; cards show ~180-206 CSS px but fetch the stored file (<= 1000 px / <= 80 KB if converted, the original up to 5 MB if not); `lcp-discovery` fails on category and offers (`fetchpriority` no, `loading=lazy` yes); 21 cards | category, home, offers, brand, search | **not measurable locally** (placeholder SVG). At ~60-80 KB per image the 8-10 images near the fold are 0.5-0.8 MB = 2.5-4 s of the simulated link | low-medium | M | (a) `priority` on the first row of cards (2-4); (b) generate small WebP derivatives (e.g. 240 / 480 px) next to uploads and let the loader pick by width (sharp is already a dependency; nginx rule); needs one production check first (see questions) |
+| 3 | **Fonts: 6 files, 232 KB on every page, 107 KB of it for the taka sign** | four families loaded in the root layout: Plus Jakarta Sans (28 KB), Inter (49), IBM Plex Mono 400 + 500 (22), Noto Sans Bengali latin (26) and **Noto Sans Bengali bengali subset (107 KB)**, requested on every page because "৳" (U+09F3) is in its unicode-range; no preload, discovered from CSS | all | measured: 81 -> 91, LCP 4.6 -> 3.2 s, TBT -70 ms (all fonts). Realistic: dropping the 107 + 26 KB Bengali files = 57% of font bytes, ~ +5-6 pts | medium (glyph shapes must not change) | M | serve "৳" from a tiny (about 2 KB) subset of the same Noto glyph instead of the 107 KB file; load the Bengali / mono / Inter files only where a theme or page uses them (Design Studio can switch the body font); keep `swap` |
+| 4 | **Third-party scripts** (production only) | GTM, GA4, Meta Pixel and Tawk.to are injected `afterInteractive` from `AnalyticsConfiguration` (`components/analytics/storefront-analytics.tsx`, chat widget); none load locally. Production category TBT 630 ms against 164 ms locally: ~470 ms is unexplained by anything measured here | all | **not measurable locally**; likely the largest part of the TBT gap | medium (tracking: needs your decision, nothing is removed) | S-M | after a production trace: load the chat widget on interaction / idle (`lazyOnload`), defer GTM past `load`, avoid loading GA4 twice if it is also inside GTM |
+| 5 | **JavaScript: 600 KB raw / 200 KB gz in 13 files on every route; 46% of it executed on load** | framework (react-dom + app router + flight client) ~384 KB raw; the project's 38 client modules on the category route ~190 KB raw (header search / cart / account / mobile nav / mega-nav, footer newsletter and CTA, tracking bootstrap, popup, site alert, sale-alert toast, jump-up effects, feedback provider, and 2 islands per product card x 21); main thread: script evaluation 635 ms + style/layout 428 ms (4x CPU); hydration long tasks 157 + 54 ms | all | measured upper bound (no JS at all): 81 -> 93, TBT -164 ms. Realistic: -60-80 KB raw, +3-4 pts, TBT -50-80 ms | medium (popup / toast timing) | M-L | defer the non-critical layout islands (popup, site alert, sale toast, jump-up, newsletter, tracking) behind `dynamic()` after idle; one delegated client component for card actions instead of 2 per card; framework bytes cannot shrink |
+| 6 | **`<Link>` prefetch of every visible product link** | 27 `_rsc` requests / 60 KB on the category page, the first 541 ms after the document | category, home, listings | measured: 81 -> 83, TBT -60 ms, -60 KB | low (a card -> product click is slightly slower) | S | `prefetch={false}` on product-card links (prefetch on hover / touch is the alternative) |
+| 7 | **Two render-blocking stylesheets** | 169 KB raw (26 KB gz) + 22 KB raw (4 KB gz, the font-face CSS); coverage on the first screen: the big one is 91% used (not bloat), the small one 10%; Lighthouse: FCP -230 to -410 ms | all | ~ +1-3 pts | medium (HTML grows ~26 KB gz, CSS no longer cached across pages) | S | `experimental.inlineCss`, or inline only the small font CSS; measure before keeping |
+| 8 | **Large HTML with the whole RSC payload inline** | category 384 KB raw / 63 KB gz, of which ~150 KB is inline flight data (every card's product props); home 533 KB / 95 KB gz (230 KB of flight data) | category, home | ~ +1 pt, -30 KB gz | low | M | pass only the fields the client islands use; do not serialise card data twice |
+| 9 | **Every page is rendered per request, no HTML caching** | `Cache-Control: private, no-cache, no-store` (the storefront layout reads the customer cookie); ~10 awaited reads in the layout; local TTFB 100-470 ms (first hit 1.2 s) | all | -50-200 ms TTFB (production TTFB not known) | medium | M | cache the layout's configuration reads (`unstable_cache` / revalidate); only after production TTFB is known |
+| 10 | **Legacy-JS polyfills in the main chunk** | Lighthouse: 14 KB wasted, LCP -100-150 ms (estimate); the 110 KB `nomodule` polyfill file is not downloaded by modern Chrome | all | small | medium (older Android WebViews) | S | leave unless the browser support target is raised |
+| 11 | **Public assets have no long cache** | `/products/placeholder.svg` (and `/brands/*`, `/home/*`) are sent `public, max-age=0` by Node; only `/_next/static` (1 year, immutable) and `/uploads` (nginx, 30 days) are long-cached | repeat visits | none on a first load | low | S | `headers()` in `next.config.ts` or an nginx rule for those folders |
+
+**CLS** is 0.000 on all five pages in all 33 local runs (cards use `aspect-[4/3]`, the logo box is fixed): no CLS work is proposed;
+production CLS is not known (the logo is `width:auto` and would only shift if a slow logo changed the header width).
+**TBT** is already under 200 ms locally (medians 92-164 ms); the production overage is the third-party and JS items.
+**LCP <= 2.5 s is not reachable by one fix**: with either all fonts or all JS removed, the category LCP is still 3.2 s here (HTML 62 KB gz
++ blocking CSS + the lazy LCP image on the simulated link). It needs items 1, 2, 3, 6 and 7 together and probably a smaller HTML document;
+**Performance >= 85 on category and product pages looks reachable** (1 + 3 + 6 alone is ~ +15 on the experiments' numbers).
+
+#### Accessibility: every failing audit, with selectors (Lighthouse, 3 runs per page, union)
+
+| Page (score) | Audit (weight) | Element / selector | Source | Fix (no visual change) |
+|---|---|---|---|---|
+| category (87) | `aria-allowed-attr` (10) | `nav.mt-5 > ul.flex > li > a.inline-flex` has `aria-pressed="false"` on a link | `features/catalog/category-brand-pills.tsx:43` | use `aria-current` (or drop `aria-pressed`) on the link |
+| category (87) | `color-contrast` (7) | `div.min-w-0 > div.mt-8 > nav.flex > span.th-btn`: #7d8a9a on #f4f7fb = **3.27:1** (needs 4.5) | `components/ui/pagination.tsx` (disabled / current ghost button) | darken the disabled-state text token to >= 4.5:1 |
+| category (87) | `heading-order` (3) | `article.group > div.flex > a > h3.line-clamp-2` (h3 follows h1 with no h2) | `features/catalog/product-card.tsx` (and the compact card) | render the card title as `h2` in listings, same classes |
+| all five | `target-size` (7) | footer `div.space-y-4 > p.flex > span.space-y-1 > a.block` (the two phone links): 179.5 x **19.6 px**, 23.2 px of free space (needs 24) | `components/layout/site-footer.tsx:326` | `min-h-6` + vertical centring (a few px of footer height) |
+| home (97) | `target-size` (7) | `div.mx-auto > div.relative > div.absolute > button.h-1.5` (hero dots, 2-3 of them): 10 x **6 px**, 6 px of free space around each (needs 24) | `features/home/home-hero-slider.tsx:153` | enlarge the hit area with padding / a transparent border, same dot |
+| laptop and monitor (93) | `aria-required-children` (10) | `div.grid > div.mt-10 > section > div.flex.flex-wrap.gap-2[role="list"]` holds `button`s, not `listitem`s | `features/product/product-detail-sections.tsx:118` | drop `role="list"` (it is a tab-like button row) or wrap in `<ul>/<li>` |
+| laptop and monitor (93) | `label-content-name-mismatch` (0) | `figure.w-full > div.relative > div.relative > button.group[aria-label="View full image 1 of 1"]` | `features/product/product-gallery.tsx` | informational (weight 0) |
+| offers (96) | `label-content-name-mismatch` (0) | `div.mx-auto > ul.mt-8 > li.min-w-0 > a.group[aria-label="View details for …"]` | offers card | informational (weight 0) |
+
+The four category fixes add up to weight 27 of the failing set: **category 87 -> about 100**; product pages 93 -> about 100 with the list-role and
+tap-target fixes. Best Practices (96) fails only `errors-in-console` here, caused by the local 404s of `/uploads/*` (a local-setup artefact). SEO is 100 on every page.
+
+#### What I could not measure, and the question that follows
+
+1. **Production image delivery** (item 2) and **third-party cost** (item 4): the local data and missing tags hide them. One read-only pass against the
+   public site would settle both: Lighthouse on `/category/laptop` (it fires the live analytics tags and the Pixel's PageView, as PageSpeed does) and
+   a few `curl -I` calls on a logo / product image (WebP copy served? cache headers?). I have not touched production; this needs your go-ahead.
+   Alternatively paste PageSpeed's "Opportunities / Diagnostics" for the category page.
+2. **Is the nginx WebP / cache block of Phase 4 live, and was `optimize-uploads.mjs --apply` run?** If yes, the logo is the 131 KB copy and item 1 is
+   worth about 0-3 points; if no, it is the single biggest fix (LCP 10.3 s in the experiment).
+
+#### Scratch artefacts (not in the repo)
+
+The scratch worktree `...\scratchpad\wt6` was used for the builds; it now holds the logo test file under `public/uploads` and a build made with it. It has a
+`node_modules` junction, so I left it in place for you to remove. Lighthouse reports and scripts are under `...\scratchpad\p7`.
+
+### Phase 7 step 0 — production evidence (read-only, 2026-11-12)
+
+Only `GET` / `HEAD` requests and Lighthouse were made against `https://technohouse.com.bd`: 3 Lighthouse runs on `/category/laptop`, 3 on `/`
+(same Lighthouse 13.5.0, mobile preset, simulated Slow 4G + 4x CPU, run from this machine), one HTML fetch of `/` and `/category/laptop`, and
+`HEAD` / `GET` on the logo and three images, with and without `Accept: image/webp`. Nothing was changed on the server and no load was generated.
+
+#### Are the nginx WebP and cache rules live, and were the uploads optimized? Yes to both
+
+| URL (production) | `Accept: image/webp` | without it | Headers |
+|---|---|---|---|
+| header logo `/uploads/general/632753d8-….png` (589x424) | `image/webp`, **26,734 B** (Last-Modified 9 Nov 2026) | `image/png`, 99,456 B (20 Oct) | `Vary: Accept`, `Cache-Control: public, max-age=2592000` (30 d) |
+| product image `/uploads/products/cc6f77fb-….png` (469x416) | `image/webp`, 22,078 B (9 Nov) | `image/png`, 243,239 B | same |
+| hero `/uploads/home/f9af9cc3-….jpeg` | `image/webp`, 96,626 B (9 Nov) | `image/jpeg`, 134,565 B | same |
+| product image `/uploads/products/ebabe643-….webp` | `image/webp`, 13,036 B | same bytes | `Cache-Control: public, max-age=2592000`, no `Vary` (already WebP) |
+
+So the `Accept` negotiation of `deploy/nginx-seo.conf` and its 30-day `/uploads` cache are in force, and `optimize-uploads.mjs` was run: the `.webp`
+siblings were written on 9 Nov 2026 (18:27 to 18:32 GMT). A Lighthouse (WebP-capable Chrome) therefore downloads the small copies: on the category page
+the 18 images total **207 KB** (logo 26 KB, product cards 6 to 21 KB each). The 10.3 s LCP in your earlier PageSpeed reading is **not reproduced today**
+(3.6 to 4.4 s); the optimizer timestamps (9 Nov) are consistent with that reading having been taken before it ran, but that is an inference.
+
+#### Production Lighthouse (3 runs each; median, range in brackets)
+
+| Page | Perf | LCP | TBT | CLS | A11y | Best practices | SEO |
+|---|---|---|---|---|---|---|---|
+| /category/laptop | **60** (54 / 60 / 71) | **4.0 s** (3.6 / 4.0 / 4.4) | **1,750 ms** (799 / 1,750 / 5,091) | 0 | 86 | **77** | 100 |
+| / (home) | **72** (60 / 72 / 73) | 4.1 s (4.0 / 4.1 / 4.3) | 533 ms (507 / 533 / 1,737) | 0 | 97 | **77** | 100 |
+
+- **LCP element on the category page is the same as locally**: the first product-card image (`div.relative > a.block > div.relative > img.object-cover`,
+  180x180 at y = 724 px), `loading="lazy"`, no `fetchpriority`. Phases (run 1): TTFB 165 ms, **resource load delay 470 ms**, load 369 ms, render delay 51 ms; runs 2 and 3:
+  load delay 422 ms and about the same. `lcp-discovery-insight` fails ("fetchpriority=high should be applied", "should not use loading=lazy"). Home's LCP is an eager
+  banner image (alt "Flash deal", 380x320, y = 188 px), with the "fetchpriority on the preload" check failing.
+- **TBT is a third-party problem here, and it is noisy**: 799 to 5,091 ms between runs of the same page. The long tasks of run 1 (19 in total) are led by
+  gtag `destination` 422 ms, Meta `signals/config` 336 ms, `fbevents.js` 194 ms, with first-party tasks of similar size (a 370 ms chunk at 4.1 s,
+  a 280 ms Turbopack runtime task, the 345 ms page-document task at 1.3 s). Simulated throttling on one shared machine makes single runs swing, so treat the median as the figure.
+- **Best practices is 77, not the 96 you saw earlier**, from two audits that both come from tracking: `third-party-cookies` (Meta's `fr` cookie, weight 5) and
+  `inspector-issues` (a cookie issue plus Content-Security-Policy issues for `cdn.jsdelivr.net` and `*.run.app`, which are not in the Report-Only policy's `script-src` / `connect-src`).
+  Nothing is blocked today because the policy is Report-Only; the day it is enforced those two hosts must be added or the Meta conversions call breaks.
+- Accessibility failures are the same ones found locally (category 86; four `a.block` footer links flagged there, not just the phones; home 97).
+- CLS is 0 on both pages in all runs.
+
+#### What the category page weighs in production (1,523 KB)
+
+| Part | Size | Note |
+|---|---|---|
+| Scripts | 950 KB / 19 requests | **third-party 764 KB (50% of the whole page)**, first-party 14 files 337 KB |
+| Fonts | **225 KB / 6 files** | the same six files as locally, all preloaded (Link header), at 205 ms |
+| Images | 207 KB / 18 requests | already WebP |
+| Fetch | 53 KB / 29 requests | 27 of them `_rsc` link prefetches (52 KB), the first at 1,285 ms |
+| CSS | 31 KB / 2 files | render-blocking |
+| Document | 49 KB gz | TTFB 165 to 417 ms ("server responds quickly") |
+
+Third-party chain, all injected by the one tag in the HTML, **GTM-KXL5QMLW** (no Tawk.to, no direct GA4 or Pixel tag, no Tawk request in any of the 6 runs):
+`gtm.js` 129 KB at 1.3 s, then GA4 (`G-HR3V1Y4SL1`) `gtag/js` 177 KB and `gtag/destination` 178 KB at 1.8 s, then Meta Pixel `fbevents.js` 112 KB and
+`signals/config/1674448247520461` 150 KB, then `cdn.jsdelivr.net/npm/meta-capi-param-builder-clientjs` 18 KB at 3.0 s, a call to a Cloud Run `…run.app/events` endpoint and the
+`facebook.com/tr` PageView. Main-thread time per Lighthouse's third-party insight (run 1): Google Tag Manager 192 ms, Facebook 131 ms; in run 2 Facebook alone was 414 ms.
+
+#### What this changes in the Step 1 ranking
+
+| Step 1 item | After production evidence |
+|---|---|
+| 1 Header logo 1.19 MB | **Does not exist in production.** The local 1.19 MB logo is dev data. Production's logo is 26.7 KB as WebP (already under 30 KB). A 267x192 WebP (2x of the 133x96 it is shown at) would be 11.8 KB, i.e. **-15 KB**, about 75 ms on the simulated link. It is an admin upload (Design Studio -> Logo, `SiteSettings.logoSrc`, gitignored `/uploads`), not a repo file, so it cannot be changed by code without a data change. **Skipped** (see below). |
+| 2 Listing images | The "0.5 to 0.8 MB" fear is refuted: cards are 6 to 21 KB WebP. What is left is the **420 to 470 ms load delay** of the lazy first card (fixable with `fetchpriority`) and 77 KiB (category) / 370 KiB (home) of "larger than displayed" savings, estimated at LCP -150 ms / -50 ms. A derivative pipeline is **not justified** by these numbers; the nginx rule already serves WebP. |
+| 3 Fonts | Confirmed on production: 6 files, 225 KB, preloaded on every page. |
+| 4 Third-party | **Now measured and the largest single factor**: 764 KB, TBT median 1,750 ms. Proposals only (below). |
+| 6 Prefetch | Confirmed: 27 requests, 52 KB. |
+
+#### Proposals for the tracking tags (not implemented; you asked for proposals only)
+
+1. **Load GTM after the page is idle or on first interaction** (for example after `load` plus 2 to 3 s, or the first scroll / touch). In lab terms it takes 764 KB and most of the 1.0 to 1.7 s of long tasks out of the first load. Cost: visitors who leave in under that time are not recorded, and Meta / GA4 page-view counts drop by that share. Needs your decision on how much early-bounce data may be lost.
+2. **Ask why the Google tag loads both `gtag/js` and `gtag/destination` (355 KB together)** on the category page. One is the GA4 config, the other is a second destination (Google Ads or a second measurement id); if the second one is unused, removing it in GTM saves 178 KB and the 422 ms gtag task.
+3. **`meta-capi-param-builder-clientjs` from jsDelivr** (18 KB plus a call to a `…run.app` endpoint): self-host it, or load it only where a conversion event fires, instead of on every page.
+4. **Add `cdn.jsdelivr.net` (script-src) and the Cloud Run host (connect-src) to the Report-Only CSP** now, so enforcing it later does not break the Meta conversions path; this also clears the `inspector-issues` audit.
+5. **Server-side tagging** (a GTM server container or sending the Pixel through the existing Conversions API only) would move the Pixel and GA4 off the visitor's device entirely: the biggest saving and the biggest project.
+
+Only items 1 to 5 above (and the CSP list in item 4) can clear the two failing best-practices audits (weights 5 and 1).
+
+#### Decisions taken for Step 2 on this evidence
+
+- Item 1 (logo): skipped. Production already serves 26.7 KB; the file is an admin upload, so replacing it is a data change, and the repo contains no logo file to swap. If you want the 15 KB back, re-upload a 267x192 version in Admin -> Design Studio -> Logo.
+- Item 2 (listing images): `fetchpriority="high"` + eager on the first row only; no loader and no derivatives.
+- Item 6 (Tawk.to): skipped. Tawk is not loaded in production (no request, no tag in the HTML), the chat configuration is database-only so the path cannot be exercised locally without a database write, and the change would have no effect today. When Tawk is enabled, the change is `strategy="lazyOnload"` on the `th-tawkto` script in `components/chat/storefront-chat-widget.tsx`.
+
+### Phase 7 step 2 — what was changed, with before/after numbers
+
+Branch `seo-phase-7`, one cause per commit. No canonical, title, meta, JSON-LD or sitemap code was touched, nothing was run against production in this step,
+no database, nginx, pm2 or `.env` change, no new dependency.
+
+#### How the numbers were taken
+
+- Lighthouse 13.5.0 mobile (simulated Slow 4G + 4x CPU), `next build` + `next start` of each state in a scratch worktree, the **medians** of the stated number of runs.
+- **Calibration.** Local data has a 1.19 MB logo and placeholder images, which makes the header logo, not the first product card, the LCP element, unlike
+  production. So for the Step 2 runs the local logo file was swapped for an 80x58 WebP (a scratch-only change, outside the repo) and the first card became the LCP element, exactly as in production
+  (lazy, no fetchpriority, a load delay). "Before" is the base code (`2d705d5`) measured in that same setup. The earlier Step 1 numbers (81 etc.) used a missing logo and are not comparable.
+- The **category page's LCP is bimodal** after the font change: 2.4 to 2.5 s in about a third of runs, 3.2 to 3.4 s in the rest, so 3-run medians can land on either side
+  (a first 3-run set read 97 and a later 10-run set at the same commit read 93). Larger samples are quoted where it mattered. TBT swung 45 to 825 ms between runs of the same code on this machine
+  (other apps running), so TBT is not used as evidence in either direction.
+
+#### Per item
+
+| # | Commit | Before -> after (local, median) | Production expectation |
+|---|---|---|---|
+| 0 | `695869b` | production evidence, see "Phase 7 step 0" | – |
+| 1 | – | **skipped**: production already serves the logo as a 26.7 KB WebP; it is an admin upload (not a repo file), so replacing it is a data change; a 267x192 WebP would be 11.8 KB (-15 KB) | re-upload in Admin -> Design Studio -> Logo if wanted |
+| 2 | `e3afc4a` | category: LCP resource load delay **212 -> 31 ms**, `lcp-discovery` **fails -> passes** (fetchpriority applied, eager, discoverable); perf 84 -> 84, LCP 4.43 -> 4.35 s (the simulated LCP was bound by the 232 KB of fonts) | production's load delay is 420 to 470 ms, so expect about -400 ms of LCP on the category page |
+| 3 | `f880dfd` | **fonts 6 files / 232 KB -> 1 / 28 KB**; category 84 -> **93** (10 runs, 89 to 97), LCP 4.35 -> 3.2 s (2.4 s in 4 of 10 runs), 599 -> 395 KB; home 84 -> 96; laptop 85 -> 92; **0 differing pixels** in mobile screenshots of home, category and a product page; per-font glyph counts identical | production loads the same six files (225 KB): expect -198 KB per page and, from the Step 1 experiment that blocked the fonts, about +10 points and -1.4 s LCP |
+| 4 | `6d00612` | category `_rsc` prefetches **27 -> 22** (exactly the `/product/*` ones in the lab viewport), requests 48 -> 43, 395 -> 384 KB; perf 93 -> 93 (10 vs 18 runs, no score gain claimed); home 96 -> 97; laptop 92 -> 97 | a real visitor scrolling a 20-card page triggered a prefetch per card; that is gone |
+| 5 | six `a11y:` commits | **accessibility 100 on all five pages**: category 86, home 97, laptop 93, monitor 92, offers 96 -> 100 | production fails the same audits (category 86, home 97): same result expected |
+| 6 | – | **skipped**: Tawk.to is not loaded in production (no Tawk tag or request in the HTML or in six Lighthouse runs) and the chat configuration is database-only, so the path cannot be exercised locally without a DB write; when it is enabled the change is `strategy="lazyOnload"` on the `th-tawkto` script in `components/chat/storefront-chat-widget.tsx` | – |
+
+Whole-branch result, local (base code vs final code, same setup):
+
+| Page | Perf before -> after | LCP before -> after | A11y before -> after | Runs (after) |
+|---|---|---|---|---|
+| /category/laptop | 84 -> **93** (range 89 to 97) | 4.43 -> 2.51 s | 86 -> **100** | 9 |
+| / (home) | 84 -> **92** (range 76 to 97) | 4.45 -> 2.66 s | 97 -> **100** | 11 |
+| laptop product | 85 -> **95** | 4.32 -> 2.58 s | 93 -> **100** | 3 |
+| monitor product | 85 -> **96** | 4.30 -> 2.56 s | 92 -> **100** | 3 |
+| /offers | 85 -> **91** | 4.29 -> 3.35 s | 96 -> **100** | 3 |
+
+A same-session A/B (base build then final build, 6 runs each, back to back, to take machine load out of it): category **84 -> 96**, home **85 -> 93**, LCP 4.40 -> 2.52 s and 4.00 -> 2.65 s.
+CLS was 0.000 in every post-change run but one: 1 of 90 Lighthouse runs (49 of them on the category page) reported 0.122 (the "Laptop Price / Sort By" panel moved). It did not recur in the 60 or so Lighthouse runs after it,
+nor in 40 unthrottled and 16 throttled browser loads of the category page, so it is recorded here as an unexplained one-off, not as a finding (the 6 category runs before any change were all 0.000, which is too few to say it is older than this branch). TBT stayed inside the run-to-run noise.
+
+#### What changed visibly (everything else is pixel-identical, checked by screenshot diff)
+
+Compared on home, category and a product page with the promo popup suppressed: the top of every page is identical except the home hero's dots, and below that only the footer differs.
+
+- **Footer contact links** are 24 px tall (were 19.6): the footer is 8 to 9 px taller. Needed for the tap-target audit.
+- **Hero slider dots** are 24x24 tap targets with the same dot inside; the gap between inactive dots goes from 8 to 14 px (24 px targets cannot sit closer). 212 pixels differ in the home screenshot.
+- Card titles on listing pages are `h2` instead of `h3` (same classes); the compact card on home and related products stays `h3`. The heading outline of a category page now has about 20 h2 product titles.
+- The product page's section jump-nav is a `ul` / `li` list (same look); the disabled Previous / Next are `role="link" aria-disabled="true"`.
+
+#### Checks
+
+`tsc --noEmit` clean; `eslint` clean on every changed file (the whole repo has 1 error and 8 warnings, none in these files: `features/marketing/offer-countdown.tsx` `set-state-in-effect`, unchanged);
+`test:seo` 92, `test:seo-canonical` 34, `test:seo-meta` 383, `test:seo-phase5` 198, `test:seo-phase6` 59, `test:seo-product` 163, `test:seo-product-meta` 11, `seo:check-schema --offline` 49, `test:security` 27,
+`test:a11y` 10, `test:bundle` 10, `test:storefront-links` 95, `test:product-specifications` 10 (one assertion updated to the new `ul`), `test:theme` 230 all pass; `npm run build` passes.
+`test:regression` runs 19 suites: 17 pass, **2 fail and fail identically on the untouched base code** (`product-layout`: "similar-products rail ... sticky"; `product-coming-soon`: "Stock/Model/SKU/Brand pills all use size md"), and
+`test:listing` (not in the regression list) has one stale assertion ("the detailed card shows the SKU") that also fails on base. They read files this branch did not touch; not fixed here.
+
+#### What this does not fix, and what it means for production
+
+- **Production Performance will not reach 85 on these commits alone.** The score is 30% TBT, and production's category TBT is a median of 1,750 ms, almost all of it the GTM-loaded tags (Step 0).
+  Rough arithmetic with Lighthouse's weights: LCP 4.0 -> about 2.5 to 3.2 s adds roughly 8 to 10 points to production's 60, so about 68 to 72 for the category page (an estimate, not a measurement);
+  reaching 85 needs TBT under about 500 ms, i.e. one or more of the tag proposals in Step 0, which were not implemented.
+- Not approved, left as listed in Step 1: JS island deferral, inline CSS, RSC payload trimming, layout caching, polyfills, static-asset cache headers.
+- Noticed, not done: the `/offers` cards are lazy too (LCP load delay 285 ms locally; the offer card is a different component); the home hero's preload lacks `fetchpriority` on production's audit; the 15 KB logo re-upload above.
+- A derivative-image pipeline is **not justified**: production already serves 6 to 21 KB WebP cards.
+
 ## 3. Manual actions for the operator
 
 (Updated as phases complete.)

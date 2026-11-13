@@ -141,24 +141,32 @@ export function HomeHeroSlider({
             <ChevronRight className="size-5" aria-hidden />
           </button>
           <div
-            className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2"
+            className="absolute bottom-1.75 left-1/2 z-10 flex -translate-x-1/2"
             role="tablist"
           >
             {banners.map((item, slideIndex) => (
+              // The button is a fixed 24x24 tap target (WCAG 2.5.8) and the dot
+              // is drawn inside it: the old button was the dot itself, 10x6 px.
+              // The active dot fills the whole box, the others sit centred in it.
               <button
                 key={item.id}
                 type="button"
                 role="tab"
                 aria-selected={slideIndex === index}
                 aria-label={`Promotion ${slideIndex + 1}`}
-                className={cn(
-                  "h-1.5 rounded-full shadow-sm transition-all",
-                  slideIndex === index
-                    ? "w-6 bg-surface"
-                    : "w-2.5 bg-surface/50 hover:bg-surface/75",
-                )}
+                className="group flex size-6 items-center justify-center"
                 onClick={() => go(slideIndex)}
-              />
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-1.5 rounded-full shadow-sm transition-all",
+                    slideIndex === index
+                      ? "w-6 bg-surface"
+                      : "w-2.5 bg-surface/50 group-hover:bg-surface/75",
+                  )}
+                />
+              </button>
             ))}
           </div>
         </>

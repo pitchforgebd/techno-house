@@ -101,7 +101,7 @@
     "seo:check-schema": "tsx scripts/seo/check-schema.ts",
     "test:seo-phase5": "tsx scripts/seo/check-phase5.ts",
     "test:seo-phase6": "tsx scripts/seo/check-phase6.ts",
-    "test:seo-product": "tsx scripts/seo/check-product-seo.ts",
+    "test:seo-product": "tsx scripts/seo/check-product-seo.ts && tsx scripts/seo/check-product-seo-batch.ts",
     "test:seo-product-meta": "tsx scripts/seo/check-product-meta.ts",
     "seo:fix-catalog-text": "tsx scripts/fix-catalog-text.mjs",
     "test:regression": "tsx scripts/regression/run-baselines.ts",

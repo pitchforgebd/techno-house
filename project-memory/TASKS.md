@@ -9147,7 +9147,83 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `lib/seo/product-seo-apply.ts` (skip, counted + listed in the dry-run
       summary). Tests `npm run test:seo-product` 928 (was 369). Code only: no
       schema change, no migration. NOT run on production.
-- [x] AD-403 Similar products rail — closest match first (branch
+
+- [x] AD-403 SEO phase 8 FIX v2.2 — generator hygiene (branch
+      `seo-phase-8-fix-2`, pushed, NOT merged). Detail: `docs/SEO-NOTES.md`
+      "Phase 8 v2.2". Production dry-run (387 products): brackets/quotes and
+      part numbers in titles, "0GB storage", unsupported over-ear / mic
+      claims, lower-case standards. Causes fixed: core ends before ( [ " and
+      `14"`, channel suffixes stripped, shouted line words Title Case, model run
+      keeps raw spelling; `lib/catalog/spec-extract.ts` (decimal-safe, keyword
+      classified RAM vs storage) shared with `populate-import-attributes.ts`
+      (the origin of 0GB / storage=RAM / guessed Over-ear + Microphone=Yes);
+      generator reads RAM/storage/CPU from the raw name; claims only from the
+      name or stored spec rows; `lib/seo/casing.ts`; gates `bad_chars` and
+      `spec_zero` (skip, counted + listed). Local sweep (4,309): brackets
+      154->0, zero 1->0, over-ear w/o source 78->0, lower-case 6->0; no defect
+      among rows that would be written. `test:seo-product` 1,292. Code only;
+      wrong attribute rows already stored are NOT repaired (owner decision).
+- [x] AD-404 SEO phase 8 FIX v2.3 — batch tooling, filter funnel, description
+      polish (branch `seo-phase-8-fix-3`, pushed, NOT merged). Detail:
+      `docs/SEO-NOTES.md` "Phase 8 v2.3". `--select-batch` ignored
+      `--allow-few-specs` (hard-coded >= 3): it now honours it and
+      `--min-specs=0..4` and prints the minimum used. `--explain-filter`
+      (read-only) writes `filter-funnel.md`: own failures + waterfall per
+      criterion (price, image, coming soon, brand, type, specs, unique title,
+      gates, lengths), the "< 3 specs" bucket by family, minimum 3/2/1/0, 10
+      examples per bucket; selection and funnel share one filter. Options parsed
+      strictly (`lib/seo/apply-cli.ts`): `--limit 20` and `--limit=20`, "limited
+      to N of M", abort on a bad / missing value or unknown option; dead `--only`
+      bypass removed. Batch files: next free `batch-<N>.csv`, never overwritten.
+      Separate commit: the description's spec part no longer repeats the title
+      (titles / keywords / specsAvailable unchanged; earbuds are not "in-ear").
+      `test:seo-product` 1,356 + 157. Code only; nothing run on production.
+- [x] AD-405 SEO phase 8 FIX v2.4 — claim accuracy (branch `seo-phase-8-fix-4`,
+      pushed, NOT merged). Detail: `docs/SEO-NOTES.md` "Phase 8 v2.4". Batch-2
+      dry-run errors fixed at the cause: form factor (`lib/catalog/form-factor.ts`:
+      M-ATX / Micro ATX -> Micro-ATX, E-ATX, Mini-ITX, bare ATX only without a
+      prefix; the name outranks stored values; shared with the import script);
+      claims (microphone, ANC, wireless / wired, Bluetooth, over- / in-ear) only
+      from the name, category or an informative spec row, never from attributes
+      (`lib/seo/claims.ts`, gate `unsupported_claim` drops + counts, skips only
+      under the minimum); generic category types ("Mobile Accessory") are not a
+      type -> `unusable_type`; GPU memory "8GB GDDR6", no "size" / maximum
+      resolution, chip never from a SKU; gates `claim_conflict`,
+      `bad_spec_phrase`; refresh: `update` / `unchanged` / "(generated text
+      stays live)", apply writes only write + update rows. Separate commit: shouted
+      plain words -> normal case, "Casing" -> "Case". `test:seo-product` 1,635 +
+      162. Code only; nothing run on production.
+- [x] AD-406 SEO phase 8 FIX v2.5 — local wording, identity, audit (branch
+      `seo-phase-8-fix-5`, pushed, NOT merged). Detail: `docs/SEO-NOTES.md`
+      "Phase 8 v2.5". PC cases are "Casing" again (reverses v2.4; titles,
+      descriptions, keywords). Identity stays in the title: HDD / SSD capacity,
+      RAM capacity + DDR generation (type "RAM"), "Combo"; protected from the
+      word-dropping ladder; gate `identity_lost` skips a title that cannot hold
+      them in 60 chars. Drives / RAM state RPM, interface, 3.5-inch, speed, kit
+      from the name. Audit: the admin editor merges attributes into spec rows and
+      every save writes them back as key-less rows, so import-script guesses looked
+      hand-typed; rows identical to an attribute are now dropped
+      (`dropMirroredRows`); review CSV columns `claim_sources`, `identity_lost`.
+      `test:seo-product` 1,716 + 163. Code only; nothing run on production.
+- [x] AD-407 SEO phase 7 — mobile performance + accessibility (branch
+      `seo-phase-7`, pushed, NOT merged). Detail: `docs/SEO-NOTES.md` "Phase 7
+      findings", "Phase 7 step 0", "Phase 7 step 2". Step 0 (read-only look at
+      production): nginx WebP negotiation + 30-day cache are live and uploads
+      are optimized; the tags loaded through GTM (GA4, Meta Pixel, CAPI param
+      builder) are 764 KB and the main TBT driver (median 1,750 ms) and were NOT
+      changed (proposals only). Code: listing first row eager + first two
+      fetchpriority=high; Inter / Noto Sans Bengali / IBM Plex Mono no longer
+      preloaded (fonts 232 -> 28 KB; a Design Studio font choice still works,
+      loaded on demand); prefetch={false} on product-card links; accessibility
+      100 locally on all five audited pages (aria-current on brand links,
+      aria-disabled Previous/Next, h2 on listing cards, footer links min-h-6,
+      24x24 hero dots, jump-nav ul/li). Skipped: logo (production already serves
+      26.7 KB WebP; admin upload) and Tawk.to (not loaded in production). Local
+      Lighthouse: category 84 -> 93, home 84 -> 92, LCP 4.4 -> 2.5 s. Three
+      suites fail on base too (`test:product-layout`, `test:product-coming-soon`,
+      `test:listing`). No DB, nginx, pm2 or .env change; nothing run on production
+      in the code step.
+- [x] AD-408 Similar products rail — closest match first (branch
       `similar-products-rank`, from main). The rail already listed the product's
       own category, but showed the same top-4 "featured" items on every page of
       a category, so it read as unrelated. Now `lib/catalog/similar-products.ts`
@@ -9157,7 +9233,7 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       RAM, processor -> LGA1700 CPUs, SSD -> 1TB NVMe. `test:similar-products`
       6 checks pass; tsc clean. No DB or admin change; the admin-picked
       "Related products" row is untouched.
-- [x] AD-404 Product page: compact delivery cards that stay put (branch
+- [x] AD-409 Product page: compact delivery cards that stay put (branch
       `similar-products-rank`). The Payment method / Shipping & charge / Order
       procedure cards are now icon + small title only (description dropped), and
       no longer jump into the colour-options column when a product has colours —

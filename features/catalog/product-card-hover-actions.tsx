@@ -91,6 +91,7 @@ export function ProductCardHoverActions({
 
       <Link
         href={href}
+        prefetch={false}
         title="Quick view"
         aria-label={`Quick view ${name}`}
         className={iconButtonClass}
