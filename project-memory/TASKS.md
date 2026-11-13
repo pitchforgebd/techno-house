@@ -9241,3 +9241,9 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       so the buy controls are not pushed down. Checked in headless Chrome at
       1440 px with a coloured product. `test:product-layout` guard updated; its
       one failing check (similar-products rail sticky) fails on base too.
+- [x] AD-410 Product page: Quick overview bullets are tight (branch
+      `similar-products-rank`). Imported overviews are `<li><p>` and the article
+      paragraph margin + 1.7 leading made each bullet ~45 px tall, pushing Qty /
+      Add to cart far down the buy column. Scoped to the overview box only:
+      bullets ~23 px apart (headless Chrome, 4 bullets: Qty back to where a 2-bullet
+      product had it). No DB change.

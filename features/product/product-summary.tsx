@@ -753,7 +753,10 @@ export function ProductSummary({
           </div>
           {overviewHtml ? (
             <div
-              className="th-rich-text mt-3 text-label text-text-muted"
+              // Imported overviews are often <li><p>…</p></li>; the article
+              // paragraph margins and 1.7 leading made each bullet ~45 px tall
+              // and pushed the cart controls down the page. Tight here only.
+              className="th-rich-text mt-2.5 text-label text-text-muted [&_li]:mb-0.5! [&_li>p]:mb-0! [&_p]:leading-normal! [&_ul]:mb-0! [&_ul]:space-y-0"
               dangerouslySetInnerHTML={{ __html: overviewHtml }}
             />
           ) : null}
