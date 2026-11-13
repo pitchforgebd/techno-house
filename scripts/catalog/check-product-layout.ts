@@ -117,21 +117,15 @@ function main(): void {
 
   // --- where the delivery cards go keeps the columns level -------------------------------
   check(
-    "delivery cards: under the colours when there are colours, in the buy box when there are notes under the gallery, otherwise under the gallery",
-    media.includes('hasOptions\n    ? "options"') &&
-      media.includes('hasNotes\n      ? "info"') &&
-      media.includes('"gallery"'),
+    "delivery cards: in the buy box when there are notes under the gallery, otherwise under the gallery — never moved by colours",
+    media.includes('hasNotes ? "info" : "gallery"') &&
+      !media.includes('"options"'),
   );
   check(
     "each placement shows the cards exactly once per screen size",
-    // gallery copy: lg+ (and xl:hidden when the options column has them)
-    media.includes('serviceCardsAt === "options" && "xl:hidden"') &&
-      media.includes('serviceCardsAt !== "info"') &&
-      // buy-box copy: always for "info", below lg otherwise
+    media.includes('serviceCardsAt !== "info"') &&
       summary.includes('serviceCardsAt === "info"') &&
-      summary.includes('"lg:hidden"') &&
-      // options-column copy
-      summary.includes('serviceCardsAt === "options" ? <ProductServiceCards />'),
+      summary.includes('"lg:hidden"'),
   );
   check(
     "the delivery cards are their own component that adapts to its own width",

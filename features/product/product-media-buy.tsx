@@ -178,11 +178,7 @@ export function ProductMediaBuy({
   // level: colours -> under the colours (that column is otherwise short); notes
   // under the gallery -> in the buy column (the gallery column is already tall);
   // otherwise -> under the gallery (it is the short one).
-  const serviceCardsAt: "options" | "info" | "gallery" = hasOptions
-    ? "options"
-    : hasNotes
-      ? "info"
-      : "gallery";
+  const serviceCardsAt: "info" | "gallery" = hasNotes ? "info" : "gallery";
   // The campaign banner: with notes the gallery column is the tall one, so the
   // banner goes under the buy information; otherwise the columns are level and a
   // banner under either would unbalance them, so it spans both, as a strip
@@ -232,14 +228,7 @@ export function ProductMediaBuy({
             {/* From `lg` the delivery cards live here; below `lg` they stay in
                 the buy box (ProductSummary), so they are never shown twice. */}
             {serviceCardsAt !== "info" ? (
-              // "gallery": from lg. "options": only between lg and xl, because
-              // from xl the cards sit in the options column instead.
-              <div
-                className={cn(
-                  "mt-5 hidden lg:block",
-                  serviceCardsAt === "options" && "xl:hidden",
-                )}
-              >
+              <div className="mt-5 hidden lg:block">
                 <ProductServiceCards />
               </div>
             ) : null}

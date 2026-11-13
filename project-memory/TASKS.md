@@ -9157,3 +9157,11 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       RAM, processor -> LGA1700 CPUs, SSD -> 1TB NVMe. `test:similar-products`
       6 checks pass; tsc clean. No DB or admin change; the admin-picked
       "Related products" row is untouched.
+- [x] AD-404 Product page: compact delivery cards that stay put (branch
+      `similar-products-rank`). The Payment method / Shipping & charge / Order
+      procedure cards are now icon + small title only (description dropped), and
+      no longer jump into the colour-options column when a product has colours —
+      they stay under the gallery (or in the buy box when the gallery has notes),
+      so the buy controls are not pushed down. Checked in headless Chrome at
+      1440 px with a coloured product. `test:product-layout` guard updated; its
+      one failing check (similar-products rail sticky) fails on base too.

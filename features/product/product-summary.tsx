@@ -116,13 +116,11 @@ type ProductSummaryProps = {
   optionsClassName?: string;
   /**
    * Where the delivery cards sit on large screens: "info" keeps them in the buy
-   * box, "options" puts them under the colours in the right-hand column (from
-   * `xl`, where that column exists; between `lg` and `xl` the page shows them
-   * under the gallery instead), "gallery" leaves them to the page, which renders
-   * them under the gallery (from `lg`). Below `lg` they are always in the buy box.
-   * The page picks whichever keeps its columns about the same height.
+   * box, "gallery" leaves them to the page, which renders them under the gallery
+   * (from `lg`). Below `lg` they are always in the buy box. They never move into
+   * the colour-options column, so adding colours does not relocate them.
    */
-  serviceCardsAt?: "info" | "options" | "gallery";
+  serviceCardsAt?: "info" | "gallery";
 };
 
 /**
@@ -1053,7 +1051,7 @@ export function ProductSummary({
         ) : null}
 
         {/* The delivery cards: in the buy box below `lg`, and from `lg` wherever
-            `serviceCardsAt` says (here, under the colours, or under the gallery). */}
+            `serviceCardsAt` says (here, or under the gallery). */}
         <div
           className={
             serviceCardsAt === "info"
@@ -1072,11 +1070,9 @@ export function ProductSummary({
       </div>
 
       {colorVariations ? (
-        // With colours the right-hand column is otherwise short, so the page may
-        // put the delivery cards under them (`serviceCardsAt="options"`).
+        // The delivery cards stay where they are with or without colours.
         <div className={cn("hidden space-y-5 xl:block", optionsClassName)}>
           {colorVariations}
-          {serviceCardsAt === "options" ? <ProductServiceCards /> : null}
         </div>
       ) : null}
 
