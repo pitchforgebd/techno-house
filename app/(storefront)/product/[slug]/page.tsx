@@ -18,6 +18,7 @@ import { ProductSimilarSidebar } from "@/features/product/product-similar-sideba
 import { ProductSpecifications } from "@/features/product/product-specifications";
 import { ProductWarranty } from "@/features/product/product-warranty";
 import { categoryAncestors } from "@/lib/catalog/category-tree";
+import { rankSimilarProducts } from "@/lib/catalog/similar-products";
 import { categoryRepository, productRepository, reviewRepository } from "@/lib/data";
 import { sanitizeBlogBody } from "@/lib/content/sanitize-html";
 import { isContentPagePublished } from "@/lib/content/pages";
@@ -217,7 +218,9 @@ export default async function ProductPage({
     productRepository.list({
       categorySlug: product.categorySlug,
       page: 1,
-      pageSize: 8,
+      // A wider pool than the 4 shown, so the closest match (same DDR
+      // generation / capacity / brand) can be picked out of the category.
+      pageSize: 40,
       sort: "featured",
     }),
     session
@@ -248,8 +251,10 @@ export default async function ProductPage({
   // but a small category can leave nothing — then repeating one card beats an
   // empty rail.
   const relatedSlugSet = new Set(relatedProducts.map((item) => item.slug));
-  const sameCategory = categoryProducts.items.filter(
-    (item) => item.slug !== product.slug,
+  const sameCategory = rankSimilarProducts(
+    product,
+    categoryProducts.items,
+    categoryProducts.items.length,
   );
   const notAlreadyShown = sameCategory.filter(
     (item) => !relatedSlugSet.has(item.slug),

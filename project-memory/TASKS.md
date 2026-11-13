@@ -9147,3 +9147,13 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       `lib/seo/product-seo-apply.ts` (skip, counted + listed in the dry-run
       summary). Tests `npm run test:seo-product` 928 (was 369). Code only: no
       schema change, no migration. NOT run on production.
+- [x] AD-403 Similar products rail — closest match first (branch
+      `similar-products-rank`, from main). The rail already listed the product's
+      own category, but showed the same top-4 "featured" items on every page of
+      a category, so it read as unrelated. Now `lib/catalog/similar-products.ts`
+      ranks a pool of 40 same-category items: exact category, shared name words
+      (DDR generation, capacity, speed, socket), same brand, orderable, nearest
+      price; deterministic (no random). Checked locally: RAM page -> DDR5 16GB
+      RAM, processor -> LGA1700 CPUs, SSD -> 1TB NVMe. `test:similar-products`
+      6 checks pass; tsc clean. No DB or admin change; the admin-picked
+      "Related products" row is untouched.
