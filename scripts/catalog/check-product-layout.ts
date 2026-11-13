@@ -52,12 +52,20 @@ function main(): void {
       media.includes("shadow-lg"),
   );
   check(
-    "the gallery column is 5 wide and spans the first two rows",
-    media.includes("lg:col-span-5 lg:col-start-1 lg:row-span-2 lg:row-start-1"),
+    "the gallery column is 5 wide and spans every row (two, or three when there are colour options)",
+    media.includes("lg:col-span-5 lg:col-start-1 lg:row-start-1") &&
+      media.includes('hasOptions ? "lg:row-span-3" : "lg:row-span-2"'),
   );
   check(
     "the buy information is 7 wide (lg) and 4 wide from xl when colour options take the rest",
-    media.includes("lg:col-span-7 lg:col-start-6") && media.includes('hasOptions && "xl:col-span-4"'),
+    media.includes("lg:col-span-7 lg:col-start-6") &&
+      media.includes('hasOptions && "xl:contents"') &&
+      media.includes("xl:col-span-4 xl:col-start-6 xl:row-start-1"),
+  );
+  check(
+    "with colour options the buy section is its own full-width row (7 wide) under the information and colour columns",
+    media.includes("xl:col-span-7 xl:col-start-6 xl:row-start-2") &&
+      media.includes('"lg:grid-rows-[auto_auto_1fr]"'),
   );
   check(
     "the colour-options column is 3 wide, only from xl, in the top row",

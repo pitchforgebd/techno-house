@@ -9247,3 +9247,14 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       Add to cart far down the buy column. Scoped to the overview box only:
       bullets ~23 px apart (headless Chrome, 4 bullets: Qty back to where a 2-bullet
       product had it). No DB change.
+- [x] AD-411 Product page with colour options: buy section is its own row (branch
+      `similar-products-rank`). With colours the buy column was only 4/12 wide, so
+      Check availability / Compare / wishlist wrapped to a second row and the
+      share bar and note were pushed down. From xl the info column is
+      `xl:contents`: title/price/overview stay in cols 6-9 (row 1) beside the
+      colours, and the buy section (offers, Qty, cart row, share, note) is a
+      full-width row 2 (cols 6-12), with the banner moved to row 3. Below xl and
+      for products without colours nothing changes. Checked in headless Chrome at
+      1440 / 1100 / 390 px with a coloured product (cart row on one line, no
+      horizontal scroll). `test:product-layout` guards updated; its sticky-rail
+      check fails on base too.

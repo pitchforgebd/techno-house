@@ -113,6 +113,9 @@ type ProductSummaryProps = {
    * columns. These classes position the boxes in that grid.
    */
   infoClassName?: string;
+  /** Grid placement of the identity block / buy section when the column is `contents`. */
+  topClassName?: string;
+  buyClassName?: string;
   optionsClassName?: string;
   /**
    * Where the delivery cards sit on large screens: "info" keeps them in the buy
@@ -199,6 +202,8 @@ export function ProductSummary({
   b2bTerms = null,
   viewerCount = null,
   infoClassName,
+  topClassName,
+  buyClassName,
   optionsClassName,
   serviceCardsAt = "info",
 }: ProductSummaryProps) {
@@ -567,7 +572,14 @@ export function ProductSummary({
 
   return (
     <>
-      <div className={cn("@container space-y-4", infoClassName)}>
+      {/* Two blocks in one column: the product's identity (title, price, quick
+          overview) and the buy section (offers, options, cart controls, share).
+          With colour options the column is `xl:contents`, so the two become
+          separate grid items of the page — the buy section then runs full width
+          under both the information and the colour column and its buttons stay
+          on one line (`topClassName` / `buyClassName` place them). */}
+      <div className={cn("flex flex-col gap-4", infoClassName)}>
+      <div className={cn("@container space-y-4", topClassName)}>
         <div>
           {/* One size down from before, and semibold rather than carrying its
               own bold weight — the price below is now the boldest, biggest
@@ -778,7 +790,9 @@ export function ProductSummary({
             View More Info
           </button>
         </div>
+      </div>
 
+      <div className={cn("@container space-y-4", buyClassName)}>
         <div className="space-y-2">
           {!priceHidden && discountEndsAt ? (
             <p className="text-caption text-text-muted">
@@ -1070,6 +1084,7 @@ export function ProductSummary({
         <p className="text-caption text-text-muted">
           {warrantyLabel}. Prices in ৳ are display-only and are not a charge.
         </p>
+      </div>
       </div>
 
       {colorVariations ? (
