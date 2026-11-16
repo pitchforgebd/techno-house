@@ -45,6 +45,7 @@ import {
   parseProductPosition,
   parseProductWeightGrams,
   parseTaka,
+  parseSearchTags,
   parseVariantOptionNames,
   parseVariants,
   slugifyProduct,
@@ -232,6 +233,27 @@ export async function parseProductInput(
     if (metaDescription && metaDescription.length > META_DESCRIPTION_STORE_MAX) {
       return { ok: false, formError: `Meta description is too long (max ${META_DESCRIPTION_STORE_MAX} characters).` };
     }
+  }
+  // Share image and search tags (AD-412) — omitted = leave untouched, the
+  // same convention as the meta text above.
+  let metaImageSrc: string | null | undefined;
+  if (input.metaImageSrc !== undefined) {
+    metaImageSrc = normalizeProductImageSrc(input.metaImageSrc);
+    if (metaImageSrc === undefined) {
+      return {
+        ok: false,
+        formError:
+          "Meta image must be a local public path (e.g. /uploads/…) or an http(s) image URL.",
+      };
+    }
+  }
+  let searchTags: string | null | undefined;
+  if (input.searchTags !== undefined) {
+    const tags = parseSearchTags(input.searchTags);
+    if (!tags.ok) {
+      return tags;
+    }
+    searchTags = tags.value;
   }
 
   const quantity = parseStockInt(
@@ -443,6 +465,8 @@ export async function parseProductInput(
       detailsHtml,
       metaTitle,
       metaDescription,
+      ...(metaImageSrc !== undefined ? { metaImageSrc } : {}),
+      ...(searchTags !== undefined ? { searchTags } : {}),
       quantity,
       lowStockThreshold,
       stockStatus: deriveStockStatus(quantity, 0, lowStockThreshold),

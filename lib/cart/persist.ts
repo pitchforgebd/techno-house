@@ -584,12 +584,44 @@ export async function addBuildItemsToCart(
   if (!owner) {
     return fail("The cart could not be opened.");
   }
+  return addBuildItemsToCartForOwner(owner, items);
+}
+
+export async function addBuildItemsToCartForOwner(
+  owner: CartOwner,
+  items: { slug: string; builderSlot: BuilderSlot }[],
+): Promise<CartMutationResult> {
+  // A build can't pick a variant (colour, capacity…), so a part that has
+  // active variants would be refused below. Refuse the whole build up front,
+  // naming the part, instead of adding the rest and reporting success with a
+  // part silently missing (AD-412).
+  const slugs = items.map((item) => item.slug.trim()).filter(Boolean);
+  const products = await getPrisma().product.findMany({
+    where: { slug: { in: slugs } },
+    select: {
+      slug: true,
+      name: true,
+      _count: { select: { variants: { where: { isActive: true } } } },
+    },
+  });
+  const nameBySlug = new Map(products.map((product) => [product.slug, product.name]));
+  const withOptions = products.filter((product) => product._count.variants > 0);
+  if (withOptions.length > 0) {
+    return fail(
+      `${withOptions.map((product) => `"${product.name}"`).join(", ")} ${
+        withOptions.length === 1 ? "has" : "have"
+      } options (like colour or capacity) — add ${
+        withOptions.length === 1 ? "it" : "them"
+      } from the product page. Nothing from the build was added.`,
+    );
+  }
 
   const buildBatchId = randomUUID();
   let last: CartMutationResult = {
     ok: true,
     state: await getCartStateForOwner(owner),
   };
+  const refused: string[] = [];
   for (const item of items) {
     const slug = item.slug.trim();
     if (!slug) {
@@ -601,7 +633,16 @@ export async function addBuildItemsToCart(
     });
     if (result.ok) {
       last = result;
+    } else {
+      refused.push(`${nameBySlug.get(slug) ?? slug} (${result.reason})`);
     }
+  }
+  // Anything still refused (e.g. sold out between planning and adding) is
+  // reported rather than dropped without a word.
+  if (refused.length > 0) {
+    return fail(
+      `Not added: ${refused.join("; ")}. The rest of the build is in your cart.`,
+    );
   }
   return last;
 }

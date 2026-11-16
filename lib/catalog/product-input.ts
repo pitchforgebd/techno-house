@@ -219,6 +219,10 @@ export type ProductInputFields = {
    */
   metaTitle?: string;
   metaDescription?: string;
+  /** Share-preview image (og:image); blank clears it. Omitted = untouched. */
+  metaImageSrc?: string;
+  /** Staff search keywords. Omitted = untouched (bulk CSV has no column). */
+  searchTags?: string[];
   quantity: string;
   lowStockThreshold: string;
   isActive: boolean;
@@ -291,6 +295,10 @@ export type ParsedProductInput = {
   /** `null` = blank. `undefined` = not submitted. See `planSeoMetaWrite`. */
   metaTitle?: string | null;
   metaDescription?: string | null;
+  /** `null` = clear, `undefined` = untouched. */
+  metaImageSrc?: string | null;
+  /** Comma-joined, `null` = none, `undefined` = untouched. */
+  searchTags?: string | null;
   quantity: number;
   lowStockThreshold: number;
   stockStatus: StockStatus;
@@ -321,6 +329,55 @@ export type ParsedProductInput = {
   /** `undefined` = leave this product's gallery untouched. */
   gallerySrcs?: string[];
 };
+
+export const SEARCH_TAGS_MAX = 30;
+export const SEARCH_TAG_LENGTH_MAX = 40;
+
+/**
+ * Staff search tags (AD-412): trimmed, single-spaced, commas removed (they
+ * are the stored separator), case-insensitively de-duplicated, capped.
+ * Returned comma-joined for the `Product.searchTags` text column, or null.
+ */
+export function parseSearchTags(
+  raw: string[],
+): { ok: true; value: string | null } | { ok: false; formError: string } {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const item of raw) {
+    const tag = (typeof item === "string" ? item : "")
+      .replace(/,/g, " ")
+      .trim()
+      .split(/\s+/)
+      .join(" ");
+    if (!tag) {
+      continue;
+    }
+    if (tag.length > SEARCH_TAG_LENGTH_MAX) {
+      return {
+        ok: false,
+        formError: `A tag can be at most ${SEARCH_TAG_LENGTH_MAX} characters ("${tag.slice(0, 20)}…").`,
+      };
+    }
+    const key = tag.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    tags.push(tag);
+  }
+  if (tags.length > SEARCH_TAGS_MAX) {
+    return { ok: false, formError: `A product can have at most ${SEARCH_TAGS_MAX} tags.` };
+  }
+  return { ok: true, value: tags.length > 0 ? tags.join(", ") : null };
+}
+
+/** The stored comma-joined tags back as a list. */
+export function splitSearchTags(stored: string | null | undefined): string[] {
+  return (stored ?? "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
 
 export function normalizeSku(value: string): string {
   return value.trim().replace(/\s+/g, "-").slice(0, PRODUCT_SKU_MAX);

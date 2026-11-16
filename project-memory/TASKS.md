@@ -9223,3 +9223,65 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       suites fail on base too (`test:product-layout`, `test:product-coming-soon`,
       `test:listing`). No DB, nginx, pm2 or .env change; nothing run on production
       in the code step.
+
+- [x] AD-412 Variant bug fixes + SEO card fields that never saved — on
+      branch `fix/variant-bugs-seo-meta` (from `origin/main`). Operator:
+      "bugs gula solve kore daw" (the two found while checking AD-388/390)
+      and "SEO meta tags e kichu add kore refresh dile dekha jay na, input
+      box gula khali thake".
+
+      Bug 1 — a save that does not resend the variants (the bulk CSV import)
+      wrote its own price onto a variant product, so card/sort/filter/feeds
+      showed e.g. ৳99,999 while the variants sold at ৳8,000/15,000.
+      `syncVariantAggregateStock` (already run after every product save,
+      order placement and stock release/convert) now also sets the product's
+      `priceAmount`/`compareAtAmount` from its cheapest active variant.
+
+      Bug 2 — `addBuildItemsToCart` ignored refused adds, so a build part with
+      variants (a build can't pick one) vanished while "Build added to cart"
+      showed. It now refuses the whole build up front, naming the part ("…has
+      options — add it from the product page. Nothing from the build was
+      added."), and any other refused part (e.g. sold out in between) is
+      reported instead of dropped. Split into `addBuildItemsToCartForOwner`
+      (same pattern as the file's other *ForOwner functions) so it is testable.
+
+      SEO card — reproduced in the browser: Meta title/Description DID save
+      and reload; the empty-after-refresh boxes were Meta image (a read-only
+      "Browse / Choose file" placeholder) and Tags (two unsaved inputs: one in
+      the SEO card, one in Product configuration prefilled from spec values).
+      Additive migration `20261116192215_product_meta_image_search_tags`:
+      `Product.metaImageSrc` (og:image for the plain product URL; a
+      `?variant=` link keeps the variant's picture; empty = main image) and
+      `Product.searchTags` (comma-joined text so search matches part of a
+      tag). Meta image is now the media-library upload box; Tags is a chip
+      input (`admin-tags-input.tsx`, Enter/comma adds, never submits); the
+      duplicate Product-configuration Tags box is removed. Shop search and
+      header suggestions match `searchTags`. Both are untouched by a save that
+      omits them (bulk CSV), cleared when blanked, validated (image path/URL,
+      ≤30 tags × ≤40 chars, case-insensitive de-dupe). Also: the Meta title /
+      description placeholders are the generator's suggestion in dark grey
+      and read like saved text — now italic, with a note that the grey text
+      is not saved (likely part of the "it's empty after refresh" report).
+
+      Verified: prisma validate, `tsc --noEmit`, eslint clean.
+      `test:variants` 67 (5 new: CSV-style re-save keeps the cheapest
+      variant's price and leaves variants/stock alone; a build with a variant
+      part is refused by name with nothing added; a plain build still goes
+      in) — removing either fix fails it. New `test:product-seo-fields` 19
+      (save, editor reload, untouched by an omitting save, search + partial
+      tag + suggestions, product page gets the image, unsafe image refused,
+      blank clears, source guards). Headless Chrome (dev, demo admin, p-gpu,
+      restored after): no Tags box in Product configuration; typing + Enter /
+      comma makes chips without submitting; a library pick fills Meta image;
+      after Save + reload both are still there; the product page's og:image
+      is the meta image; /search finds it by a tag. inventory 33, tax 35,
+      payments 51, pc-builder 121, seo 92, category-search 22,
+      product-quick-edit 27, product-gallery 47 pass; product-layout's
+      "similar-products rail is sticky" check fails identically on clean
+      `main` (pre-existing, not this change).
+
+      Note: the code comments first said AD-391; renumbered to AD-412 because
+      other sessions had used AD-391..AD-411. The dev DB's migration checksum
+      was updated to match the edited comment.
+
+      DEPLOY: `npx prisma migrate deploy` (additive) before the new build.

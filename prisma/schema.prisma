@@ -562,6 +562,13 @@ model Product {
   /// 'admin' rows without --overwrite. CHECK constraint in the migration.
   seoSource       String?
   seoGeneratedAt  DateTime?
+  /// Share-preview picture (og:image) for the plain product URL; NULL = the
+  /// product's main image (AD-412). Admin -> Product -> SEO meta tags.
+  metaImageSrc    String?
+  /// Staff keywords site search also matches, comma-separated ("gaming case,
+  /// mid tower") — kept as one text column so search can match parts of a
+  /// tag (AD-412). NULL = none.
+  searchTags      String?
 
   publishedAt DateTime?
   createdAt   DateTime  @default(now())

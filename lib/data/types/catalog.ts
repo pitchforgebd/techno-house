@@ -181,6 +181,10 @@ export type ProductDetail = ProductSummary & {
   metaDescription?: string | null;
   /** 'generated' | 'admin' | null — who wrote the stored text. */
   seoSource?: string | null;
+  /** Share-preview image for the plain product URL; null = main image (AD-412). */
+  metaImageSrc?: string | null;
+  /** Staff search keywords (AD-412); also matched by site search. */
+  searchTags?: string[];
   /** Variant option groups ("Color": [Black, Blue]); empty = no variants. */
   variantOptions: { name: string; values: string[] }[];
   /** Active variants, in admin order. Non-empty means one must be chosen. */

@@ -7,9 +7,14 @@
  * denormalised `Product.stockStatus` used by listings ("in stock" filter)
  * stay right without every reader having to know about variants.
  *
+ * It also keeps the product's own price equal to its cheapest active
+ * variant's (AD-412) — what the card, sorting, price filter and feeds read.
+ * The product form already does this, but a save that does not resend the
+ * variants (the bulk CSV import) wrote its own price over it.
+ *
  * Call it inside the same transaction as any write that moves a variant's
- * stock. A product with no active variants is left alone — its own row is
- * the source of truth.
+ * stock or saves the product. A product with no active variants is left
+ * alone — its own row and price are the source of truth.
  */
 import { deriveStockStatus, DEFAULT_LOW_STOCK_THRESHOLD } from "@/lib/catalog/inventory-input";
 import { toDbStockStatus } from "@/lib/data/prisma/mappers";
@@ -21,7 +26,11 @@ export async function syncVariantAggregateStock(
 ): Promise<boolean> {
   const variants = await tx.productVariant.findMany({
     where: { productId, isActive: true },
-    select: { stock: { select: { quantity: true, reserved: true } } },
+    select: {
+      priceAmount: true,
+      compareAtAmount: true,
+      stock: { select: { quantity: true, reserved: true } },
+    },
   });
   if (variants.length === 0) {
     return false;
@@ -46,12 +55,17 @@ export async function syncVariantAggregateStock(
     update: { quantity, reserved },
     select: { lowStockThreshold: true },
   });
+  const cheapest = variants.reduce((best, variant) =>
+    variant.priceAmount < best.priceAmount ? variant : best,
+  );
   await tx.product.update({
     where: { id: productId },
     data: {
       stockStatus: toDbStockStatus(
         deriveStockStatus(quantity, reserved, row.lowStockThreshold),
       ),
+      priceAmount: cheapest.priceAmount,
+      compareAtAmount: cheapest.compareAtAmount,
     },
   });
   return true;
