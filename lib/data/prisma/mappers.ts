@@ -26,6 +26,7 @@ import type {
 import { effectiveStorefrontPricing } from "@/lib/catalog/discount-pricing";
 import { safeAlt } from "@/lib/content/alt-text";
 import { deriveStockStatus } from "@/lib/catalog/inventory-input";
+import { splitSearchTags } from "@/lib/catalog/product-input";
 import {
   resolveVariantOptionGroups,
   variantDisplayTitle,
@@ -265,6 +266,8 @@ export type ProductDetailRow = ProductCandidateRow & {
   metaTitle?: string | null;
   metaDescription?: string | null;
   seoSource?: string | null;
+  metaImageSrc?: string | null;
+  searchTags?: string | null;
   colors: {
     id: string;
     name: string;
@@ -382,6 +385,8 @@ export function toProductDetail(
     metaTitle: row.metaTitle ?? null,
     metaDescription: row.metaDescription ?? null,
     seoSource: row.seoSource ?? null,
+    metaImageSrc: row.metaImageSrc ?? null,
+    searchTags: splitSearchTags(row.searchTags),
     specs: mergeSpecChipsWithAttributes(
       toSpecChips(row.specChips),
       row.attributeValues,

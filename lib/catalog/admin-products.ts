@@ -151,6 +151,8 @@ const DETAIL_SELECT = {
   metaTitle: true,
   metaDescription: true,
   seoSource: true,
+  metaImageSrc: true,
+  searchTags: true,
   builderSlot: true,
   builderSocket: true,
   builderRamType: true,
@@ -807,6 +809,9 @@ function productData(
     labelIds: parsed.labelIds,
     barcode: parsed.barcode,
     modelNumber: parsed.modelNumber,
+    // `undefined` (not submitted, e.g. bulk CSV) leaves these untouched.
+    metaImageSrc: parsed.metaImageSrc,
+    searchTags: parsed.searchTags,
     // `undefined` (variants not submitted) leaves the column untouched.
     variantOptionNames: parsed.variantOptionNames,
     // `relatedTo` is an implicit self-relation, not a scalar column, so it
@@ -1040,6 +1045,8 @@ async function persistParsed(
           overviewHtml: parsed.overviewHtml ?? null,
           detailsHtml: parsed.detailsHtml ?? null,
           ...planSeoMetaWrite(parsed, { metaTitle: null, metaDescription: null }),
+          metaImageSrc: parsed.metaImageSrc ?? null,
+          searchTags: parsed.searchTags ?? null,
           priceAmount: parsed.priceAmount,
           compareAtAmount: parsed.compareAtAmount,
           variantOptionNames: parsed.variantOptionNames ?? [],

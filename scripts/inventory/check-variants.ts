@@ -379,6 +379,40 @@ async function main(): Promise<void> {
       },
     });
 
+    // A save that does not resend the variants (the bulk CSV import) must not
+    // leave its own price on a variant product (AD-412).
+    const csvStyle = await saveAdminProduct({
+      currentId: created.id,
+      fields: { ...base, price: "99999", quantity: "777" },
+    });
+    const afterCsv = await prisma.product.findUnique({
+      where: { id: created.id },
+      select: {
+        priceAmount: true,
+        compareAtAmount: true,
+        stock: { select: { quantity: true } },
+        _count: { select: { variants: true } },
+      },
+    });
+    const cheapestNow = await prisma.productVariant.findFirst({
+      where: { productId: created.id, isActive: true },
+      orderBy: { priceAmount: "asc" },
+      select: { priceAmount: true, compareAtAmount: true },
+    });
+    check(
+      "a CSV-style re-save keeps the cheapest variant's price on the product",
+      csvStyle.ok &&
+        afterCsv?.priceAmount === 50000 &&
+        afterCsv.priceAmount === cheapestNow?.priceAmount &&
+        afterCsv.compareAtAmount === cheapestNow.compareAtAmount,
+      `${afterCsv?.priceAmount}/${afterCsv?.compareAtAmount} vs ${JSON.stringify(cheapestNow)}`,
+    );
+    check(
+      "…and leaves the variants and their stock total alone",
+      afterCsv?._count.variants === 4 && afterCsv.stock?.quantity === 10,
+      JSON.stringify(afterCsv),
+    );
+
     const quick = await updateAdminProductQuickFields({
       productId: created.id,
       fields: { price: "1", compareAt: "", quantity: "1", lowStockThreshold: "1" },
@@ -521,6 +555,50 @@ async function main(): Promise<void> {
       removed.ok &&
         removed.state.lines.length === 1 &&
         removed.state.lines[0]?.variantId === blackSmall!.id,
+    );
+
+    // PC Builder: a build can't choose a variant, so a part with variants
+    // must stop the build with its name — not vanish while the rest is added
+    // and success is shown (AD-412).
+    const plainPart = await prisma.product.create({
+      data: {
+        slug: `var-test-plain-${stamp}`,
+        sku: `VAR-TEST-PLAIN-${stamp}`,
+        name: "Variant Test Plain Part",
+        brandId: brand.id,
+        categoryId: category.id,
+        overview: [],
+        priceAmount: 2000,
+        stock: { create: { quantity: 9 } },
+      },
+      select: { id: true },
+    });
+    productIds.push(plainPart.id);
+    const buildToken = `var-test-${randomUUID()}`;
+    guestTokens.push(buildToken);
+    const buildOwner = { kind: "guest" as const, tokenHash: buildToken };
+    const mixedBuild = await cart.addBuildItemsToCartForOwner(buildOwner, [
+      { slug: `var-test-plain-${stamp}`, builderSlot: "case" },
+      { slug, builderSlot: "ram" },
+    ]);
+    const buildLines = await prisma.cartItem.count({
+      where: { cart: { sessionToken: buildToken } },
+    });
+    check(
+      "a build with a variant part is refused, naming that part",
+      !mixedBuild.ok &&
+        mixedBuild.reason.includes("Variant Test Phone") &&
+        /nothing from the build was added/i.test(mixedBuild.reason),
+      mixedBuild.ok ? "accepted" : mixedBuild.reason,
+    );
+    check("…and none of its parts were added", buildLines === 0, `lines=${buildLines}`);
+    const plainBuild = await cart.addBuildItemsToCartForOwner(buildOwner, [
+      { slug: `var-test-plain-${stamp}`, builderSlot: "case" },
+    ]);
+    check(
+      "a build without variant parts still goes into the cart",
+      plainBuild.ok && plainBuild.state.lines.length === 1,
+      plainBuild.ok ? undefined : plainBuild.reason,
     );
 
     // --- checkout -----------------------------------------------------------------

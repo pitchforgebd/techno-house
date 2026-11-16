@@ -119,7 +119,13 @@ export async function generateMetadata({
     await variantParam(searchParams),
   );
   const displayName = variant?.title ?? product.name;
-  const image = variant?.image ?? product.image;
+  // Share preview: a `?variant=` link shows that variant's picture; the
+  // plain URL shows the staff-chosen meta image, else the main image (AD-412).
+  const image =
+    variant?.image ??
+    (product.metaImageSrc
+      ? { src: product.metaImageSrc, alt: product.name }
+      : product.image);
   // Templates B3/B4 (lib/seo/page-meta.ts). The price is the one the page
   // shows and the JSON-LD carries, and is left out exactly when the page
   // hides it (Up Coming, or out of stock and not Pre Order); EMI only when

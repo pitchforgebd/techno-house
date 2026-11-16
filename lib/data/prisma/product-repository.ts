@@ -119,6 +119,7 @@ const DETAIL_SELECT = {
   modelNumber: true,
   metaTitle: true,
   metaDescription: true,
+  metaImageSrc: true,
   colors: {
     select: {
       id: true,
@@ -283,6 +284,8 @@ function composeWhere(
     { category: { slug: { contains: text, mode: "insensitive" } } },
     // A variant's own title, option label or SKU finds its product (AD-390).
     { variants: { some: variantTextMatch(text) } },
+    // Staff search tags (AD-412).
+    { searchTags: { contains: text, mode: "insensitive" } },
   ];
   // Word mode (compare picker): each word must match somewhere, in any order.
   const searchWords = query.qWords ? splitSearchWords(query.q) : [];
@@ -597,6 +600,7 @@ export const prismaProductRepository: ProductRepository = {
         { brand: { name: { contains: needle, mode: "insensitive" } } },
         { category: { name: { contains: needle, mode: "insensitive" } } },
         { variants: { some: variantTextMatch(needle) } },
+        { searchTags: { contains: needle, mode: "insensitive" } },
       ],
     };
     const [total, rows] = await Promise.all([
