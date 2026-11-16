@@ -113,16 +113,17 @@ type ProductSummaryProps = {
    * columns. These classes position the boxes in that grid.
    */
   infoClassName?: string;
+  /** Grid placement of the identity block / buy section when the column is `contents`. */
+  topClassName?: string;
+  buyClassName?: string;
   optionsClassName?: string;
   /**
    * Where the delivery cards sit on large screens: "info" keeps them in the buy
-   * box, "options" puts them under the colours in the right-hand column (from
-   * `xl`, where that column exists; between `lg` and `xl` the page shows them
-   * under the gallery instead), "gallery" leaves them to the page, which renders
-   * them under the gallery (from `lg`). Below `lg` they are always in the buy box.
-   * The page picks whichever keeps its columns about the same height.
+   * box, "gallery" leaves them to the page, which renders them under the gallery
+   * (from `lg`). Below `lg` they are always in the buy box. They never move into
+   * the colour-options column, so adding colours does not relocate them.
    */
-  serviceCardsAt?: "info" | "options" | "gallery";
+  serviceCardsAt?: "info" | "gallery";
 };
 
 /**
@@ -201,6 +202,8 @@ export function ProductSummary({
   b2bTerms = null,
   viewerCount = null,
   infoClassName,
+  topClassName,
+  buyClassName,
   optionsClassName,
   serviceCardsAt = "info",
 }: ProductSummaryProps) {
@@ -569,7 +572,14 @@ export function ProductSummary({
 
   return (
     <>
-      <div className={cn("@container space-y-4", infoClassName)}>
+      {/* Two blocks in one column: the product's identity (title, price, quick
+          overview) and the buy section (offers, options, cart controls, share).
+          With colour options the column is `xl:contents`, so the two become
+          separate grid items of the page — the buy section then runs full width
+          under both the information and the colour column and its buttons stay
+          on one line (`topClassName` / `buyClassName` place them). */}
+      <div className={cn("flex flex-col gap-4", infoClassName)}>
+      <div className={cn("@container space-y-4", topClassName)}>
         <div>
           {/* One size down from before, and semibold rather than carrying its
               own bold weight — the price below is now the boldest, biggest
@@ -755,7 +765,10 @@ export function ProductSummary({
           </div>
           {overviewHtml ? (
             <div
-              className="th-rich-text mt-3 text-label text-text-muted"
+              // Imported overviews are often <li><p>…</p></li>; the article
+              // paragraph margins and 1.7 leading made each bullet ~45 px tall
+              // and pushed the cart controls down the page. Tight here only.
+              className="th-rich-text mt-2.5 text-label text-text-muted [&_li]:mb-0.5! [&_li>p]:mb-0! [&_p]:leading-normal! [&_ul]:mb-0! [&_ul]:space-y-0"
               dangerouslySetInnerHTML={{ __html: overviewHtml }}
             />
           ) : null}
@@ -777,7 +790,9 @@ export function ProductSummary({
             View More Info
           </button>
         </div>
+      </div>
 
+      <div className={cn("@container space-y-4", buyClassName)}>
         <div className="space-y-2">
           {!priceHidden && discountEndsAt ? (
             <p className="text-caption text-text-muted">
@@ -1053,7 +1068,7 @@ export function ProductSummary({
         ) : null}
 
         {/* The delivery cards: in the buy box below `lg`, and from `lg` wherever
-            `serviceCardsAt` says (here, under the colours, or under the gallery). */}
+            `serviceCardsAt` says (here, or under the gallery). */}
         <div
           className={
             serviceCardsAt === "info"
@@ -1070,13 +1085,12 @@ export function ProductSummary({
           {warrantyLabel}. Prices in ৳ are display-only and are not a charge.
         </p>
       </div>
+      </div>
 
       {colorVariations ? (
-        // With colours the right-hand column is otherwise short, so the page may
-        // put the delivery cards under them (`serviceCardsAt="options"`).
+        // The delivery cards stay where they are with or without colours.
         <div className={cn("hidden space-y-5 xl:block", optionsClassName)}>
           {colorVariations}
-          {serviceCardsAt === "options" ? <ProductServiceCards /> : null}
         </div>
       ) : null}
 

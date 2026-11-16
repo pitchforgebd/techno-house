@@ -178,11 +178,7 @@ export function ProductMediaBuy({
   // level: colours -> under the colours (that column is otherwise short); notes
   // under the gallery -> in the buy column (the gallery column is already tall);
   // otherwise -> under the gallery (it is the short one).
-  const serviceCardsAt: "options" | "info" | "gallery" = hasOptions
-    ? "options"
-    : hasNotes
-      ? "info"
-      : "gallery";
+  const serviceCardsAt: "info" | "gallery" = hasNotes ? "info" : "gallery";
   // The campaign banner: with notes the gallery column is the tall one, so the
   // banner goes under the buy information; otherwise the columns are level and a
   // banner under either would unbalance them, so it spans both, as a strip
@@ -214,8 +210,22 @@ export function ProductMediaBuy({
           same order (the colour options then sit inside the buy box, before
           the cart controls). */}
       <div className="rounded-2xl border border-border bg-surface p-5 shadow-lg shadow-slate-900/5 sm:p-7 lg:p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:gap-x-8">
-          <div className="lg:col-span-5 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+        <div
+          className={cn(
+            "grid grid-cols-1 lg:grid-cols-12 lg:gap-x-8",
+            // Colours: from xl the buy section is its own row under the
+            // information + colour columns, so there are three rows.
+            hasOptions
+              ? "lg:grid-rows-[auto_auto_1fr]"
+              : "lg:grid-rows-[auto_1fr]",
+          )}
+        >
+          <div
+            className={cn(
+              "lg:col-span-5 lg:col-start-1 lg:row-start-1",
+              hasOptions ? "lg:row-span-3" : "lg:row-span-2",
+            )}
+          >
             <ProductGallery
               key={`${selectedColorId ?? "default"}:${selectedVariant?.images.length ? selectedVariant.id : ""}`}
               images={galleryImages}
@@ -232,14 +242,7 @@ export function ProductMediaBuy({
             {/* From `lg` the delivery cards live here; below `lg` they stay in
                 the buy box (ProductSummary), so they are never shown twice. */}
             {serviceCardsAt !== "info" ? (
-              // "gallery": from lg. "options": only between lg and xl, because
-              // from xl the cards sit in the options column instead.
-              <div
-                className={cn(
-                  "mt-5 hidden lg:block",
-                  serviceCardsAt === "options" && "xl:hidden",
-                )}
-              >
+              <div className="mt-5 hidden lg:block">
                 <ProductServiceCards />
               </div>
             ) : null}
@@ -281,14 +284,29 @@ export function ProductMediaBuy({
             viewerCount={viewerCount}
             infoClassName={cn(
               "mt-8 min-w-0 lg:col-span-7 lg:col-start-6 lg:mt-0 lg:row-start-1",
-              hasOptions && "xl:col-span-4",
+              hasOptions && "xl:contents",
             )}
+            topClassName={
+              hasOptions
+                ? "min-w-0 xl:col-span-4 xl:col-start-6 xl:row-start-1"
+                : undefined
+            }
+            buyClassName={
+              hasOptions
+                ? "min-w-0 xl:col-span-7 xl:col-start-6 xl:row-start-2"
+                : undefined
+            }
             optionsClassName="min-w-0 xl:col-span-3 xl:col-start-10 xl:row-start-1"
             serviceCardsAt={serviceCardsAt}
           />
 
           {banner && bannerAt === "info" ? (
-            <div className="min-w-0 lg:col-span-7 lg:col-start-6 lg:row-start-2 lg:self-start">
+            <div
+              className={cn(
+                "min-w-0 lg:col-span-7 lg:col-start-6 lg:row-start-2 lg:self-start",
+                hasOptions && "xl:row-start-3",
+              )}
+            >
               {banner}
             </div>
           ) : null}
