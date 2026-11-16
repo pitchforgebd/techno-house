@@ -9223,6 +9223,41 @@ Mega-menu chrome follow-up (2026-08-30): AD-068. Not a new phase.
       suites fail on base too (`test:product-layout`, `test:product-coming-soon`,
       `test:listing`). No DB, nginx, pm2 or .env change; nothing run on production
       in the code step.
+- [x] AD-408 Similar products rail — closest match first (branch
+      `similar-products-rank`, from main). The rail already listed the product's
+      own category, but showed the same top-4 "featured" items on every page of
+      a category, so it read as unrelated. Now `lib/catalog/similar-products.ts`
+      ranks a pool of 40 same-category items: exact category, shared name words
+      (DDR generation, capacity, speed, socket), same brand, orderable, nearest
+      price; deterministic (no random). Checked locally: RAM page -> DDR5 16GB
+      RAM, processor -> LGA1700 CPUs, SSD -> 1TB NVMe. `test:similar-products`
+      6 checks pass; tsc clean. No DB or admin change; the admin-picked
+      "Related products" row is untouched.
+- [x] AD-409 Product page: compact delivery cards that stay put (branch
+      `similar-products-rank`). The Payment method / Shipping & charge / Order
+      procedure cards are now icon + small title only (description dropped), and
+      no longer jump into the colour-options column when a product has colours —
+      they stay under the gallery (or in the buy box when the gallery has notes),
+      so the buy controls are not pushed down. Checked in headless Chrome at
+      1440 px with a coloured product. `test:product-layout` guard updated; its
+      one failing check (similar-products rail sticky) fails on base too.
+- [x] AD-410 Product page: Quick overview bullets are tight (branch
+      `similar-products-rank`). Imported overviews are `<li><p>` and the article
+      paragraph margin + 1.7 leading made each bullet ~45 px tall, pushing Qty /
+      Add to cart far down the buy column. Scoped to the overview box only:
+      bullets ~23 px apart (headless Chrome, 4 bullets: Qty back to where a 2-bullet
+      product had it). No DB change.
+- [x] AD-411 Product page with colour options: buy section is its own row (branch
+      `similar-products-rank`). With colours the buy column was only 4/12 wide, so
+      Check availability / Compare / wishlist wrapped to a second row and the
+      share bar and note were pushed down. From xl the info column is
+      `xl:contents`: title/price/overview stay in cols 6-9 (row 1) beside the
+      colours, and the buy section (offers, Qty, cart row, share, note) is a
+      full-width row 2 (cols 6-12), with the banner moved to row 3. Below xl and
+      for products without colours nothing changes. Checked in headless Chrome at
+      1440 / 1100 / 390 px with a coloured product (cart row on one line, no
+      horizontal scroll). `test:product-layout` guards updated; its sticky-rail
+      check fails on base too.
 
 - [x] AD-412 Variant bug fixes + SEO card fields that never saved — on
       branch `fix/variant-bugs-seo-meta` (from `origin/main`). Operator:
